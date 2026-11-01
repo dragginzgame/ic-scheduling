@@ -1,5 +1,47 @@
 # Current handoff
 
+## Timers 0.35.2 delivery in progress — 2026-11-01
+
+The user requested fixing the sole open Scheduling issue,
+[#84](https://github.com/dragginzgame/ic-scheduling/issues/84). The working tree
+contains the reviewed correction from existing
+[PR #85](https://github.com/dragginzgame/ic-scheduling/pull/85), plus direct IC
+qualification and the required private fixture changes. Absent ordinary demand
+settles as Stopped/idle without cancellation accounting. It retains identity and
+observations; positive demand rearms the same claim. Explicit cancel stays
+Cancelled, existing inactive reasons remain intact, unregister remains dominant,
+and invariant failures retain priority. No public API or dependency changes.
+
+The old proposal's note belonged to 0.35.1 before that release was delivered.
+The completed local batch instead has compatible 0.35.2 draft notes. All package
+versions remain Timers 0.35.1 / Jobs 0.33.2; published notes and tags are unchanged.
+The user subsequently requested deployment after reviewing PR #85. This selects
+updating and integrating that PR, then the standard Timers-only 0.35.2 release
+and separate crates.io publication when enforced checks permit. The complete
+candidate is incorporated into the existing PR without rewriting its history.
+Delivery runs in `/tmp/ic-scheduling-timers0352.AO0pyy/source`, preserving the
+normal checkout's dependency edits. Canic #545 needs the supplying published
+version; no publication is claimed until registry/archive readback succeeds.
+
+Evidence is `/tmp/ic-scheduling-issue84.PARjAP/`. The two original regression
+cases fail against unchanged producer code. On the released dependency graph,
+all 175 Timers library tests, strict core/probe package Clippy and Rust 1.91 Wasm
+checks pass. The canonical focused IC driver passes three exact subjects: demand
+removal versus cancellation, ordinary await/control interleaving and continuation
+trap retirement. The private probe now has distinct clearing/cancel operations
+and reports stopped/cancelled disposition and cancellation counts. The new case
+also covers retained identity, expired contexts and later rearming; it belongs
+to the required watchdog roster. Provider confinement, formatting, changed-doc
+links and diff checks pass. No full local workspace/release suite is claimed.
+
+Qualification used the isolated `source/` checkout and committed dependency lock
+from `a74126c`, preserving the normal checkout's independently changing Cargo.lock.
+The failed working-graph compile diagnostic is retained separately and is not
+qualification of those dependency edits. Source snapshots, original IC Wasm,
+server logs, lock identity and command evidence remain outside target. The
+original working candidate remains recoverable while the isolated delivery
+branch is committed; keep the unrelated dependency lock untouched.
+
 ## Timers 0.35.1 delivered — 2026-11-01
 
 The user's latest-Timers deployment request is complete. Only `ic-timers` 0.35.1
@@ -129,7 +171,8 @@ retained historical commit `fc14bbe1baa3c0fdc09b0550e25a1d3fdcd9d2d1` remains pr
 ## Workspace and recovery custody
 
 Published group versions are Jobs 0.33.2 and Timers 0.35.1. The Jobs 0.33.3
-draft remains open; Timers 0.35.1 notes are finalized with no next draft selected. All nine packages retain independent group versions, root catalogs,
+draft remains open; Timers 0.35.1 notes are finalized and 0.35.2 is the compatible
+issue #84 draft. All nine packages retain independent group versions, root catalogs,
 full alias rosters and group ledgers; no root VERSION or shared workspace version.
 Shared 0.27.23 at `619d194875369e0f72b45477b66adb430acbf6b7` remains an intact canonical
 132-file snapshot. Jobs remains Serde-only, independent of platform/storage/runtime.

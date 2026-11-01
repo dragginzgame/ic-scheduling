@@ -1168,6 +1168,7 @@ fn ordinary_observation(pic: &PocketIc, canister_id: ExternalPrincipal) -> Ordin
     assert!(!observed.work_started.total_overflowed);
     assert!(!observed.work_completed.total_overflowed);
     assert!(!observed.unacknowledged.total_overflowed);
+    assert!(!observed.cancellations.total_overflowed);
     observed
 }
 
@@ -1315,6 +1316,100 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
     let after = pic.canister_status(canister_id, None).unwrap();
     assert_eq!(after.module_hash, status.module_hash);
     assert_eq!(after.settings.freezing_threshold, freezing_seconds);
+}
+
+// This checks the real provider and message boundary for the two ordinary policies.
+#[test]
+fn absent_ordinary_demand_is_idle_and_explicit_cancellation_stays_distinct() {
+    for policy in OrdinaryPolicy::ALL {
+        let owned = fresh_pocket_ic();
+        let pic = owned.instance();
+        let canister_id = install_probe(pic, probe_wasm());
+        update_wire::<(), _>(
+            pic,
+            canister_id,
+            ExternalPrincipal::anonymous(),
+            Method::StartOrdinary,
+            (policy, ProbeLifetime::Retained),
+        )
+        .expect("register retained ordinary work");
+        let running = wait_for_probe(
+            pic,
+            32,
+            |pic| ordinary_observation(pic, canister_id),
+            |state| state.running && state.waiting && state.gate_replies > 0,
+        );
+        update_unit(pic, canister_id, Method::ReconcileOrdinaryInactive);
+        assert!(
+            ordinary_observation(pic, canister_id).running,
+            "demand removal must not interrupt accepted work"
+        );
+        update_unit(pic, canister_id, Method::ReleaseOrdinaryWork);
+        let stopped = wait_for_probe(
+            pic,
+            32,
+            |pic| ordinary_observation(pic, canister_id),
+            |state| state.completed == 1 && !state.running,
+        );
+        assert!(
+            stopped.declared && stopped.stopped && !stopped.cancelled && !stopped.armed,
+            "{stopped:?}"
+        );
+        assert_eq!(stopped.registration_id, running.registration_id);
+        assert_eq!(stopped.cancellations.total, 0);
+        assert_eq!(stopped.work_completed.total, 1);
+        assert!(update_bool(
+            pic,
+            canister_id,
+            Method::ExpiredOrdinaryContextRejected
+        ));
+        qualify_scheduled_demand_removal(pic, canister_id, running.registration_id);
+        update_deadline(
+            pic,
+            canister_id,
+            Method::ReconcileOrdinaryAt,
+            pic.get_time().as_nanos_since_unix_epoch(),
+        );
+        let rearmed = wait_for_probe(
+            pic,
+            32,
+            |pic| ordinary_observation(pic, canister_id),
+            |state| state.completed == 2,
+        );
+        assert_eq!(rearmed.registration_id, running.registration_id);
+        assert_eq!(rearmed.work_started.total, 2);
+        assert_eq!(rearmed.work_completed.total, 2);
+        assert_eq!(rearmed.cancellations.total, 1);
+    }
+}
+
+fn qualify_scheduled_demand_removal(
+    pic: &PocketIc,
+    canister_id: ExternalPrincipal,
+    identity: Option<(u64, u64, u64)>,
+) {
+    let deadline = pic.get_time().as_nanos_since_unix_epoch() + 60_000_000_000;
+    update_deadline(pic, canister_id, Method::ReconcileOrdinaryAt, deadline);
+    let armed = ordinary_observation(pic, canister_id);
+    assert!(armed.armed);
+    assert_eq!(armed.next_deadline_ns, Some(deadline));
+    update_unit(pic, canister_id, Method::ReconcileOrdinaryInactive);
+    let idle = ordinary_observation(pic, canister_id);
+    assert!(idle.stopped && !idle.cancelled && !idle.armed);
+    assert_eq!(idle.next_deadline_ns, None);
+    assert_eq!(idle.cancellations.total, 0);
+    assert_eq!(idle.registration_id, identity);
+    update_deadline(pic, canister_id, Method::ReconcileOrdinaryAt, deadline);
+    update_unit(pic, canister_id, Method::CancelOrdinary);
+    let cancelled = ordinary_observation(pic, canister_id);
+    assert!(cancelled.cancelled && !cancelled.stopped && !cancelled.armed);
+    assert_eq!(cancelled.cancellations.total, 1);
+    update_unit(pic, canister_id, Method::ReconcileOrdinaryInactive);
+    let still_cancelled = ordinary_observation(pic, canister_id);
+    assert!(still_cancelled.cancelled && !still_cancelled.stopped);
+    assert_eq!(still_cancelled.cancellations.total, 1);
+    assert_eq!(still_cancelled.registration_id, identity);
+    assert_eq!(still_cancelled.work_started.total, 1);
 }
 
 #[test]

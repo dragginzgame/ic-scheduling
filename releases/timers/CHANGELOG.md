@@ -7,6 +7,25 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.35.2] - Unreleased
+
+### 🩹 Fixed
+
+- Reconcile absent ordinary scheduling demand to idle without recording explicit
+  cancellation. Retain registration identity and observations, preserve existing
+  inactive reasons and allow later demand to rearm the claim. Running requests
+  retain command ordering, invariant-failure priority and remove-on-stop semantics.
+  This supplies Canic's terminal intent-cleanup boundary
+  ([#84](https://github.com/dragginzgame/ic-scheduling/issues/84),
+  [Canic #545](https://github.com/dragginzgame/canic/issues/545)).
+
+### 🧪 Testing
+
+- Distinguish demand removal from explicit cancellation in the private IC probe.
+  Cover scheduled and awaiting work, retained identity, cancellation accounting,
+  expired contexts and rearming through the installed provider. Keep the new
+  subject in the watchdog qualification roster.
+
 ## [0.35.1] - 2026-11-01
 
 ### 📦 Dependencies

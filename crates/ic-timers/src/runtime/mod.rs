@@ -179,10 +179,11 @@ impl OnceContext {
     /// A winning exact schedule replaces the returned scheduling proposal
     /// before validation. Explicit consumer invariant failure still stops.
     ///
-    /// `None` requests inactive state at normal completion. Retained callback
-    /// authority remains; a remove-on-stop declaration is removed when that
-    /// cancellation wins arbitration. A stored context cannot mutate the
-    /// registration after its exact work attempt ends.
+    /// `None` requests idle state at normal completion without recording an
+    /// explicit cancellation. Retained callback authority remains; a
+    /// remove-on-stop declaration is removed when that request wins arbitration.
+    /// A stored context cannot mutate the registration after its exact work
+    /// attempt ends.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
         reconcile_ordinary_claim(self.token.claim(), Some(&self.token), schedule)
     }
@@ -231,10 +232,11 @@ impl AfterCompletionContext {
     /// A winning exact schedule replaces the returned scheduling proposal
     /// before validation. Explicit consumer invariant failure still stops.
     ///
-    /// `None` requests inactive state at normal completion. A retained
-    /// declaration keeps its callback authority; a remove-on-stop declaration
-    /// is removed when cancellation wins arbitration. A stored context cannot
-    /// mutate the registration after its exact work attempt ends.
+    /// `None` requests idle state at normal completion without recording an
+    /// explicit cancellation. A retained declaration keeps callback authority;
+    /// a remove-on-stop declaration is removed when that request wins.
+    /// A stored context cannot mutate the registration after its exact work
+    /// attempt ends.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
         reconcile_ordinary_claim(self.token.claim(), Some(&self.token), schedule)
     }
@@ -348,9 +350,11 @@ impl OnceRegistration {
     /// During running work, a winning exact schedule replaces the callback
     /// scheduling proposal before validation; explicit invariant failure stops.
     ///
-    /// `None` leaves a retained declaration inactive after any running work
+    /// `None` leaves a retained declaration idle after any running work
     /// completes or is abandoned. A remove-on-stop declaration is removed and
-    /// this claim expires when the transition finalizes.
+    /// this claim expires when the transition finalizes. Clearing scheduled
+    /// demand is distinct from explicit cancellation; an already inactive
+    /// declaration retains its existing reason.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
         reconcile_ordinary_claim(&self.claim, None, schedule)
     }

@@ -69,6 +69,210 @@ fn registry() -> TimerRegistry {
     TimerRegistry::new(TimerEpoch::new(7, 10))
 }
 
+#[test]
+fn inactive_demand_keeps_custody_idle_and_explicit_cancel_distinct() {
+    for recurring in [false, true] {
+        let mut registry = registry();
+        let timer = identity("inactive-demand");
+        let claim = if recurring {
+            registry.register_after_completion(
+                timer.clone(),
+                cadence(10),
+                DeclarationLifetime::Retained,
+            )
+        } else {
+            registry.register_once(timer.clone(), DeclarationLifetime::Retained)
+        }
+        .unwrap();
+        let original = registry.snapshot(&timer).unwrap().registration_id();
+        let scheduled = registry
+            .reconcile_ordinary(&claim, 0, Some(TimerSchedule::At(10)))
+            .unwrap();
+        confirm(&mut registry, &scheduled);
+        let stopped = registry.reconcile_ordinary(&claim, 1, None).unwrap();
+        assert!(matches!(
+            stopped.effect(),
+            RegistryEffect::ClearCallbacks {
+                handles: CallbacksToClear::Wakeup
+            }
+        ));
+        confirm(&mut registry, &stopped);
+        let snapshot = registry.snapshot(&timer).unwrap();
+        assert_eq!(
+            snapshot.state(),
+            TimerRuntimeStateSnapshot::Inactive {
+                reason: InactiveReason::Stopped
+            }
+        );
+        assert_eq!(snapshot.registration_id(), original);
+        assert_eq!(snapshot.next_deadline_ns(), None);
+        assert_eq!(
+            snapshot
+                .observability()
+                .counters()
+                .cancelled()
+                .exact_total()
+                .unwrap(),
+            0
+        );
+        let scheduled = registry
+            .reconcile_ordinary(&claim, 2, Some(TimerSchedule::At(20)))
+            .unwrap();
+        confirm(&mut registry, &scheduled);
+        registry.cancel(&claim).unwrap();
+        registry.reconcile_ordinary(&claim, 3, None).unwrap();
+        let snapshot = registry.snapshot(&timer).unwrap();
+        assert_eq!(
+            snapshot.state(),
+            TimerRuntimeStateSnapshot::Inactive {
+                reason: InactiveReason::Cancelled
+            }
+        );
+        assert_eq!(
+            snapshot
+                .observability()
+                .counters()
+                .cancelled()
+                .exact_total()
+                .unwrap(),
+            1
+        );
+        assert_eq!(snapshot.registration_id(), original);
+    }
+}
+
+#[test]
+fn inactive_demand_waits_for_running_work_and_preserves_removal() {
+    for lifetime in [
+        DeclarationLifetime::Retained,
+        DeclarationLifetime::RemoveWhenStopped,
+    ] {
+        let mut registry = registry();
+        let timer = identity("running-inactive-demand");
+        let claim = registry.register_once(timer.clone(), lifetime).unwrap();
+        let scheduled = registry
+            .reconcile_ordinary(&claim, 0, Some(TimerSchedule::At(1)))
+            .unwrap();
+        confirm(&mut registry, &scheduled);
+        let (token, _) = arm(scheduled);
+        registry.begin_ordinary(&token).unwrap();
+        registry.reconcile_ordinary(&claim, 2, None).unwrap();
+        assert_eq!(
+            registry.snapshot(&timer).unwrap().registration_status(),
+            TimerRegistrationStatus::Running
+        );
+        registry
+            .complete_ordinary(
+                &token,
+                3,
+                OrdinaryRunResult::new(
+                    TimerCompletion::success(1),
+                    OrdinaryDirective::RetryAfter(Duration::MAX),
+                ),
+            )
+            .unwrap();
+        match lifetime {
+            DeclarationLifetime::Retained => assert_eq!(
+                registry.snapshot(&timer).unwrap().state(),
+                TimerRuntimeStateSnapshot::Inactive {
+                    reason: InactiveReason::Stopped
+                }
+            ),
+            DeclarationLifetime::RemoveWhenStopped => assert!(registry.snapshot(&timer).is_none()),
+        }
+    }
+}
+
+#[test]
+fn inactive_demand_preserves_command_order_and_invariant_failure_priority() {
+    for recurring in [false, true] {
+        for command in ["clear", "cancel", "schedule", "unregister", "invariant"] {
+            let mut registry = registry();
+            let timer = identity("inactive-command-order");
+            let claim = if recurring {
+                registry.register_after_completion(
+                    timer.clone(),
+                    cadence(5),
+                    DeclarationLifetime::Retained,
+                )
+            } else {
+                registry.register_once(timer.clone(), DeclarationLifetime::Retained)
+            }
+            .unwrap();
+            let original = registry.snapshot(&timer).unwrap().registration_id();
+            let scheduled = registry
+                .reconcile_ordinary(&claim, 0, Some(TimerSchedule::At(1)))
+                .unwrap();
+            confirm(&mut registry, &scheduled);
+            let (token, _) = arm(scheduled);
+            registry.begin_ordinary(&token).unwrap();
+            if command == "clear" {
+                registry.cancel(&claim).unwrap();
+            }
+            if command == "unregister" {
+                registry.unregister(&claim).unwrap();
+            }
+            registry.reconcile_ordinary(&claim, 2, None).unwrap();
+            match command {
+                "cancel" => {
+                    registry.cancel(&claim).unwrap();
+                }
+                "schedule" => {
+                    registry
+                        .reconcile_ordinary(&claim, 2, Some(TimerSchedule::At(20)))
+                        .unwrap();
+                }
+                _ => {}
+            }
+            let completion = if command == "invariant" {
+                TimerCompletion::invariant_failure(1)
+            } else {
+                TimerCompletion::success(1)
+            };
+            let finished = registry
+                .complete_ordinary(
+                    &token,
+                    3,
+                    OrdinaryRunResult::new(
+                        completion,
+                        OrdinaryDirective::RetryAfter(Duration::MAX),
+                    ),
+                )
+                .unwrap();
+            assert_eq!(finished.failure(), None);
+            confirm(&mut registry, &finished);
+            if command == "unregister" {
+                assert!(registry.snapshot(&timer).is_none());
+                continue;
+            }
+            let current = registry.snapshot(&timer).unwrap();
+            assert_eq!(current.registration_id(), original);
+            assert_eq!(
+                current
+                    .observability()
+                    .counters()
+                    .cancelled()
+                    .exact_total()
+                    .unwrap(),
+                u128::from(command == "cancel")
+            );
+            if command == "schedule" {
+                assert_eq!(current.next_deadline_ns(), Some(20));
+            } else {
+                let reason = match command {
+                    "cancel" => InactiveReason::Cancelled,
+                    "invariant" => InactiveReason::InvariantFailure,
+                    _ => InactiveReason::Stopped,
+                };
+                assert_eq!(
+                    current.state(),
+                    TimerRuntimeStateSnapshot::Inactive { reason }
+                );
+            }
+        }
+    }
+}
+
 fn cadence(nanoseconds: u64) -> TimerCadence {
     TimerCadence::from_nanos(nanoseconds).expect("fixture cadence should be valid")
 }
@@ -1267,11 +1471,11 @@ fn ordinary_reconciliation_is_authoritative_and_registry_pending_is_ordered() {
 
     registry
         .reconcile_ordinary(&claim, 400, None)
-        .expect("inactive reconciliation should cancel the retained declaration");
+        .expect("inactive reconciliation should stop the retained declaration");
     assert_eq!(
         registry.snapshot(&timer).map(|snapshot| snapshot.state()),
         Some(TimerRuntimeStateSnapshot::Inactive {
-            reason: InactiveReason::Cancelled,
+            reason: InactiveReason::Stopped,
         })
     );
 }
