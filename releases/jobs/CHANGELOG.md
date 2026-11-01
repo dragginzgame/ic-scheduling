@@ -16,14 +16,20 @@ and [coordinated history through 0.33.1](../history.md).
   their codec and optional native schemas with Wire 0.13. Keep Jobs Serde-only;
   retained queue/ledger bytes, restore admission and blocked-effect recovery are
   unchanged. Testkit now shares the consumer's Metrics 0.24 identity.
+- Adopt Logging 0.23.3 and Metrics 0.24.1, retaining bounded heap-only logs,
+  public measurement identities, counter arithmetic and diagnostic reset boundaries.
 
 ### 🔧 Changed
 
-- Adopt Shared Tooling's 0.27.22 group-catalog rules. The root Cargo catalog shows
+- Adopt Shared Tooling 0.27.23 and its group-catalog rules. The root Cargo catalog shows
   all nine members in Jobs/Timers blocks with their changelog paths; release and
   dependency checks admit each full version, local path and owning alias roster,
   including unused private entries. Selected-group preparation preserves
   requirement operators and the other group's identities.
+- Run snapshot and documentation checks for an exact reviewed prose allowlist,
+  retaining stable checks on all three hosts. Code, tooling, policy and unknown
+  changes keep full native CI; failed classification cannot pass validation.
+  [#83 — Adopt conservative documentation-only CI selection](https://github.com/dragginzgame/ic-scheduling/issues/83).
 
 ## [0.33.2] - 2026-10-31
 

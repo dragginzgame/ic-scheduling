@@ -14,6 +14,14 @@ entry alone does not establish publication.
 - Adopt Build/Host 0.73.3, Testkit/Native 0.75.2 and Wire/Derive 0.13.2 for
   private qualification tools. Refresh the managed release editor and Testkit CLI;
   retain artifact custody, bounded simulator startup and timer runtime behavior.
+- Adopt Metrics 0.24.1, preserving public measurement types and arithmetic.
+
+### 🔧 Changed
+
+- Adopt Shared Tooling 0.27.23 and conservative documentation-only CI selection.
+  Preserve all three stable host checks, full code/release gates and explicit
+  group versions; no canonical `VERSION` file is introduced.
+  [#83 — Adopt conservative documentation-only CI selection](https://github.com/dragginzgame/ic-scheduling/issues/83).
 
 ## [0.35.0] - 2026-10-31
 

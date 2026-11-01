@@ -944,9 +944,9 @@ dependencies = [
 
 [[package]]
 name = "ic-logging"
-version = "0.23.2"
+version = "0.23.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec5654ee9bca6faa5e850d6a32ed36cc9f4d14378e4801bdd4d127dd45b1b1eb"
+checksum = "a73dfd2a7bc6e594465ab02f366f5b919daeb77fdb64fcb4460d460b305249cf"
 
 [[package]]
 name = "ic-management-canister-types"
@@ -984,9 +984,9 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.24.0"
+version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70544c4dc1ae7697e22f2a3dd23a96de8fbcd722e7c320d72fda0c7760c2b9c6"
+checksum = "744346d56fe0994acc3b39aed3e2139c62f91d4924d0b466a19cbb375c3d66ad"
 dependencies = [
  "serde",
 ]

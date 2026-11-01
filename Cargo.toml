@@ -40,7 +40,7 @@ ic-timers-test-protocol = { path = "crates/ic-timers-test-protocol", version = "
 
 # Production dependencies
 # Metrics, Platform and Serde also serve qualification consumers.
-ic-metrics = { version = "0.24.0", default-features = false }
+ic-metrics = { version = "0.24.1", default-features = false }
 ic-platform = { version = "0.15.3", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"
@@ -52,7 +52,7 @@ ic-build = "0.73.3"
 ic-host-artifacts = "0.73.3"
 ic-host-fs = { version = "0.73.3", default-features = false }
 ic-host-process = { version = "0.73.3", default-features = false }
-ic-logging = { version = "0.23.2", default-features = false }
+ic-logging = { version = "0.23.3", default-features = false }
 ic-memory = "0.60.3"
 ic-storage = "0.60.3"
 ic-testkit = "0.75.2"

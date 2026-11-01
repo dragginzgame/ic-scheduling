@@ -14,7 +14,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  change-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      scope: ${{ steps.classify.outputs.scope }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Classify the exact tested change
+        id: classify
+        env:
+          CHANGE_EVENT: ${{ github.event_name }}
+          CHANGE_REF: ${{ github.event_name == 'pull_request' && format('refs/heads/{0}', github.base_ref) || github.ref }}
+          CHANGE_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          CHANGE_HEAD: ${{ github.sha }}
+        run: |
+          scope="$(perl scripts/ci/classify-ci-change.pl --event "$CHANGE_EVENT" --ref "$CHANGE_REF" \
+            --base "$CHANGE_BASE" --head "$CHANGE_HEAD" --policy ci/docs-only-paths.txt)"
+          case "$scope" in docs|full) ;; *) exit 1 ;; esac
+          if [[ "$scope" == docs ]]; then
+            git diff --check "$CHANGE_BASE...$CHANGE_HEAD" --
+          fi
+          echo "scope=$scope" >> "$GITHUB_OUTPUT"
+
   validate:
+    needs: change-scope
+    # Retain every required host/check name even if classification fails.
+    if: ${{ !cancelled() }}
     strategy:
       fail-fast: false
       matrix:
@@ -25,16 +54,30 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
+      - name: Require successful change classification
+        id: classification-admission
+        env:
+          CLASSIFICATION_RESULT: ${{ needs.change-scope.result }}
+        run: test "$CLASSIFICATION_RESULT" = success
       - name: Prepare host parsers for Rust policy selection
         run: make install-host-tools
+      - name: Check documentation-only changes
+        id: documentation
+        if: needs.change-scope.outputs.scope == 'docs'
+        run: |
+          export PATH="$PWD/.tools/host/bin:$PATH"
+          make host-tools-check shared-tooling-check check-doc-links
+          echo 'Documentation-only checks passed; native qualification was not selected.' >> "$GITHUB_STEP_SUMMARY"
       - name: Read the declared Rust toolchains
         id: rust-policy
+        if: needs.change-scope.outputs.scope != 'docs'
         run: |
           export PATH="$PWD/.tools/host/bin:$PATH"
           minimum="$(bash scripts/dev/minimum-rust.sh --print)"
           development="$(yq -p toml -o yaml -r '.toolchain.channel' rust-toolchain.toml)"
           printf 'minimum=%s\ndevelopment=%s\n' "$minimum" "$development" >> "$GITHUB_OUTPUT"
       - name: Prepare development and minimum toolchains
+        if: needs.change-scope.outputs.scope != 'docs'
         uses: ./.github/actions/prepare-rust-toolchains
         with:
           development: ${{ steps.rust-policy.outputs.development }}
@@ -43,15 +86,20 @@ jobs:
           minimum-target: wasm32-unknown-unknown
           minimum-components: clippy
       - name: Prepare the complete selected toolset
+        if: needs.change-scope.outputs.scope != 'docs'
         run: make install-tools
       - name: Check prepared tools offline
+        if: needs.change-scope.outputs.scope != 'docs'
         run: make tools-check
       - name: Prepare selected dependency cache
+        if: needs.change-scope.outputs.scope != 'docs'
         run: cargo fetch --locked
       - name: Prepare the lock-selected release metadata editor
+        if: needs.change-scope.outputs.scope != 'docs'
         run: make install-release-tools
       - name: Validate the selected graph
         id: validate
+        if: needs.change-scope.outputs.scope != 'docs'
         env:
           TMPDIR: ${{ runner.temp }}/portable-fixtures
         run: |

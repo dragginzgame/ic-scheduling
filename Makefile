@@ -30,6 +30,7 @@ RELEASE_METADATA_TOOL = bash scripts/dev/install-rust-tools.sh --package ic-buil
 VALIDATION_INPUTS := --input Cargo.toml --input Cargo.lock --input rust-toolchain.toml \
 	--input .shared-tooling.snapshot --input Makefile --input scripts/dev/testkit-tool.sh --input scripts/dev/queue-command.sh --input scripts/dev/minimum-rust.sh --input ci/tool-versions.env \
 	--input ci/ic-tools.tsv --input ci/release-delivery.txt --input ci/cargo-dependency-boundaries.json --input ci/cargo-release-groups.json \
+	--input .github/workflows/ci.yml --input ci/docs-only-paths.txt --input scripts/ci/classify-ci-change.pl \
 	$(foreach manifest,$(wildcard crates/*/Cargo.toml apps/*/Cargo.toml),--input $(manifest))
 
 .PHONY: help version install-hooks check test-jobs test-consumers check-msrv check-wasm clippy docs-check check-doc-links shared-tooling-check check-pins check-release-commands test-release-tooling test-formatting-evidence package publish-check publish ci
@@ -217,6 +218,10 @@ test-formatting-evidence:
 test-consumer-tooling: build-recovery-tools
 	+bash scripts/ci/test-consumer-tooling.sh
 
+.PHONY: test-ci-change-selection
+test-ci-change-selection: host-tools-check
+	+bash scripts/ci/test-ci-change-selection.sh
+
 .PHONY: formatting-hook-check
 formatting-hook-check: format-tools-check
 	+bash scripts/ci/check-jobs-formatting.sh
@@ -241,7 +246,7 @@ validation-tools-check: tools-check format-tools-check
 ci: shared-tooling-check
 	+bash scripts/ci/run-validation-targets.sh --fail-fast $(VALIDATION_INPUTS) \
 		validation-tools-check check-release-groups clippy check-timer-provider check-timer-dependencies check-timer-probes check-doc-links check-pins check-dependency-boundaries check-dependency-graphs check-release-commands \
-		test-release-tooling test-formatting-evidence test-consumer-tooling test-timers test-timer-dependencies \
+		test-release-tooling test-formatting-evidence test-consumer-tooling test-ci-change-selection test-timers test-timer-dependencies \
 		formatting-hook-check fmt-check check test-jobs test-consumers \
 		check-consumer check-msrv check-wasm docs-check package-all
 

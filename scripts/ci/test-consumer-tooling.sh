@@ -451,6 +451,9 @@ for member in crates/ic-jobs apps/ic-jobs-test-consumer crates/ic-jobs-canister-
     cp "$root/$member/Cargo.toml" "$fixture/$member/"
 done
 cp "$root/scripts/ci/"{run-validation-targets,check-format-tools}.sh "$fixture/scripts/ci/"
+cp "$root/scripts/ci/classify-ci-change.pl" "$fixture/scripts/ci/"
+mkdir -p "$fixture/.github/workflows"
+cp "$root/.github/workflows/ci.yml" "$fixture/.github/workflows/"
 cat > "$fixture/scripts/ci/verify-shared-tooling-snapshot.sh" <<'VERIFY'
 #!/usr/bin/env bash
 exit 0
@@ -484,10 +487,11 @@ chmod +x "$fixture/.tools/rust/common/bin/cargo"
 # observation failures, checkpoint files and timing format. Retain this actual
 # Jobs Make/CI wiring proof: changing the lock, CLI selection or demo launcher
 # during admission stops checks before product Cargo effects.
-for input in Cargo.lock scripts/dev/testkit-tool.sh scripts/dev/queue-command.sh; do
+for input in Cargo.lock scripts/dev/testkit-tool.sh scripts/dev/queue-command.sh ci/docs-only-paths.txt; do
     cp "$root/Cargo.lock" "$fixture/Cargo.lock"
     cp "$root/scripts/dev/testkit-tool.sh" "$fixture/scripts/dev/testkit-tool.sh"
     cp "$root/scripts/dev/queue-command.sh" "$fixture/scripts/dev/queue-command.sh"
+    cp "$root/ci/docs-only-paths.txt" "$fixture/ci/docs-only-paths.txt"
     : > "$fixture/events"
     status=0
     JOBS_CONSUMER_MUTATION_INPUT="$input" VALIDATION_LOG_DIR="$fixture/drift-logs-${input##*/}" \
@@ -500,7 +504,7 @@ for input in Cargo.lock scripts/dev/testkit-tool.sh scripts/dev/queue-command.sh
     grep -F "validation input changed: $input" \
         "$fixture/drift-failures-${input##*/}/latest.log" > /dev/null
 done
-echo 'Changed lock, CLI selection or demo launcher stops Jobs CI after admission (actual Make route; substitute tool effects; no product validation)'
+echo 'Changed lock, CLI selection, demo launcher or docs policy stops Jobs CI after admission (actual Make route; substitute tool effects; no product validation)'
 )
 
 phase_rust_policy() (
@@ -530,7 +534,9 @@ POLICY_FLOOR=1.92 perl -pi -e \
     's/^rust-version = "[^"]*"/rust-version = "$ENV{POLICY_FLOOR}"/' "$fixture/Cargo.toml"
 perl -pi -e 's/^channel = "[^"]*"/channel = "1.98.0"/' "$fixture/rust-toolchain.toml"
 for workflow in ci recovery; do
-    yq -o json '.' "$root/.github/workflows/$workflow.yml" | jq '.jobs[].steps' > "$fixture/steps.json"
+    job=validate
+    [[ "$workflow" != recovery ]] || job=recovery
+    yq -o json '.' "$root/.github/workflows/$workflow.yml" | jq --arg job "$job" '.jobs[$job].steps' > "$fixture/steps.json"
     bash "$root/scripts/ci/extract-workflow-step.sh" "$fixture/steps.json" rust-policy > "$fixture/selection.sh"
     : > "$fixture/outputs"
     (cd "$fixture" && GITHUB_OUTPUT="$fixture/outputs" bash -e -o pipefail selection.sh)

@@ -218,6 +218,16 @@ the pinned host parsers first; development Rust comes from `rust-toolchain.toml`
 targets aggregate several checks. `make ci` runs the full release suite and
 requires an explicit request or release authorization for local execution.
 
+Hosted CI classifies the exact tested commits using the reviewed prose allowlist
+in [ci/docs-only-paths.txt](ci/docs-only-paths.txt). Eligible documentation changes
+run host-tool admission, snapshot integrity, local link and changed-whitespace
+checks while preserving all three `validate` job names. These passes establish
+documentation checks only. Source, tooling, release policy and unknown paths retain
+the complete native matrix; missing history selects full checks and failed
+classification fails validation. Releases always retain the complete gate.
+`make test-ci-change-selection` exercises the actual workflow commands with real
+Git comparisons and substituted native setup/Make effects.
+
 Release-adapter fixtures can be selected independently with
 `make test-release-tooling-retention`, `make test-release-tooling-delivery`,
 `make test-release-tooling-recovery`, `make test-release-tooling-metadata`, or
