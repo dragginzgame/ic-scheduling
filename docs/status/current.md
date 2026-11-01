@@ -1,137 +1,113 @@
 # Current handoff
 
-## Current scope
+## Current scope and suppliers
 
-Timers 0.35.0 is released and published under the user's explicit authorization.
-Tag `timers-v0.35.0` points to `e6bace3fa4d6a8fb6719e51b967aea3ae952cf80`.
-Its Metrics 0.24 requirement replaces published 0.34.0's Metrics 0.23 and removes
-the reported Timers publication blocker for Canic's latest cohort. A fresh
-registry consumer compiles the public measurement types against one Metrics
-0.24.1 identity on Rust 1.91. Full Canic adoption still needs its own qualification.
-Jobs stays 0.33.2 with pending 0.33.3 notes; all five Timers members are 0.35.0.
+Adopt Build/Host Artifacts/Fs/Process 0.73.3, Testkit/Native 0.75.2 and its required
+Wire/Derive 0.13.2, then push under the standing source-delivery instruction.
+No own package bump, release or upload. Jobs stays 0.33.2 and Timers 0.35.0;
+compatible pending notes are Jobs 0.33.3 and Timers 0.35.1.
 
-Separate dirty Logging 0.23.3 and Metrics 0.24.1 lock patches remain user-owned.
-Original bytes and patches are retained at `/tmp/ic-scheduling-timers035.602bpJ/`.
-Release/publication used committed Logging 0.23.2 / Metrics 0.24.0; those two
-patches are restored unstaged over the new Timers versions. Testkit shares the
-consumer's Metrics 0.24 identity. No sibling checkout writes or artifact cleanup.
+The incoming lock already contained these patches plus separate Logging 0.23.3
+and Metrics 0.24.1 edits. Those two remain user-owned and unstaged. Original bytes,
+scoped lock, source diffs and checks are at
+`/tmp/ic-scheduling-build-host-testkit.KztxX1/`. Qualification and commit use the
+scoped Logging 0.23.2 / Metrics 0.24.0 graph, restoring the original working lock
+byte-for-byte afterward. Do not qualify those unrelated patches by implication.
 
-Next, retry Canic's latest-cohort adoption in its own
-workspace; that downstream qualification is separate. Lower-priority open work is
+Other selected suppliers remain Platform/guard/macros 0.15.3, Types 0.15.1,
+Memory/Storage 0.60.3 and Endpoint 0.2.1. One Metrics 0.24 identity serves Timers
+and Testkit. Metrics defaults stay disabled. Jobs remains Serde-only and has no
+runtime dependency on Timers, Memory, Platform or a database.
+
+All nine members remain in one root workspace with explicit matching versions
+within independent Jobs/Timers groups. The root catalog and
+`ci/cargo-release-groups.json` own complete member/alias rosters and ledgers;
+there is no shared root version. A local catalog entry adds no edge until used.
+Shared Tooling remains 0.27.22 at `f4f431627290e18f0ccc1e5f8525d16b197cf7c3`
+(131 canonical payloads). No snapshot payloads changed and no artifacts were cleaned.
+
+## Current qualification
+
+Focused Rust 1.91 native/Wasm Clippy and 83 native tests pass: consumer 71,
+artifact capture 4, build coordinator 5 and protocol 3. The separate real CLI
+shutdown test remains explicitly ignored in this native selection.
+Both actual group metadata/rollback fixtures pass with the managed Build 0.73.3
+editor; Cargo/editor/Git effects are real, full gates/setup/uploads are substitutes.
+The managed Testkit 0.75.2 CLI and existing PocketIC 16.1.0 bundle are admitted;
+consumer tooling fixtures pass with their stated substituted compiler/server effects.
+
+All 11 explicit live consumer recovery tests pass on the scoped graph. Frozen
+original-Wasm evidence is `/tmp/jobs-recovery.2IcNgn/`, retaining the selected lock,
+tool identity and candidate manifest/source patch against source base
+`408fcbb30d2abc3ab24bc7bee99f74f193fa983c`. This covers the changed Testkit startup
+reader and actual Build artifact acquisition while preserving endpoint refusals,
+traps, upgrades, authorization and uncertain-effect handling. The published Host,
+Native and Wire Rust sources match their prior versions; Build cache acquisition
+and Testkit startup have reviewed internal changes. Stored queue bytes are unchanged.
+
+Snapshot integrity, pins, release-group admission, dependency boundaries and all
+fourteen graph contexts pass. Formatting, local links and diff checks pass.
+No new full local CI, Timers watchdog/cohort run or native macOS qualification is
+claimed for this update. Before adoption, all three hosted CI jobs passed at
+`408fcbb` in [run 41231445179](https://github.com/dragginzgame/ic-scheduling/actions/runs/41231445179).
+New hosted qualification runs asynchronously and must bind the exact candidate.
+
+## Situation audit and next work
+
+Inspection used `audits/ci-release-integrity.md` at the reviewed snapshot above,
+scoped to repository workflows, release/publication admission, managed tools,
+release custody and supplier status. It is not a new whole-product correctness,
+security or performance audit. Detailed observations are retained with adoption
+checks in `audit-scope.txt` outside the workspace; findings remain below/in GitHub.
+
+No new delivery blocker was found. CI uses read-only tokens, immutable action
+identities and three native hosts; recovery is explicitly manual. Releases retain
+full combined CI/live gates, source/prepared receipts, explicit group selection,
+annotated tags and atomic exact branch/tag delivery. Publication separately admits
+clean source, the exact remote tag and known registry absence before Clippy/upload.
+GitHub reports collaborator-only PR creation. Existing direct-main delivery policy
+is unchanged; both current release journals are complete and no lock was occupied.
+
+Two LOW-priority follow-ups remain: adopt/qualify the separate Logging 0.23.3 and
+Metrics 0.24.1 patches; then review committed Shared 0.27.23 at
+`619d194875369e0f72b45477b66adb430acbf6b7` through the exporter. The sole open issue is
 [#83 — Documentation-only CI selection](https://github.com/dragginzgame/ic-scheduling/issues/83),
-an optional CI cost improvement. Its reviewed exact prose allowlist must retain
-full native qualification for code, policy, unknown paths and ambiguous history.
-This dependency update does not implement that issue.
+which needs an exact reviewed prose allowlist and actual workflow selection fixtures.
+Unknown/code/policy paths and ambiguous history must retain full native CI.
+No open PRs were observed. No new library publication is required just for tooling.
 
-## Workspace and suppliers
-
-All nine members stay in one workspace with explicit group versions. The root
-catalog lists every member once in Jobs/Timers blocks with full versions, paths
-and ledger labels. `ci/cargo-release-groups.json` owns complete alias rosters and
-primary version sources. There is no root workspace version; catalog entries
-add dependency edges only when inherited by a member.
-
-The scoped graph selects Platform 0.15.3 / Types 0.15.1, Wire/Derive 0.13.1,
-Endpoint 0.2.1, Testkit/Native 0.75.1, Build/Host 0.73.2, Memory/Storage 0.60.3,
-Logging 0.23.2 and one Metrics 0.24.0. Metrics defaults stay disabled; Memory
-codec errors, optional Metrics schemas and Testkit typed calls align on Wire 0.13.
-Jobs remains Serde-only and independent of Timers.
-
-Timers, Memory and the consumer share one registry Platform facade, macro
-generator and exact runtime guard. Preserve the Timers 0.15 source check,
-executor/IC0-only library features, private FFI and host/protocol exclusions.
-The Build editor and Testkit CLI are lock-selected through managed setup;
-prepare a changed CLI with `make install-testkit-tools`. PocketIC remains 16.1.0.
-
-Shared 0.27.22 is canonically exported at
-`f4f431627290e18f0ccc1e5f8525d16b197cf7c3` (131 payloads). No owned snapshot
-payload changes here. Grouped formatting preserves the root catalogs. No cleanup.
-
-## Qualification and limits
-
-Release evidence is `/tmp/ic-scheduling-timers035.602bpJ/`: complete local CI,
-43 installed watchdog cases and the live policy-cohort gate passed. The standard
-release journal `.git/release-state/timers-0.35.0.plan` completed. Publication
-passed its source/tag/registry admission and Clippy. Registry metadata, downloaded
-archive checksum and both Cargo upload archives agree; clean embedded VCS identity
-matches the release commit. The isolated consumer resolves published Timers
-0.35.0 with one Metrics 0.24.1 and accepts both public measurement types directly.
-Live receipts are `/tmp/timer-qualification-512061-0/runtime.json` and
-`target/timer-cohorts.json`, with diagnostics at `/tmp/timer-qualification-555685-0/`.
-Hosted [release CI](https://github.com/dragginzgame/ic-scheduling/actions/runs/41231326968)
-was still running at handoff; no new macOS success or full Canic result is claimed.
-
-Memory adoption evidence is `/tmp/ic-scheduling-memory-storage.BVzsUC/`: incoming/scoped
-locks, registry records, source comparison and candidate inputs. Focused Rust
-1.91 native/Wasm consumer Clippy, all 71 consumer tests, pins, dependency boundaries,
-all fourteen graph contexts and timer dependency checks pass. Formatting and
-local link checks passed. That adoption did not run live recovery or full CI;
-the release above supplies newer full CI and Timers live qualification. Published
-Memory/Storage Rust sources are identical to the earlier consumer live inputs.
-
-Previous evidence is `/tmp/ic-scheduling-memory-testkit-wire.guCIFe/`: incoming and
-scoped locks, registry records, source comparison, candidate source inputs, managed
-CLI setup and focused checks. Rust 1.91 native/Wasm Clippy, 172 Timers, 71 consumer
-and three protocol tests pass. Consumer tooling fixtures, all fourteen graph
-contexts, pins/group admission, formatting and local links pass. The managed
-Testkit 0.75.1 CLI is prepared; existing PocketIC 16.1.0 admission passes.
-All 11 explicit live consumer recovery tests passed on that earlier graph, including
-endpoint refusals, traps, upgrades, authorization and uncertain-effect handling.
-Evidence is `/tmp/jobs-recovery.19LcGa/`, retaining the frozen Wasm, selected lock,
-tool identity and candidate Cargo manifest/source patch against `b569b7b`.
-Published implementation sources match the prior versions; only dependency and
-packaging selections changed. No full CI, new macOS run or Timers cohort matrix
-ran. These results do not qualify unrelated working-lock patch selections.
-
-Earlier Build/Host/Wire evidence is `/tmp/ic-scheduling-build-host-wire.DDr9aE/`:
-Rust 1.91 native/Wasm Clippy, consumer/capture/build/protocol tests, consumer
-tooling and both metadata/rollback adapters passed; product gates/setup/uploads
-were substitutes inside fixtures. Earlier Memory/Metrics evidence is
-`/tmp/ic-scheduling-memory-metrics.oyBtpP/` (172 Timers and 71 consumer tests).
-Shared catalog/adapter evidence is `/tmp/ic-scheduling-shared022.sL8syL/`;
-earlier Shared evidence is `/tmp/ic-scheduling-shared020.P1MNg7/`.
-Native Linux and both macOS CI jobs passed at `be3dc8c`; they do not qualify new
-source or lock selections. Future hosted CI reports must bind the exact source.
-
-Earlier actual releases retain evidence at `/tmp/ic-scheduling-adopt-all.AQGpWV/`:
-complete gates, 43 installed watchdog tests and live cohort qualification per
-release, plus 11 original-Wasm consumer recovery tests at the Jobs tag. Original
-consumer evidence is `/tmp/jobs-recovery.dfKRF6/`. Registry/download/upload hashes
-and embedded source identities matched the tags. See the
-[prior handoff](https://github.com/dragginzgame/ic-scheduling/blob/be3dc8c20f1e7834ec05ad55da6aa263ba10dc05/docs/status/current.md)
-for retained older retries and qualification locations; never relabel failures.
+Canic's read-only current handoff now reports Timers 0.35.0 adoption, single runtime
+identities and the former blocker resolved; its own 0.114 source release is selected
+there. That is downstream evidence, not a new Canic qualification or write here.
 
 ## Release and recovery custody
 
-Canonical ledgers are `releases/jobs/CHANGELOG.md` and
-`releases/timers/CHANGELOG.md`. Root CHANGELOG is an index; coordinated history
-through 0.33.1 remains once at `releases/history.md`. Released identities remain
-Timers `timers-v0.35.0` / `e6bace3fa4d6a8fb6719e51b967aea3ae952cf80` and
-Jobs `jobs-v0.33.2` / `4a76520d2265ab598113f00c4fbde0111268ffe2`.
-Their real journals are complete, as is the retained Timers 0.34.0 journal;
-do not replay effects or rewrite registry artifacts.
+Registry releases remain Jobs `jobs-v0.33.2` /
+`4a76520d2265ab598113f00c4fbde0111268ffe2` and Timers `timers-v0.35.0` /
+`e6bace3fa4d6a8fb6719e51b967aea3ae952cf80`. Their journals are complete; the prior
+Timers 0.34.0 journal is retained. Never replay effects or rewrite registry artifacts.
+Timers 0.35 evidence is `/tmp/ic-scheduling-timers035.602bpJ/`: complete CI, 43 live
+watchdog tests, policy cohorts and exact registry/archive/VCS readback. A fresh
+registry consumer compiled both public measurement types with one Metrics 0.24.1.
+Earlier release/consumer evidence remains linked from the
+[prior handoff](https://github.com/dragginzgame/ic-scheduling/blob/408fcbb30d2abc3ab24bc7bee99f74f193fa983c/docs/status/current.md).
 
 Require explicit `RELEASE_GROUP=jobs|timers` for release/resume/publication.
-Missing/empty/unknown groups and cross-group PACKAGE selections refuse before
-effects. Direct delivery is `origin`/`main`; publication is separate. Shared owns
-exact plans, transactions and source/prepared receipts. Reconcile old attempts
-against recorded source/policy/layout; never reinterpret them after adoption.
-Release gates remain complete CI, Testkit/server preparation and installed
-watchdog/cohort qualification; grouping neither narrows gates nor isolates resolution.
+Direct delivery remains `origin`/`main`; publication is separate. Preserve saved
+source, policy, payloads and receipts when reconciling a specific old attempt.
+Consumers own metadata, storage, handler selection and lifecycle reconstruction.
+Restore only through `Job::restore`; Running/Uncertain effects remain blocked
+until exact receipts or explicit owner disposition. Preserve bounded `JQW\x01`
+queue bytes, retry identities, rollback, binaries/backups and attempt custody.
+Never clear the allocation ledger independently of the queue. Logging stays
+heap-only at 32 KiB; Metrics reset neither clears logs nor reuses IDs.
 
-Consumers own metadata, storage, lifecycle reconstruction and handler selection.
-Restore only through `Job::restore`; Running/Uncertain effects stay blocked until
-exact receipts or explicit owner disposition. Preserve bounded Wire `JQW\x01`
-queue bytes, retry identities, admission and rollback. No JSON fallback/reset/
-converter. Preserve binaries/backups, attempts and receipts before retirement.
-Memory's allocation ledger is separate: never clear only queue or ledger. Logging
-stays heap-only, bounded to 32 KiB and recorded after committed work; Metrics reset
-neither clears logs nor reuses IDs. Keep endpoint attributes and size guards.
+Timers retains the sole private IC provider, confined unsafe FFI and one exact
+Platform guard. Rust floor remains 1.91 for core and consumer integration.
 Native tests alone do not prove IC recovery; live receipts qualify only their inputs.
-
-Jobs provenance: `50fac19a55624c2110778e21ba5bb15ef8bf469a` (0.17.51). Timers:
-dirty import `651efce370bd6aec6290b74118eb709488062d0a` (0.32.4), never a build
-input. Migration custody: `/tmp/ic-scheduling-merge.7PRSi3Nq/`. The private Canic
-contribution remains `/tmp/canic-jobs-adapter.dPFVZ7FD/source`, branch
+Jobs provenance is `50fac19a55624c2110778e21ba5bb15ef8bf469a`; imported Timers source
+`651efce370bd6aec6290b74118eb709488062d0a` remains provenance, not a build input.
+Migration custody stays `/tmp/ic-scheduling-merge.7PRSi3Nq/`. The private Canic
+adapter remains `/tmp/canic-jobs-adapter.dPFVZ7FD/source`, branch
 `codex/jobs-application-adapter`, commit `fc14bbe1baa3c0fdc09b0550e25a1d3fdcd9d2d1`;
-it needs separate integration/qualification. No shipped Canic mount API is claimed.
+it still needs its own integration qualification. No shipped Canic mount API is claimed.

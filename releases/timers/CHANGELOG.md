@@ -7,6 +7,14 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.35.1] - Unreleased
+
+### 📦 Dependencies
+
+- Adopt Build/Host 0.73.3, Testkit/Native 0.75.2 and Wire/Derive 0.13.2 for
+  private qualification tools. Refresh the managed release editor and Testkit CLI;
+  retain artifact custody, bounded simulator startup and timer runtime behavior.
+
 ## [0.35.0] - 2026-10-31
 
 ### ⚠️ Breaking

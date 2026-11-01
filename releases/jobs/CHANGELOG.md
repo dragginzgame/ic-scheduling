@@ -8,7 +8,7 @@ and [coordinated history through 0.33.1](../history.md).
 
 ### 📦 Dependencies
 
-- Adopt Build/Host 0.73.2, Testkit/Native 0.75.1, Wire/Derive 0.13.1 and Endpoint
+- Adopt Build/Host 0.73.3, Testkit/Native 0.75.2, Wire/Derive 0.13.2 and Endpoint
   0.2.1. Refresh lock-selected tools through managed setup; preserve codec frames,
   budgets and typed Testkit integration with the existing Platform Types identity.
 - Adopt Memory/Storage 0.60.3, its required Platform 0.15.3 facade/guard and

@@ -77,7 +77,7 @@ receipts stop recovery rather than authorizing another effect.
 Prepare selected dependencies with `cargo fetch --locked`. Use
 `make install-tools`, `make tools-check`, `make install-testkit-tools` and
 `make install-release-tools` for explicit setup and offline admission. The
-root lock selects the group-capable IC Build 0.73.2 editor; no alternate editor
+root lock selects the group-capable IC Build 0.73.3 editor; no alternate editor
 or handwritten metadata renderer is used. Standard fresh release preflight
 admits source and notes, prepares the locked cache and tools, then admits the
 editor. Resume admits the saved source's editor selection without fresh setup.
