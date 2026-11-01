@@ -1,6 +1,89 @@
 # Current handoff
 
-## Active batch
+## Timers 0.35.2 delivery in progress — 2026-11-01
+
+The user requested fixing the sole open Scheduling issue,
+[#84](https://github.com/dragginzgame/ic-scheduling/issues/84). The working tree
+contains the reviewed correction from existing
+[PR #85](https://github.com/dragginzgame/ic-scheduling/pull/85), plus direct IC
+qualification and the required private fixture changes. Absent ordinary demand
+settles as Stopped/idle without cancellation accounting. It retains identity and
+observations; positive demand rearms the same claim. Explicit cancel stays
+Cancelled, existing inactive reasons remain intact, unregister remains dominant,
+and invariant failures retain priority. No public API or dependency changes.
+
+The old proposal's note belonged to 0.35.1 before that release was delivered.
+The completed local batch instead has compatible 0.35.2 draft notes. All package
+versions remain Timers 0.35.1 / Jobs 0.33.2; published notes and tags are unchanged.
+The user subsequently requested deployment after reviewing PR #85. This selects
+updating and integrating that PR, then the standard Timers-only 0.35.2 release
+and separate crates.io publication when enforced checks permit. The complete
+candidate is incorporated into the existing PR without rewriting its history.
+Delivery runs in `/tmp/ic-scheduling-timers0352.AO0pyy/source`, preserving the
+normal checkout's dependency edits. Canic #545 needs the supplying published
+version; no publication is claimed until registry/archive readback succeeds.
+
+Evidence is `/tmp/ic-scheduling-issue84.PARjAP/`. The two original regression
+cases fail against unchanged producer code. On the released dependency graph,
+all 175 Timers library tests, strict core/probe package Clippy and Rust 1.91 Wasm
+checks pass. The canonical focused IC driver passes three exact subjects: demand
+removal versus cancellation, ordinary await/control interleaving and continuation
+trap retirement. The private probe now has distinct clearing/cancel operations
+and reports stopped/cancelled disposition and cancellation counts. The new case
+also covers retained identity, expired contexts and later rearming; it belongs
+to the required watchdog roster. Provider confinement, formatting, changed-doc
+links and diff checks pass. No full local workspace/release suite is claimed.
+
+Qualification used the isolated `source/` checkout and committed dependency lock
+from `a74126c`, preserving the normal checkout's independently changing Cargo.lock.
+The failed working-graph compile diagnostic is retained separately and is not
+qualification of those dependency edits. Source snapshots, original IC Wasm,
+server logs, lock identity and command evidence remain outside target. The
+original working candidate remains recoverable while the isolated delivery
+branch is committed; keep the unrelated dependency lock untouched.
+
+## Timers 0.35.1 delivered — 2026-11-01
+
+The user's latest-Timers deployment request is complete. Only `ic-timers` 0.35.1
+was uploaded to [crates.io](https://crates.io/crates/ic-timers/0.35.1). Jobs remains
+0.33.2. The annotated
+[`timers-v0.35.1`](https://github.com/dragginzgame/ic-scheduling/releases/tag/timers-v0.35.1)
+tag identifies release commit `ff5932665475bae87d28322a7849943f2c865ae1`; its tag object
+is `119df226e0e7fdd2d166252c6f720b5fe13cb064`. Standard direct delivery atomically
+pushed the release and tag to origin/main; the later handoff commit is a descendant.
+
+The complete local release gate passed: combined CI, Rust-floor/native/Wasm and
+package checks, all 43 live watchdog cases, and the policy-cohort promotion gate.
+This is Linux x86_64 evidence, not a claim that native macOS CI ran locally.
+Qualification source is `2f536d585911ba0a8ef0cedcf78ee12fe4ac68b3`; the standard
+metadata transaction separately binds the final versioned payload. The first
+gate found the readiness fixture inheriting the caller's RELEASE_GROUP; its
+fixture-owned group/commit inputs are fixed and the complete gate was rerun.
+
+The separate `make RELEASE_GROUP=timers publish` succeeded. Fresh registry
+metadata confirms 0.35.1 is not yanked. The downloaded crate matches the local
+uploaded archive and registry checksum
+`a4e2d0ee65121e3b42389d9f85326bf94510f254b01d34ef6c9c080e9ae7b1f0`;
+its embedded VCS identity matches the release commit. Do not repeat the upload.
+
+Release work and original evidence remain in `/tmp/ic-scheduling-timers0351.7OO3LK/`.
+The isolated checkout is `source/`; its complete journal is
+`source/.git/release-state/timers-0.35.1.plan`. Keep that checkout for exact-attempt
+reconciliation. `release-patch.log` retains the initial failed gate,
+`release-patch-fixed.log` the passing complete release, and `publish.log` the
+successful upload. `publication-receipt.json`, `registry-after/` and the original
+`.crate` bind registry/archive/VCS identity. `retained-release-evidence/` contains
+both runtime diagnostics, original Wasm, server output, the cohort report and
+release receipts with checksums. `qualification-source-Cargo.lock`,
+`released-Cargo.lock` and `released-source.tar` preserve their separate identities.
+
+The normal checkout's unrelated dependency-lock edits were excluded from the
+release and remain pending/unqualified. Its saved pre-delivery working lock is
+`preserved-working-Cargo.lock` in the evidence directory. Synchronizing this
+checkout must preserve those edits; neither a dependency update nor Jobs release
+was selected by this deployment.
+
+## Prior improvements
 
 The user authorized three improvements: repair recovery artifact custody, add a
 read-only release-readiness command and qualify a concrete Canic-owned Jobs queue.
@@ -10,10 +93,11 @@ Canic source is committed and pushed at
 branch `codex/jobs-application-qualification`, from delivered Canic 0.114.0 at
 `e753785953e6805461ac337868c32163f65c3209`. The isolated clone is
 `/tmp/ic-scheduling-improvements.VvCLTy/canic/`; normal sibling checkouts stay read-only.
-Automatic approval review rejected Canic PR creation because it interpreted this
-workspace's sibling-read-only rule as prohibiting that external write. Explicit
-user approval for the prepared review request is pending; do not bypass rejection.
-No new own version, tag, release or package upload is selected.
+The user explicitly approved opening the prepared Canic review request after the
+initial automatic-review refusal. [Canic PR #722](https://github.com/dragginzgame/canic/pull/722)
+is open against main at that exact source. Merge authority is not selected.
+The improvement batch selected no release or package upload; the subsequent
+Timers delivery is recorded above.
 
 Unrelated supplier updates are arriving in the working Cargo.lock. Leave them
 unstaged and untouched. Source-qualified root supplier selections remain those
@@ -67,7 +151,7 @@ mismatch, independent post-await work, fresh installation IDs and full-capacity
 frames/receipts. The native Wire producer admits the same installed Wasm; all
 seven endpoint identities and direction-specific budgets match. Formatting,
 changed-document links and diff checks pass. Full Canic CI/release validation was
-not run locally; no merge, version transaction or publication is selected.
+not run locally; no Canic merge, version transaction or publication is selected.
 
 The [Canic qualification guide](https://github.com/dragginzgame/canic/blob/4759beca60e0923cf91a16991541ab03c119d1ac/docs/features/jobs-qualification.md)
 records the scope and exact governed selector. Source archive, original Wasm,
@@ -86,8 +170,9 @@ retained historical commit `fc14bbe1baa3c0fdc09b0550e25a1d3fdcd9d2d1` remains pr
 
 ## Workspace and recovery custody
 
-Jobs stays 0.33.2 and Timers 0.35.0. Compatible drafts remain Jobs 0.33.3 and
-Timers 0.35.1. All nine packages retain independent group versions, root catalogs,
+Published group versions are Jobs 0.33.2 and Timers 0.35.1. The Jobs 0.33.3
+draft remains open; Timers 0.35.1 notes are finalized and 0.35.2 is the compatible
+issue #84 draft. All nine packages retain independent group versions, root catalogs,
 full alias rosters and group ledgers; no root VERSION or shared workspace version.
 Shared 0.27.23 at `619d194875369e0f72b45477b66adb430acbf6b7` remains an intact canonical
 132-file snapshot. Jobs remains Serde-only, independent of platform/storage/runtime.
@@ -100,8 +185,8 @@ and explicitly do not claim native qualification. Prior live consumer evidence
 stays `/tmp/jobs-recovery.2IcNgn/` with its original source/lock/tool selection.
 
 Published Jobs `jobs-v0.33.2` / `4a76520d2265ab598113f00c4fbde0111268ffe2` and
-Timers `timers-v0.35.0` / `e6bace3fa4d6a8fb6719e51b967aea3ae952cf80` retain complete
-journals and registry/archive/VCS evidence. Timers 0.35 custody remains
+Timers `timers-v0.35.1` / `ff5932665475bae87d28322a7849943f2c865ae1` retain complete
+journals and registry/archive/VCS evidence. Prior Timers 0.35.0 custody remains
 `/tmp/ic-scheduling-timers035.602bpJ/`; never replay effects or rewrite artifacts.
 Earlier evidence is linked from the
 [prior handoff](https://github.com/dragginzgame/ic-scheduling/blob/6810b1d4ab55ab2a0da8dc301f29cbdda84d9c6a/docs/status/current.md).

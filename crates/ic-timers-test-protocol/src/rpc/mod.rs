@@ -122,6 +122,7 @@ methods! {
     PressureReply = 25 => "pressure_reply",
     RearmCancelledDispatchBatchTimer = 26 => "rearm_cancelled_dispatch_batch_timer",
     ReconcileOrdinaryAt = 27 => "reconcile_ordinary_at",
+    ReconcileOrdinaryInactive = 64 => "reconcile_ordinary_inactive",
     ReconcileSchedulerPressure = 63 => "reconcile_scheduler_pressure",
     RejectInitialReconciliation = 28 => "reject_initial_reconciliation",
     RejectInitialSchedule = 29 => "reject_initial_schedule",

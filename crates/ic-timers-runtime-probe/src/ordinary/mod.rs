@@ -310,6 +310,20 @@ fn reconcile_ordinary_at(deadline_ns: u64) {
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::CancelOrdinary as u64 }>"
 )]
 fn cancel_ordinary() {
+    REGISTRATION
+        .with_borrow(|slot| match slot.as_ref().expect("registered") {
+            Registration::Once(timer) => timer.cancel(),
+            Registration::AfterCompletion(timer) => timer.cancel(),
+        })
+        .expect("explicit ordinary cancellation");
+}
+
+#[ic_platform::cdk::update(
+    guard = "crate::codec::admit_request",
+    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ReconcileOrdinaryInactive as u64 }>",
+    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::ReconcileOrdinaryInactive as u64 }>"
+)]
+fn reconcile_ordinary_inactive() {
     REGISTRATION.with_borrow(|slot| reconcile(slot.as_ref().expect("registered"), None));
 }
 
@@ -385,6 +399,22 @@ fn ordinary_observation() -> OrdinaryObservation {
                     reason: InactiveReason::Abandoned,
                 }
         }),
+        stopped: snapshot.as_ref().is_some_and(|value| {
+            value.state()
+                == TimerRuntimeStateSnapshot::Inactive {
+                    reason: InactiveReason::Stopped,
+                }
+        }),
+        cancelled: snapshot.as_ref().is_some_and(|value| {
+            value.state()
+                == TimerRuntimeStateSnapshot::Inactive {
+                    reason: InactiveReason::Cancelled,
+                }
+        }),
+        cancellations: snapshot
+            .as_ref()
+            .map(|value| super::counter_observation(value.observability().counters().cancelled()))
+            .unwrap_or_default(),
         invariant_failure: snapshot.as_ref().is_some_and(|value| {
             value.state()
                 == TimerRuntimeStateSnapshot::Inactive {

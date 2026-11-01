@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# The fixture owns group/commit selection independently of its release caller.
+unset RELEASE_GROUP RELEASE_COMMIT
 root="${BASH_SOURCE[0]}"
 [[ "$root" == /* ]] || root="$PWD/$root"
 root="$(cd -P "${root%/*}/../.." && printf '%s/.' "$PWD")"

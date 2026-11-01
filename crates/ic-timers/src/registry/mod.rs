@@ -789,8 +789,8 @@ impl TimerRegistry {
     /// Reconcile an ordinary declaration to one exact desired schedule.
     ///
     /// Unlike `ensure`, reconciliation may move an existing deadline later.
-    /// `None` cancels live work; declaration lifetime determines whether the
-    /// callback authority remains registered.
+    /// `None` stops demand without recording explicit cancellation. Declaration
+    /// lifetime determines whether callback authority remains registered.
     pub(crate) fn reconcile_ordinary(
         &mut self,
         claim: &RegistrationClaim,

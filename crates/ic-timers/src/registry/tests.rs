@@ -183,6 +183,96 @@ fn inactive_demand_waits_for_running_work_and_preserves_removal() {
     }
 }
 
+#[test]
+fn inactive_demand_preserves_command_order_and_invariant_failure_priority() {
+    for recurring in [false, true] {
+        for command in ["clear", "cancel", "schedule", "unregister", "invariant"] {
+            let mut registry = registry();
+            let timer = identity("inactive-command-order");
+            let claim = if recurring {
+                registry.register_after_completion(
+                    timer.clone(),
+                    cadence(5),
+                    DeclarationLifetime::Retained,
+                )
+            } else {
+                registry.register_once(timer.clone(), DeclarationLifetime::Retained)
+            }
+            .unwrap();
+            let original = registry.snapshot(&timer).unwrap().registration_id();
+            let scheduled = registry
+                .reconcile_ordinary(&claim, 0, Some(TimerSchedule::At(1)))
+                .unwrap();
+            confirm(&mut registry, &scheduled);
+            let (token, _) = arm(scheduled);
+            registry.begin_ordinary(&token).unwrap();
+            if command == "clear" {
+                registry.cancel(&claim).unwrap();
+            }
+            if command == "unregister" {
+                registry.unregister(&claim).unwrap();
+            }
+            registry.reconcile_ordinary(&claim, 2, None).unwrap();
+            match command {
+                "cancel" => {
+                    registry.cancel(&claim).unwrap();
+                }
+                "schedule" => {
+                    registry
+                        .reconcile_ordinary(&claim, 2, Some(TimerSchedule::At(20)))
+                        .unwrap();
+                }
+                _ => {}
+            }
+            let completion = if command == "invariant" {
+                TimerCompletion::invariant_failure(1)
+            } else {
+                TimerCompletion::success(1)
+            };
+            let finished = registry
+                .complete_ordinary(
+                    &token,
+                    3,
+                    OrdinaryRunResult::new(
+                        completion,
+                        OrdinaryDirective::RetryAfter(Duration::MAX),
+                    ),
+                )
+                .unwrap();
+            assert_eq!(finished.failure(), None);
+            confirm(&mut registry, &finished);
+            if command == "unregister" {
+                assert!(registry.snapshot(&timer).is_none());
+                continue;
+            }
+            let current = registry.snapshot(&timer).unwrap();
+            assert_eq!(current.registration_id(), original);
+            assert_eq!(
+                current
+                    .observability()
+                    .counters()
+                    .cancelled()
+                    .exact_total()
+                    .unwrap(),
+                u128::from(command == "cancel")
+            );
+            if command == "schedule" {
+                assert_eq!(current.next_deadline_ns(), Some(20));
+            } else {
+                let reason = match command {
+                    "cancel" => InactiveReason::Cancelled,
+                    "invariant" => InactiveReason::InvariantFailure,
+                    _ => InactiveReason::Stopped,
+                };
+                assert_eq!(
+                    current.state(),
+                    TimerRuntimeStateSnapshot::Inactive { reason }
+                );
+            }
+        }
+    }
+}
+
 fn cadence(nanoseconds: u64) -> TimerCadence {
     TimerCadence::from_nanos(nanoseconds).expect("fixture cadence should be valid")
 }

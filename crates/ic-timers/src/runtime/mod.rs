@@ -182,8 +182,8 @@ impl OnceContext {
     /// `None` requests idle state at normal completion without recording an
     /// explicit cancellation. Retained callback authority remains; a
     /// remove-on-stop declaration is removed when that request wins arbitration.
-    /// A stored context cannot mutate the
-    /// registration after its exact work attempt ends.
+    /// A stored context cannot mutate the registration after its exact work
+    /// attempt ends.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
         reconcile_ordinary_claim(self.token.claim(), Some(&self.token), schedule)
     }
@@ -235,8 +235,8 @@ impl AfterCompletionContext {
     /// `None` requests idle state at normal completion without recording an
     /// explicit cancellation. A retained declaration keeps callback authority;
     /// a remove-on-stop declaration is removed when that request wins.
-    /// A stored context cannot
-    /// mutate the registration after its exact work attempt ends.
+    /// A stored context cannot mutate the registration after its exact work
+    /// attempt ends.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
         reconcile_ordinary_claim(self.token.claim(), Some(&self.token), schedule)
     }
