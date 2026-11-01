@@ -4,16 +4,21 @@
 
 The user authorized three improvements: repair recovery artifact custody, add a
 read-only release-readiness command and qualify a concrete Canic-owned Jobs queue.
-The first two are implemented and qualified in this workspace. The Canic work
-continues in `/tmp/ic-scheduling-improvements.VvCLTy/canic/`, an isolated clone
-from delivered Canic `e753785953e6805461ac337868c32163f65c3209` (0.114.0), branch
-`codex/jobs-application-qualification`. Normal sibling checkouts stay read-only.
+All three are implemented and qualified. The first two are delivered in `77fc661`.
+Canic source is committed and pushed at
+[`4759bec`](https://github.com/dragginzgame/canic/commit/4759beca60e0923cf91a16991541ab03c119d1ac),
+branch `codex/jobs-application-qualification`, from delivered Canic 0.114.0 at
+`e753785953e6805461ac337868c32163f65c3209`. The isolated clone is
+`/tmp/ic-scheduling-improvements.VvCLTy/canic/`; normal sibling checkouts stay read-only.
+Automatic approval review rejected Canic PR creation because it interpreted this
+workspace's sibling-read-only rule as prohibiting that external write. Explicit
+user approval for the prepared review request is pending; do not bypass rejection.
 No new own version, tag, release or package upload is selected.
 
-Unrelated Memory/Storage 0.60.4 and later Logging lock edits are arriving in the
-working Cargo.lock. Leave them unstaged and untouched. Source-qualified root
-supplier selections remain those committed at `6810b1d`; temporary observation
-of an unprepared working graph does not qualify those newer selections.
+Unrelated supplier updates are arriving in the working Cargo.lock. Leave them
+unstaged and untouched. Source-qualified root supplier selections remain those
+committed at `6810b1d`; temporary observation of an unprepared working graph does
+not qualify newer selections.
 
 ## Implemented root improvements
 
@@ -41,18 +46,39 @@ Pinned workflow/shell lint, Perl syntax, formatting and local link checks pass.
 No new product compilation, full local CI or live IC recovery was needed for
 these root tooling-only edits. Hosted CI runs asynchronously against delivered source.
 
-## Canic qualification in progress
+## Canic qualification completed
 
-Use its existing managed lifecycle probe and published IC Jobs 0.33.2. The
-application owns a bounded durable queue, immutable payloads, authorization,
-receipts, storage grants and lifecycle reconstruction under the existing Canic
-memory/timer owners. Test same-release upgrade, invalid restore, failed intent
-commit, lost-response recovery, exact stale receipt refusal and no redelivery.
-Keep Canic's paid-operation lease protocol separate; this is not its replacement.
-Deliver scoped source and qualification as a Canic PR under the standing isolated
-contribution workflow. Do not merge, release, alter package versions or claim a
-public framework mount API. Canic's complete release/host CI has unrelated known
-failures; selected-case proof must retain its exact source/graph/artifact identity.
+The existing managed lifecycle probe now uses published IC Jobs 0.33.2. Its
+application owns eight immutable one-shot jobs, bounded Wire storage, memory
+grants, owner/Fleet authorization, exact destination receipts and lifecycle
+reconstruction through the existing Timers 0.35.0 runtime. Every retained record
+passes Job::restore. Retained Running attempts become Uncertain; only exact
+receipts resolve them. This is private application qualification, not a public
+framework mount API or replacement of Canic's paid-operation lease protocol.
+[#502](https://github.com/dragginzgame/canic/issues/502) remains a separate assessment.
+
+Five native queue tests, probe/harness Clippy, the integration's Rust 1.91 check,
+governed inventory/worker partition and the exact installed PocketIC case pass.
+The installed case exercises an actual intent-writing trap before submission,
+same-release wakeups, a lost reply after a committed destination effect,
+uncertainty without redelivery, stale/duplicate receipt disposition, forged caller
+refusal and corrupt restore without reset. Native cases cover immutable payload
+mismatch, independent post-await work, fresh installation IDs and full-capacity
+frames/receipts. The native Wire producer admits the same installed Wasm; all
+seven endpoint identities and direction-specific budgets match. Formatting,
+changed-document links and diff checks pass. Full Canic CI/release validation was
+not run locally; no merge, version transaction or publication is selected.
+
+The [Canic qualification guide](https://github.com/dragginzgame/canic/blob/4759beca60e0923cf91a16991541ab03c119d1ac/docs/features/jobs-qualification.md)
+records the scope and exact governed selector. Source archive, original Wasm,
+source/lock identity, build stamp, successful server output, schema and command
+logs are retained outside target at `/tmp/ic-scheduling-improvements.VvCLTy/`.
+Machine-readable custody is `canic-qualification-receipt.json`; original runtime
+files and their checksums are in `canic-runtime-evidence/`. Installed Wasm SHA-256
+is `d44298e9531dff37116a6518a0ebf729530b5a1219f1c80d46ae2057e6455bfd`.
+Initial fixture failures and their logs are retained separately; passing evidence
+belongs to `canic-installed-retained.log`, `canic-native-complete.log`,
+`canic-final-checks-qualified.log` and `canic-contracts.log`.
 
 The older private checkout `/tmp/canic-jobs-adapter.dPFVZ7FD/source` referenced by
 prior handoffs is unavailable. No prior results or source are reused from it;

@@ -21,6 +21,9 @@ and [coordinated history through 0.33.1](../history.md).
 
 ### 🔧 Changed
 
+- Document the Canic-owned private queue qualification and its installed intent
+  rollback, lost-response receipt recovery and corrupt-restore evidence. Preserve
+  the proposed public adapter boundary and separate paid-operation assessment.
 - Add `make release-status` to observe group versions, publication, tags, CI and
   blocked inputs without executing a release. Offline and JSON views preserve
   unknown observations and distinguish committed metadata from an unprepared graph.

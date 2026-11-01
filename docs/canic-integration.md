@@ -8,6 +8,17 @@ owns the transition/commit ordering; the
 [acceptance checklist](test-consumers.md#adapter-acceptance-checklist) maps it to
 reference scenarios. Canic owns the eventual integration and installed evidence.
 
+A concrete private queue is implemented and qualified in
+[Canic `4759bec`](https://github.com/dragginzgame/canic/commit/4759beca60e0923cf91a16991541ab03c119d1ac).
+Its [qualification guide](https://github.com/dragginzgame/canic/blob/4759beca60e0923cf91a16991541ab03c119d1ac/docs/features/jobs-qualification.md)
+records the actual application-owned memory, lifecycle, authorization, Wire and
+shared-timer composition. Native and installed PocketIC checks cover intent
+rollback, lost-response uncertainty, exact receipt recovery and corrupt restore.
+That source is pushed for review; PR creation awaits explicit approval after
+automatic review rejected the external write under the sibling-read-only rule.
+It introduces no public Canic Jobs mount API. Existing paid-operation leases
+retain their own assessment under [Canic #502](https://github.com/dragginzgame/canic/issues/502).
+
 ## Ownership at the composition point
 
 | Concern | Jobs supplies | Canic/application supplies |
