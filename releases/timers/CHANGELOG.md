@@ -11,6 +11,9 @@ entry alone does not establish publication.
 
 ### ⚠️ Breaking
 
+- Adopt Metrics 0.25 for the producer-owned measurement counters. Native
+  consumers composing Wire metadata must align on Metrics 0.25/Wire 0.14;
+  arithmetic, counter admission and timer behavior are unchanged.
 - Select `ic-platform-runtime` 0.17 directly for IC0 and execution. Runtime-only
   users no longer inherit the crypto/certification facade version. The global
   timer entrypoint, task handles, dispatch, cancellation and trap behavior remain
