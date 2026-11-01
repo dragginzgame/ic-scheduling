@@ -7,6 +7,15 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.35.3] - Unreleased
+
+### 📦 Dependencies
+
+- Adopt Platform 0.16.0 with one matching executor guard; align private
+  qualification consumers on Testkit/Native 0.76.0 and Wire/Derive 0.13.3.
+  Preserve canonical Types 0.15.1,
+  the executor/IC0-only library boundary and existing timer behavior.
+
 ## [0.35.2] - 2026-11-01
 
 ### 🩹 Fixed

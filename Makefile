@@ -157,7 +157,7 @@ CORE_GRAPH_FORBIDDEN := clap ctrlc candid candid_derive candid_parser ic-cdk ic-
 	ic-testkit-candid ic-testkit-native ic-jobs-test-consumer ic-jobs-canister-test-support pocket-ic serde_json serde_test
 QUALIFICATION_GRAPH_FORBIDDEN := ic-cdk-executor ic0 clap ctrlc serde_json ic-storage candid candid_derive candid_parser ic-cdk ic-agent ic-build ic-host-fs \
 	ic-host-process ic-host-artifacts ic-host-text ic-testkit ic-testkit-candid ic-testkit-native ic-jobs-canister-test-support pocket-ic tokio
-# Jobs, Timers and Memory share Platform 0.15 in the deployed graph.
+# Jobs, Timers and Memory share Platform 0.16 in the deployed graph.
 # Keep one executor, raw-system provider and entrypoint generator, without
 # application Principal conversion or hashing in the deployed graph.
 .PHONY: check-dependency-graphs

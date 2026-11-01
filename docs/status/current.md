@@ -1,5 +1,38 @@
 # Current handoff
 
+## Platform 0.16 delivery in progress — 2026-11-01
+
+The requested update now resolves with published Platform 0.16.0, Endpoint 0.3.0,
+Memory/Storage 0.60.6, Testkit/Native 0.76.0 and Wire/Derive 0.13.3. There is one
+registry Platform facade, macro and matching executor guard; canonical Types
+remains 0.15.1. The local graph policy and README now select the same generation.
+Existing incoming lock selections were preserved, including Build/Host 0.73.4,
+Logging 0.23.5 and Metrics 0.24.4. These are the actual focused-check inputs.
+No sibling source, public API, timer behavior or stored representation changed.
+
+Full locked metadata, native/Wasm dependency/provider policies, affected-package
+Clippy on Rust 1.91, all four native size-probe profiles, 175 Timers unit tests,
+and 26 consumer composition/stored-Wire/API cases pass. Both the Jobs consumer
+and Timers runtime probe link successfully as optimized Wasm on Rust 1.91.
+The dependency rejection
+fixtures pass against Platform 0.16. Managed Testkit CLI 0.76 setup/offline admission
+and the existing PocketIC 16.1.0 server check pass. Cargo sorting, local links,
+ShellCheck and whitespace checks cover the changed files. These are Linux native
+and Wasm compile checks, not fresh installed-runtime or macOS qualification.
+
+Evidence is `/tmp/ic-scheduling-platform-retry.5hinanvm/`: registry observations,
+incoming file backups/diff, prepared lock, metadata, original linked Wasm and
+focused command logs.
+Earlier blocked attempts remain `/tmp/ic-scheduling-platform016.90riv96s/` and
+`/tmp/ic-scheduling-platform-retry.rnr3b32a/`; do not relabel their failed evidence.
+Compatible pending notes are Timers 0.35.3 and Jobs 0.33.3 because the changed
+Platform contracts stay private to these packages. Cargo package versions remain
+Timers 0.35.2 / Jobs 0.33.2. The user has now authorized delivery of both groups, including separate crates.io
+publication. The selected patch releases are Timers 0.35.3 then Jobs 0.33.3,
+using the standard direct origin/main workflow and each complete release gate.
+Delivery checkout/evidence: `/tmp/ic-scheduling-platform-delivery.e3mlrmqt/`.
+The original checkout and exact candidate backups are preserved during delivery.
+
 ## Timers 0.35.2 delivered — 2026-11-01
 
 The requested issue fix and deployment are complete.
@@ -41,13 +74,15 @@ identities. The regression's original qualification is separately retained at
 
 ## Checkout and remaining work
 
-The normal checkout's unrelated Cargo.lock edits remain pending and unqualified.
-Preserve them unstaged; this delivery selects no supplier adoption or Jobs release.
-Before synchronization, all eleven task-owned working files were verified against
-the frozen candidate and backed up under `root-before-sync/` in the 0.35.2 evidence
-directory, along with the current lock and its diff. Synchronization must retain
-those dependency edits while advancing the five Timers lock entries to 0.35.2.
-No additional Scheduling release or upload is pending from this task.
+The normal checkout combines this adoption with pre-existing Cargo.lock edits.
+Preserve the original lock snapshot and unstaged work; the completed 0.35.2
+delivery excluded those edits and selected no Jobs release.
+Synchronization to `5e0a072` completed, preserving the dependency diff exactly
+while advancing the five Timers lock entries to 0.35.2. The 0.35.2 evidence
+directory retains `root-before-sync/` and `checkout-sync-receipt.json` with
+backups and verification; the index remains empty.
+Both selected patch deliveries are pending; do not claim publication until
+registry and archive/VCS readback succeeds for each group.
 
 Canic adoption is separate consumer work. The previously qualified Jobs integration
 is [Canic PR #722](https://github.com/dragginzgame/canic/pull/722), source `4759bec`,
@@ -60,11 +95,11 @@ release or adoption is selected. Sibling working checkouts remain read-only.
 ## Workspace and recovery custody
 
 Published groups are Jobs 0.33.2 and Timers 0.35.2. Jobs 0.33.3 draft stays open;
-Timers 0.35.2 notes are finalized. All nine packages keep independent group
+Timers 0.35.2 notes are finalized and the compatible 0.35.3 draft is open. All nine packages keep independent group
 versions, root catalogs, complete alias rosters and group ledgers; no shared root
 version. Shared 0.27.23 at `619d194875369e0f72b45477b66adb430acbf6b7` remains the
-intact canonical 132-file snapshot. Root supplier selections remain those committed
-at `6810b1d`; dirty supplier selections have not acquired release qualification.
+intact canonical 132-file snapshot. Committed supplier selections remain those from `6810b1d`; the working graph
+above has focused adoption checks but has not acquired release qualification.
 
 Prior Timers 0.35.1 evidence is `/tmp/ic-scheduling-timers0351.7OO3LK/`, including
 its complete journal, registry/archive/VCS identity and retained runtime evidence.
