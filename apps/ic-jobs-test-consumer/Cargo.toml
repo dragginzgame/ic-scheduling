@@ -15,7 +15,7 @@ ic-jobs.workspace = true
 ic-logging.workspace = true
 ic-memory = { workspace = true, features = ["test-support"] }
 ic-metrics.workspace = true
-ic-platform = { workspace = true, features = ["cdk"] }
+ic-platform-runtime = { workspace = true, features = ["cdk"] }
 ic-timers.workspace = true
 ic-wire-endpoint.workspace = true
 
@@ -26,7 +26,7 @@ crate-type = ["cdylib", "rlib"]
 # Principal for native DTO consumers. Queue/runtime integration is Wasm or
 # test-only, matching the source module gates.
 [dependencies]
-ic-platform = { workspace = true, features = ["principal"] }
+ic-platform-types.workspace = true
 ic-wire.workspace = true
 serde = { workspace = true, features = ["derive"] }
 
@@ -35,7 +35,7 @@ ic-jobs.workspace = true
 ic-logging.workspace = true
 ic-memory = { workspace = true, features = ["test-support"] }
 ic-metrics.workspace = true
-ic-platform = { workspace = true, features = ["principal-self-authenticating"] }
+ic-platform-types = { workspace = true, features = ["principal-self-authenticating"] }
 ic-storage.workspace = true
 ic-testkit-native = { workspace = true, features = ["stable-memory"] }
 ic-timers.workspace = true

@@ -4,7 +4,7 @@
 //! reopens actual stable cells on VectorMemory. These native fixtures do not
 //! model IC message rollback, installed upgrades or live timers.
 
-use std::io;
+use std::{io, num::NonZeroU16};
 
 use ic_jobs::{Job, JobError, JobId, JobState, MissedRunPolicy, Outcome, RetryPolicy, Schedule};
 use ic_memory::{
@@ -33,7 +33,7 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
         ],
         vec![],
     )?;
-    let config = MemoryManagerConfig::new(1)?;
+    let config = MemoryManagerConfig::new(NonZeroU16::MIN);
     for uncertain in [false, true] {
         let backing = VectorMemory::default();
         let mut sender = Notifications::new()?;
@@ -60,8 +60,8 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
             let mut host = MemoryRuntime::new_with_config(backing.clone(), config)?;
             host.bootstrap(&declarations, &pool, &GenericAllocationPolicy)?;
             ids = [
-                host.memory_id(requests[0].stable_key().as_str())?,
-                host.memory_id(requests[1].stable_key().as_str())?,
+                host.memory_id(requests[0].stable_key())?,
+                host.memory_id(requests[1].stable_key())?,
             ];
             assert_ne!(ids[0], ids[1]);
             for (request, bytes) in requests
@@ -74,10 +74,7 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
                     &SealedDeclarationSnapshot::new(vec![request.clone()])?,
                     request.authority(),
                 )?;
-                StableCell::init(
-                    host.open_memory(request.stable_key().as_str())?,
-                    bytes.clone(),
-                );
+                StableCell::create(host.open_memory(request.stable_key())?, bytes.clone());
             }
         }
         drop(sender);
@@ -96,7 +93,7 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
                     .is_err()
             );
             assert!(matches!(
-                rejected.open_memory(requests[0].stable_key().as_str()),
+                rejected.open_memory(requests[0].stable_key()),
                 Err(RuntimeOpenError::NotBootstrapped)
             ));
         }
@@ -106,16 +103,12 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
         for reopen in 0..2 {
             let mut host = MemoryRuntime::new_with_config(backing.clone(), config)?;
             host.bootstrap(&declarations, &pool, &GenericAllocationPolicy)?;
-            assert_eq!(host.memory_id(requests[0].stable_key().as_str())?, ids[0]);
-            assert_eq!(host.memory_id(requests[1].stable_key().as_str())?, ids[1]);
-            let mut queue = StableCell::init(
-                host.open_memory(requests[0].stable_key().as_str())?,
-                Vec::<u8>::new(),
-            );
-            let state = StableCell::init(
-                host.open_memory(requests[1].stable_key().as_str())?,
-                Vec::<u8>::new(),
-            );
+            assert_eq!(host.memory_id(requests[0].stable_key())?, ids[0]);
+            assert_eq!(host.memory_id(requests[1].stable_key())?, ids[1]);
+            let mut queue =
+                StableCell::<Vec<u8>, _>::load(host.open_memory(requests[0].stable_key())?)?;
+            let state =
+                StableCell::<Vec<u8>, _>::load(host.open_memory(requests[1].stable_key())?)?;
             let mut restored = Notifications::from_bytes(queue.get().clone());
             let restored_maintenance = Maintenance::from_bytes(state.get().clone());
             assert_eq!(restored.outstanding()?, vec![delivery.clone()]);

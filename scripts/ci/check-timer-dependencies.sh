@@ -21,11 +21,11 @@ open my $cargo, '-|', 'cargo', 'metadata', '--locked', '--offline', '--format-ve
 my $bytes = do { local $/; <$cargo> };
 close $cargo or die "Cargo runtime identity observation failed\n";
 my $metadata = decode_json($bytes);
-my @platform = grep { $_->{name} eq 'ic-platform' && $_->{version} =~ /^0\.16\./ }
+my @platform = grep { $_->{name} eq 'ic-platform-runtime' && $_->{version} =~ /^0\.17\./ }
     @{$metadata->{packages}};
 @platform == 1
     && ($platform[0]{source} // '') eq 'registry+https://github.com/rust-lang/crates.io-index'
-    or die "expected one qualified registry ic-platform 0.16 runtime owner\n";
+    or die "expected one qualified registry ic-platform-runtime 0.17 runtime owner\n";
 my @guard = grep { $_->{name} eq 'ic-platform-runtime-guard' } @{$metadata->{packages}};
 @guard == 1 && $guard[0]{version} eq $platform[0]{version}
     && ($guard[0]{source} // '') eq 'registry+https://github.com/rust-lang/crates.io-index'
@@ -46,6 +46,7 @@ for my $target ('wasm32-unknown-unknown', $host) {
             next if !$library && !$protocol && $name eq 'ic-platform-macros';
             push @check, '--forbid', $name;
         }
+        push @check, '--forbid', 'ic-platform';
         push @check, '--forbid-pattern', '^ic-(?:build(?:-|$)|host-|testkit(?:-|$))';
         if ($library) {
             push @check, '--forbid-pattern', '^ic-timers-';
@@ -59,11 +60,11 @@ for my $target ('wasm32-unknown-unknown', $host) {
                 qw(ic-relay ic_principal sha2 digest crc32fast data-encoding);
         }
         if ($protocol) {
-            push @check, map { ('--forbid', $_) } qw(ic-platform ic-timers);
+            push @check, map { ('--forbid', $_) } qw(ic-platform-runtime ic-timers);
         } else {
-            push @check, '--require', 'ic-platform=1', '--require', 'ic-platform-runtime-guard=1';
-            my %allowed = map { $_ => 1 } ($library ? qw(executor ic0) : qw(cdk runtime principal executor ic0));
-            push @check, map { ('--forbid-feature', "ic-platform/$_") }
+            push @check, '--require', 'ic-platform-runtime=1', '--require', 'ic-platform-runtime-guard=1';
+            my %allowed = map { $_ => 1 } ($library ? qw(executor ic0) : qw(cdk runtime executor ic0));
+            push @check, map { ('--forbid-feature', "ic-platform-runtime/$_") }
                 grep { !$allowed{$_} } sort keys %features;
         }
         system(@check) == 0 or die "Timers dependency boundary failed: $root on $target\n";
@@ -74,6 +75,6 @@ for my $target ('wasm32-unknown-unknown', $host) {
 my @worker = ('perl', 'scripts/ci/check-cargo-graph.pl', '--consumer', getcwd(),
     '--package', 'ic-timers-pocketic', '--target', $host, '--all-features');
 push @worker, map { ('--forbid', $_) }
-    qw(ic-platform ic-platform-runtime-guard ic-cdk-executor ic0 ic-testkit pocket-ic candid ic-wire ic-timers ic-timers-test-protocol);
+    qw(ic-platform-runtime ic-platform-runtime-guard ic-cdk-executor ic0 ic-testkit pocket-ic candid ic-wire ic-timers ic-timers-test-protocol);
 system(@worker) == 0 or die "Timers build coordinator dependency boundary failed\n";
 PERL

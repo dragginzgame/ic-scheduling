@@ -7,6 +7,27 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.36.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Move IC0/execution to direct Runtime 0.17.1. Align every executor supplier
+  together, including Endpoint 0.4 and canonical Types 0.16; retain exact
+  singleton admission and callback/cancellation behavior.
+- Align the public Metrics types with Metrics 0.25. Consumers using the native
+  Wire metadata bridge must align on Wire 0.14; measurement arithmetic and
+  deployed timer behavior remain unchanged.
+
+### 📦 Dependencies
+
+- Adopt Wire/Derive 0.14.1 for private probe, checkpoint and driver codecs.
+  Preserve request identities, budgets and checkpoint bytes; the deployed timer
+  provider and its dependency boundary are unchanged.
+- Select the current Build/Host 0.73.6 and Logging 0.23.7 qualification patches.
+- Refresh the reviewed Shared Tooling snapshot to 0.27.26, retaining grouped
+  Cargo metadata and dependency admission. Use Shared's current native build
+  identity and Cargo tool retention policy in the existing setup workflow.
+
 ## [0.35.4] - 2026-11-01
 
 ### 🧪 Testing

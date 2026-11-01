@@ -50,7 +50,7 @@ fn retained_cell(backing: VectorMemory, maximum: usize) -> FixtureCell<VectorMem
         "test.jobs",
         "test.jobs.",
         KEY,
-        MemoryManagerConfig::new(1).unwrap(),
+        MemoryManagerConfig::new(NonZeroU16::MIN),
         maximum,
     )
     .unwrap()

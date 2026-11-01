@@ -4,6 +4,26 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer`, `ic-jobs-canister-test-su
 and `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.33.5] - Unreleased
+
+### 📦 Dependencies
+
+- Select Platform 0.17, direct Runtime 0.17.1 and Types 0.16 for private
+  canister/DTO integration. Select Testkit/Native 0.78's matching Wire and native
+  client identity, preserving server custody and the public Serde-only Jobs API.
+- Adopt Wire/Derive 0.14.1 for private consumer codecs and qualification
+  transports, with Endpoint 0.4.0. Preserve request identities, codec
+  budgets, stored queue bytes and validated Job restoration.
+- Adopt Memory and Storage 0.62.0 in the private qualification consumer. Use
+  checked allocation keys, nonzero one-page bucket configuration, fresh Cell
+  creation and retained-only loading. Keep queue bytes, validated Job restoration
+  and blocked-effect recovery unchanged. The published Jobs API and its
+  Serde-only dependency boundary are unchanged.
+- Select the current Build/Host 0.73.6 and Logging 0.23.7 qualification patches.
+- Refresh the reviewed Shared Tooling snapshot to 0.27.26, retaining grouped
+  Cargo metadata and dependency admission. Use Shared's current native build
+  identity and Cargo tool retention policy in the existing setup workflow.
+
 ## [0.33.4] - 2026-11-01
 
 ### 🧹 Cleanup

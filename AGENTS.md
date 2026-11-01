@@ -37,3 +37,13 @@ This file is the local overlay. Read [the current handoff](docs/status/current.m
   `dragginzgame/ic-scheduling`; configuring tooling does not authorize releases or
   publication. Direct release delivery uses `origin`/`main`; `make publish` is
   a separate, explicitly authorized crates.io upload.
+
+## Runtime and dependency cohort
+
+The workspace selects direct Runtime 0.17.1 for Timers and CDK probes,
+canonical Types 0.16 for native DTOs, Platform 0.17 and Testkit/Native 0.78.
+The registry cohort also requires Core 0.14.1, Endpoint 0.4, Metrics 0.25 and
+Memory/Storage 0.62. Qualify the actual locked registry graph. Keep the exact
+singleton guard and explicit installed IC recovery qualification. Upstream crate
+delivery remains user-owned; local adoption does not authorize upstream pushes,
+releases or publication.

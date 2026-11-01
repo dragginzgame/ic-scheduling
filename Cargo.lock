@@ -242,7 +242,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -333,7 +333,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fa961b519f0b462e3a3b4a34b64d119eeaca1d59af726fe450bbba07a9fc0a1"
 dependencies = [
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -353,7 +353,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b60b5124979fccd9addd89d8b97a1d6eebb4950694520c75ddd722535ea443f"
 dependencies = [
  "nix",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -824,9 +824,9 @@ dependencies = [
 
 [[package]]
 name = "ic-build"
-version = "0.73.4"
+version = "0.73.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d21f34ae1b110780c716956a8bcfa1d5cd668b6108daec3eca9fec951368e32b"
+checksum = "e94ae68b8a7893e9e7cee0f0f5e583493b80ca64b2dc59efe18e2398dc3d2a32"
 dependencies = [
  "cargo_metadata",
  "ic-host-artifacts",
@@ -836,7 +836,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
  "toml",
  "toml_edit",
 ]
@@ -855,9 +855,9 @@ dependencies = [
 
 [[package]]
 name = "ic-host-artifacts"
-version = "0.73.4"
+version = "0.73.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41bdc2aa8b0cfbc72fa798e6a4a65f249dcde80fd2dc7707b47bca736e255fcb"
+checksum = "499c5dcde4cc97e49f2f653e6234639752f9b179ae387c6872ee6e5cc194fdce"
 dependencies = [
  "flate2",
  "sha2",
@@ -865,20 +865,20 @@ dependencies = [
 
 [[package]]
 name = "ic-host-fs"
-version = "0.73.4"
+version = "0.73.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "990b17b24378995addafcb8d6d7b0823a7e0992821e6e3976ce3c085bc9874a5"
+checksum = "ff18ef5150d939d6789e6b16cf174fc792e5267fbe39e94b1564f4a9e94c929d"
 dependencies = [
  "ic-host-artifacts",
  "rustix",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "ic-host-process"
-version = "0.73.4"
+version = "0.73.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "125cedca7225d1e7546fb263d1b27e4b7a3932a02665d2b191603b125841abd4"
+checksum = "c4e77b081784d8c08ec11b49ebd62489debbabe38c52d2e9bd0abcaa4230267f"
 dependencies = [
  "command-fds",
  "ic-host-artifacts",
@@ -932,7 +932,8 @@ dependencies = [
  "ic-logging",
  "ic-memory",
  "ic-metrics",
- "ic-platform",
+ "ic-platform-runtime",
+ "ic-platform-types",
  "ic-storage",
  "ic-testkit-native",
  "ic-timers",
@@ -944,9 +945,9 @@ dependencies = [
 
 [[package]]
 name = "ic-logging"
-version = "0.23.5"
+version = "0.23.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7cf3f28a20e059b02dff7095d80a448fd0a26043ea7a3a350970b9bce1f23d1"
+checksum = "868a4bd157d8baebc03708c7dcbff485a49db1ff86160d6ee142c4bb37fe7bb9"
 
 [[package]]
 name = "ic-management-canister-types"
@@ -972,51 +973,48 @@ dependencies = [
 
 [[package]]
 name = "ic-memory"
-version = "0.60.6"
+version = "0.62.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f88b1f5ed493bbbb3da8b2626a4fb8672f5830a0758247d64ac67c3295fb06d"
+checksum = "245ad9850aff1b1cee6a9973c283e4f44f623bbc9bfacd50fe749787015bdfc7"
 dependencies = [
  "ic-platform",
  "ic-wire",
  "serde",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "ic-metrics"
-version = "0.24.4"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a6018917ffc653f1ef13e4a09c1aaf10e273b00ec3fe341aef93442d2106f11"
+checksum = "eea9c9b6ab6a0c0bc1cba1461127074208a0615f1ba8e37e14724855af44bacf"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "ic-platform"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d35ff1252b77bf7d9b6495ac90f4c03ccac66520765a38267e425000a16e1e4b"
+checksum = "813bed7d93c0adc82b80157f4ccbb0b31260f8764fa3b7695fadaf9bcd14e241"
 dependencies = [
  "candid",
  "ic-management-canister-types 0.11.0",
- "ic-platform-macros",
- "ic-platform-runtime-guard",
+ "ic-platform-pocket-ic",
+ "ic-platform-runtime",
  "ic-platform-types",
  "ic-stable-structures",
  "ic_principal",
- "pin-project-lite",
- "pocket-ic",
  "serde",
  "serde_bytes",
- "slotmap",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "ic-platform-macros"
-version = "0.16.0"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cb61123eaab85f7af5ca1ffc4149669425e46f7568f5d5e80d9664c684fa19a"
+checksum = "6525d655d3c12193ab16ff10bf8d2a243e03d216d9bad5c26fafbdb42dbbc265"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1024,22 +1022,70 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-platform-runtime-guard"
-version = "0.16.0"
+name = "ic-platform-pocket-ic"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fa06f03d82aa4d9426c3ed5544e973154bc6bc0da8fd8bcd586657ae0ace2d0"
+checksum = "259cca738ece85627683ebef5df14a5b04cc0db4c59182f780f92e7e15902f8f"
+dependencies = [
+ "backon",
+ "base64 0.22.1",
+ "candid",
+ "flate2",
+ "hex",
+ "ic-certification",
+ "ic-management-canister-types 0.8.0",
+ "ic-transport-types",
+ "reqwest",
+ "schemars",
+ "semver",
+ "serde",
+ "serde_cbor",
+ "serde_json",
+ "sha2",
+ "slog",
+ "strum",
+ "strum_macros",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "ic-platform-runtime"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67e0cef9c254622a92fadff2cc0ef287fa4fe2a489328a97ac4740de00a71f04"
+dependencies = [
+ "ic-platform-macros",
+ "ic-platform-runtime-guard",
+ "ic-platform-types",
+ "pin-project-lite",
+ "serde",
+ "slotmap",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "ic-platform-runtime-guard"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da0f88de21b948fe5c27e9c695c0c998a413128fecdfc97b26b1348aebeaf7cd"
 
 [[package]]
 name = "ic-platform-types"
-version = "0.15.1"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de0b5a4e7dff6d2c8ec7a58e5673f7348a49e90232add1eb31fec0bba5f4252e"
+checksum = "235a930ed63426af24eaac83d8e164e051ee4f1113ae225acbbea6f61fd34198"
 dependencies = [
  "crc32fast",
  "data-encoding",
  "ic_principal",
  "serde",
- "thiserror 2.0.18",
+ "sha2",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -1053,20 +1099,20 @@ dependencies = [
 
 [[package]]
 name = "ic-storage"
-version = "0.60.6"
+version = "0.62.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a462479f0e094c5c484f079b079afee4a5af740915340562c6d67ddb1b2133f1"
+checksum = "d07950d11b7aad1b1788cbfe713cc34226af4bfad8ff8c8c3253f67962750d85"
 dependencies = [
  "ic-memory",
  "ic-platform",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "ic-testkit"
-version = "0.76.0"
+version = "0.78.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c9e84475c2c4a85466848d36694882cbeb3d1732819871acc3900d93862dde7"
+checksum = "d1c4b7fc43e70b3ec8766b3eaee41a8e48aa0674935f0ab1e9060b2efaa92562"
 dependencies = [
  "ic-host-artifacts",
  "ic-host-fs",
@@ -1076,15 +1122,15 @@ dependencies = [
  "ic-wire",
  "libc",
  "serde",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
  "tokio",
 ]
 
 [[package]]
 name = "ic-testkit-native"
-version = "0.76.0"
+version = "0.78.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "082a83a37421859afc6a7f6690956a177ae890492b0c0a7b4988d1732201cdc5"
+checksum = "ee32015ff74f8c5c665c4b27c803d131686e5df003a7514b82e74fe241ef4d69"
 dependencies = [
  "ic-platform",
 ]
@@ -1094,8 +1140,8 @@ name = "ic-timers"
 version = "0.35.4"
 dependencies = [
  "ic-metrics",
- "ic-platform",
- "thiserror 2.0.18",
+ "ic-platform-runtime",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -1119,7 +1165,7 @@ dependencies = [
 name = "ic-timers-runtime-probe"
 version = "0.35.4"
 dependencies = [
- "ic-platform",
+ "ic-platform-runtime",
  "ic-timers",
  "ic-timers-test-protocol",
  "ic-wire",
@@ -1130,7 +1176,7 @@ dependencies = [
 name = "ic-timers-size-probe"
 version = "0.35.4"
 dependencies = [
- "ic-platform",
+ "ic-platform-runtime",
  "ic-timers",
  "ic-timers-test-protocol",
  "ic-wire",
@@ -1160,14 +1206,14 @@ dependencies = [
  "serde_cbor",
  "serde_repr",
  "sha2",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "ic-wire"
-version = "0.13.3"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "971d63627e019fc0ece8331a62e21e55046017e6456301e5bf62e0149d9ef398"
+checksum = "547eb4ffb045646b0334011cd4bf42fd6c7d421b276d50e6f8598362f3dd5c00"
 dependencies = [
  "bytemuck",
  "ic-wire-derive",
@@ -1178,9 +1224,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire-derive"
-version = "0.13.3"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d4cb97060eea7238e8d913f0ef5b4e8396077a2e9c12e66658e0e2a1a23ef42"
+checksum = "31ee74fe349d4c0cc0bc331995064aba4fc38de897eeb2f4d9b4ed072a788f99"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1189,11 +1235,11 @@ dependencies = [
 
 [[package]]
 name = "ic-wire-endpoint"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5dcae86bebc919d6fa36d8933915e6c9fe0955dedd3af1243946a254e4b4d0f"
+checksum = "c922f2c0a7a5e3f23551000c792606b67fe06c8ceae27d7dd8f434b275f903bb"
 dependencies = [
- "ic-platform",
+ "ic-platform-runtime",
  "ic-wire",
  "ic-wire-derive",
  "serde",
@@ -1350,7 +1396,7 @@ dependencies = [
  "jni-sys",
  "log",
  "simd_cesu8",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
  "walkdir",
  "windows-link",
 ]
@@ -1651,38 +1697,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
-name = "pocket-ic"
-version = "16.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85135917c845e8fc132f5eca3a0a8cbab696477a5fee3c2dda168a0797f81e1c"
-dependencies = [
- "backon",
- "base64 0.22.1",
- "candid",
- "flate2",
- "hex",
- "ic-certification",
- "ic-management-canister-types 0.8.0",
- "ic-transport-types",
- "reqwest",
- "schemars",
- "semver",
- "serde",
- "serde_cbor",
- "serde_json",
- "sha2",
- "slog",
- "strum",
- "strum_macros",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "postcard"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1753,7 +1767,7 @@ dependencies = [
  "rustc-hash",
  "rustls",
  "socket2",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
  "tokio",
  "tracing",
  "web-time",
@@ -1776,7 +1790,7 @@ dependencies = [
  "rustls",
  "rustls-pki-types",
  "slab",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
  "tinyvec",
  "tracing",
  "web-time",
@@ -2433,11 +2447,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.18"
+version = "2.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4288b5bcbc7920c07a1149a35cf9590a2aa808e0bc1eafaade0b80947865fbc4"
+checksum = "09e52cb86a36cede5cb101bf8908837b3e4c6e5e59fe7fd85c23fb56200d189e"
 dependencies = [
- "thiserror-impl 2.0.18",
+ "thiserror-impl 2.0.21",
 ]
 
 [[package]]
@@ -2453,13 +2467,13 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.18"
+version = "2.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebc4ee7f67670e9b64d05fa4253e753e016c6c95ff35b89b7941d6b856dec1d5"
+checksum = "fe5197923287db20a58125f0bc85c062f7f2c892de97b18c356f9efb14b28524"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.119",
+ "syn 3.0.9",
 ]
 
 [[package]]
@@ -2685,7 +2699,7 @@ checksum = "050686193eb999b4bb3bc2acfa891a13da00f79734704c4b8b4ef1a10b368a3c"
 dependencies = [
  "crossbeam-channel",
  "symlink",
- "thiserror 2.0.18",
+ "thiserror 2.0.21",
  "time",
  "tracing-subscriber",
 ]

@@ -512,3 +512,16 @@ for commands and qualification. The [architecture](../../docs/timers/architectur
 ## License
 
 MIT
+
+### Independent Runtime adoption
+
+The pending Timers 0.36 release selects Runtime 0.17.1 directly for IC0 and
+execution. Canisters select its CDK entrypoints and canonical Types 0.16. Native
+clients use Platform 0.17 and Testkit/Native 0.78, sharing the owned PocketIC client
+and Wire 0.14 limits.
+The exact guard still rejects mixed old/new executors.
+
+The application cohort also selects Wire Core 0.14.1 and Endpoint 0.4.
+Testkit 0.78 supplies the matching Wire dependency. Keep a single Runtime
+executor across all suppliers; native and Wasm compilation do not establish
+installed IC recovery qualification.

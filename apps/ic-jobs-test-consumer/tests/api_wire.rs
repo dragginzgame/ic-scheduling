@@ -4,7 +4,7 @@ use ic_jobs_test_consumer::{
     delivery_wire,
     management_wire::{Method, REQUEST_LIMITS, RESPONSE_LIMITS},
 };
-use ic_platform::Principal;
+use ic_platform_types::Principal;
 use ic_wire::native;
 
 #[test]

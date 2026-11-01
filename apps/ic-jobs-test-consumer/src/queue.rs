@@ -1,4 +1,4 @@
-use std::num::NonZeroU64;
+use std::num::{NonZeroU16, NonZeroU64};
 
 use ic_jobs::{
     Attempt, Job, JobId, JobRecord, JobState, MissedRunPolicy, Outcome, RetryPolicy, Schedule,
@@ -8,7 +8,7 @@ use ic_memory::{
     Memory, MemoryBacking, MemoryManagerConfig,
     testing::{FixtureCell, FixtureCellError},
 };
-use ic_platform::Principal;
+use ic_platform_types::Principal;
 use ic_wire::{Limits, native};
 use serde::{Deserialize, Serialize};
 
@@ -281,7 +281,7 @@ impl<M: Memory> Queue<M> {
     where
         M: MemoryBacking,
     {
-        let config = MemoryManagerConfig::new(1).map_err(memory_error)?;
+        let config = MemoryManagerConfig::new(NonZeroU16::MIN);
         let mut cell = if initial.is_some() {
             FixtureCell::create_bounded(memory, "test.jobs", "test.jobs.", KEY, config, MAX_BYTES)
         } else {

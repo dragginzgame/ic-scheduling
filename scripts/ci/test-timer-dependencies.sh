@@ -16,7 +16,7 @@ bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" \
 RUSTUP_AUTO_INSTALL=0 cargo metadata --locked --offline --format-version 1 > "$fixture/workspace.json"
 platform_version="$(perl -MJSON::PP -0777 -e '
     my $metadata = decode_json(<>);
-    my @platform = grep { $_->{name} eq "ic-platform" && $_->{version} =~ /^0\.16\.[0-9]+$/ }
+    my @platform = grep { $_->{name} eq "ic-platform-runtime" && $_->{version} =~ /^0\.17\.[0-9]+$/ }
         @{$metadata->{packages}};
     @platform == 1 or die "expected one selected runtime Platform\n";
     print $platform[0]{version};
@@ -61,28 +61,12 @@ if bash "$checker" > worker-failure.log 2>&1; then
 fi
 grep -q 'forbidden ic-testkit' worker-failure.log
 reset_manifests
-perl -pi -e 's/"executor", "ic0"/"executor", "ic0", "candid"/' crates/ic-timers/Cargo.toml
-# An independently optional codec adds a dependency edge to Platform even
-# when another package already resolves Candid. Prepare only the fixture lock.
-RUSTUP_AUTO_INSTALL=0 cargo tree --offline -p ic-timers --target wasm32-unknown-unknown > /dev/null
-if bash "$checker" > feature-failure.log 2>&1; then
-    echo 'error: library admitted accidental Platform Candid feature' >&2
-    exit 1
-fi
-if ! grep -q 'forbidden candid' feature-failure.log; then
-    cat feature-failure.log >&2
-    exit 1
-fi
-reset_manifests
-
-# Principal support belongs to application/probe profiles, never the raw timer
-# provider. Refuse its transitive dependencies even when already in the lock.
-perl -pi -e 's/"executor", "ic0"/"executor", "ic0", "principal"/' crates/ic-timers/Cargo.toml
-if bash "$checker" > principal-failure.log 2>&1; then
-    echo 'error: library admitted Platform Principal support' >&2; exit 1
-fi
-grep -Eq 'forbidden (ic_principal|sha2|digest|crc32fast|data-encoding)' principal-failure.log
-reset_manifests
+for feature in candid principal; do
+    TIMER_FORBIDDEN_FEATURE="$feature" perl -pi -e 's/"executor", "ic0"/"executor", "ic0", "$ENV{TIMER_FORBIDDEN_FEATURE}"/' crates/ic-timers/Cargo.toml
+    if cargo tree --offline -p ic-timers > "$feature-failure.log" 2>&1; then exit 1; fi
+    grep -q 'does not have that feature' "$feature-failure.log"
+    reset_manifests
+done
 
 # Runtime APIs belong only to entrypoint-owning probes; the published library
 # must keep its executor/IC0-only boundary even when runtime adds no new macro.
@@ -90,7 +74,7 @@ perl -pi -e 's/"executor", "ic0"/"executor", "ic0", "runtime"/' crates/ic-timers
 if bash "$checker" > runtime-failure.log 2>&1; then
     echo 'error: library admitted Platform runtime APIs' >&2; exit 1
 fi
-grep -q 'forbidden dependency feature edge: ic-platform/runtime' runtime-failure.log
+grep -q 'forbidden dependency feature edge: ic-platform-runtime/runtime' runtime-failure.log
 reset_manifests
 
 # Empty Platform defaults still violate the library feature allowlist, even
@@ -99,36 +83,24 @@ perl -pi -e 's/"executor", "ic0"/"executor", "ic0", "default"/' crates/ic-timers
 if bash "$checker" > default-failure.log 2>&1; then
     echo 'error: library admitted Platform default features' >&2; exit 1
 fi
-grep -q 'forbidden dependency feature edge: ic-platform/default' default-failure.log
+grep -q 'forbidden dependency feature edge: ic-platform-runtime/default' default-failure.log
 reset_manifests
-perl -pi -e 's/\["cdk"\]/["cdk", "candid"]/' crates/ic-timers-runtime-probe/Cargo.toml
-RUSTUP_AUTO_INSTALL=0 cargo tree --offline -p ic-timers-runtime-probe --target wasm32-unknown-unknown > /dev/null
-if bash "$checker" > probe-failure.log 2>&1; then
-    echo 'error: canister probe admitted Candid' >&2; exit 1
-fi
-grep -q 'forbidden candid' probe-failure.log
-reset_manifests
-
-# Raw entrypoint probes use owned Principal bytes; only native external clients
-# may select the separate registry conversion capability introduced in Platform 0.8.
-perl -pi -e 's/\["cdk"\]/["cdk", "principal-external"]/' crates/ic-timers-runtime-probe/Cargo.toml
-RUSTUP_AUTO_INSTALL=0 cargo tree --offline -p ic-timers-runtime-probe --target wasm32-unknown-unknown > /dev/null
-if bash "$checker" > probe-external-failure.log 2>&1; then
-    echo 'error: canister probe admitted external Principal conversions' >&2
-    exit 1
-fi
-grep -q 'forbidden dependency feature edge: ic-platform/principal-external' probe-external-failure.log
-reset_manifests
+for feature in candid principal-external; do
+    TIMER_FORBIDDEN_FEATURE="$feature" perl -pi -e 's/\["cdk"\]/["cdk", "$ENV{TIMER_FORBIDDEN_FEATURE}"]/' crates/ic-timers-runtime-probe/Cargo.toml
+    if cargo tree --offline -p ic-timers-runtime-probe > "probe-$feature-failure.log" 2>&1; then exit 1; fi
+    grep -q 'does not have that feature' "probe-$feature-failure.log"
+    reset_manifests
+done
 cat >> crates/ic-timers-test-protocol/Cargo.toml <<'EOF'
 
 [build-dependencies]
-ic-platform = { workspace = true, features = ["executor"] }
+ic-platform-runtime = { workspace = true, features = ["executor"] }
 EOF
 RUSTUP_AUTO_INSTALL=0 cargo tree --offline -p ic-timers-test-protocol --target wasm32-unknown-unknown > /dev/null
 if bash "$checker" > protocol-failure.log 2>&1; then
     echo 'error: protocol admitted Platform authority' >&2; exit 1
 fi
-grep -q 'forbidden ic-platform' protocol-failure.log
+grep -q 'forbidden ic-platform-runtime' protocol-failure.log
 reset_manifests
 
 # A renamed target-specific build dependency must be checked by package name;
@@ -219,7 +191,7 @@ reset_manifests
 # still reject an optional renamed target/build edge through the common owner.
 direct_checker=scripts/ci/check-cargo-dependency-boundaries.sh
 bash "$direct_checker" --consumer "$fixture" --external-ic
-perl -pi -e 's/^ic-platform = /external-principal = { package = "ic_principal", version = "0.1" }\nic-platform = /' Cargo.toml
+perl -pi -e 's/^ic-platform-runtime = /external-principal = { package = "ic_principal", version = "0.1" }\nic-platform-runtime = /' Cargo.toml
 cat >> crates/ic-timers/Cargo.toml <<'EOF'
 
 [target.'cfg(target_arch = "wasm32")'.build-dependencies]
@@ -238,7 +210,7 @@ reset_manifests
 mkdir -p platform-substitute/src
 cat > platform-substitute/Cargo.toml <<EOF
 [package]
-name = "ic-platform"
+name = "ic-platform-runtime"
 version = "$platform_version"
 edition = "2024"
 
@@ -262,14 +234,14 @@ touch platform-substitute/src/lib.rs
 cat >> Cargo.toml <<'EOF'
 
 [patch.crates-io]
-ic-platform = { path = "platform-substitute" }
+ic-platform-runtime = { path = "platform-substitute" }
 EOF
 RUSTUP_AUTO_INSTALL=0 cargo tree --offline -p ic-timers --target wasm32-unknown-unknown > /dev/null
 if bash "$checker" > identity-failure.log 2>&1; then
     echo 'error: library admitted an unqualified Platform source at the same version' >&2
     exit 1
 fi
-grep -q 'expected one qualified registry ic-platform 0.16 runtime owner' identity-failure.log
+grep -q 'expected one qualified registry ic-platform-runtime 0.17 runtime owner' identity-failure.log
 reset_manifests
 
 # The feature-selected helper is also registry-owned and must match the facade.
