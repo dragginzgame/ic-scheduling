@@ -1,7 +1,7 @@
 //! Consumer-owned DTOs for Wire RPCs and bounded Wire snapshots.
 //! JobRecord remains an internal stored value.
 
-use ic_platform::Principal;
+use ic_platform_runtime::Principal;
 use serde::{Deserialize, Serialize};
 
 /// Installation configuration, retained across upgrades.

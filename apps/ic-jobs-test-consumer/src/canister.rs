@@ -5,7 +5,7 @@ use std::{
 
 use ic_jobs::Outcome;
 use ic_memory::DefaultMemoryImpl;
-use ic_platform::cdk;
+use ic_platform_runtime::cdk;
 use ic_timers::{
     TimerCadence, TimerIdentity, WatchdogReconcileState, WatchdogRegistration, WatchdogRunResult,
     reconcile_watchdog,
@@ -81,7 +81,7 @@ fn reconcile_at(due: Option<u64>) {
 }
 
 fn admit_control_input() -> Result<(), String> {
-    if ic_platform::ic0::msg_arg_data_size() > control::REQUEST_LIMITS.bytes {
+    if ic_platform_runtime::ic0::msg_arg_data_size() > control::REQUEST_LIMITS.bytes {
         return Err("management request exceeds Wire frame limit".into());
     }
     Ok(())

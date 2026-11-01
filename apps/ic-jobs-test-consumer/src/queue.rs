@@ -8,7 +8,7 @@ use ic_memory::{
     Memory, MemoryBacking, MemoryManagerConfig,
     testing::{FixtureCell, FixtureCellError},
 };
-use ic_platform::Principal;
+use ic_platform_runtime::Principal;
 use ic_wire::{Limits, native};
 use serde::{Deserialize, Serialize};
 

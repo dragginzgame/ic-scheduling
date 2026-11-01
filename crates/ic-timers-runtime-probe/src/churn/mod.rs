@@ -16,7 +16,7 @@ thread_local! {
     static COMPLETED: Cell<u64> = const { Cell::new(0) };
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ReplaceDistantDeadlines as u64 }>",
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::ReplaceDistantDeadlines as u64 }>"
@@ -54,7 +54,7 @@ fn replace_distant_deadlines(count: u32) {
             );
         }
         let timer = slot.as_ref().expect("registered");
-        let base = ic_platform::cdk::api::time()
+        let base = ic_platform_runtime::cdk::api::time()
             .checked_add(CADENCE_NS)
             .expect("distant deadline");
         for index in 0..count {
@@ -68,7 +68,7 @@ fn replace_distant_deadlines(count: u32) {
     });
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartImmediateChurn as u64 }>",
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::StartImmediateChurn as u64 }>"
@@ -82,7 +82,7 @@ fn start_immediate_churn() {
     });
 }
 
-#[ic_platform::cdk::query(
+#[ic_platform_runtime::cdk::query(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ChurnObservation as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::ChurnObservation as u64 }>"

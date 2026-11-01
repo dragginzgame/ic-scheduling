@@ -7,6 +7,16 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.36.0]
+
+### ⚠️ Breaking
+
+- Select `ic-platform-runtime` 0.17 directly for IC0 and execution. Runtime-only
+  users no longer inherit the crypto/certification facade version. The global
+  timer entrypoint, task handles, dispatch, cancellation and trap behavior remain
+  unchanged. Canisters must migrate all executor suppliers together; legacy
+  embedded Platform 0.16 cannot coexist with Runtime 0.17.
+
 ## [0.35.4] - 2026-11-01
 
 ### 🧪 Testing

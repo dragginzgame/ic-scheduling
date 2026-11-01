@@ -512,3 +512,18 @@ for commands and qualification. The [architecture](../../docs/timers/architectur
 ## License
 
 MIT
+
+### Independent Runtime adoption
+
+The pending Timers 0.36 selects `ic-platform-runtime = "0.17"` with `executor`
+and `ic0`. Applications select Runtime's `cdk` feature for entrypoints and use
+`ic_platform_runtime::{cdk, executor, ic0}`. Select the crypto/Candid Platform
+facade separately when required. Both paths delegate to one runtime owner.
+
+Publish Runtime 0.17 (including its macros and exact guard) before releasing this
+Timers change. Align Wire Endpoint with that runtime before rebuilding canisters;
+old embedded Platform 0.16 executor graphs intentionally fail singleton admission.
+The source/archive proofs for Platform #131 use harness-root patches for these
+unpublished suppliers. These are qualification inputs, not downstream packaging.
+Refresh the registry lock after supplier publication; publication is not implied
+by those proofs.

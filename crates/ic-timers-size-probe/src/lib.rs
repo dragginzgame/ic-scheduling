@@ -57,14 +57,14 @@ thread_local! {
     static REPRESENTATIVE_WATCHDOG_WORK: Cell<bool> = const { Cell::new(false) };
 }
 
-#[ic_platform::cdk::init]
+#[ic_platform_runtime::cdk::init]
 fn init() {
     if initialize_runtime().is_err() {
-        ic_platform::cdk::api::trap("size-probe runtime initialization failed");
+        ic_platform_runtime::cdk::api::trap("size-probe runtime initialization failed");
     }
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::CohortStart as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::CohortStart as u64 }>"
@@ -77,7 +77,7 @@ fn cohort_start() -> OperationMeasurement {
     }
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::EnsureAgain as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::EnsureAgain as u64 }>"
@@ -90,7 +90,7 @@ fn ensure_again() -> OperationMeasurement {
     }
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::Cancel as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::Cancel as u64 }>"
@@ -106,7 +106,7 @@ fn cancel() -> OperationMeasurement {
 /// Isolate the raw instruction cost of the start/end page reads used by one
 /// normally completed callback. This probe-only endpoint does not alter the
 /// runtime's callback instruction aggregate.
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::MemorySamplingOverhead as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::MemorySamplingOverhead as u64 }>"
@@ -129,7 +129,7 @@ fn memory_sampling_overhead() -> MemorySamplingMeasurement {
 /// Select a bounded non-trivial callback body for the probe's next Watchdog
 /// registration. This endpoint exists only in the Watchdog test canister.
 #[cfg(feature = "watchdog")]
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::UseRepresentativeWatchdogWork as u64 }>",
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::UseRepresentativeWatchdogWork as u64 }>"
@@ -138,22 +138,22 @@ fn use_representative_watchdog_work() {
     REPRESENTATIVE_WATCHDOG_WORK.with(|enabled| enabled.set(true));
 }
 
-#[ic_platform::cdk::query(
+#[ic_platform_runtime::cdk::query(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::Observe as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::Observe as u64 }>"
 )]
 fn observe() -> CohortObservation<&'static str> {
-    let snapshot_before = ic_platform::ic0::performance_counter(1);
+    let snapshot_before = ic_platform_runtime::ic0::performance_counter(1);
     let snapshot = timer_snapshot(&cohort_identity())
-        .unwrap_or_else(|_| ic_platform::cdk::api::trap("size-probe snapshot failed"));
+        .unwrap_or_else(|_| ic_platform_runtime::cdk::api::trap("size-probe snapshot failed"));
     let snapshot_instructions =
-        ic_platform::ic0::performance_counter(1).saturating_sub(snapshot_before);
-    let inventory_before = ic_platform::ic0::performance_counter(1);
+        ic_platform_runtime::ic0::performance_counter(1).saturating_sub(snapshot_before);
+    let inventory_before = ic_platform_runtime::ic0::performance_counter(1);
     let inventory = timer_inventory()
-        .unwrap_or_else(|_| ic_platform::cdk::api::trap("size-probe inventory failed"));
+        .unwrap_or_else(|_| ic_platform_runtime::cdk::api::trap("size-probe inventory failed"));
     let inventory_instructions =
-        ic_platform::ic0::performance_counter(1).saturating_sub(inventory_before);
+        ic_platform_runtime::ic0::performance_counter(1).saturating_sub(inventory_before);
     let registered = registration_present();
     let callbacks = CALLBACKS.with(Cell::get);
     let observed = CohortObservation {
@@ -188,9 +188,9 @@ fn observe() -> CohortObservation<&'static str> {
 }
 
 fn measure<T>(operation: impl FnOnce() -> T) -> (T, u64) {
-    let before = ic_platform::ic0::performance_counter(1);
+    let before = ic_platform_runtime::ic0::performance_counter(1);
     let result = operation();
-    let instructions = ic_platform::ic0::performance_counter(1).saturating_sub(before);
+    let instructions = ic_platform_runtime::ic0::performance_counter(1).saturating_sub(before);
     (result, instructions)
 }
 
@@ -201,7 +201,7 @@ fn memory_page_extents() -> (u64, u64) {
     #[cfg(not(target_arch = "wasm32"))]
     let wasm = 0;
 
-    (wasm, ic_platform::ic0::stable64_size())
+    (wasm, ic_platform_runtime::ic0::stable64_size())
 }
 
 #[cfg(feature = "baseline")]
@@ -227,7 +227,9 @@ fn start_inner() -> bool {
                 OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop)
             },
         )
-        .unwrap_or_else(|_| ic_platform::cdk::api::trap("size-probe Once registration failed"));
+        .unwrap_or_else(|_| {
+            ic_platform_runtime::cdk::api::trap("size-probe Once registration failed")
+        });
         *slot = Some(registration);
         true
     })
@@ -256,7 +258,7 @@ fn start_inner() -> bool {
             },
         )
         .unwrap_or_else(|_| {
-            ic_platform::cdk::api::trap("size-probe after-completion registration failed")
+            ic_platform_runtime::cdk::api::trap("size-probe after-completion registration failed")
         });
         *slot = Some(registration);
         true
@@ -282,7 +284,9 @@ fn start_inner() -> bool {
                 WatchdogRunResult::new(watchdog_completion(), WatchdogDecision::Continue)
             },
         )
-        .unwrap_or_else(|_| ic_platform::cdk::api::trap("size-probe Watchdog registration failed"));
+        .unwrap_or_else(|_| {
+            ic_platform_runtime::cdk::api::trap("size-probe Watchdog registration failed")
+        });
         *slot = Some(registration);
         true
     })
@@ -323,7 +327,7 @@ fn ensure_again_inner() -> bool {
             )))
             .is_err()
         {
-            ic_platform::cdk::api::trap("size-probe duplicate Once ensure failed");
+            ic_platform_runtime::cdk::api::trap("size-probe duplicate Once ensure failed");
         }
         false
     })
@@ -336,7 +340,7 @@ fn ensure_again_inner() -> bool {
             return false;
         };
         if registration.ensure_scheduled().is_err() {
-            ic_platform::cdk::api::trap("size-probe duplicate recurring ensure failed");
+            ic_platform_runtime::cdk::api::trap("size-probe duplicate recurring ensure failed");
         }
         false
     })
@@ -354,10 +358,10 @@ fn cancel_inner() -> bool {
             return false;
         };
         let was_scheduled = registration.has_armed_wakeup().unwrap_or_else(|_| {
-            ic_platform::cdk::api::trap("size-probe wakeup observation failed")
+            ic_platform_runtime::cdk::api::trap("size-probe wakeup observation failed")
         });
         if registration.cancel().is_err() {
-            ic_platform::cdk::api::trap("size-probe cancellation failed");
+            ic_platform_runtime::cdk::api::trap("size-probe cancellation failed");
         }
         was_scheduled
     })
@@ -376,12 +380,12 @@ fn registration_present() -> bool {
 #[cfg(any(feature = "after-completion", feature = "watchdog"))]
 fn cadence() -> TimerCadence {
     TimerCadence::from_nanos(CADENCE_NS)
-        .unwrap_or_else(|_| ic_platform::cdk::api::trap("size-probe cadence is invalid"))
+        .unwrap_or_else(|_| ic_platform_runtime::cdk::api::trap("size-probe cadence is invalid"))
 }
 
 fn cohort_identity() -> TimerIdentity {
     TimerIdentity::try_new("ic-timers", "size-probe", cohort_name())
-        .unwrap_or_else(|_| ic_platform::cdk::api::trap("size-probe identity is invalid"))
+        .unwrap_or_else(|_| ic_platform_runtime::cdk::api::trap("size-probe identity is invalid"))
 }
 
 #[cfg(feature = "baseline")]

@@ -49,7 +49,7 @@ fn install(index: usize, counter: usize) -> OnceRegistration {
     .expect("batch registration")
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartDispatchBatch as u64 }>",
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::StartDispatchBatch as u64 }>"
@@ -64,7 +64,7 @@ fn start_dispatch_batch() {
     });
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ChangePendingDispatchBatch as u64 }>",
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::ChangePendingDispatchBatch as u64 }>"
@@ -85,7 +85,7 @@ fn change_pending_dispatch_batch() {
     });
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::RearmCancelledDispatchBatchTimer as u64 }>",
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::RearmCancelledDispatchBatchTimer as u64 }>"
@@ -100,7 +100,7 @@ fn rearm_cancelled_dispatch_batch_timer() {
     });
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ReleaseDispatchBatch as u64 }>",
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::ReleaseDispatchBatch as u64 }>"
@@ -109,7 +109,7 @@ fn release_dispatch_batch() {
     RELEASED.set(true);
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::DispatchBatchGate as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::DispatchBatchGate as u64 }>"
@@ -118,7 +118,7 @@ fn dispatch_batch_gate() -> bool {
     RELEASED.get()
 }
 
-#[ic_platform::cdk::query(
+#[ic_platform_runtime::cdk::query(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::DispatchBatchObservation as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::DispatchBatchObservation as u64 }>"

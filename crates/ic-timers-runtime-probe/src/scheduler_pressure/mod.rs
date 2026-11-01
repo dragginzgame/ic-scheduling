@@ -20,7 +20,7 @@ thread_local! {
     static COMPLETED: Cell<u64> = const { Cell::new(0) };
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartSchedulerPressure as u64 }>",
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::StartSchedulerPressure as u64 }>"
@@ -32,7 +32,12 @@ fn start_scheduler_pressure(successor: bool) {
             .unwrap()
             .next_deadline_ns()
             .unwrap();
-        Duration::from_nanos(deadline.checked_sub(ic_platform::ic0::time()).unwrap() - 1)
+        Duration::from_nanos(
+            deadline
+                .checked_sub(ic_platform_runtime::ic0::time())
+                .unwrap()
+                - 1,
+        )
     } else {
         Duration::from_secs(1)
     };
@@ -47,8 +52,9 @@ fn start_scheduler_pressure(successor: bool) {
                         initial: Some(TimerSchedule::After(delay)),
                     },
                     |_| async {
-                        let end = ic_platform::ic0::performance_counter(0) + PRESSURE_INSTRUCTIONS;
-                        while ic_platform::ic0::performance_counter(0) < end {
+                        let end = ic_platform_runtime::ic0::performance_counter(0)
+                            + PRESSURE_INSTRUCTIONS;
+                        while ic_platform_runtime::ic0::performance_counter(0) < end {
                             std::hint::black_box(());
                         }
                         COMPLETED.set(COMPLETED.get() + 1);
@@ -64,7 +70,7 @@ fn start_scheduler_pressure(successor: bool) {
     }
 }
 
-#[ic_platform::cdk::query(
+#[ic_platform_runtime::cdk::query(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::SchedulerPressureCompleted as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::SchedulerPressureCompleted as u64 }>"
@@ -73,7 +79,7 @@ fn scheduler_pressure_completed() -> u64 {
     COMPLETED.get()
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ReconcileSchedulerPressure as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::ReconcileSchedulerPressure as u64 }>"

@@ -17,7 +17,7 @@ links = "ic-timers-global-timer"
 
 [dependencies]
 ic-metrics.workspace = true
-ic-platform = { workspace = true, features = ["executor", "ic0"] }
+ic-platform-runtime = { workspace = true, features = ["executor", "ic0"] }
 thiserror.workspace = true
 
 [lints.rust]

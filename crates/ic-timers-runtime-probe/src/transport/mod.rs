@@ -8,7 +8,7 @@ thread_local! {
     static ENABLED: Cell<bool> = const { Cell::new(true) };
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::PressureAndStart as u64 }>",
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::PressureAndStart as u64 }>"
@@ -25,9 +25,9 @@ pub(super) fn start_pressure() {
 }
 
 fn send_pressure() {
-    ic_platform::cdk::futures::spawn(async {
-        match ic_platform::cdk::call::Call::unbounded_wait(
-            ic_platform::cdk::api::canister_self(),
+    ic_platform_runtime::cdk::futures::spawn(async {
+        match ic_platform_runtime::cdk::call::Call::unbounded_wait(
+            ic_platform_runtime::cdk::api::canister_self(),
             "pressure_reply",
         )
         .take_raw_args(
@@ -46,17 +46,17 @@ fn send_pressure() {
                     send_pressure();
                 }
             }
-            Err(ic_platform::cdk::call::CallFailed::CallPerformFailed(_)) => {
+            Err(ic_platform_runtime::cdk::call::CallFailed::CallPerformFailed(_)) => {
                 SUBMISSION_FAILURES.set(SUBMISSION_FAILURES.get() + 1);
             }
             Err(error) => {
-                ic_platform::cdk::api::trap(format!("unexpected pressure error: {error}"))
+                ic_platform_runtime::cdk::api::trap(format!("unexpected pressure error: {error}"))
             }
         }
     });
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ReleasePressure as u64 }>",
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::ReleasePressure as u64 }>"
@@ -65,14 +65,14 @@ fn release_pressure() {
     ENABLED.set(false);
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::PressureReply as u64 }>",
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::PressureReply as u64 }>"
 )]
 fn pressure_reply() {}
 
-#[ic_platform::cdk::query(
+#[ic_platform_runtime::cdk::query(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::PressureObservation as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::PressureObservation as u64 }>"

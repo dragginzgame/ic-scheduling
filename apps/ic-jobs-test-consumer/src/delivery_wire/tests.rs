@@ -1,6 +1,6 @@
 use super::*;
 use crate::api::{Delivery, DeliveryPayload};
-use ic_platform::Principal;
+use ic_platform_runtime::Principal;
 use ic_wire::native;
 
 fn delivery() -> Delivery {

@@ -37,3 +37,13 @@ This file is the local overlay. Read [the current handoff](docs/status/current.m
   `dragginzgame/ic-scheduling`; configuring tooling does not authorize releases or
   publication. Direct release delivery uses `origin`/`main`; `make publish` is
   a separate, explicitly authorized crates.io upload.
+
+## Independent Runtime adoption (#131)
+
+The pending Timers group selects `ic-platform-runtime` 0.17 directly; its probes
+use Runtime's CDK entrypoints. Crypto/Candid clients retain the separate Platform
+facade. No second executor is admitted. Runtime/macros/exact guard must publish
+before this adapter, followed by matching Wire Endpoint adoption in applications.
+The isolated source/archive proof uses harness-root supplier patches; the registry
+lock and registry-only admission wait for publication. Do not publish or merge
+this draft with an unreconciled supplier lock.

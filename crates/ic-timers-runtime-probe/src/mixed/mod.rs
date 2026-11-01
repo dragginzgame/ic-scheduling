@@ -35,12 +35,12 @@ fn record_callback(
     callbacks.with(|count| count.set(count.get().saturating_add(1)));
     times.with_borrow_mut(|observed| {
         if observed.len() < MAX_RECORDED_CALLBACKS {
-            observed.push(ic_platform::cdk::api::time());
+            observed.push(ic_platform_runtime::cdk::api::time());
         }
     });
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeStart as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeStart as u64 }>"
@@ -50,7 +50,7 @@ fn startup_timer_probe_start() -> bool {
         return false;
     }
     if initialize_runtime().is_err() {
-        ic_platform::cdk::api::trap("startup timer probe runtime initialization failed");
+        ic_platform_runtime::cdk::api::trap("startup timer probe runtime initialization failed");
     }
     let cadence = timer_cadence();
 
@@ -60,10 +60,10 @@ fn startup_timer_probe_start() -> bool {
             watchdog_identity(),
             WATCHDOG_INTERVAL_NANOS,
             |_context| {
-                let now = ic_platform::cdk::api::time();
+                let now = ic_platform_runtime::cdk::api::time();
                 let should_trap = super::watchdog::in_window(TRAP_WINDOW.get(), now);
                 if should_trap {
-                    ic_platform::cdk::api::trap("startup watchdog trap probe");
+                    ic_platform_runtime::cdk::api::trap("startup watchdog trap probe");
                 }
                 let should_exhaust = super::watchdog::in_window(EXHAUST_WINDOW.get(), now);
                 if should_exhaust {
@@ -89,13 +89,13 @@ fn startup_timer_probe_start() -> bool {
             )
         },
     ) else {
-        ic_platform::cdk::api::trap("application timer registration failed");
+        ic_platform_runtime::cdk::api::trap("application timer registration failed");
     };
     APPLICATION_TIMER.with_borrow_mut(|slot| *slot = Some(application));
     true
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeStop as u64 }>",
     encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::StartupTimerProbeStop as u64 }>"
@@ -105,25 +105,25 @@ fn startup_timer_probe_stop() {
         if let Some(registration) = slot.take()
             && registration.unregister().is_err()
         {
-            ic_platform::cdk::api::trap("startup watchdog removal failed");
+            ic_platform_runtime::cdk::api::trap("startup watchdog removal failed");
         }
     });
     APPLICATION_TIMER.with_borrow_mut(|slot| {
         if let Some(registration) = slot.take()
             && registration.unregister().is_err()
         {
-            ic_platform::cdk::api::trap("application timer removal failed");
+            ic_platform_runtime::cdk::api::trap("application timer removal failed");
         }
     });
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeArmTrap as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeArmTrap as u64 }>"
 )]
 fn startup_timer_probe_arm_trap() -> u64 {
-    let trap_at = ic_platform::cdk::api::time().saturating_add(WATCHDOG_INTERVAL_NANOS);
+    let trap_at = ic_platform_runtime::cdk::api::time().saturating_add(WATCHDOG_INTERVAL_NANOS);
     TRAP_WINDOW.with(|slot| {
         slot.set(Some((
             trap_at,
@@ -133,13 +133,13 @@ fn startup_timer_probe_arm_trap() -> u64 {
     trap_at
 }
 
-#[ic_platform::cdk::update(
+#[ic_platform_runtime::cdk::update(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeArmExhaustion as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeArmExhaustion as u64 }>"
 )]
 fn startup_timer_probe_arm_exhaustion() -> u64 {
-    let exhaust_at = ic_platform::cdk::api::time().saturating_add(WATCHDOG_INTERVAL_NANOS);
+    let exhaust_at = ic_platform_runtime::cdk::api::time().saturating_add(WATCHDOG_INTERVAL_NANOS);
     EXHAUST_WINDOW.with(|slot| {
         slot.set(Some((
             exhaust_at,
@@ -149,7 +149,7 @@ fn startup_timer_probe_arm_exhaustion() -> u64 {
     exhaust_at
 }
 
-#[ic_platform::cdk::query(
+#[ic_platform_runtime::cdk::query(
     guard = "crate::codec::admit_request",
     decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeSnapshot as u64 }>",
     encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeSnapshot as u64 }>"
@@ -170,21 +170,21 @@ fn startup_timer_probe_snapshot() -> TimerProbeSnapshot {
 fn timer_cadence() -> TimerCadence {
     match TimerCadence::new(WATCHDOG_INTERVAL) {
         Ok(cadence) => cadence,
-        Err(_) => ic_platform::cdk::api::trap("startup timer probe cadence is invalid"),
+        Err(_) => ic_platform_runtime::cdk::api::trap("startup timer probe cadence is invalid"),
     }
 }
 
 fn watchdog_identity() -> TimerIdentity {
     match TimerIdentity::try_new("icydb", "startup-probe", "watchdog") {
         Ok(identity) => identity,
-        Err(_) => ic_platform::cdk::api::trap("startup watchdog identity is invalid"),
+        Err(_) => ic_platform_runtime::cdk::api::trap("startup watchdog identity is invalid"),
     }
 }
 
 fn application_identity() -> TimerIdentity {
     match TimerIdentity::try_new("icydb", "startup-probe", "application") {
         Ok(identity) => identity,
-        Err(_) => ic_platform::cdk::api::trap("application timer identity is invalid"),
+        Err(_) => ic_platform_runtime::cdk::api::trap("application timer identity is invalid"),
     }
 }
 
