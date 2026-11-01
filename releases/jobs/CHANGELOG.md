@@ -39,6 +39,8 @@ and [coordinated history through 0.33.1](../history.md).
 
 ### 🩹 Fixed
 
+- Isolate readiness-fixture group and commit inputs from the invoking release,
+  so group-scoped release gates still exercise both groups' observations.
 - Retain timer qualification directories and the final cohort report in hosted
   recovery artifacts, including failure outcomes. Exercise the actual upload
   selection against original Wasm, runtime receipts and server diagnostics.

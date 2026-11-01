@@ -27,6 +27,8 @@ entry alone does not establish publication.
 
 ### 🩹 Fixed
 
+- Isolate readiness-fixture group and commit inputs from the invoking release,
+  so group-scoped release gates still exercise both groups' observations.
 - Include timer runtime diagnostics and the final cohort receipt in hosted
   recovery artifacts; verify the actual workflow's upload paths.
 

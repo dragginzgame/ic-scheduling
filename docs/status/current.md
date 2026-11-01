@@ -1,6 +1,24 @@
 # Current handoff
 
-## Active batch
+## Timers delivery — 2026-11-01
+
+The user requested deploying the latest Timers, delegating the standard Timers-only
+Git release and crates.io publication workflow. The selected compatible candidate
+is 0.35.1 from published 0.35.0; Jobs remains 0.33.2. Work runs in the clean isolated
+checkout `/tmp/ic-scheduling-timers0351.7OO3LK/source`, preserving the normal
+checkout's unrelated working Cargo.lock. The public destination stays origin/main.
+
+The first complete release gate stopped at `test-release-status`: the fixture
+inherited the caller's RELEASE_GROUP and expected observations for both groups.
+The fixture now explicitly owns its group and selected-commit inputs. Its focused
+regression includes inherited timers/commit values. No release preparation, version
+transaction, tag or push occurred in the failed attempt. The corrected source must
+pass the standard complete gate, live Timers watchdog and policy cohorts before
+release delivery; publication remains a separate command after tag admission.
+Source, failed logs and fresh qualification custody are retained outside target
+under `/tmp/ic-scheduling-timers0351.7OO3LK/` and its source Git release-state.
+
+## Prior improvements
 
 The user authorized three improvements: repair recovery artifact custody, add a
 read-only release-readiness command and qualify a concrete Canic-owned Jobs queue.
