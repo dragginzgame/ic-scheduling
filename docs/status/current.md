@@ -69,10 +69,22 @@ contract; Git, retained preparation archives and locks preserve their original b
 
 `incoming-source.tar`, `incoming-manifest.json` and `incoming.diff` preserve the
 initial dirty checkout. The synchronization result is recorded in
-`checkout-sync-receipt.json`; any retained Git stash is a backup of an already
-incorporated batch and must not be replayed over delivered source. Development
+`checkout-sync-receipt.json`; the retained Git stash backs up the incorporated
+batch and concurrent edits; do not replay it over the synchronized checkout. Development
 proof remains `/tmp/ic-scheduling-complexity-rest.7bSQcO3E/` and
 `/tmp/ic-scheduling-simplification.ut9fdf13/`; it does not replace release receipts.
+
+## Concurrent local work
+
+The original checkout received later lockfile updates while release qualification
+was running: Build/Host 0.73.5, Memory/Storage 0.60.7 and Testkit/Native 0.76.1.
+They were outside the admitted release source. Exactly those eight registry
+version/checksum updates are preserved as uncommitted Cargo.lock edits on top of
+the released group versions. They have not been qualified or published in this
+batch. `concurrent-Cargo.lock`, `concurrent-lock-changes.json` and the rebased lock
+in the delivery evidence retain their custody; the sync receipt records the
+resulting dirty lockfile and backup stash. Keep this later work for its own
+qualification rather than treating the published release receipts as its proof.
 
 ## Retained boundaries and older delivery
 

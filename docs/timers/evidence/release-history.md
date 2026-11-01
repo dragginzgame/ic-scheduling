@@ -4414,3 +4414,8 @@ Jobs SHA-256 `0285cc4debb0076968538599e96224febea2382b75fe2ed3454c8fd96b69596a`.
 original qualification artifacts and registry/publication receipts remain under
 `/tmp/ic-scheduling-complexity-delivery.y314l_zn/`. The
 [current handoff](../../status/current.md) records custody and ongoing boundaries.
+
+Later concurrent lockfile edits in the original checkout select Build/Host
+0.73.5, Memory/Storage 0.60.7 and Testkit/Native 0.76.1. They are preserved locally,
+uncommitted and outside these published source/graph receipts. The incoming and
+rebased lockfiles are retained separately in the same delivery evidence.
