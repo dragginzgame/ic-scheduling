@@ -292,6 +292,15 @@ resume and publication. There is no default release group or shared root version
 The [group policy](ci/cargo-release-groups.json) covers all nine members.
 See the [Jobs ledger](releases/jobs/CHANGELOG.md), [Timers ledger](releases/timers/CHANGELOG.md)
 and [shared history through 0.33.1](releases/history.md).
+
+`make release-status` observes both groups' current, latest published and proposed
+versions, exact-commit CI, release tags and uncommitted/locked inputs. Use
+`RELEASE_GROUP=jobs` or `timers` to narrow it, `STATUS_OFFLINE=1` for local-only
+observations and `STATUS_JSON=1` for structured output. It installs nothing and
+changes no source, refs, registry or release state. Unavailable network/cache
+observations remain unknown or blocked; a failed working-graph admission is
+explicitly marked when versions are projected from committed HEAD instead.
+The standard release/publication commands retain their independent full admission.
 `make version` inventories both groups; add `RELEASE_GROUP` to inspect one.
 `make RELEASE_GROUP=jobs package` verifies its crate
 archive offline; `make publish-check` performs a publication dry run with registry

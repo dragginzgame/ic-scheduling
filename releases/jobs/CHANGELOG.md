@@ -21,6 +21,9 @@ and [coordinated history through 0.33.1](../history.md).
 
 ### 🔧 Changed
 
+- Add `make release-status` to observe group versions, publication, tags, CI and
+  blocked inputs without executing a release. Offline and JSON views preserve
+  unknown observations and distinguish committed metadata from an unprepared graph.
 - Adopt Shared Tooling 0.27.23 and its group-catalog rules. The root Cargo catalog shows
   all nine members in Jobs/Timers blocks with their changelog paths; release and
   dependency checks admit each full version, local path and owning alias roster,
@@ -30,6 +33,12 @@ and [coordinated history through 0.33.1](../history.md).
   retaining stable checks on all three hosts. Code, tooling, policy and unknown
   changes keep full native CI; failed classification cannot pass validation.
   [#83 — Adopt conservative documentation-only CI selection](https://github.com/dragginzgame/ic-scheduling/issues/83).
+
+### 🩹 Fixed
+
+- Retain timer qualification directories and the final cohort report in hosted
+  recovery artifacts, including failure outcomes. Exercise the actual upload
+  selection against original Wasm, runtime receipts and server diagnostics.
 
 ## [0.33.2] - 2026-10-31
 

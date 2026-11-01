@@ -91,6 +91,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/jobs-recovery"
           printf 'live-outcome=%s\n' "$LIVE_OUTCOME" > "$RUNNER_TEMP/jobs-recovery/outcome.txt"
       - name: Retain recovery evidence on every outcome
+        id: recovery-evidence
         if: ${{ always() && steps.checkout.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -98,7 +99,8 @@ jobs:
           path: |
             ${{ runner.temp }}/jobs-recovery/
             ${{ runner.temp }}/jobs-recovery.*/
-            ${{ runner.temp }}/timer-qualification.*/
+            ${{ runner.temp }}/timer-qualification-*/
+            ${{ github.workspace }}/target/timer-cohorts.json
             ${{ runner.temp }}/tools-*.log
           retention-days: 14
           if-no-files-found: error

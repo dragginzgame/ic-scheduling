@@ -453,7 +453,7 @@ done
 cp "$root/scripts/ci/"{run-validation-targets,check-format-tools}.sh "$fixture/scripts/ci/"
 cp "$root/scripts/ci/classify-ci-change.pl" "$fixture/scripts/ci/"
 mkdir -p "$fixture/.github/workflows"
-cp "$root/.github/workflows/ci.yml" "$fixture/.github/workflows/"
+cp "$root/.github/workflows/"{ci,recovery}.yml "$fixture/.github/workflows/"
 cat > "$fixture/scripts/ci/verify-shared-tooling-snapshot.sh" <<'VERIFY'
 #!/usr/bin/env bash
 exit 0

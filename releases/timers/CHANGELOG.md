@@ -18,10 +18,17 @@ entry alone does not establish publication.
 
 ### 🔧 Changed
 
+- Add read-only group release readiness through `make release-status`, including
+  published/proposed versions, tags, exact-commit CI and uncertain observations.
 - Adopt Shared Tooling 0.27.23 and conservative documentation-only CI selection.
   Preserve all three stable host checks, full code/release gates and explicit
   group versions; no canonical `VERSION` file is introduced.
   [#83 — Adopt conservative documentation-only CI selection](https://github.com/dragginzgame/ic-scheduling/issues/83).
+
+### 🩹 Fixed
+
+- Include timer runtime diagnostics and the final cohort receipt in hosted
+  recovery artifacts; verify the actual workflow's upload paths.
 
 ## [0.35.0] - 2026-10-31
 

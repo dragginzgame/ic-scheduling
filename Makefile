@@ -30,7 +30,7 @@ RELEASE_METADATA_TOOL = bash scripts/dev/install-rust-tools.sh --package ic-buil
 VALIDATION_INPUTS := --input Cargo.toml --input Cargo.lock --input rust-toolchain.toml \
 	--input .shared-tooling.snapshot --input Makefile --input scripts/dev/testkit-tool.sh --input scripts/dev/queue-command.sh --input scripts/dev/minimum-rust.sh --input ci/tool-versions.env \
 	--input ci/ic-tools.tsv --input ci/release-delivery.txt --input ci/cargo-dependency-boundaries.json --input ci/cargo-release-groups.json \
-	--input .github/workflows/ci.yml --input ci/docs-only-paths.txt --input scripts/ci/classify-ci-change.pl \
+	--input .github/workflows/ci.yml --input .github/workflows/recovery.yml --input ci/docs-only-paths.txt --input scripts/ci/classify-ci-change.pl \
 	$(foreach manifest,$(wildcard crates/*/Cargo.toml apps/*/Cargo.toml),--input $(manifest))
 
 .PHONY: help version install-hooks check test-jobs test-consumers check-msrv check-wasm clippy docs-check check-doc-links shared-tooling-check check-pins check-release-commands test-release-tooling test-formatting-evidence package publish-check publish ci
@@ -44,6 +44,7 @@ help:
 	@echo "Explicit IC qualification: install-testkit-tools; install-consumer-server; test-canister[-optimized]"
 	@echo "Local canister queue: demo (interactive); test-demo (live scenario); test-demo-cli (process shutdown)"
 	@echo "Metadata: shared-tooling-check, check-doc-links, check-pins, check-dependency-boundaries, check-dependency-graphs, check-release-commands"
+	@echo "Read-only readiness: release-status (STATUS_OFFLINE=1, STATUS_JSON=1; optional RELEASE_GROUP)"
 	@echo "Tooling fixtures: version, test-release-tooling, test-formatting-evidence, test-consumer-tooling"
 	@echo "Release fixture groups: test-release-tooling-{retention,delivery,recovery,metadata,publication}"
 	@echo "Hook qualification: formatting-hook-check (disposable Git copies; prepared formatters required)"
@@ -222,6 +223,14 @@ test-consumer-tooling: build-recovery-tools
 test-ci-change-selection: host-tools-check
 	+bash scripts/ci/test-ci-change-selection.sh
 
+.PHONY: test-recovery-evidence
+test-recovery-evidence: host-tools-check
+	+bash scripts/ci/test-recovery-evidence.sh
+
+.PHONY: test-release-status
+test-release-status: host-tools-check
+	+bash scripts/ci/test-release-status.sh
+
 .PHONY: formatting-hook-check
 formatting-hook-check: format-tools-check
 	+bash scripts/ci/check-jobs-formatting.sh
@@ -246,7 +255,7 @@ validation-tools-check: tools-check format-tools-check
 ci: shared-tooling-check
 	+bash scripts/ci/run-validation-targets.sh --fail-fast $(VALIDATION_INPUTS) \
 		validation-tools-check check-release-groups clippy check-timer-provider check-timer-dependencies check-timer-probes check-doc-links check-pins check-dependency-boundaries check-dependency-graphs check-release-commands \
-		test-release-tooling test-formatting-evidence test-consumer-tooling test-ci-change-selection test-timers test-timer-dependencies \
+		test-release-tooling test-formatting-evidence test-consumer-tooling test-ci-change-selection test-recovery-evidence test-release-status test-timers test-timer-dependencies \
 		formatting-hook-check fmt-check check test-jobs test-consumers \
 		check-consumer check-msrv check-wasm docs-check package-all
 
@@ -254,6 +263,12 @@ ci: shared-tooling-check
 version:
 	+@if test -n "$${RELEASE_GROUP:-}"; then bash scripts/release/group.sh version; else \
 		for group in jobs timers; do printf '%s: ' "$$group"; RELEASE_GROUP="$$group" bash scripts/release/group.sh version || exit; done; fi
+
+.PHONY: release-status
+export STATUS_OFFLINE ?= 0
+export STATUS_JSON ?= 0
+release-status:
+	+@perl scripts/release/status.pl
 
 release-version:
 	@bash scripts/release/metadata.sh version
