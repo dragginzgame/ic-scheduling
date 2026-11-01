@@ -10,9 +10,9 @@ Canic source is committed and pushed at
 branch `codex/jobs-application-qualification`, from delivered Canic 0.114.0 at
 `e753785953e6805461ac337868c32163f65c3209`. The isolated clone is
 `/tmp/ic-scheduling-improvements.VvCLTy/canic/`; normal sibling checkouts stay read-only.
-Automatic approval review rejected Canic PR creation because it interpreted this
-workspace's sibling-read-only rule as prohibiting that external write. Explicit
-user approval for the prepared review request is pending; do not bypass rejection.
+The user explicitly approved opening the prepared Canic review request after the
+initial automatic-review refusal. [Canic PR #722](https://github.com/dragginzgame/canic/pull/722)
+is open against main at that exact source. Merge authority is not selected.
 No new own version, tag, release or package upload is selected.
 
 Unrelated supplier updates are arriving in the working Cargo.lock. Leave them
