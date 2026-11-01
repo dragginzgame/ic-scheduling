@@ -515,7 +515,7 @@ MIT
 
 ### Independent Runtime adoption
 
-The pending Timers 0.36 release selects Runtime 0.17.1 directly for IC0 and
+Timers 0.36 selects Runtime 0.17.1 directly for IC0 and
 execution. Canisters select its CDK entrypoints and canonical Types 0.16. Native
 clients use Platform 0.17 and Testkit/Native 0.78, sharing the owned PocketIC client
 and Wire 0.14 limits.

@@ -1,5 +1,48 @@
 # Current handoff
 
+## Delivered Jobs 0.33.5 and Timers 0.36.0 — 2026-11-01
+
+Both Scheduling groups are pushed to `origin/main` with annotated group tags
+and published, non-yanked crates.io versions. Independent downloads match the
+registry checksums and exact release source commits:
+
+| Group | Version | Release commit | Tag |
+| --- | --- | --- | --- |
+| Timers | 0.36.0 | `b5b9248e2e65c295bb84f4b1765cb6db340d5920` | `timers-v0.36.0` |
+| Jobs | 0.33.5 | `6f88451246742db01139fa5ab768abb557d0b533` | `jobs-v0.33.5` |
+
+The adoption source is `b666733c983c50c1d8a27b0efca4a9ab29320533`.
+Timers ran full CI (322 seconds) plus 35 live watchdog cases and the installed
+cohort comparison before release preparation. Jobs then ran the complete gate
+against the Timers 0.36 graph: CI (312 seconds), the same 35 watchdog cases and
+cohort comparison all passed. These are local Linux results; the release gate
+compiles the Jobs recovery harness, and no fresh live Jobs recovery or native
+macOS matrix is claimed here.
+
+Jobs' first attempt committed its correct release but lost a temporary admission
+directory during the post-commit check. Other `/tmp` files, including the initial
+deployment log directory, also disappeared. Its canonical Git journal and
+validated/prepared receipts remained intact. Recovery used `release-resume` for
+that same 0.33.5 commit with workspace-owned `TMPDIR`, then pushed its exact tag
+and published once. No version increment was replayed and no history/tag was
+rewritten. Original raw success logs are unavailable; the source-bound receipts
+and observed command summaries record the completed gates.
+
+To retain complete installed evidence durably, the final release graph at
+`6f88451246742db01139fa5ab768abb557d0b533` ran the 35 watchdog cases and cohort
+comparison again, successfully, under `target/release-scratch`. The full fresh
+runtime log, receipts/server diagnostics, registry archives/records, source and
+lock snapshots, remote tag observations and `delivery-receipt.json` are retained
+under `.git/release-state/deployment-wire-tooling.w6Z6gClk/`. Canonical release
+journals remain `timers-0.36.0.plan` and `jobs-0.33.5.plan` in that same state
+parent. Keep these completed effects; do not rerun an increment or upload.
+
+Memory/Storage 0.62, Metrics 0.25, Platform 0.17, Runtime 0.17.1, Types 0.16,
+Testkit 0.78, Wire 0.14.1, Endpoint 0.4 and Shared Tooling 0.27.26 are included.
+Only this Scheduling repository and its two published libraries were delivered;
+upstream delivery remains user-owned. Both group ledgers are finalized. The
+older adoption/qualification entries below are historical.
+
 ## Published upstream cohort adopted — 2026-11-01
 
 The working catalog and registry lock now select Memory/Storage 0.62.0,
