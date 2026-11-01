@@ -4393,3 +4393,24 @@ regression roster; the focused actual-workflow fixture remains in that roster,
 owned by PR/main and the complete release gate. Existing tool setup and failure
 collection/upload remain unchanged. Main reachability and tag success do not
 prove completion of the independent native/full source qualification.
+
+
+## Complexity batch delivery — 2026-11-01
+
+The ten-item complexity batch from preparation source
+`54028ab5a7e41539348b0975e7a27573026a13ab` is delivered as Timers 0.35.4 and
+Jobs 0.33.4. Their annotated tags identify `14917d09e7a55c16eda1b7d739f8213ac9d4209e`
+and `96f2d94e5af16ffb31c270d6b94a400caf917423` respectively. Timers was published first;
+Jobs followed against that supplier version. Both canonical ledgers are finalized.
+
+Both standard full release gates passed, including combined CI and the installed
+35-subject timer/runtime and policy-cohort gates. Final Jobs recovery passed all
+11 subjects on original, O3, Os and Oz Wasm. This is Linux x86_64 evidence;
+hosted native macOS qualification remains an independent asynchronous observation.
+
+Registry downloads match retained Cargo uploads and their embedded release VCS
+identities: Timers SHA-256 `ed9bf73e5cab8dff71c5b0b922cd61e587aa7212993e7c71929d8c060f61bf27`;
+Jobs SHA-256 `0285cc4debb0076968538599e96224febea2382b75fe2ed3454c8fd96b69596a`. Complete journals, preparation source/locks,
+original qualification artifacts and registry/publication receipts remain under
+`/tmp/ic-scheduling-complexity-delivery.y314l_zn/`. The
+[current handoff](../../status/current.md) records custody and ongoing boundaries.

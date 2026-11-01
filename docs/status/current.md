@@ -1,101 +1,92 @@
 # Current handoff
 
-## Complexity review implemented — 2026-11-01
+## Complexity batch delivered — 2026-11-01
 
-All ten recommendations are implemented in two local batches on base
-`af71b4b903f3cdc231afad5a56857f3c3692c9da`. The first batch covered 1, 4 and 9;
-the continuation covers 2, 3, 5, 6, 7, 8 and 10. The user has now authorized
-release and crates.io publication of both groups: Timers 0.35.4 first, then
-Jobs 0.33.4, through their standard full gates. Preparation has not yet changed
-Cargo versions or the lock. Delivery uses an isolated checkout at
-`/tmp/ic-scheduling-complexity-delivery.y314l_zn/source/`; the incoming working
-source and its custody manifest are retained in that parent evidence directory.
+All ten reviewed complexity improvements are delivered on origin/main. Both
+canonical group ledgers are finalized and both crates are published:
+[IC Timers 0.35.4](https://crates.io/crates/ic-timers/0.35.4) and
+[IC Jobs 0.33.4](https://crates.io/crates/ic-jobs/0.33.4). No pending release remains
+from this batch. Do not repeat uploads, rewrite tags or replay completed effects.
+No sibling repository or Canic integration was changed.
 
-Ordinary completion now distinguishes scheduling, stopping and cancellation.
-Watchdog requests resolve one schedule before mutation, retaining lazy cadence
-overflow checks for coalesced/awaiting requests. Provider bindings explicitly
-stage or commit arm observations. Pending-command priority, inactive reasons,
-abandoned-scheduler repair, checked failures and capture cleanup are preserved.
+The batch names ordinary completion outcomes and provider binding phases,
+resolves watchdog schedules before mutation, unifies cohort selection and typed
+measurements, admits whole build identity and names byte-compatible checkpoint
+fields. It separates installed subjects from host-only utility tests and isolates
+release-fixture phases. Jobs uses typed Wire RPC attributes with explicit IDs,
+argument tuples and budgets. Oversized private requests now trap instead of
+returning the former guard rejection; state-preservation assertions remain.
+Published library APIs, queue formats, restoration and uncertain-effect policy
+remain intact. Cargo dependencies and the reviewed tooling snapshot are unchanged.
 
-One cohort catalog generates selection, typed measurement slots and strict JSON
-fields. Measurements are indexed by Cohort; report schema 2 and field names stay
-unchanged. A pending build-context builder admits the first whole successful
-identity and rejects mismatches without partial updates. Only a complete context
-can become a receipt. The named probe checkpoint retains the original tuple's
-field order/bytes and lifecycle-owned reconstruction.
+## Release identities and registry verification
 
-Release fixtures now have isolated metadata, interruption, recovery and
-publication phases with scoped inputs. Their modes and negative checks remain.
-The fixtures use disposable local Git remotes and substitute full gates/uploads;
-passing them is not an actual release, publication or full CI qualification.
+Preparation source is `54028ab5a7e41539348b0975e7a27573026a13ab`.
+Timers tag `timers-v0.35.4` identifies `14917d09e7a55c16eda1b7d739f8213ac9d4209e`;
+its annotated object is `aec700646fa316e7e7cf88c81b094f417d38cfaf`.
+Jobs tag `jobs-v0.33.4` identifies `96f2d94e5af16ffb31c270d6b94a400caf917423`;
+its annotated object is `9b1fdfe89c044a2ef6fc3d50ddb221e4ba223302`.
+Timers was released/published first, followed by Jobs against Timers 0.35.4.
+Each standard release atomically pushed main and its exact tag, followed by the
+separate authorized publication command. Fresh GitHub readback confirms both tags.
 
-The private Jobs canister uses typed Wire attributes with explicit IDs, original
-argument tuples and budgets; init retains its bounded lifecycle decoder.
-Oversized private RPCs now produce CanisterCalledTrap instead of the former
-guard rejection, with unchanged-state assertions. Installed runtime/cohort
-subjects live under `crates/ic-timers-pocketic/tests/runtime/`, separate from
-host-only utility tests. `make test-timer-tooling` starts no IC server. Watchdog
-receipts exclude utility subjects. Ordinary probe observations use one snapshot
-branch with explicit defaults. Published library APIs and stored queue formats remain intact.
+Fresh registry metadata confirms both versions are present and not yanked.
+Downloaded packages match the retained Cargo upload archives and embedded release
+VCS identity. Timers SHA-256 is `ed9bf73e5cab8dff71c5b0b922cd61e587aa7212993e7c71929d8c060f61bf27`;
+Jobs SHA-256 is `0285cc4debb0076968538599e96224febea2382b75fe2ed3454c8fd96b69596a`.
+Cargo retained uploads under `target/package/tmp-crate/` and `tmp-registry/`;
+verified independent copies are saved outside target in the delivery evidence.
 
-## Current validation and retained evidence
+## Qualification and custody
 
-Rust 1.91 native Clippy passes for the four changed Timers/tooling/probe packages;
-Wasm Clippy passes for Timers and the runtime probe. The Jobs consumer also builds
-on Rust 1.91/Wasm against this Timers source. All 144 focused native tests pass:
-44 registry, 86 runtime, 10 driver/report, one CLI and three protocol subjects.
-The protocol check proves named-checkpoint bytes match the prior tuple. Report
-checks retain missing/unknown/duplicate-field refusal and atomic identity admission.
-Provider and native/Wasm dependency checks, ShellCheck, formatting, documentation
-links and whitespace checks pass. The shortened watchdog request flow no longer
-needs its previous function-size lint exception.
+Both complete standard release gates passed: strict Clippy, full combined CI,
+Rust 1.91/native/Wasm, formatting, packaging, graph/tooling/recovery fixtures,
+all 35 installed timer runtime subjects and the policy-cohort gate. CI took
+378 seconds for Timers and 279 seconds for Jobs. Source-bound qualification is
+on the preparation commit and Timers release commit respectively; the standard
+metadata receipts bind each final versioned payload.
+Jobs' final installed recovery passes all 11 subjects on original, O3, Os and Oz
+Wasm, including rollback, restore refusal, lost-result intent and receipts.
+These are Linux x86_64 and installed IC observations. Hosted three-host CI runs
+asynchronously; this handoff does not claim completed native macOS qualification.
 
-Installed Linux x86_64 qualification passes seven selected Timers subjects,
-the cohort measurement/comparison subject and all 11 Jobs recovery subjects.
-These cover idle/cancellation, awaiting completion, immediate scheduling,
-abandoned-scheduler repair, inter-stage cancellation, provider churn and upgrade
-reconstruction, plus Jobs rollback/receipts/restore boundaries. The comparison
-uses the retained first-batch report with matching compiler/server/lock/recipe
-context. Once, AfterCompletion and Watchdog Wasms each decrease by 137 bytes;
-ordinary work and watchdog start/duplicate instruction costs increase slightly.
-Exact deltas remain in the comparison log; no general speed improvement is claimed.
-Both Jobs and Timers pass local metadata and recovery/publication fixture modes.
-Full CI, complete watchdog selection, optimized Jobs variants and macOS checks
-were not selected for this development batch.
+Delivery checkout/evidence: `/tmp/ic-scheduling-complexity-delivery.y314l_zn/`.
+Keep `source/` and its complete `.git/release-state/` journals. Per-group
+`*-release-evidence/` retains copied journals, final locks/source archives,
+runtime/cohort receipts, original Wasms/build stamps and server diagnostics.
+`preparation-source.tar`, `jobs-preparation-source.tar` and their matching locks
+retain the qualified inputs before each group's version preparation.
+Per-group `*-publication-receipt.json`, `*-registry-after/` and uploaded/downloaded
+`.crate` copies bind public payload identity. Publication was performed once
+per group; later verification only observed those completed effects.
 
-Continuation evidence: `/tmp/ic-scheduling-complexity-rest.7bSQcO3E/`. It retains
-the incoming first-batch source/diff, final working archive/diff and lock, logs,
-receipt-matched original Wasms/build stamps, baseline/current cohort reports and
-passing IC diagnostics. Original live evidence remains
-`/tmp/jobs-recovery.WQTGhi/`, `/tmp/timer-qualification-2607204-0/` and
-`/tmp/timer-qualification-2661835-0/`. Keep original artifacts instead of replacing
-them with later builds. The initial tool-selection/setup and lint failures are
-retained beside their successful retries. Managed metadata-tool setup required
-shared-store write access and then reused the locked tool cache successfully.
+`jobs-live-qualification/` retains all four original Jobs Wasm variants, capture
+records, optimizer identity and server/test logs. Original live evidence remains
+`/tmp/jobs-recovery.HPXjXO/`. Original timer qualification directories are recorded
+in each group's `identity.json` and remain alongside their copied diagnostics.
+The metadata transaction cleans successful scratch backups under its existing
+contract; Git, retained preparation archives and locks preserve their original bytes.
 
-First-batch evidence remains `/tmp/ic-scheduling-simplification.ut9fdf13/`,
-including its handoff in the incoming archive. Those older runtime artifacts do
-not qualify the later Timers changes. Successful release fixtures clean their
-disposable repositories under the existing fixture contract; their command logs
-remain in the continuation evidence. The separately authorized delivery now
-runs full gates and publication; inspect its saved journals before retrying an
-uncertain effect. Do not infer completion from the earlier focused checks.
+`incoming-source.tar`, `incoming-manifest.json` and `incoming.diff` preserve the
+initial dirty checkout. The synchronization result is recorded in
+`checkout-sync-receipt.json`; any retained Git stash is a backup of an already
+incorporated batch and must not be replayed over delivered source. Development
+proof remains `/tmp/ic-scheduling-complexity-rest.7bSQcO3E/` and
+`/tmp/ic-scheduling-simplification.ut9fdf13/`; it does not replace release receipts.
 
-## Completed delivery and boundaries
-
-Jobs 0.33.3 and Timers 0.35.3 are already published with finalized ledgers.
-Do not repeat uploads or rewrite those tags. Full delivery identities and custody
-remain in the
-[committed delivery handoff](https://github.com/dragginzgame/ic-scheduling/blob/af71b4b903f3cdc231afad5a56857f3c3692c9da/docs/status/current.md)
-and `/tmp/ic-scheduling-platform-delivery.e3mlrmqt/`, including its release journals.
-The graph and intact Shared 0.27.23 snapshot have not changed during cleanup.
+## Retained boundaries and older delivery
 
 Keep nine catalog/group members, explicit RELEASE_GROUP, origin/main direct
-release delivery and separate authorized upload. Jobs stays Serde-only and
-consumer-owned; every restore uses Job::restore and uncertain effects stay blocked.
-Preserve queue/payload/attempt custody. Logging stays heap-only at 32 KiB; Metrics
-reset does not clear logs or reuse IDs. Timers owns the sole private provider,
-confined FFI and matching Platform guard. Rust floor is 1.91; native execution
-alone never qualifies IC recovery. Sibling repositories stay read-only.
+delivery and separately authorized upload. Jobs remains Serde-only and consumer
+owned. All restores use Job::restore; Running/Uncertain effects stay blocked
+until exact evidence or owner disposition. Preserve queue, payload and attempt
+custody. Logging stays heap-only at 32 KiB; Metrics reset does not clear logs or
+reuse IDs. Timers retains the sole private provider, confined FFI and matching
+Platform guard. Rust floor is 1.91; native execution alone does not qualify IC
+recovery. The Shared 0.27.23 snapshot remains intact; siblings stay read-only.
+
+Earlier Platform 0.16 delivery custody remains
+`/tmp/ic-scheduling-platform-delivery.e3mlrmqt/` and the
+[committed prior handoff](https://github.com/dragginzgame/ic-scheduling/blob/af71b4b903f3cdc231afad5a56857f3c3692c9da/docs/status/current.md).
 Separate Canic [PR #722](https://github.com/dragginzgame/canic/pull/722), source
 `4759bec`, retains `/tmp/ic-scheduling-improvements.VvCLTy/`; no Canic delivery is selected.
