@@ -804,7 +804,7 @@ impl TimerRegistry {
             });
         }
         let Some(schedule) = schedule else {
-            return self.cancel(claim);
+            return self.reconcile_ordinary_inactive(claim);
         };
         self.request_ordinary(
             claim,
@@ -1049,6 +1049,41 @@ impl TimerRegistry {
             &mut self.entries,
             claim.identity(),
             transition,
+            remove,
+        ))
+    }
+
+    fn reconcile_ordinary_inactive(
+        &mut self,
+        claim: &RegistrationClaim,
+    ) -> Result<RegistryTransition, RegistryError> {
+        let entry = self.entry_mut(claim)?;
+        let EntryKind::Ordinary { control, .. } = &mut entry.kind else {
+            return Err(RegistryError::PolicyMismatch {
+                actual: entry.kind.policy().label(),
+            });
+        };
+        let effect = match &mut control.registration {
+            TimerRegistration::Inactive { .. } => RegistryEffect::None,
+            TimerRegistration::Scheduled { .. } => {
+                control.terminate(InactiveReason::Stopped);
+                RegistryEffect::ClearCallbacks {
+                    handles: CallbacksToClear::Wakeup,
+                }
+            }
+            TimerRegistration::Running { pending } => {
+                if !matches!(*pending, Some(OrdinaryPending::Unregister)) {
+                    *pending = Some(OrdinaryPending::ReconcileInactive);
+                }
+                RegistryEffect::None
+            }
+        };
+        let remove = matches!(control.registration, TimerRegistration::Inactive { .. })
+            && matches!(entry.lifetime, DeclarationLifetime::RemoveWhenStopped);
+        Ok(remove_after(
+            &mut self.entries,
+            claim.identity(),
+            RegistryTransition::normal(effect),
             remove,
         ))
     }
@@ -1894,6 +1929,7 @@ fn prepare_ordinary_completion(
     cadence: Option<TimerCadence>,
 ) -> Result<(Option<ResolvedSchedule>, TimerDirectiveSnapshot, bool), TimerControlFailure> {
     match pending {
+        Some(OrdinaryPending::ReconcileInactive) => Ok((None, TimerDirectiveSnapshot::Stop, false)),
         Some(OrdinaryPending::Cancel | OrdinaryPending::Unregister) => {
             Ok((None, TimerDirectiveSnapshot::Stop, true))
         }

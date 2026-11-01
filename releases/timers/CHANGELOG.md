@@ -27,6 +27,13 @@ entry alone does not establish publication.
 
 ### 🩹 Fixed
 
+- Reconcile absent ordinary scheduling demand to idle while retaining custody
+  and observations. Keep explicit cancellation, running-work arbitration and
+  remove-on-stop lifetime semantics distinct. This supplies Canic's terminal
+  intent-cleanup boundary
+  ([#84](https://github.com/dragginzgame/ic-scheduling/issues/84),
+  [Canic #545](https://github.com/dragginzgame/canic/issues/545)).
+
 - Include timer runtime diagnostics and the final cohort receipt in hosted
   recovery artifacts; verify the actual workflow's upload paths.
 
