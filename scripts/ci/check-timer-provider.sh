@@ -33,8 +33,8 @@ find({ no_chdir => 1, wanted => sub {
 }}, $root);
 # Probe transport owns a Wire contract; reject accidental Candid defaults locally.
 for my $probe (qw(ic-timers-runtime-probe ic-timers-size-probe ic-timers-test-protocol ic-timers-pocketic)) {
-    my $probe_root = "crates/$probe/src";
-    next unless -d $probe_root; # Disposable provider fixtures may omit probes.
+    my @probe_roots = grep { -d $_ } map { "crates/$probe/$_" } qw(src tests);
+    next unless @probe_roots; # Disposable provider fixtures may omit probes.
     find({ no_chdir => 1, wanted => sub {
         return unless /\.rs$/ && -f $_;
         my $file = $_;
@@ -48,7 +48,7 @@ for my $probe (qw(ic-timers-runtime-probe ic-timers-size-probe ic-timers-test-pr
                 && $attributes =~ /guard\s*=\s*"crate::codec::admit_request"/
                 or die "probe entrypoints require admitted Wire hooks: $file\n";
         }
-    }}, $probe_root);
+    }}, @probe_roots);
 }
 
 PERL

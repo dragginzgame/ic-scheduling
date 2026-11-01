@@ -284,7 +284,7 @@ fn management_wire_refuses_retired_and_invalid_unit_requests() {
             vec![0; control::REQUEST_LIMITS.bytes + 1],
         )
         .unwrap_err();
-    assert_eq!(error.error_code, ErrorCode::CanisterRejectedMessage);
+    assert_canister_trap(error);
     assert_eq!(fixture.summary(fixture.sender), before);
 }
 
@@ -332,7 +332,7 @@ fn delivery_wire_endpoints_refuse_candid_and_preserve_authorized_receipts() {
                 vec![0; REQUEST_LIMITS.bytes + 1],
             )
             .unwrap_err();
-        assert_eq!(error.error_code, ErrorCode::CanisterRejectedMessage);
+        assert_canister_trap(error);
         assert_eq!(fixture.summary(receiver).receipts, 0);
     }
     let request = native::encode_request(RECEIVE_ID, &delivery, REQUEST_LIMITS).unwrap();

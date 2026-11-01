@@ -119,7 +119,8 @@ all callback registration remains in the private FFI owner. This completes the
 published boundaries requested in [Platform #7](https://github.com/dragginzgame/ic-platform/issues/7)
 and [#8](https://github.com/dragginzgame/ic-platform/issues/8) without a local facade.
 
-The runtime fixture's four-field `(bool, bool, u64, u64)` checkpoint now uses a
+The runtime fixture's named four-field checkpoint preserves the original
+`(bool, bool, u64, u64)` field order and encoded bytes. It uses a
 bounded Wire frame with a checked little-endian length prefix in its existing
 stable-memory fixture page. Both upgrade participants use this one format;
 there is no Candid reader or cross-release probe migration. Database/application
@@ -515,7 +516,7 @@ An after-completion interval is not a watchdog: if its callback traps or runs
 out of instructions, code after the callback cannot arm a successor. A
 watchdog policy commits the successor before invoking fallible work while
 preventing concurrent logical execution. Maintained
-[PocketIC subjects](../../crates/ic-timers-pocketic/src/tests.rs) exercise
+[PocketIC subjects](../../crates/ic-timers-pocketic/tests/runtime/tests.rs) exercise
 trap, actual instruction exhaustion, upgrade reconstruction, external-ingress
 rejection, independent timers, insufficient cycles followed by top-up,
 an armed Watchdog and its committed scheduler/work gap surviving a genuine freeze

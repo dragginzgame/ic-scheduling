@@ -7,6 +7,31 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.35.4]
+
+### 🧪 Testing
+
+- Separate installed runtime/cohort subjects from the qualification driver's
+  host-only tests. `make test-timer-tooling` runs receipt, discovery and command
+  checks without starting PocketIC; the explicit IC driver selects the dedicated
+  integration target and refuses utility tests in watchdog qualification.
+- Give cohort selection and measurements one typed catalog. Admit compiler,
+  Cargo and target identity together from the first successful build; reject
+  later mismatches without partially changing the retained identity. Preserve
+  report JSON, strict completeness and field validation, and comparison rules.
+- Isolate release-fixture metadata, interruption, recovery and publication phases
+  so their injected faults and temporary settings cannot affect later phases.
+
+### 🧹 Cleanup
+
+- Name ordinary completion outcomes and resolve watchdog schedules once before
+  mutation. Make provider staging and arm confirmation explicit while retaining
+  command ordering, abandonment repair, cleanup and cancellation/error accounting.
+- Project ordinary timer observations from one snapshot with explicit defaults
+  for absent demand, retaining identities, counters and inactive reasons.
+- Use named runtime-probe checkpoint fields while preserving encoded bytes and
+  upgrade reconstruction.
+
 ## [0.35.3] - 2026-11-01
 
 ### 📦 Dependencies

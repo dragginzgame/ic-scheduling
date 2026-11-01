@@ -4,9 +4,9 @@
 #[cfg(test)]
 use super::take_provider_install_fault;
 use super::{
-    CallbackToken, ProviderHandles, RUNTIME, RegistryEffect, RegistryTransition, TimerError,
-    TimerHandle, TimerIdentity, WakeupToken, dispatch_wakeup, dispatch_watchdog_work, platform,
-    with_registry_mut,
+    CallbackToken, ProviderBinding, ProviderHandles, RUNTIME, RegistryEffect, RegistryTransition,
+    TimerError, TimerHandle, TimerIdentity, WakeupToken, dispatch_wakeup, dispatch_watchdog_work,
+    platform, with_registry_mut,
 };
 use std::time::Duration;
 
@@ -39,7 +39,13 @@ pub(super) fn apply_effect(
                 Duration::from_nanos(*delay_ns),
                 dispatch_wakeup(token.clone()),
             )?;
-            bind_provider_handle(token.token(), handle, Some(*delay_ns))
+            bind_provider_handle(
+                token.token(),
+                handle,
+                ProviderBinding::Commit {
+                    delay_ns: *delay_ns,
+                },
+            )
         }
         RegistryEffect::DispatchWatchdog {
             dispatch,
@@ -51,14 +57,19 @@ pub(super) fn apply_effect(
                 Duration::from_nanos(*successor_delay_ns),
                 dispatch_wakeup(WakeupToken::Scheduler(successor.clone())),
             )?;
-            bind_provider_handle(successor, successor_handle, None)?;
+            bind_provider_handle(successor, successor_handle, ProviderBinding::Stage)?;
 
             let work_token = work.clone();
             let work_handle = platform::try_set_timer(Duration::ZERO, async move {
                 dispatch_watchdog_work(&work_token);
             })?;
-            if let Err(error) = bind_provider_handle(&work, work_handle, Some(*successor_delay_ns))
-            {
+            if let Err(error) = bind_provider_handle(
+                &work,
+                work_handle,
+                ProviderBinding::Commit {
+                    delay_ns: *successor_delay_ns,
+                },
+            ) {
                 clear_entry_provider_handles(successor.identity())?;
                 return Err(error);
             }
@@ -71,7 +82,7 @@ pub(super) fn apply_effect(
 pub(super) fn bind_provider_handle(
     token: &CallbackToken,
     handle: TimerHandle,
-    armed_delay_ns: Option<u64>,
+    binding: ProviderBinding,
 ) -> Result<(), TimerError> {
     RUNTIME
         .with(|runtime| {
@@ -85,7 +96,7 @@ pub(super) fn bind_provider_handle(
             let Some(registry) = runtime.as_mut() else {
                 return Err((TimerError::NotInitialized, handle));
             };
-            match registry.install_provider_handle(token, handle, armed_delay_ns) {
+            match registry.install_provider_handle(token, handle, binding) {
                 Ok(()) => Ok(()),
                 Err((error, handle)) => Err((TimerError::from(error), handle)),
             }

@@ -78,16 +78,26 @@ fn snapshot_round_trip_preserves_wide_totals_and_optional_memory() {
 #[test]
 fn checkpoint_round_trip_preserves_flags_and_wide_values() {
     // Current checkpoints retain both flags and wide values through one format.
-    let state = (true, false, u64::MAX, 7_u64);
-    let checkpoint =
-        ic_wire::native::encode_request(super::rpc::CHECKPOINT_ID, &state, REQUEST_LIMITS).unwrap();
+    let previous = (true, false, u64::MAX, 7_u64);
+    let state = super::RuntimeCheckpoint {
+        desired_scheduled: true,
+        secondary_desired_scheduled: false,
+        completed_work: u64::MAX,
+        secondary_completed_work: 7,
+    };
+    let checkpoint = native_checkpoint(&state);
+    assert_eq!(checkpoint, native_checkpoint(&previous));
     assert_eq!(
-        ic_wire::native::decode_request::<(bool, bool, u64, u64)>(
+        ic_wire::native::decode_request::<super::RuntimeCheckpoint>(
             super::rpc::CHECKPOINT_ID,
-            &checkpoint,
-            REQUEST_LIMITS
+            &native_checkpoint(&previous),
+            REQUEST_LIMITS,
         )
         .unwrap(),
         state
     );
+}
+
+fn native_checkpoint(state: &impl serde::Serialize) -> Vec<u8> {
+    ic_wire::native::encode_request(super::rpc::CHECKPOINT_ID, state, REQUEST_LIMITS).unwrap()
 }

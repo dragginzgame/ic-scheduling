@@ -4,9 +4,9 @@ use crate::{
     callback::{AfterCompletionRunResult, OnceRunResult, OrdinaryRunResult},
     platform::{self, TimerHandle},
     registry::{
-        CallbackRole, CallbackToken, OrdinaryCallback, ProviderHandles, RegisterError,
-        RegistrationClaim, RegistryEffect, RegistryError, RegistryTransition, TimerRegistry,
-        WakeupToken, WatchdogCallback,
+        CallbackRole, CallbackToken, OrdinaryCallback, ProviderBinding, ProviderHandles,
+        RegisterError, RegistrationClaim, RegistryEffect, RegistryError, RegistryTransition,
+        TimerRegistry, WakeupToken, WatchdogCallback,
     },
     schedule::{OrdinaryDirective, ScheduleError, TimerCadence, TimerSchedule},
     snapshot::{

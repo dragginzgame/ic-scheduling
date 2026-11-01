@@ -4,7 +4,9 @@ use ic_timers::{
     WatchdogRegistration, WatchdogRunResult, initialize_runtime, register_watchdog,
     timer_inventory, timer_snapshot,
 };
-use ic_timers_test_protocol::{CounterObservation, ProbeMemorySummary, ProbeSnapshot};
+use ic_timers_test_protocol::{
+    CounterObservation, ProbeMemorySummary, ProbeSnapshot, RuntimeCheckpoint,
+};
 use std::cell::{Cell, RefCell};
 
 const CADENCE_NS: u64 = 1_000_000_000;
@@ -56,34 +58,29 @@ fn init() {
 
 #[ic_platform::cdk::pre_upgrade]
 fn pre_upgrade() {
-    let state = (
-        DESIRED_SCHEDULED.with(Cell::get),
-        SECONDARY_DESIRED_SCHEDULED.with(Cell::get),
-        COMPLETED_WORK.with(Cell::get),
-        SECONDARY_COMPLETED_WORK.with(Cell::get),
-    );
+    let state = RuntimeCheckpoint {
+        desired_scheduled: DESIRED_SCHEDULED.with(Cell::get),
+        secondary_desired_scheduled: SECONDARY_DESIRED_SCHEDULED.with(Cell::get),
+        completed_work: COMPLETED_WORK.with(Cell::get),
+        secondary_completed_work: SECONDARY_COMPLETED_WORK.with(Cell::get),
+    };
     checkpoint::save(&state);
 }
 
 #[ic_platform::cdk::post_upgrade]
 fn post_upgrade() {
-    let (desired_scheduled, secondary_desired, completed_work, secondary_completed): (
-        bool,
-        bool,
-        u64,
-        u64,
-    ) = checkpoint::load();
-    DESIRED_SCHEDULED.with(|desired| desired.set(desired_scheduled));
-    SECONDARY_DESIRED_SCHEDULED.with(|desired| desired.set(secondary_desired));
-    COMPLETED_WORK.with(|completed| completed.set(completed_work));
-    SECONDARY_COMPLETED_WORK.with(|completed| completed.set(secondary_completed));
+    let state = checkpoint::load();
+    DESIRED_SCHEDULED.with(|desired| desired.set(state.desired_scheduled));
+    SECONDARY_DESIRED_SCHEDULED.with(|desired| desired.set(state.secondary_desired_scheduled));
+    COMPLETED_WORK.with(|completed| completed.set(state.completed_work));
+    SECONDARY_COMPLETED_WORK.with(|completed| completed.set(state.secondary_completed_work));
     if initialize_runtime().is_err() {
         ic_platform::cdk::api::trap("post-upgrade runtime initialization failed");
     }
-    if desired_scheduled && !install_watchdog() {
+    if state.desired_scheduled && !install_watchdog() {
         ic_platform::cdk::api::trap("post-upgrade watchdog reconstruction failed");
     }
-    if secondary_desired && !install_secondary_watchdog() {
+    if state.secondary_desired_scheduled && !install_secondary_watchdog() {
         ic_platform::cdk::api::trap("post-upgrade secondary watchdog reconstruction failed");
     }
     let reconstructed = timer_snapshot(&probe_identity())

@@ -4,6 +4,21 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer`, `ic-jobs-canister-test-su
 and `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.33.4]
+
+### 🧹 Cleanup
+
+- Use typed Wire endpoint attributes in the private qualification canister, with
+  explicit method identities, tuple requests and existing byte/traversal budgets.
+  Header admission runs before copying the payload. Oversized management and
+  delivery requests now trap through Wire instead of returning a guard rejection;
+  authorized calls, receipt writes and stored queue formats retain their contracts.
+
+### 🧪 Testing
+
+- Exercise release preparation, interrupted delivery, resume and publication in
+  isolated fixture phases with scoped group inputs and fault injection.
+
 ## [0.33.3] - 2026-11-01
 
 ### 📦 Dependencies

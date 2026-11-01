@@ -1,6 +1,9 @@
 //! Host-only qualification receipts and cohort comparisons; never deployed in probes.
 
-use crate::build::{Cohort, Qualification};
+use crate::{
+    build::Qualification,
+    cohort::{Cohort, Measurements},
+};
 use ic_build::artifacts::WasmBuildRecord;
 use ic_host_artifacts::artifact::{hash_reader, read_reader};
 use ic_host_fs::durable::{PublicationMode, WriteOptions, write_bytes};
@@ -16,8 +19,8 @@ macro_rules! metrics {
     ($name:ident { $($field:ident),* $(,)? }) => {
         #[derive(Clone, Debug, Default, Serialize, Deserialize)]
         #[serde(deny_unknown_fields)]
-        pub(crate) struct $name {
-            $(pub(crate) $field: u128,)*
+        pub struct $name {
+            $(pub $field: u128,)*
         }
         impl $name {
             fn deltas(&self, baseline: &Self, subject: &str, changes: &mut BTreeMap<String, i128>) -> Result<()> {
@@ -52,31 +55,6 @@ metrics!(CalibrationMetrics {
     dispatch_cycles
 });
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct Measurements {
-    pub(crate) baseline: PolicyMetrics,
-    pub(crate) once: PolicyMetrics,
-    #[serde(rename = "after-completion")]
-    pub(crate) after_completion: PolicyMetrics,
-    pub(crate) watchdog: PolicyMetrics,
-    #[serde(rename = "watchdog-calibration-minimal")]
-    pub(crate) minimal: CalibrationMetrics,
-    #[serde(rename = "watchdog-calibration-representative")]
-    pub(crate) representative: CalibrationMetrics,
-}
-
-impl Measurements {
-    const fn policy(&self, cohort: Cohort) -> &PolicyMetrics {
-        match cohort {
-            Cohort::Baseline => &self.baseline,
-            Cohort::Once => &self.once,
-            Cohort::AfterCompletion => &self.after_completion,
-            Cohort::Watchdog => &self.watchdog,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Context {
@@ -101,7 +79,7 @@ struct Artifact {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct BuildContext {
+pub struct BuildContext {
     schema: u32,
     context: Context,
     artifacts: BTreeMap<String, Artifact>,
@@ -110,27 +88,45 @@ pub(crate) struct BuildContext {
 /// Only a completed measurement has the on-disk report shape.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct Report {
+pub struct Report {
     schema: u32,
     context: Context,
     artifacts: BTreeMap<String, Artifact>,
     measurements: Measurements,
 }
 
-impl BuildContext {
-    pub(crate) fn new(root: &Path) -> Result<Self> {
+// A receipt only exists after one whole build identity has been admitted.
+// The pending builder is never serialized as a qualification context.
+pub(crate) struct BuildContextBuilder {
+    environment: BuildEnvironment,
+    context: Option<Context>,
+    artifacts: BTreeMap<String, Artifact>,
+}
+
+struct BuildEnvironment {
+    lock_sha256: String,
+    server_sha256: String,
+    host: String,
+    profile: String,
+}
+
+impl BuildEnvironment {
+    fn read(root: &Path) -> Result<Self> {
         let server = std::env::var_os("POCKET_IC_BIN").ok_or("missing admitted POCKET_IC_BIN")?;
         Ok(Self {
-            schema: SCHEMA,
-            context: Context {
-                lock_sha256: digest(&root.join("Cargo.lock"))?,
-                server_sha256: digest(Path::new(&server))?,
-                host: format!("{}-{}", std::env::consts::ARCH, std::env::consts::OS),
-                profile: "timer-probe".into(),
-                rustc: String::new(),
-                cargo: String::new(),
-                target: String::new(),
-            },
+            lock_sha256: digest(&root.join("Cargo.lock"))?,
+            server_sha256: digest(Path::new(&server))?,
+            host: format!("{}-{}", std::env::consts::ARCH, std::env::consts::OS),
+            profile: "timer-probe".into(),
+        })
+    }
+}
+
+impl BuildContextBuilder {
+    pub(crate) fn new(root: &Path) -> Result<Self> {
+        Ok(Self {
+            environment: BuildEnvironment::read(root)?,
+            context: None,
             artifacts: BTreeMap::new(),
         })
     }
@@ -143,39 +139,74 @@ impl BuildContext {
         artifact: &Path,
     ) -> Result<()> {
         let facts = record.facts();
-        for (key, previous, value) in [
-            (
-                "rustc",
-                &mut self.context.rustc,
-                String::from_utf8(facts.rustc_identity.clone())?,
-            ),
-            (
-                "cargo",
-                &mut self.context.cargo,
-                String::from_utf8(facts.cargo_identity.clone())?,
-            ),
-            ("target", &mut self.context.target, facts.target.clone()),
-        ] {
-            if !previous.is_empty() && *previous != value {
-                return Err(format!("probe {key} changed during builds").into());
-            }
-            *previous = value;
-        }
-        self.artifacts.insert(
-            label.into(),
-            Artifact {
-                wasm_sha256: digest(artifact)?,
-                build_fingerprint: record.fingerprint().to_string(),
-                input_digest: record.input_digest().to_string(),
-                recipe_identity: record.recipe_identity().to_string(),
-                feature: feature.into(),
-            },
-        );
+        let context = Context {
+            lock_sha256: self.environment.lock_sha256.clone(),
+            server_sha256: self.environment.server_sha256.clone(),
+            host: self.environment.host.clone(),
+            profile: self.environment.profile.clone(),
+            rustc: String::from_utf8(facts.rustc_identity.clone())?,
+            cargo: String::from_utf8(facts.cargo_identity.clone())?,
+            target: facts.target.clone(),
+        };
+        let artifact = Artifact {
+            wasm_sha256: digest(artifact)?,
+            build_fingerprint: record.fingerprint().to_string(),
+            input_digest: record.input_digest().to_string(),
+            recipe_identity: record.recipe_identity().to_string(),
+            feature: feature.into(),
+        };
+        self.admit_context(context)?;
+        self.artifacts.insert(label.into(), artifact);
         Ok(())
     }
 
+    fn admit_context(&mut self, context: Context) -> Result<()> {
+        if !context.is_complete() {
+            return Err("incomplete qualification build identity".into());
+        }
+        if self
+            .context
+            .as_ref()
+            .is_some_and(|previous| previous != &context)
+        {
+            return Err("probe build identity changed during builds".into());
+        }
+        self.context.get_or_insert(context);
+        Ok(())
+    }
+
+    pub(crate) fn finish(self) -> Result<BuildContext> {
+        let build = BuildContext {
+            schema: SCHEMA,
+            context: self
+                .context
+                .ok_or("qualification has no successful build")?,
+            artifacts: self.artifacts,
+        };
+        validate_build_context(build.schema, &build.context, &build.artifacts)?;
+        Ok(build)
+    }
+}
+
+impl Context {
+    fn is_complete(&self) -> bool {
+        [
+            &self.lock_sha256,
+            &self.server_sha256,
+            &self.host,
+            &self.profile,
+            &self.rustc,
+            &self.cargo,
+            &self.target,
+        ]
+        .iter()
+        .all(|value| !value.is_empty())
+    }
+}
+
+impl BuildContext {
     pub(crate) fn verify_context(&self, root: &Path) -> Result<()> {
-        let current = Self::new(root)?.context;
+        let current = BuildEnvironment::read(root)?;
         if self.context.lock_sha256 != current.lock_sha256
             || self.context.server_sha256 != current.server_sha256
             || self.context.host != current.host
@@ -218,8 +249,7 @@ impl BuildContext {
         Ok(())
     }
 
-    #[cfg(test)]
-    pub(crate) fn verify_artifact(&self, cohort: &str, wasm: &[u8]) {
+    pub fn verify_artifact(&self, cohort: &str, wasm: &[u8]) {
         assert_eq!(
             self.artifacts[cohort].wasm_sha256,
             ic_host_artifacts::artifact::Sha256Digest::compute(wasm).to_string(),
@@ -227,8 +257,7 @@ impl BuildContext {
         );
     }
 
-    #[cfg(test)]
-    pub(crate) fn complete(self, measurements: Measurements) -> Result<Report> {
+    pub fn complete(self, measurements: Measurements) -> Result<Report> {
         let report = Report {
             schema: self.schema,
             context: self.context,
@@ -318,10 +347,8 @@ impl Report {
         let current = &self.measurements;
         let previous = &baseline.measurements;
         let mut changes = BTreeMap::new();
-        for cohort in Cohort::ALL {
-            current
-                .policy(cohort)
-                .deltas(previous.policy(cohort), cohort.name(), &mut changes)?;
+        for &cohort in Cohort::ALL {
+            current[cohort].deltas(&previous[cohort], cohort.name(), &mut changes)?;
         }
         current.minimal.deltas(
             &previous.minimal,
@@ -343,17 +370,7 @@ fn validate_build_context(
     artifacts: &BTreeMap<String, Artifact>,
 ) -> Result<()> {
     if schema != SCHEMA
-        || [
-            &context.lock_sha256,
-            &context.server_sha256,
-            &context.host,
-            &context.profile,
-            &context.rustc,
-            &context.cargo,
-            &context.target,
-        ]
-        .iter()
-        .any(|value| value.is_empty())
+        || !context.is_complete()
         || artifacts.is_empty()
         || artifacts.values().any(|artifact| {
             [

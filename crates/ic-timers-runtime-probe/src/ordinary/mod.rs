@@ -362,87 +362,50 @@ fn ordinary_observation() -> OrdinaryObservation {
             Err(error) => panic!("ordinary ownership observation failed: {error}"),
         }
     });
-    OrdinaryObservation {
-        registration_id: snapshot.as_ref().map(|value| {
-            let id = value.registration_id();
-            (
-                id.epoch().canister_version(),
-                id.epoch().started_at_ns(),
-                id.sequence(),
-            )
-        }),
-        declared: snapshot.is_some(),
-        running: snapshot
-            .as_ref()
-            .is_some_and(|value| value.registration_status() == TimerRegistrationStatus::Running),
+    let mut observation = OrdinaryObservation {
         waiting: GATE_WAITING.with(Cell::get),
         gate_replies: GATE_REPLIES.with(Cell::get),
         gate_error: GATE_ERROR.with_borrow(Clone::clone),
         completed: COMPLETIONS.with(Cell::get),
         completed_at_ns: COMPLETED_AT_NS.with(Cell::get),
-        next_deadline_ns: snapshot.as_ref().and_then(|value| value.next_deadline_ns()),
-        work_started: snapshot
-            .as_ref()
-            .map(|value| {
-                super::counter_observation(value.observability().counters().work_started())
-            })
-            .unwrap_or_default(),
-        work_completed: snapshot
-            .as_ref()
-            .map(|value| {
-                super::counter_observation(value.observability().counters().work_completed())
-            })
-            .unwrap_or_default(),
-        abandoned: snapshot.as_ref().is_some_and(|value| {
-            value.state()
-                == TimerRuntimeStateSnapshot::Inactive {
-                    reason: InactiveReason::Abandoned,
-                }
-        }),
-        stopped: snapshot.as_ref().is_some_and(|value| {
-            value.state()
-                == TimerRuntimeStateSnapshot::Inactive {
-                    reason: InactiveReason::Stopped,
-                }
-        }),
-        cancelled: snapshot.as_ref().is_some_and(|value| {
-            value.state()
-                == TimerRuntimeStateSnapshot::Inactive {
-                    reason: InactiveReason::Cancelled,
-                }
-        }),
-        cancellations: snapshot
-            .as_ref()
-            .map(|value| super::counter_observation(value.observability().counters().cancelled()))
-            .unwrap_or_default(),
-        invariant_failure: snapshot.as_ref().is_some_and(|value| {
-            value.state()
-                == TimerRuntimeStateSnapshot::Inactive {
-                    reason: InactiveReason::InvariantFailure,
-                }
-        }),
         armed,
-        unacknowledged: snapshot
-            .as_ref()
-            .map(|value| {
-                super::counter_observation(value.observability().counters().unacknowledged())
-            })
-            .unwrap_or_default(),
-        instruction_samples: snapshot.as_ref().map_or(0, |value| {
-            value
-                .observability()
-                .performance()
-                .work_instructions()
-                .aggregate()
-                .samples()
-        }),
         captures_dropped: CAPTURES_DROPPED.with(Cell::get),
         capture_registry_accessible: CAPTURE_REGISTRY_ACCESSIBLE.with(Cell::get),
         inventory_len: timer_inventory()
             .expect("ordinary inventory")
             .timers()
             .len() as u64,
+        ..OrdinaryObservation::default()
+    };
+    if let Some(snapshot) = snapshot {
+        let id = snapshot.registration_id();
+        let counters = snapshot.observability().counters();
+        observation.registration_id = Some((
+            id.epoch().canister_version(),
+            id.epoch().started_at_ns(),
+            id.sequence(),
+        ));
+        observation.declared = true;
+        observation.running = snapshot.registration_status() == TimerRegistrationStatus::Running;
+        observation.next_deadline_ns = snapshot.next_deadline_ns();
+        observation.work_started = super::counter_observation(counters.work_started());
+        observation.work_completed = super::counter_observation(counters.work_completed());
+        observation.cancellations = super::counter_observation(counters.cancelled());
+        observation.unacknowledged = super::counter_observation(counters.unacknowledged());
+        observation.instruction_samples = snapshot
+            .observability()
+            .performance()
+            .work_instructions()
+            .aggregate()
+            .samples();
+        if let TimerRuntimeStateSnapshot::Inactive { reason } = snapshot.state() {
+            observation.abandoned = reason == InactiveReason::Abandoned;
+            observation.stopped = reason == InactiveReason::Stopped;
+            observation.cancelled = reason == InactiveReason::Cancelled;
+            observation.invariant_failure = reason == InactiveReason::InvariantFailure;
+        }
     }
+    observation
 }
 
 /// Remove armed authority in one message before any consumer work can start.

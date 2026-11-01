@@ -68,7 +68,11 @@ and its support modules belong to the unpublished consumer package; the core
 package has no Memory or Timers development dependency. `check-consumer` selects
 the consumer library and frozen API-wire tests separately, avoiding a second
 composition or stored Wire run. Installation, management and delivery use Wire
-with consumer-owned identities and limits. The harness's external PocketIC
+with consumer-owned identities and limits. Typed Wire attributes retain each
+endpoint's explicit identity, singleton/multi-argument tuples and traversal
+budgets. Their shared pre-copy header/length admission traps malformed or
+oversized requests; the former oversized-request guard rejection is retired.
+Lifecycle initialization retains its separate bounded decoder. The harness's external PocketIC
 interfaces retain required Candid; Testkit uses Platform's external Candid
 decoder limits/error types without a separate decoder dependency here.
 

@@ -36,7 +36,7 @@ VALIDATION_INPUTS := --input Cargo.toml --input Cargo.lock --input rust-toolchai
 .PHONY: help version install-hooks check test-jobs test-consumers check-msrv check-wasm clippy docs-check check-doc-links shared-tooling-check check-pins check-release-commands test-release-tooling test-formatting-evidence package publish-check publish ci
 help:
 	@echo "IC Scheduling: shared workspace; explicitly select RELEASE_GROUP=jobs or timers"
-	@echo "Timers: test-timers, check-timer-provider, check-timer-dependencies, check-timer-probes"
+	@echo "Timers: test-timers, test-timer-tooling, check-timer-provider, check-timer-dependencies, check-timer-probes"
 	@echo "Explicit Timers IC qualification: test-timer-watchdog, test-timer-cohorts"
 	@echo "Focused selections: see README (Consumer qualification) for package/test/target commands"
 	@echo "Aggregates: check, test-jobs, test-consumers, check-msrv, check-wasm, clippy, docs-check, fmt-check"
@@ -293,7 +293,7 @@ release-files:
 	@bash scripts/release/group.sh files
 
 # Timers product checks share this workspace's lock, compilers and Testkit setup.
-.PHONY: test-timers check-timer-provider check-timer-dependencies check-timer-probes test-timer-watchdog test-timer-cohorts
+.PHONY: test-timers test-timer-tooling check-timer-provider check-timer-dependencies check-timer-probes test-timer-watchdog test-timer-cohorts
 check-timer-provider:
 	bash scripts/ci/check-timer-provider.sh
 check-timer-dependencies:
@@ -305,6 +305,9 @@ test-timers:
 	+$(MINIMUM_RUST) cargo test -p ic-timers --all-targets --locked --offline
 	+$(MINIMUM_RUST) cargo test -p ic-timers --doc --locked --offline
 	+$(MINIMUM_RUST) cargo test -p ic-timers-test-protocol -p ic-timers-runtime-probe --lib --locked --offline
+	+$(MAKE) --no-print-directory test-timer-tooling
+test-timer-tooling:
+	+$(MINIMUM_RUST) cargo test -p ic-timers-pocketic --lib --bin ic-timers-pocketic --locked --offline
 check-timer-probes:
 	+$(MINIMUM_RUST) cargo clippy -p ic-timers-pocketic -p ic-timers-runtime-probe -p ic-timers-test-protocol --all-targets --locked --offline -- -D warnings
 	+$(MINIMUM_RUST) cargo check -p ic-timers -p ic-timers-runtime-probe --target wasm32-unknown-unknown --locked --offline

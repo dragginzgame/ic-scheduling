@@ -8,6 +8,15 @@ pub mod rpc;
 #[cfg(test)]
 mod tests;
 
+/// Stable field order for the runtime probe's existing upgrade checkpoint.
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+pub struct RuntimeCheckpoint {
+    pub desired_scheduled: bool,
+    pub secondary_desired_scheduled: bool,
+    pub completed_work: u64,
+    pub secondary_completed_work: u64,
+}
+
 /// Lossless wire projection of a diagnostic counter; arithmetic stays in Metrics.
 #[derive(Serialize, Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
 pub struct CounterObservation {
@@ -58,7 +67,7 @@ pub struct ProbeSnapshot {
 }
 
 /// Ordinary callback suspension, abandonment and capture-release observations.
-#[derive(Serialize, Debug, Deserialize)]
+#[derive(Serialize, Debug, Default, Deserialize)]
 pub struct OrdinaryObservation {
     pub registration_id: Option<(u64, u64, u64)>,
     pub declared: bool,

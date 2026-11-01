@@ -625,16 +625,16 @@ fn provider_roles_keep_paired_handles_distinct_and_reject_policy_mismatches() {
     assert_ne!(successor, work);
     let tokens = [ordinary_token, successor, work];
     for token in &tokens {
-        let delay_ns = match token.role() {
-            CallbackRole::OrdinaryWork => Some(10),
-            CallbackRole::WatchdogScheduler => None,
-            CallbackRole::WatchdogWork => Some(5),
+        let binding = match token.role() {
+            CallbackRole::OrdinaryWork => ProviderBinding::Commit { delay_ns: 10 },
+            CallbackRole::WatchdogScheduler => ProviderBinding::Stage,
+            CallbackRole::WatchdogWork => ProviderBinding::Commit { delay_ns: 5 },
         };
         registry
             .install_provider_handle(
                 token,
                 crate::platform::set_timer(Duration::ZERO, async {}),
-                delay_ns,
+                binding,
             )
             .unwrap();
         if token.role() == CallbackRole::WatchdogScheduler {
@@ -686,7 +686,7 @@ fn provider_roles_keep_paired_handles_distinct_and_reject_policy_mismatches() {
             .install_provider_handle(
                 token,
                 crate::platform::set_timer(Duration::ZERO, async {}),
-                Some(99),
+                ProviderBinding::Commit { delay_ns: 99 },
             )
             .unwrap_err();
         assert_eq!(error, RegistryError::ProviderHandleAlreadyOwned);
@@ -712,7 +712,7 @@ fn provider_roles_keep_paired_handles_distinct_and_reject_policy_mismatches() {
                 .install_provider_handle(
                     &stale,
                     crate::platform::set_timer(Duration::ZERO, async {}),
-                    Some(99),
+                    ProviderBinding::Commit { delay_ns: 99 },
                 )
                 .unwrap_err();
             assert_eq!(error, RegistryError::StaleCallback);
@@ -740,7 +740,7 @@ fn provider_roles_keep_paired_handles_distinct_and_reject_policy_mismatches() {
                 .install_provider_handle(
                     &malformed,
                     crate::platform::set_timer(Duration::ZERO, async {}),
-                    None,
+                    ProviderBinding::Stage,
                 )
                 .unwrap_err();
             let expected = if matches!(role, CallbackRole::OrdinaryWork)
@@ -790,7 +790,7 @@ fn provider_roles_keep_paired_handles_distinct_and_reject_policy_mismatches() {
         let (detached_token, handle) = detached;
         assert_eq!(&detached_token, token);
         registry
-            .install_provider_handle(&detached_token, handle, None)
+            .install_provider_handle(&detached_token, handle, ProviderBinding::Stage)
             .unwrap();
     }
     for claim in [&ordinary, &watchdog] {
@@ -834,7 +834,7 @@ fn provider_installation_and_confirmation_reject_removed_or_reused_claims() {
 
         let handle = crate::platform::set_timer(Duration::ZERO, async {});
         let (error, rejected) = registry
-            .install_provider_handle(token, handle, Some(10))
+            .install_provider_handle(token, handle, ProviderBinding::Commit { delay_ns: 10 })
             .unwrap_err();
         assert_eq!(error, RegistryError::StaleCallback);
         assert_eq!(crate::platform::timer_count(), provider_count_before + 1);
@@ -2573,6 +2573,15 @@ fn watchdog_checked_deadline_overflow_is_terminal() {
         .ensure_recurring(&deadline_claim, 0)
         .expect("initial deadline-overflow ensure should succeed");
     let (scheduler, _) = arm(initial);
+    // A coalesced request must not compute a fresh cadence deadline. Only
+    // actual dispatch needs that successor and must report overflow below.
+    assert!(matches!(
+        registry
+            .ensure_recurring(&deadline_claim, u64::MAX)
+            .unwrap()
+            .effect(),
+        RegistryEffect::None
+    ));
     let transition = registry.begin_watchdog_scheduler(&scheduler, u64::MAX);
     assert_eq!(
         transition.failure(),

@@ -12,6 +12,7 @@ fn subject_discovery_rejects_empty_unrelated_and_failed_producers() {
         .map(|name| format!("{name}: test\n"))
         .collect::<String>();
     let missing = watchdog.lines().skip(1).collect::<Vec<_>>().join("\n");
+    let mixed = format!("{watchdog}report::tests::host_only: test\n");
     let cohort = format!("{COHORT_SUBJECT}: test\n");
     let watchdog_selection = Qualification::Watchdog;
     let cohort_selection = Qualification::Cohorts {
@@ -27,6 +28,7 @@ fn subject_discovery_rejects_empty_unrelated_and_failed_producers() {
         ),
         (&watchdog_selection, "tests::recovery: test\n", false),
         (&watchdog_selection, watchdog.as_str(), true),
+        (&watchdog_selection, mixed.as_str(), false),
         (&watchdog_selection, missing.as_str(), false),
         (&cohort_selection, "", false),
         (&cohort_selection, "cohorts::renamed_subject: test\n", false),
@@ -117,24 +119,6 @@ fn focused_discovery_requires_every_exact_nonignored_runtime_subject() {
             .unwrap_err()
             .to_string()
             .contains("ignored")
-    );
-    assert!(
-        crate::command()
-            .try_get_matches_from(["driver", "focused"])
-            .is_err()
-    );
-    let args = crate::command()
-        .try_get_matches_from(["driver", "--worker", "focused", "tests::one", "tests::two"])
-        .unwrap();
-    assert!(args.get_flag("worker"));
-    assert_eq!(
-        args.subcommand_matches("focused")
-            .unwrap()
-            .get_many::<String>("subjects")
-            .unwrap()
-            .map(String::as_str)
-            .collect::<Vec<_>>(),
-        ["tests::one", "tests::two"]
     );
 }
 

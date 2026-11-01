@@ -1,28 +1,23 @@
-use super::build::Cohort;
 use super::harness::{fresh_pocket_ic, install_probe, update_unit};
 use super::harness::{query_wire, update_wire};
-use crate::report::{CalibrationMetrics, Measurements, PolicyMetrics};
 use ic_platform::pocket_ic::PocketIc;
 use ic_platform::principal::ExternalPrincipal;
 use ic_testkit::pic::advance_and_tick;
+use ic_timers_pocketic::{BuildContext, Cohort};
+use ic_timers_pocketic::{CalibrationMetrics, Measurements, PolicyMetrics};
 use ic_timers_test_protocol::rpc::Method;
 use ic_timers_test_protocol::{CohortObservation, MemorySamplingMeasurement, OperationMeasurement};
 use std::{env, fs, path::PathBuf, time::Duration};
 
 #[test]
 fn comparable_policy_cohorts_report_size_and_instruction_subjects() {
-    let context: crate::report::BuildContext = serde_json::from_str(
+    let context: BuildContext = serde_json::from_str(
         &env::var("IC_TIMERS_COHORT_CONTEXT").expect("run the qualification driver"),
     )
     .expect("driver context");
-    let measurements = Measurements {
-        baseline: run_cohort(Cohort::Baseline),
-        once: run_cohort(Cohort::Once),
-        after_completion: run_cohort(Cohort::AfterCompletion),
-        watchdog: run_cohort(Cohort::Watchdog),
-        minimal: run_watchdog_calibration(false),
-        representative: run_watchdog_calibration(true),
-    };
+    let mut measurements = Measurements::from_fn(run_cohort);
+    measurements.minimal = run_watchdog_calibration(false);
+    measurements.representative = run_watchdog_calibration(true);
     assert!(measurements.representative.work_instructions > measurements.minimal.work_instructions);
     let report = context
         .complete(measurements)
@@ -186,7 +181,7 @@ fn cohort_wasm(cohort: Cohort) -> Vec<u8> {
         .map(PathBuf::from)
         .unwrap_or_else(|| panic!("{variable} must name the resolved cohort Wasm artifact"));
     let wasm = fs::read(&path).unwrap_or_else(|error| panic!("read {}: {error}", path.display()));
-    let report: crate::report::BuildContext =
+    let report: BuildContext =
         serde_json::from_str(&env::var("IC_TIMERS_COHORT_CONTEXT").expect("driver context"))
             .expect("valid context");
     report.verify_artifact(cohort.name(), &wasm);

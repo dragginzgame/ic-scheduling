@@ -1,5 +1,4 @@
-mod build;
-mod report;
+use ic_timers_pocketic::{Qualification, qualify, run};
 
 fn command() -> clap::Command {
     clap::Command::new("ic-timers-pocketic")
@@ -37,15 +36,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = command().get_matches();
     let (mode, options) = args.subcommand().expect("required subcommand");
     let qualification = match mode {
-        "watchdog" => build::Qualification::Watchdog,
-        "focused" => build::Qualification::Focused {
+        "watchdog" => Qualification::Watchdog,
+        "focused" => Qualification::Focused {
             subjects: options
                 .get_many::<String>("subjects")
                 .expect("required subjects")
                 .cloned()
                 .collect(),
         },
-        "cohorts" => build::Qualification::Cohorts {
+        "cohorts" => Qualification::Cohorts {
             report: options
                 .get_one::<std::path::PathBuf>("report")
                 .expect("default report path")
@@ -55,27 +54,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => unreachable!("Clap admits only declared subcommands"),
     };
     if args.get_flag("worker") {
-        build::run(&qualification)
+        run(&qualification)
     } else {
         let mut worker = std::process::Command::new(std::env::current_exe()?);
         worker.args(["--worker", qualification.name()]);
-        if let build::Qualification::Focused { subjects } = &qualification {
+        if let Qualification::Focused { subjects } = &qualification {
             worker.args(subjects);
         }
-        if let build::Qualification::Cohorts { report, baseline } = &qualification {
+        if let Qualification::Cohorts { report, baseline } = &qualification {
             worker.arg("--report").arg(report);
             if let Some(baseline) = baseline {
                 worker.arg("--baseline").arg(baseline);
             }
         }
-        build::qualify(&mut worker, std::time::Duration::from_secs(30 * 60))?;
+        qualify(&mut worker, std::time::Duration::from_secs(30 * 60))?;
         Ok(())
     }
 }
 
 #[cfg(test)]
-mod cohorts;
-#[cfg(test)]
-mod harness;
-#[cfg(test)]
-mod tests;
+mod tests {
+    use super::*;
+
+    #[test]
+    fn focused_command_requires_subjects_and_preserves_worker_selection() {
+        assert!(
+            command()
+                .try_get_matches_from(["driver", "focused"])
+                .is_err()
+        );
+        let args = command()
+            .try_get_matches_from(["driver", "--worker", "focused", "tests::one", "tests::two"])
+            .unwrap();
+        assert!(args.get_flag("worker"));
+        assert_eq!(
+            args.subcommand_matches("focused")
+                .unwrap()
+                .get_many::<String>("subjects")
+                .unwrap()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
+            ["tests::one", "tests::two"]
+        );
+    }
+}

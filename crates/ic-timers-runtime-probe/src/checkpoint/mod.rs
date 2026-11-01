@@ -2,9 +2,9 @@
 
 use ic_timers_test_protocol::rpc::{CHECKPOINT_ID, REQUEST_LIMITS};
 
-type State = (bool, bool, u64, u64);
+use ic_timers_test_protocol::RuntimeCheckpoint;
 
-pub(super) fn save(state: &State) {
+pub(super) fn save(state: &RuntimeCheckpoint) {
     let frame = ic_wire::native::encode_request(CHECKPOINT_ID, state, REQUEST_LIMITS)
         .unwrap_or_else(|_| {
             ic_platform::cdk::api::trap("runtime probe checkpoint encoding failed")
@@ -20,7 +20,7 @@ pub(super) fn save(state: &State) {
     ic_platform::cdk::stable::stable_write(4, &frame);
 }
 
-pub(super) fn load() -> State {
+pub(super) fn load() -> RuntimeCheckpoint {
     if ic_platform::cdk::api::stable_size() == 0 {
         ic_platform::cdk::api::trap("runtime probe checkpoint missing");
     }

@@ -350,7 +350,7 @@ fn stale_delivery_drop_cannot_retire_rearmed_or_reused_identity() {
         .unwrap()
         .unwrap();
     let (token, handle) = detached;
-    bind_provider_handle(&token, handle, None).unwrap();
+    bind_provider_handle(&token, handle, ProviderBinding::Stage).unwrap();
     let old_delivery = dispatch_wakeup(WakeupToken::Ordinary(token.clone()));
     registration
         .reconcile_schedule(Some(TimerSchedule::At(30)))
@@ -2578,7 +2578,7 @@ fn abandoned_initial_and_successor_schedulers_reconcile_all_owner_contracts() {
                 .unwrap()
                 .unwrap();
             let (old_token, handle) = old;
-            bind_provider_handle(&old_token, handle, None).unwrap();
+            bind_provider_handle(&old_token, handle, ProviderBinding::Stage).unwrap();
             let stale = dispatch_wakeup(WakeupToken::Scheduler(old_token));
             set_time(deadline);
             assert!(discard_next_due());
@@ -2908,7 +2908,7 @@ fn rejected_provider_binding_clears_handles_for_unavailable_or_expired_authority
 
     let rejected = RUNTIME.with(|runtime| {
         let _borrow = runtime.borrow();
-        bind_provider_handle(&token, handle, None)
+        bind_provider_handle(&token, handle, ProviderBinding::Stage)
     });
     assert!(matches!(rejected, Err(TimerError::RuntimeBusy)));
     assert_eq!(timer_count(), 0);
@@ -2918,7 +2918,7 @@ fn rejected_provider_binding_clears_handles_for_unavailable_or_expired_authority
         .expect("declaration should be removable after the borrow is released");
     let handle = platform::set_timer(Duration::ZERO, async {});
     assert!(matches!(
-        bind_provider_handle(&token, handle, None),
+        bind_provider_handle(&token, handle, ProviderBinding::Stage),
         Err(TimerError::RegistrationExpired)
     ));
     assert_eq!(timer_count(), 0);
@@ -2926,7 +2926,7 @@ fn rejected_provider_binding_clears_handles_for_unavailable_or_expired_authority
     RUNTIME.with(|runtime| *runtime.borrow_mut() = None);
     let handle = platform::set_timer(Duration::ZERO, async {});
     assert!(matches!(
-        bind_provider_handle(&token, handle, None),
+        bind_provider_handle(&token, handle, ProviderBinding::Stage),
         Err(TimerError::NotInitialized)
     ));
     assert_eq!(timer_count(), 0);

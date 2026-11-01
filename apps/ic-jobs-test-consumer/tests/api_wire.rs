@@ -109,10 +109,10 @@ fn management_contract_admits_current_requests_and_refuses_retired_candid() {
         timing: Timing::Once(100),
         task: Task::Increment(7),
     };
-    // Platform decodes one argument directly; the native harness supplies its
-    // singleton argument tuple. Both encode the same owned request shape.
+    // Keep the singleton argument tuple in both the typed endpoint and harness:
+    // its frame bytes and traversal budgets match the original Platform hook.
     let bytes = native::encode_request(Method::Create as u64, &(create,), REQUEST_LIMITS).unwrap();
-    let decoded: Create =
+    let (decoded,): (Create,) =
         native::decode_request(Method::Create as u64, &bytes, REQUEST_LIMITS).unwrap();
     assert!(matches!(decoded.timing, Timing::Once(100)));
     assert_eq!(decoded.task, Task::Increment(7));

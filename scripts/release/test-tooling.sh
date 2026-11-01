@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
-mode="${1:-all}"
-case "$mode" in all|retention|metadata|delivery|recovery|publication) ;; *) exit 2 ;; esac
+fixture_mode="${1:-all}"
+case "$fixture_mode" in all|retention|metadata|delivery|recovery|publication) ;; *) exit 2 ;; esac
 root="$(cd -P "${BASH_SOURCE[0]%/*}/../.." && pwd -P)"
 export PATH="$root/.tools/host/bin:$PATH"
 # shellcheck source=scripts/ci/fixture-lifecycle.sh
 source "$root/scripts/ci/fixture-lifecycle.sh"
-suite="$(fixture_create "${TMPDIR:-/tmp}/scheduling-release-groups.XXXXXX")"
+fixture_suite="$(fixture_create "${TMPDIR:-/tmp}/scheduling-release-groups.XXXXXX")"
 fixture_complete=false
-trap 'fixture_finish "$?" "$suite" "Release-group fixture retained"' EXIT
+trap 'fixture_finish "$?" "$fixture_suite" "Release-group fixture retained"' EXIT
 unset MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 unset RELEASE_COMMIT RELEASE_VERSION RELEASE_PREVIOUS RELEASE_DATE RELEASE_PREPARATION_SOURCE RELEASE_GROUP PACKAGE
 export GROUP_TEST_REAL_MAKE GROUP_TEST_REAL_EDITOR GROUP_TEST_REAL_CARGO
@@ -18,10 +18,10 @@ GROUP_TEST_REAL_EDITOR="${CARGO_RELEASE_METADATA_EDITOR:-}"
 if [[ -z "$GROUP_TEST_REAL_EDITOR" ]]; then
     GROUP_TEST_REAL_EDITOR="$(make --silent --no-print-directory -C "$root" release-tools-check)"
 fi
-mkdir "$suite/source" "$suite/bin"
-cp "$root"/{Cargo.toml,Cargo.lock,CHANGELOG.md,README.md,LICENSE,Makefile,.gitignore,.shared-tooling.snapshot,rust-toolchain.toml} "$suite/source/"
-cp -R "$root"/{crates,apps,scripts,make,ci,docs,releases} "$suite/source/"
-cat > "$suite/bin/editor" <<'EDITOR'
+mkdir "$fixture_suite/source" "$fixture_suite/bin"
+cp "$root"/{Cargo.toml,Cargo.lock,CHANGELOG.md,README.md,LICENSE,Makefile,.gitignore,.shared-tooling.snapshot,rust-toolchain.toml} "$fixture_suite/source/"
+cp -R "$root"/{crates,apps,scripts,make,ci,docs,releases} "$fixture_suite/source/"
+cat > "$fixture_suite/bin/editor" <<'EDITOR'
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ ( "${GROUP_TEST_EDITOR_FAILURE:-}" == manifest && "$*" == *group-manifest* ) ||
@@ -31,7 +31,7 @@ if [[ ( "${GROUP_TEST_EDITOR_FAILURE:-}" == manifest && "$*" == *group-manifest*
 fi
 exec "$GROUP_TEST_REAL_EDITOR" "$@"
 EDITOR
-cat > "$suite/bin/make" <<'MAKE'
+cat > "$fixture_suite/bin/make" <<'MAKE'
 #!/usr/bin/env bash
 set -euo pipefail
 for arg in "$@"; do
@@ -53,7 +53,7 @@ for arg in "$@"; do
 done
 exec "$GROUP_TEST_REAL_MAKE" "$@"
 MAKE
-cat > "$suite/bin/cargo" <<'CARGO'
+cat > "$fixture_suite/bin/cargo" <<'CARGO'
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ "${1:-}" == clippy ]]; then exit 0; fi
@@ -63,12 +63,102 @@ if [[ "${1:-}" == publish || "${1:-}" == package ]]; then
 fi
 exec "$GROUP_TEST_REAL_CARGO" "$@"
 CARGO
-chmod +x "$suite/bin/"*
-export PATH="$suite/bin:$PATH" GROUP_TEST_EDITOR="$suite/bin/editor"
+chmod +x "$fixture_suite/bin/"*
+export PATH="$fixture_suite/bin:$PATH" GROUP_TEST_EDITOR="$fixture_suite/bin/editor"
 export CARGO_NET_OFFLINE=true RUSTUP_AUTO_INSTALL=0
+# Phase functions run in subshells: fault injection and local fixture exports
+# cannot become inputs to the next phase. Only their admitted filesystem effects
+# (metadata, journals, local Git refs and logs) cross a phase boundary.
+check_metadata_rollback() (
+    local suite="$1" selected="$2" previous="$3" candidate="$4" base="$5"
+    local receipts status failure
+    bash scripts/release/metadata.sh validated
+    receipts=".git/release-state/$selected-$candidate.receipts"
+    cp "$receipts/validated" "$suite/$selected-valid-receipt"
+    printf 'tampered\n' >> "$receipts/validated"
+    if bash scripts/release/metadata.sh prepare > "$suite/$selected-tampered-receipt.log" 2>&1; then exit 1; fi
+    git diff --exit-code HEAD -- > /dev/null
+    cp "$suite/$selected-valid-receipt" "$receipts/validated"
+    for failure in manifest lock; do
+        status=0
+        GROUP_TEST_EDITOR_FAILURE="$failure" RELEASE_PREVIOUS="$previous" RELEASE_VERSION="$candidate" RELEASE_DATE=2026-10-31 \
+            RELEASE_PREPARATION_SOURCE="$base" bash scripts/release/metadata.sh prepare > "$suite/$selected-rollback-$failure.log" 2>&1 || status=$?
+        [[ "$status" != 0 ]] || exit 1
+        git diff --exit-code HEAD -- > /dev/null
+    done
+)
+
+interrupt_release() (
+    local suite="$1" selected="$2" candidate="$3"
+    local receipts status
+    status=0
+    GROUP_TEST_PUSH_FAILURE=1 make release-patch RELEASE_MAKE="$suite/bin/make" > "$suite/$selected-release.log" 2>&1 || status=$?
+    [[ "$status" != 0 ]] || exit 1
+    [[ "$(cat "$GROUP_TEST_EVENTS")" == "$selected" ]]
+    [[ -f ".git/release-state/$selected-$candidate.plan" ]]
+    receipts=".git/release-state/$selected-$candidate.receipts"
+    [[ -f "$receipts/validated" && -f "$receipts/prepared" ]]
+    grep -Fx "$selected" ".git/release-state/$selected-$candidate.plan" > /dev/null
+    cmp "$suite/$selected-files" ".git/release-state/$selected-$candidate.plan.files"
+)
+
+resume_release() (
+    local suite="$1" selected="$2" other_group="$3" candidate="$4" base="$5"
+    local path
+    # Resume must not accept another group's saved intent.
+    cp ".git/release-state/$selected-$candidate.plan" ".git/release-state/$other_group-$candidate.plan"
+    if make release-resume RELEASE_GROUP="$other_group" VERSION="$candidate" RELEASE_MAKE="$suite/bin/make" > "$suite/$selected-wrong-resume.log" 2>&1; then exit 1; fi
+    grep -F 'release group changed' "$suite/$selected-wrong-resume.log" > /dev/null
+    rm ".git/release-state/$other_group-$candidate.plan"
+    make release-resume VERSION="$candidate" RELEASE_MAKE="$suite/bin/make" > "$suite/$selected-resume.log" 2>&1
+    [[ "$(cat "$GROUP_TEST_EVENTS")" == "$selected" ]]
+    git show --format= --name-only HEAD | LC_ALL=C sort > "$suite/$selected-committed"
+    # The plan admits the shared root manifest even when this group
+    # has no requirement to rewrite there. Only changed plan entries
+    # belong in the commit; unchanged admitted files remain receipt-bound.
+    : > "$suite/$selected-changed"
+    while IFS= read -r -d '' path; do
+        if [[ "$(git rev-parse "$base:$path")" != "$(git rev-parse "HEAD:$path")" ]]; then
+            printf '%s\n' "$path" >> "$suite/$selected-changed"
+        fi
+    done < "$suite/$selected-files"
+    LC_ALL=C sort "$suite/$selected-changed" > "$suite/$selected-expected"
+    cmp "$suite/$selected-committed" "$suite/$selected-expected"
+    [[ "$(git log -1 --format=%s)" == "Release $selected $candidate" ]]
+    bash scripts/ci/check-release-tag.sh "$(git rev-parse HEAD)" "$candidate" "$selected"
+    [[ "$(git --git-dir="$suite/$selected-remote.git" rev-parse main)" == "$(git rev-parse HEAD)" ]]
+)
+
+check_publication() (
+    local suite="$1" selected="$2" other_group="$3" candidate="$4" package="$5"
+    # Registry observation is substituted; real Git/tag/source admission stays active.
+    cat > scripts/ci/check-crates-io-version.sh <<'REGISTRY'
+#!/usr/bin/env bash
+exit "${GROUP_TEST_REGISTRY_STATUS:-1}"
+REGISTRY
+    git add -- scripts/ci/check-crates-io-version.sh
+    git commit -qm 'fixture registry observation'
+    # Move fixture-only tag to the fixture observation source.
+    git tag -d "$selected-v$candidate" > /dev/null
+    git tag -a "$selected-v$candidate" -m fixture
+    git push -q origin main "+refs/tags/$selected-v$candidate"
+    if GROUP_TEST_REGISTRY_STATUS=2 bash scripts/release/check-publication.sh origin > "$suite/$selected-unknown-registry.log" 2>&1; then exit 1; fi
+    if RELEASE_GROUP="$other_group" bash scripts/release/check-publication.sh origin > "$suite/$selected-wrong-publication.log" 2>&1; then exit 1; fi
+    touch unexpected-source
+    if bash scripts/release/check-publication.sh origin > "$suite/$selected-dirty-publication.log" 2>&1; then exit 1; fi
+    rm unexpected-source
+    bash scripts/release/check-publication.sh origin
+    bash scripts/release/publish.sh origin
+    [[ "$(cat "$GROUP_TEST_UPLOADS")" == "publish -p $package --all-features --locked --registry crates-io" ]]
+    : > "$GROUP_TEST_UPLOADS"
+    make publish-check > "$suite/$selected-publish-check.log" 2>&1
+    [[ "$(cat "$GROUP_TEST_UPLOADS")" == "publish -p $package --all-features --locked --registry crates-io --allow-dirty --dry-run" ]]
+)
+
 # Exercise public refusal before any tool, gate, journal or metadata effect.
-cp -R "$suite/source" "$suite/refusals"
-(
+check_refusals() (
+    local suite="$1"
+    cp -R "$suite/source" "$suite/refusals"
     cd "$suite/refusals"
     # shellcheck disable=SC2030 # Each phase deliberately owns its event files.
     export GROUP_TEST_EVENTS="$suite/refusal-events" GROUP_TEST_UPLOADS="$suite/refusal-uploads"
@@ -104,135 +194,79 @@ cp -R "$suite/source" "$suite/refusals"
     [[ ! -e .git/release-state && -z "$(git status --porcelain)" ]] || exit 1
     echo 'Explicit group selection refuses missing, empty and unknown Make/CLI requests before effects'
 )
-for selected in jobs timers; do
-    repo="$suite/$selected"
+qualify_group() (
+    local suite="$1" selected="$2" mode="$3"
+    local repo="$suite/$selected"
+    local ledger other_ledger package other previous candidate other_group other_version
+    local base plan requirement
     cp -R "$suite/source" "$repo"
-    (
-        cd "$repo"
-        export RELEASE_GROUP="$selected" RELEASE_MAKE="$suite/bin/make"
-        # shellcheck disable=SC2031 # This phase establishes fresh event files.
-        export GROUP_TEST_EVENTS="$suite/$selected-gates" GROUP_TEST_UPLOADS="$suite/$selected-uploads"
-        : > "$GROUP_TEST_EVENTS"; : > "$GROUP_TEST_UPLOADS"
-        ledger=releases/jobs/CHANGELOG.md; other_ledger=releases/timers/CHANGELOG.md; package=ic-jobs; other=ic-timers
-        if [[ "$selected" == timers ]]; then
-            ledger=releases/timers/CHANGELOG.md; other_ledger=releases/jobs/CHANGELOG.md; package=ic-timers; other=ic-jobs
-        fi
-        previous="$(bash scripts/release/group.sh version)"
-        candidate="$(bash scripts/ci/next-release-version.sh "$previous" patch)"
-        other_group=timers; [[ "$selected" != timers ]] || other_group='jobs'
-        other_version="$(RELEASE_GROUP="$other_group" bash scripts/release/group.sh version)"
-        printf '# Fixture ledger\n\n## [%s] - Unreleased\n\n### 🩹 Fixed\n\n- Fixture group preparation.\n' "$candidate" > "$ledger"
-        git init -q -b main
-        git config user.name 'Scheduling fixture'; git config user.email 'fixture@example.invalid'
-        git config core.hooksPath /dev/null
-        git add -- .; git commit -qm baseline
-        base="$(git rev-parse HEAD)"
-        export RELEASE_SOURCE="$base" RELEASE_PREVIOUS="$previous" RELEASE_VERSION="$candidate"
-        export RELEASE_DATE=2026-10-31 RELEASE_REMOTE=origin RELEASE_BRANCH=main
-        git init -q --bare "$suite/$selected-remote.git"
-        git remote add origin "$suite/$selected-remote.git"
-        git push -q origin main
-        plan="$(bash scripts/release/group.sh plan)"
-        [[ "$(printf '%s\n' "$plan" | jq -r .primary)" == "$package" ]]
-        [[ "$(make -s release-version)" == "$previous" ]]
-        printf '%s\n' "$plan" > "$suite/$selected-plan.json"
-        bash scripts/release/group.sh files > "$suite/$selected-files"
-        cp "$other_ledger" "$suite/$selected-other-ledger"
-        cp CHANGELOG.md "$suite/$selected-index"
-        cp releases/history.md "$suite/$selected-history"
-        cargo metadata --locked --offline --format-version 1 > "$suite/$selected-before.json"
-        requirement="$(yq -p toml -o yaml -r '.workspace.dependencies.ic-timers.version' Cargo.toml)"
-        if [[ "$mode" == all || "$mode" == metadata || "$mode" == retention ]]; then
-            bash scripts/release/metadata.sh validated
-            receipts=".git/release-state/$selected-$candidate.receipts"
-            cp "$receipts/validated" "$suite/$selected-valid-receipt"
-            printf 'tampered\n' >> "$receipts/validated"
-            if bash scripts/release/metadata.sh prepare > "$suite/$selected-tampered-receipt.log" 2>&1; then exit 1; fi
-            git diff --exit-code HEAD -- > /dev/null
-            cp "$suite/$selected-valid-receipt" "$receipts/validated"
-            for failure in manifest lock; do
-                status=0
-                GROUP_TEST_EDITOR_FAILURE="$failure" RELEASE_PREVIOUS="$previous" RELEASE_VERSION="$candidate" RELEASE_DATE=2026-10-31 \
-                    RELEASE_PREPARATION_SOURCE="$base" bash scripts/release/metadata.sh prepare > "$suite/$selected-rollback-$failure.log" 2>&1 || status=$?
-                [[ "$status" != 0 ]] || exit 1
-                git diff --exit-code HEAD -- > /dev/null
-            done
-        fi
-        if [[ "$mode" == metadata || "$mode" == retention ]]; then
-            RELEASE_PREVIOUS="$previous" RELEASE_VERSION="$candidate" RELEASE_DATE=2026-10-31 \
-                RELEASE_PREPARATION_SOURCE="$base" bash scripts/release/metadata.sh prepare > "$suite/$selected-prepare.log" 2>&1
-            RELEASE_VERSION="$candidate" RELEASE_DATE=2026-10-31 bash scripts/release/metadata.sh check
-        else
-            status=0
-            GROUP_TEST_PUSH_FAILURE=1 make release-patch RELEASE_MAKE="$suite/bin/make" > "$suite/$selected-release.log" 2>&1 || status=$?
-            [[ "$status" != 0 ]] || exit 1
-            [[ "$(cat "$GROUP_TEST_EVENTS")" == "$selected" ]]
-            [[ -f ".git/release-state/$selected-$candidate.plan" ]]
-            receipts=".git/release-state/$selected-$candidate.receipts"
-            [[ -f "$receipts/validated" && -f "$receipts/prepared" ]]
-            grep -Fx "$selected" ".git/release-state/$selected-$candidate.plan" > /dev/null
-            cmp "$suite/$selected-files" ".git/release-state/$selected-$candidate.plan.files"
-            # Resume must not accept another group's saved intent.
-            cp ".git/release-state/$selected-$candidate.plan" ".git/release-state/$other_group-$candidate.plan"
-            if make release-resume RELEASE_GROUP="$other_group" VERSION="$candidate" RELEASE_MAKE="$suite/bin/make" > "$suite/$selected-wrong-resume.log" 2>&1; then exit 1; fi
-            grep -F 'release group changed' "$suite/$selected-wrong-resume.log" > /dev/null
-            rm ".git/release-state/$other_group-$candidate.plan"
-            make release-resume VERSION="$candidate" RELEASE_MAKE="$suite/bin/make" > "$suite/$selected-resume.log" 2>&1
-            [[ "$(cat "$GROUP_TEST_EVENTS")" == "$selected" ]]
-            git show --format= --name-only HEAD | LC_ALL=C sort > "$suite/$selected-committed"
-            # The plan admits the shared root manifest even when this group
-            # has no requirement to rewrite there. Only changed plan entries
-            # belong in the commit; unchanged admitted files remain receipt-bound.
-            : > "$suite/$selected-changed"
-            while IFS= read -r -d '' path; do
-                if [[ "$(git rev-parse "$base:$path")" != "$(git rev-parse "HEAD:$path")" ]]; then
-                    printf '%s\n' "$path" >> "$suite/$selected-changed"
-                fi
-            done < "$suite/$selected-files"
-            LC_ALL=C sort "$suite/$selected-changed" > "$suite/$selected-expected"
-            cmp "$suite/$selected-committed" "$suite/$selected-expected"
-            [[ "$(git log -1 --format=%s)" == "Release $selected $candidate" ]]
-            bash scripts/ci/check-release-tag.sh "$(git rev-parse HEAD)" "$candidate" "$selected"
-            [[ "$(git --git-dir="$suite/$selected-remote.git" rev-parse main)" == "$(git rev-parse HEAD)" ]]
-            # Registry observation is substituted; real Git/tag/source admission stays active.
-            cat > scripts/ci/check-crates-io-version.sh <<'REGISTRY'
-#!/usr/bin/env bash
-exit "${GROUP_TEST_REGISTRY_STATUS:-1}"
-REGISTRY
-            git add -- scripts/ci/check-crates-io-version.sh
-            git commit -qm 'fixture registry observation'
-            # Move fixture-only tag to the fixture observation source.
-            git tag -d "$selected-v$candidate" > /dev/null
-            git tag -a "$selected-v$candidate" -m fixture
-            git push -q origin main "+refs/tags/$selected-v$candidate"
-            if GROUP_TEST_REGISTRY_STATUS=2 bash scripts/release/check-publication.sh origin > "$suite/$selected-unknown-registry.log" 2>&1; then exit 1; fi
-            if RELEASE_GROUP="$other_group" bash scripts/release/check-publication.sh origin > "$suite/$selected-wrong-publication.log" 2>&1; then exit 1; fi
-            touch unexpected-source
-            if bash scripts/release/check-publication.sh origin > "$suite/$selected-dirty-publication.log" 2>&1; then exit 1; fi
-            rm unexpected-source
-            bash scripts/release/check-publication.sh origin
-            bash scripts/release/publish.sh origin
-            [[ "$(cat "$GROUP_TEST_UPLOADS")" == "publish -p $package --all-features --locked --registry crates-io" ]]
-            : > "$GROUP_TEST_UPLOADS"
-            make publish-check > "$suite/$selected-publish-check.log" 2>&1
-            [[ "$(cat "$GROUP_TEST_UPLOADS")" == "publish -p $package --all-features --locked --registry crates-io --allow-dirty --dry-run" ]]
-        fi
-        cmp "$other_ledger" "$suite/$selected-other-ledger"
-        cmp CHANGELOG.md "$suite/$selected-index"
-        cmp releases/history.md "$suite/$selected-history"
-        cargo metadata --locked --offline --format-version 1 > "$suite/$selected-after.json"
-        jq -e --arg other "$other" --arg version "$other_version" '.packages[] | select(.name == $other and .source == null) | .version == $version' "$suite/$selected-after.json" > /dev/null
-        if [[ "$selected" == jobs ]]; then
-            [[ "$(yq -p toml -o yaml -r '.workspace.dependencies.ic-timers.version' Cargo.toml)" == "$requirement" ]]
-        else
-            [[ "$(yq -p toml -o yaml -r '.package.version' crates/ic-jobs/Cargo.toml)" == "$other_version" ]]
-            [[ "$(yq -p toml -o yaml -r '.workspace.dependencies.ic-timers.version' Cargo.toml)" == "$candidate" ]]
-            # The unchanged standalone Jobs consumer still builds against Jobs
-            # its retained version after the independent Timers upgrade.
-            CARGO_TARGET_DIR="$suite/jobs-consumer-target" bash scripts/dev/minimum-rust.sh cargo check \
-                -p ic-jobs --example persisted_job --locked --offline
-        fi
-        printf '%s group %s passed (real Cargo metadata/editor/Git; substituted full gate, tool setup and upload)\n' "$selected" "$mode"
-    )
+    cd "$repo"
+    export RELEASE_GROUP="$selected" RELEASE_MAKE="$suite/bin/make"
+    # shellcheck disable=SC2031 # This phase establishes fresh event files.
+    export GROUP_TEST_EVENTS="$suite/$selected-gates" GROUP_TEST_UPLOADS="$suite/$selected-uploads"
+    : > "$GROUP_TEST_EVENTS"; : > "$GROUP_TEST_UPLOADS"
+    ledger=releases/jobs/CHANGELOG.md; other_ledger=releases/timers/CHANGELOG.md; package=ic-jobs; other=ic-timers
+    if [[ "$selected" == timers ]]; then
+        ledger=releases/timers/CHANGELOG.md; other_ledger=releases/jobs/CHANGELOG.md; package=ic-timers; other=ic-jobs
+    fi
+    previous="$(bash scripts/release/group.sh version)"
+    candidate="$(bash scripts/ci/next-release-version.sh "$previous" patch)"
+    other_group=timers; [[ "$selected" != timers ]] || other_group='jobs'
+    other_version="$(RELEASE_GROUP="$other_group" bash scripts/release/group.sh version)"
+    printf '# Fixture ledger\n\n## [%s] - Unreleased\n\n### 🩹 Fixed\n\n- Fixture group preparation.\n' "$candidate" > "$ledger"
+    git init -q -b main
+    git config user.name 'Scheduling fixture'; git config user.email 'fixture@example.invalid'
+    git config core.hooksPath /dev/null
+    git add -- .; git commit -qm baseline
+    base="$(git rev-parse HEAD)"
+    export RELEASE_SOURCE="$base" RELEASE_PREVIOUS="$previous" RELEASE_VERSION="$candidate"
+    export RELEASE_DATE=2026-10-31 RELEASE_REMOTE=origin RELEASE_BRANCH=main
+    git init -q --bare "$suite/$selected-remote.git"
+    git remote add origin "$suite/$selected-remote.git"
+    git push -q origin main
+    plan="$(bash scripts/release/group.sh plan)"
+    [[ "$(printf '%s\n' "$plan" | jq -r .primary)" == "$package" ]]
+    [[ "$(make -s release-version)" == "$previous" ]]
+    printf '%s\n' "$plan" > "$suite/$selected-plan.json"
+    bash scripts/release/group.sh files > "$suite/$selected-files"
+    cp "$other_ledger" "$suite/$selected-other-ledger"
+    cp CHANGELOG.md "$suite/$selected-index"
+    cp releases/history.md "$suite/$selected-history"
+    cargo metadata --locked --offline --format-version 1 > "$suite/$selected-before.json"
+    requirement="$(yq -p toml -o yaml -r '.workspace.dependencies.ic-timers.version' Cargo.toml)"
+    case "$mode" in
+        all|metadata|retention)
+            check_metadata_rollback "$suite" "$selected" "$previous" "$candidate" "$base" ;;
+    esac
+    case "$mode" in
+        metadata|retention)
+            RELEASE_PREPARATION_SOURCE="$base" bash scripts/release/metadata.sh prepare > "$suite/$selected-prepare.log" 2>&1
+            bash scripts/release/metadata.sh check ;;
+        all|delivery|recovery|publication)
+            interrupt_release "$suite" "$selected" "$candidate"
+            resume_release "$suite" "$selected" "$other_group" "$candidate" "$base"
+            check_publication "$suite" "$selected" "$other_group" "$candidate" "$package" ;;
+    esac
+    cmp "$other_ledger" "$suite/$selected-other-ledger"
+    cmp CHANGELOG.md "$suite/$selected-index"
+    cmp releases/history.md "$suite/$selected-history"
+    cargo metadata --locked --offline --format-version 1 > "$suite/$selected-after.json"
+    jq -e --arg other "$other" --arg version "$other_version" '.packages[] | select(.name == $other and .source == null) | .version == $version' "$suite/$selected-after.json" > /dev/null
+    if [[ "$selected" == jobs ]]; then
+        [[ "$(yq -p toml -o yaml -r '.workspace.dependencies.ic-timers.version' Cargo.toml)" == "$requirement" ]]
+    else
+        [[ "$(yq -p toml -o yaml -r '.package.version' crates/ic-jobs/Cargo.toml)" == "$other_version" ]]
+        [[ "$(yq -p toml -o yaml -r '.workspace.dependencies.ic-timers.version' Cargo.toml)" == "$candidate" ]]
+        # The unchanged standalone Jobs consumer still builds against Jobs
+        # its retained version after the independent Timers upgrade.
+        CARGO_TARGET_DIR="$suite/jobs-consumer-target" bash scripts/dev/minimum-rust.sh cargo check \
+            -p ic-jobs --example persisted_job --locked --offline
+    fi
+    printf '%s group %s passed (real Cargo metadata/editor/Git; substituted full gate, tool setup and upload)\n' "$selected" "$mode"
+)
+
+check_refusals "$fixture_suite"
+for selected in jobs timers; do
+    qualify_group "$fixture_suite" "$selected" "$fixture_mode"
 done
 fixture_complete=true

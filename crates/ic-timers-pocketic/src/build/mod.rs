@@ -26,7 +26,7 @@ const CONFIGURATION_LIMITS: ConfigurationLimits = ConfigurationLimits {
 };
 
 /// Full qualification or an explicitly narrower development selection.
-pub(crate) enum Qualification {
+pub enum Qualification {
     Watchdog,
     Focused {
         subjects: Vec<String>,
@@ -38,7 +38,7 @@ pub(crate) enum Qualification {
 }
 
 impl Qualification {
-    pub(crate) const fn name(&self) -> &'static str {
+    pub const fn name(&self) -> &'static str {
         match self {
             Self::Watchdog => "watchdog",
             Self::Focused { .. } => "focused",
@@ -47,41 +47,7 @@ impl Qualification {
     }
 }
 
-/// Policy cohorts admitted by both the build driver and measurement/report consumers.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum Cohort {
-    Baseline,
-    Once,
-    AfterCompletion,
-    Watchdog,
-}
-
-impl Cohort {
-    pub(crate) const ALL: [Self; 4] = [
-        Self::Baseline,
-        Self::Once,
-        Self::AfterCompletion,
-        Self::Watchdog,
-    ];
-
-    pub(crate) const fn name(self) -> &'static str {
-        match self {
-            Self::Baseline => "baseline",
-            Self::Once => "once",
-            Self::AfterCompletion => "after-completion",
-            Self::Watchdog => "watchdog",
-        }
-    }
-
-    pub(crate) const fn environment(self) -> &'static str {
-        match self {
-            Self::Baseline => "IC_TIMERS_COHORT_BASELINE_WASM",
-            Self::Once => "IC_TIMERS_COHORT_ONCE_WASM",
-            Self::AfterCompletion => "IC_TIMERS_COHORT_AFTER_COMPLETION_WASM",
-            Self::Watchdog => "IC_TIMERS_COHORT_WATCHDOG_WASM",
-        }
-    }
-}
+use crate::cohort::Cohort;
 
 const COHORT_SUBJECT: &str =
     "cohorts::comparable_policy_cohorts_report_size_and_instruction_subjects";
@@ -175,9 +141,12 @@ fn discover_subjects(
         .map(|line| line.strip_suffix(": test").ok_or("invalid test listing"))
         .collect::<Result<Vec<_>, _>>()?;
     let admitted = match qualification {
-        Qualification::Watchdog => REQUIRED_WATCHDOG_SUBJECTS
-            .iter()
-            .all(|name| names.contains(name)),
+        Qualification::Watchdog => {
+            names.iter().all(|name| name.starts_with("tests::"))
+                && REQUIRED_WATCHDOG_SUBJECTS
+                    .iter()
+                    .all(|name| names.contains(name))
+        }
         Qualification::Cohorts { .. } => names == [COHORT_SUBJECT],
         Qualification::Focused { subjects } => {
             !subjects.is_empty()
@@ -209,7 +178,7 @@ fn discover_subjects(
     Ok(names.into_iter().map(str::to_owned).collect())
 }
 
-pub(crate) fn run(qualification: &Qualification) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(qualification: &Qualification) -> Result<(), Box<dyn std::error::Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .canonicalize()?;
@@ -239,8 +208,8 @@ pub(crate) fn run(qualification: &Qualification) -> Result<(), Box<dyn std::erro
         "test",
         "-p",
         "ic-timers-pocketic",
-        "--bin",
-        "ic-timers-pocketic",
+        "--test",
+        "runtime",
         "--locked",
         "--",
     ]);
@@ -267,7 +236,7 @@ pub(crate) fn run(qualification: &Qualification) -> Result<(), Box<dyn std::erro
         format!("{}\n", subjects.join("\n")),
     )?;
     let mut builds = Vec::new();
-    let mut report = crate::report::BuildContext::new(&root)?;
+    let mut report = crate::report::BuildContextBuilder::new(&root)?;
     let recipes = if !matches!(qualification, Qualification::Cohorts { .. }) {
         vec![(
             "runtime",
@@ -277,7 +246,8 @@ pub(crate) fn run(qualification: &Qualification) -> Result<(), Box<dyn std::erro
         )]
     } else {
         Cohort::ALL
-            .into_iter()
+            .iter()
+            .copied()
             .map(|cohort| {
                 (
                     cohort.name(),
@@ -331,6 +301,7 @@ pub(crate) fn run(qualification: &Qualification) -> Result<(), Box<dyn std::erro
         // Retain exact artifacts until the child tests finish reading them.
         builds.push(built);
     }
+    let report = report.finish()?;
     if report_path.is_some() {
         tests.env("IC_TIMERS_COHORT_REPORT", &candidate);
         tests.env("IC_TIMERS_COHORT_CONTEXT", serde_json::to_string(&report)?);
@@ -363,7 +334,7 @@ pub(crate) fn run(qualification: &Qualification) -> Result<(), Box<dyn std::erro
 
 // One parent process group covers builds, Cargo tests and synchronous instance
 // deletion. Separately grouped Testkit servers also have their own hard TTL.
-pub(crate) fn qualify(command: &mut Command, timeout: Duration) -> Result<(), ToolError> {
+pub fn qualify(command: &mut Command, timeout: Duration) -> Result<(), ToolError> {
     run_group_command(
         command,
         OutputLimits {

@@ -7,7 +7,9 @@ retain their tested source identities; old repository commands are historical.
 
 ## Commands
 
-- `make test-timers`: minimum-compiler library, doctest and protocol tests.
+- `make test-timers`: aggregate minimum-compiler library, doctest, protocol and
+  host-only tooling tests.
+- `make test-timer-tooling`: host-only driver/discovery/receipt tests; no PocketIC.
 - `make check-timer-provider check-timer-dependencies`: provider confinement and
   native/Wasm dependency admission, including the matching Platform runtime guard.
 - `make test-timer-dependencies`: deliberate forbidden-edge rejection fixtures.
@@ -16,6 +18,22 @@ retain their tested source identities; old repository commands are historical.
 - `make test-timer-watchdog`: explicit installed watchdog/runtime qualification.
 - `make test-timer-cohorts`: explicit installed policy comparison with retained reports.
 - `make test-canister`: explicit Jobs/Timers composition recovery qualification.
+
+The installed subjects live in the dedicated `runtime` integration target; the
+qualification driver selects it and retains exact subject names in its receipts.
+Direct `cargo test --all-targets` would execute installed subjects without the
+driver's artifact admission. Use the explicit driver commands above for IC work;
+use `--lib --bin ic-timers-pocketic` for host-only driver tests.
+
+One cohort catalog owns selection and typed measurement slots. The report keeps
+its existing JSON field names and strict completeness checks. Build identity is
+admitted as a whole from the first successful build; later builds must match it.
+
+For changes to local release-group fixtures, select
+`bash scripts/release/test-tooling.sh metadata` for preparation/rollback or
+`bash scripts/release/test-tooling.sh recovery` for interruption, resume and
+publication admission. The latter substitutes uploads and the full release gate
+inside disposable repositories; it never publishes a real crate.
 
 The root owns one Cargo lock, Rust 1.91 floor, development toolchain, formatting,
 CI and publication path. The `timer-probe` profile retains its previous optimization
@@ -32,10 +50,12 @@ handoff for what was actually run on this combined source and graph.
 
 ## Release and retained evidence
 
-Both libraries use the approved 0.33.0 workspace version. The combined changelog
-records the migration. The imported [Timers changelog](../../crates/ic-timers/CHANGELOG.md)
-retains its preceding release history. Publication selects both libraries and
-requires explicit authorization; moving source does not publish or deploy it.
+Jobs and Timers have independent versions and canonical
+[Jobs](../../releases/jobs/CHANGELOG.md) and
+[Timers](../../releases/timers/CHANGELOG.md) ledgers. The
+[coordinated history](../../releases/history.md) retains the workspace migration.
+Select `RELEASE_GROUP=jobs` or `timers` explicitly for release or publication;
+publication requires its separate authorization.
 Historical receipts under `evidence/`, `audits/` and `changelog/` describe their
 original checkouts and cannot qualify this migration. Original sibling source
 remains available for rollback and provenance.

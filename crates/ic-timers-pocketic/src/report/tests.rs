@@ -257,7 +257,7 @@ fn report_publication_replaces_the_entry_without_truncating_hard_linked_bytes() 
 fn receipt_round_trip_preserves_costs_and_rejects_incomparable_contexts() {
     let baseline = fixture_report();
     let mut current = baseline.clone();
-    current.measurements.once.wasm_bytes = 10;
+    current.measurements[Cohort::Once].wasm_bytes = 10;
     assert_eq!(current.deltas(&baseline).unwrap()["once/wasm_bytes"], 10);
     // Source and artifact identities may differ across the sources under review.
     current.artifacts.get_mut("once").unwrap().wasm_sha256 = "new bytes".into();
@@ -318,11 +318,58 @@ fn receipt_round_trip_preserves_costs_and_rejects_incomparable_contexts() {
         }
         assert!(current.deltas(&changed).is_err(), "{change}");
     }
-    current.measurements.once.dispatch_cycles = u128::MAX;
+    let policy = serde_json::to_string(&current.measurements[Cohort::Once]).unwrap();
+    let duplicate = serde_json::to_string(&current.measurements)
+        .unwrap()
+        .replacen("\"once\":", &format!("\"once\":{policy},\"once\":"), 1);
+    assert!(serde_json::from_str::<Measurements>(&duplicate).is_err());
+    current.measurements[Cohort::Once].dispatch_cycles = u128::MAX;
     let decoded: Report = serde_json::from_slice(&serde_json::to_vec(&current).unwrap()).unwrap();
-    assert_eq!(decoded.measurements.once.dispatch_cycles, u128::MAX);
+    assert_eq!(
+        decoded.measurements[Cohort::Once].dispatch_cycles,
+        u128::MAX
+    );
     assert!(
         decoded.deltas(&baseline).is_err(),
         "unrepresentable signed delta must reject"
     );
+}
+
+#[test]
+fn build_identity_is_admitted_whole_and_mismatches_preserve_the_first_build() {
+    let report = fixture_report();
+    let expected = report.context;
+    let mut builder = BuildContextBuilder {
+        environment: BuildEnvironment {
+            lock_sha256: expected.lock_sha256.clone(),
+            server_sha256: expected.server_sha256.clone(),
+            host: expected.host.clone(),
+            profile: expected.profile.clone(),
+        },
+        context: None,
+        artifacts: report.artifacts,
+    };
+    for key in ["rustc", "cargo", "target"] {
+        let mut invalid = serde_json::to_value(&expected).unwrap();
+        invalid[key] = "".into();
+        assert!(
+            builder
+                .admit_context(serde_json::from_value(invalid).unwrap())
+                .is_err()
+        );
+        assert!(builder.context.is_none());
+    }
+    builder.admit_context(expected.clone()).unwrap();
+    for key in ["rustc", "cargo", "target"] {
+        let mut changed = serde_json::to_value(&expected).unwrap();
+        changed[key] = "changed".into();
+        assert!(
+            builder
+                .admit_context(serde_json::from_value(changed).unwrap())
+                .is_err()
+        );
+        assert_eq!(builder.context.as_ref(), Some(&expected));
+    }
+    builder.admit_context(expected.clone()).unwrap();
+    assert_eq!(builder.finish().unwrap().context, expected);
 }

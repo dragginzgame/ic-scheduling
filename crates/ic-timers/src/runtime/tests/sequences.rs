@@ -96,7 +96,7 @@ fn generated_command_sequences_preserve_authority_and_handle_ownership() {
                                 .unwrap();
                         detached.map(|handle| {
                             let (token, handle) = handle;
-                            bind_provider_handle(&token, handle, None).unwrap();
+                            bind_provider_handle(&token, handle, ProviderBinding::Stage).unwrap();
                             token
                         })
                     } else {

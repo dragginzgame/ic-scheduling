@@ -11,7 +11,7 @@ use ic_timers::{
     reconcile_watchdog,
 };
 use ic_wire::native;
-use serde::{Serialize, de::DeserializeOwned};
+use serde::de::DeserializeOwned;
 
 use crate::{
     api::{Create, Delivery, Error, Init, Summary, View},
@@ -91,14 +91,6 @@ fn decode_control<T: DeserializeOwned, const ID: u64>(bytes: Vec<u8>) -> T {
     ic_wire_endpoint::decode_request(&bytes, ID, control::REQUEST_LIMITS)
 }
 
-fn encode_control<T: Serialize, const ID: u64>(result: T) -> Vec<u8> {
-    ic_wire_endpoint::encode_response(&result, ID, control::RESPONSE_LIMITS)
-}
-
-fn encode_unit<const ID: u64>() -> Vec<u8> {
-    encode_control::<_, ID>(())
-}
-
 fn recover(initial: Option<Init>) {
     let (queue, due) = required(Queue::open(DefaultMemoryImpl::default(), initial));
     // Open/restore the entire bounded snapshot before registering any callback.
@@ -121,73 +113,73 @@ fn post_upgrade() {
     recover(None);
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::Create as u64 }>",
-    encode_with = "encode_control::<_, { Method::Create as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::Create as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn create(input: Create) -> Result<u64, Error> {
+fn create((input,): (Create,)) -> Result<u64, Error> {
     update_queue(|queue| queue.create(input))
 }
 
-#[cdk::query(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::Inspect as u64 }>",
-    encode_with = "encode_control::<_, { Method::Inspect as u64 }>"
+#[ic_wire_endpoint::query(
+    id = Method::Inspect as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn inspect(id: u64) -> Result<View, Error> {
+fn inspect((id,): (u64,)) -> Result<View, Error> {
     with_authorized_queue(|queue| queue.inspect(id))
 }
 
-#[cdk::query(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::List as u64 }>",
-    encode_with = "encode_control::<_, { Method::List as u64 }>"
+#[ic_wire_endpoint::query(
+    id = Method::List as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn list(after: Option<u64>, limit: u8) -> Result<Vec<View>, Error> {
+fn list((after, limit): (Option<u64>, u8)) -> Result<Vec<View>, Error> {
     with_authorized_queue(|queue| queue.page(after, limit))
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::Cancel as u64 }>",
-    encode_with = "encode_control::<_, { Method::Cancel as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::Cancel as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn cancel(id: u64) -> Result<(), Error> {
+fn cancel((id,): (u64,)) -> Result<(), Error> {
     update_queue(|queue| queue.cancel(id, cdk::api::time()))
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::Pause as u64 }>",
-    encode_with = "encode_control::<_, { Method::Pause as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::Pause as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn pause(id: u64) -> Result<(), Error> {
+fn pause((id,): (u64,)) -> Result<(), Error> {
     update_queue(|queue| queue.pause(id, cdk::api::time()))
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::Resume as u64 }>",
-    encode_with = "encode_control::<_, { Method::Resume as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::Resume as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn resume(id: u64) -> Result<(), Error> {
+fn resume((id,): (u64,)) -> Result<(), Error> {
     update_queue(|queue| queue.resume(id, cdk::api::time()))
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::Reschedule as u64 }>",
-    encode_with = "encode_control::<_, { Method::Reschedule as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::Reschedule as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn reschedule(id: u64, timing: crate::api::Timing) -> Result<(), Error> {
+fn reschedule((id, timing): (u64, crate::api::Timing)) -> Result<(), Error> {
     update_queue(|queue| queue.reschedule(id, timing, cdk::api::time()))
 }
 
-#[cdk::query(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::Summary as u64 }>",
-    encode_with = "encode_control::<_, { Method::Summary as u64 }>"
+#[ic_wire_endpoint::query(
+    id = Method::Summary as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
 fn summary() -> Result<Summary, Error> {
     let Committed {
@@ -208,12 +200,12 @@ fn summary() -> Result<Summary, Error> {
     })
 }
 
-#[cdk::query(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::JobLogs as u64 }>",
-    encode_with = "encode_control::<_, { Method::JobLogs as u64 }>"
+#[ic_wire_endpoint::query(
+    id = Method::JobLogs as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn job_logs(request: crate::api::JobLogRequest) -> Result<crate::api::JobLogPage, Error> {
+fn job_logs((request,): (crate::api::JobLogRequest,)) -> Result<crate::api::JobLogPage, Error> {
     with_authorized_queue(|queue| queue.job_logs(request, cdk::api::canister_version()))
 }
 
@@ -223,19 +215,19 @@ fn complete_delivery(delivery: &Delivery, outcome: Outcome) -> Result<(), Error>
     Ok(())
 }
 
-#[cdk::query(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::JobMetrics as u64 }>",
-    encode_with = "encode_control::<_, { Method::JobMetrics as u64 }>"
+#[ic_wire_endpoint::query(
+    id = Method::JobMetrics as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
 fn job_metrics() -> Result<crate::api::JobMetrics, Error> {
     with_authorized_queue(|queue| Ok(queue.job_metrics(cdk::api::canister_version())))
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::ResetJobMetrics as u64 }>",
-    encode_with = "encode_control::<_, { Method::ResetJobMetrics as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::ResetJobMetrics as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
 fn reset_job_metrics() -> Result<crate::api::JobMetrics, Error> {
     with_authorized_queue(|queue| Ok(queue.reset_job_metrics(cdk::api::canister_version())))
@@ -293,10 +285,10 @@ fn wake() -> WatchdogRunResult {
     WatchdogRunResult::completed_batch(work, result.next_due_ns)
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::DispatchDue as u64 }>",
-    encode_with = "encode_control::<_, { Method::DispatchDue as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::DispatchDue as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
 fn dispatch_due() -> Result<(), Error> {
     launch_deliveries(dispatch_reconciled()?);
@@ -307,50 +299,33 @@ fn dispatch_reconciled() -> Result<Vec<Delivery>, Error> {
     Ok(update_queue(|queue| queue.dispatch(cdk::api::time()))?.deliveries)
 }
 
-fn admit_delivery_input() -> Result<(), String> {
-    // Platform runs guards before msg_arg_data copies the complete argument.
-    if ic_platform::ic0::msg_arg_data_size() > REQUEST_LIMITS.bytes {
-        return Err("delivery request exceeds Wire frame limit".into());
-    }
-    Ok(())
-}
-
-fn decode_delivery<const ID: u64>(bytes: Vec<u8>) -> Delivery {
-    ic_wire_endpoint::decode_request(&bytes, ID, REQUEST_LIMITS)
-}
-
-fn encode_delivery<T: Serialize, const ID: u64>(result: T) -> Vec<u8> {
-    // Encoding failure traps in the same segment as the receipt write.
-    ic_wire_endpoint::encode_response(&result, ID, RESPONSE_LIMITS)
-}
-
-#[cdk::update(
-    guard = "admit_delivery_input",
-    decode_with = "decode_delivery::<RECEIVE_ID>",
-    encode_with = "encode_delivery::<_, RECEIVE_ID>"
+#[ic_wire_endpoint::update(
+    id = RECEIVE_ID,
+    request = REQUEST_LIMITS,
+    response = RESPONSE_LIMITS
 )]
-fn receive_delivery(delivery: Delivery) -> Result<Delivery, Error> {
+fn receive_delivery((delivery,): (Delivery,)) -> Result<Delivery, Error> {
     if delivery.payload.destination != cdk::api::canister_self() {
         return Err(Error::ReceiptMismatch);
     }
     with_queue(|queue| queue.receive(cdk::api::msg_caller(), delivery))
 }
 
-#[cdk::update(
-    guard = "admit_delivery_input",
-    decode_with = "decode_delivery::<RECEIPT_ID>",
-    encode_with = "encode_delivery::<_, RECEIPT_ID>"
+#[ic_wire_endpoint::update(
+    id = RECEIPT_ID,
+    request = REQUEST_LIMITS,
+    response = RESPONSE_LIMITS
 )]
-fn delivery_receipt(delivery: Delivery) -> Result<Option<Delivery>, Error> {
+fn delivery_receipt((delivery,): (Delivery,)) -> Result<Option<Delivery>, Error> {
     with_queue(|queue| queue.receipt(cdk::api::msg_caller(), &delivery))
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::ReconcileDelivery as u64 }>",
-    encode_with = "encode_control::<_, { Method::ReconcileDelivery as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::ReconcileDelivery as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-async fn reconcile_delivery(id: u64) -> Result<bool, Error> {
+async fn reconcile_delivery((id,): (u64,)) -> Result<bool, Error> {
     let delivery = with_authorized_queue(|queue| queue.outstanding(id))?;
     let method = DeliveryMethod::Receipt;
     let response = delivery_call(&delivery, method).await;
@@ -367,74 +342,74 @@ async fn reconcile_delivery(id: u64) -> Result<bool, Error> {
 
 // These explicitly named fault controls exist only in this unpublished test
 // canister. They use real IC traps; there is no production cfg(test) substitute.
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::TrapWatchdogBatch as u64 }>",
-    encode_with = "encode_control::<_, { Method::TrapWatchdogBatch as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::TrapWatchdogBatch as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn fixture_trap_watchdog_batch(enabled: bool) -> Result<(), Error> {
+fn fixture_trap_watchdog_batch((enabled,): (bool,)) -> Result<(), Error> {
     with_authorized_queue(|_| Ok(()))?;
     TRAP_WATCHDOG_BATCH.with(|fault| fault.set(enabled));
     Ok(())
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::TrapAfterCreate as u64 }>",
-    encode_with = "encode_unit::<{ Method::TrapAfterCreate as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::TrapAfterCreate as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn fixture_trap_after_create(input: Create) {
-    required(create(input));
+fn fixture_trap_after_create((input,): (Create,)) {
+    required(create((input,)));
     cdk::api::trap("fixture: trap after stable write and watchdog reconciliation");
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::TrapAfterPause as u64 }>",
-    encode_with = "encode_unit::<{ Method::TrapAfterPause as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::TrapAfterPause as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn fixture_trap_after_pause(id: u64) {
-    required(pause(id));
+fn fixture_trap_after_pause((id,): (u64,)) {
+    required(pause((id,)));
     cdk::api::trap("fixture: trap after paused write and watchdog reconciliation");
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::TrapAfterReschedule as u64 }>",
-    encode_with = "encode_unit::<{ Method::TrapAfterReschedule as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::TrapAfterReschedule as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn fixture_trap_after_reschedule(id: u64, timing: crate::api::Timing) {
-    required(reschedule(id, timing));
+fn fixture_trap_after_reschedule((id, timing): (u64, crate::api::Timing)) {
+    required(reschedule((id, timing)));
     cdk::api::trap("fixture: trap after rescheduled write and watchdog reconciliation");
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::CorruptRecord as u64 }>",
-    encode_with = "encode_control::<_, { Method::CorruptRecord as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::CorruptRecord as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn fixture_corrupt_record(id: u64) -> Result<(), Error> {
+fn fixture_corrupt_record((id,): (u64,)) -> Result<(), Error> {
     with_authorized_queue(|queue| queue.corrupt_record(id))
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::MarkUncertain as u64 }>",
-    encode_with = "encode_control::<_, { Method::MarkUncertain as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::MarkUncertain as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn fixture_mark_uncertain(id: u64) -> Result<(), Error> {
+fn fixture_mark_uncertain((id,): (u64,)) -> Result<(), Error> {
     let delivery = with_authorized_queue(|queue| queue.outstanding(id))?;
     complete_delivery(&delivery, Outcome::Uncertain)?;
     Ok(())
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::DispatchTrapResult as u64 }>",
-    encode_with = "encode_control::<_, { Method::DispatchTrapResult as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::DispatchTrapResult as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-async fn fixture_dispatch_trap_result(input: Create) -> Result<(), Error> {
-    create(input)?;
+async fn fixture_dispatch_trap_result((input,): (Create,)) -> Result<(), Error> {
+    create((input,))?;
     let deliveries = dispatch_reconciled()?;
     // Intent commits at the real inter-canister call boundary. The receipt lives
     // at the destination; a later sender trap cannot roll back that earlier call.
@@ -447,13 +422,13 @@ async fn fixture_dispatch_trap_result(input: Create) -> Result<(), Error> {
     Ok(())
 }
 
-#[cdk::update(
-    guard = "admit_control_input",
-    decode_with = "decode_control::<_, { Method::CreateBlocked as u64 }>",
-    encode_with = "encode_control::<_, { Method::CreateBlocked as u64 }>"
+#[ic_wire_endpoint::update(
+    id = Method::CreateBlocked as u64,
+    request = control::REQUEST_LIMITS,
+    response = control::RESPONSE_LIMITS
 )]
-fn fixture_create_blocked(input: Create) -> Result<u64, Error> {
-    let id = create(input)?;
+fn fixture_create_blocked((input,): (Create,)) -> Result<u64, Error> {
+    let id = create((input,))?;
     // Simulate interruption after committed intent but before dispatch. This
     // endpoint never sends an envelope or claims an absent receipt is retry safe.
     dispatch_reconciled()?;

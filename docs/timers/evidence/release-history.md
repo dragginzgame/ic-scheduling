@@ -990,7 +990,7 @@ inspection, with all three MSRV jobs passed. Host 0.5.2's
 passes Linux, MSRV and both native macOS gates. These observations do not
 qualify the incoming consumer graph; no dependency file was written by the audit.
 
-The maintained [harness](../../../crates/ic-timers-pocketic/src/harness/mod.rs)
+The maintained [harness](../../../crates/ic-timers-pocketic/tests/runtime/harness/mod.rs)
 still explicitly spawns the audited PocketIC binary and connects a fresh
 instance to its owned server, retaining instance-before-server destruction.
 Testkit delegates server spawn, polling, termination and background reaping to
@@ -1860,7 +1860,7 @@ source, public APIs and canister dependencies are unchanged.
 The downloaded registry startup owner and CLI match Testkit's tagged 0.27.0
 source at `f2d9fc6f197bcb9e669a7abaa1135f4cdffdd9ee`. Its startup error is a
 record with `failure()`, bounded `output()` and independent command/server cleanup
-reports. The private [harness](../../../crates/ic-timers-pocketic/src/harness/mod.rs)
+reports. The private [harness](../../../crates/ic-timers-pocketic/tests/runtime/harness/mod.rs)
 uses retained spawn/connect/build APIs and `expect`, without matching retired
 error variants. Its error's `Debug` includes the original cause and cleanup/output
 fields; adding downstream error reconstruction would duplicate the owner.
@@ -1931,7 +1931,7 @@ complete release gate, including its existing MSRV-selected probe execution.
 Both product targets use the existing [Make owners](../../../Makefile): offline
 Testkit admission precedes builds, admission is rechecked afterward, and only
 the resulting server path reaches the probes. The private
-[harness](../../../crates/ic-timers-pocketic/src/harness/mod.rs) starts a fresh
+[harness](../../../crates/ic-timers-pocketic/tests/runtime/harness/mod.rs) starts a fresh
 managed server and IC instance for each subject. The watchdog target selects
 the existing `tests::` subjects; the cohort target selects the existing size and
 instruction subject with its measurement output. Normal step failure stops the
