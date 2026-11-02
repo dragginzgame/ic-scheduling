@@ -82,7 +82,7 @@ and the explicit installed watchdog/cohort gate remain required.
 Prepare selected dependencies with `cargo fetch --locked`. Use
 `make install-tools`, `make tools-check`, `make install-testkit-tools` and
 `make install-release-tools` for explicit setup and offline admission. The
-root lock selects the group-capable IC Build 0.73.6 editor; no alternate editor
+root lock selects the group-capable IC Build 0.74.0 editor; no alternate editor
 or handwritten metadata renderer is used. Standard fresh release preflight
 admits source and notes, prepares the locked cache and tools, then admits the
 editor. Resume admits the saved source's editor selection without fresh setup.
@@ -97,7 +97,7 @@ Both groups retain the complete `release-verify` gate: combined CI, Testkit/serv
 preparation, installed Timers watchdog and policy-cohort qualifications. Group
 selection does not narrow it. CI packages both public crates with `package-all`.
 Independent core qualification stays explicit; the Jobs model remains Serde-only.
-The real Jobs consumer still composes Jobs, Timers, Memory, Wire and Platform.
+The real Jobs consumer still composes Jobs, Timers, Storage, Wire and Runtime.
 Its commit-before-dispatch, exact attempts/receipts, uncertain effects and
 trap/upgrade obligations remain mandatory. One lockfile continues to resolve all
 nine members; release groups do not isolate incompatible runtime stacks.

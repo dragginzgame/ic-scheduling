@@ -1,59 +1,8 @@
 use super::*;
-use ic_memory::{BackingIdentity, VectorMemory, testing::memory_from_sparse_hex};
-use ic_testkit_native::memory::MeteredMemory;
+use ic_storage::{VectorMemory, testing::MeteredMemory};
 
-// The test host supplies physical identity; Tooling still owns IO accounting.
-#[derive(Clone)]
-struct MeteredBacking(MeteredMemory);
-
-impl MeteredBacking {
-    fn new(backing: VectorMemory) -> Self {
-        Self(MeteredMemory::new(backing))
-    }
-}
-
-impl std::ops::Deref for MeteredBacking {
-    type Target = MeteredMemory;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Memory for MeteredBacking {
-    fn size(&self) -> u64 {
-        self.0.size()
-    }
-
-    fn grow(&self, pages: u64) -> i64 {
-        self.0.grow(pages)
-    }
-
-    fn read(&self, offset: u64, bytes: &mut [u8]) {
-        self.0.read(offset, bytes);
-    }
-
-    fn write(&self, offset: u64, bytes: &[u8]) {
-        self.0.write(offset, bytes);
-    }
-}
-
-impl MemoryBacking for MeteredBacking {
-    fn backing_identity(&self) -> BackingIdentity {
-        self.backing().backing_identity()
-    }
-}
-
-fn retained_cell(backing: VectorMemory, maximum: usize) -> FixtureCell<VectorMemory> {
-    FixtureCell::open_bounded(
-        backing,
-        "test.jobs",
-        "test.jobs.",
-        KEY,
-        MemoryManagerConfig::new(NonZeroU16::MIN),
-        maximum,
-    )
-    .unwrap()
+fn retained_cell(backing: VectorMemory, maximum: usize) -> StableCell<Vec<u8>, VectorMemory> {
+    StableCell::load(queue_memory(backing).unwrap(), maximum).unwrap()
 }
 
 fn manager() -> Principal {
@@ -83,21 +32,21 @@ fn stored_records(bytes: &[u8]) -> Result<Snapshot, ic_wire::Error> {
 // Deliberately bypass Job::restore only while producing a corrupt current
 // snapshot. Assertions still exercise normal production readers and refusals.
 fn mutate_records(queue: &mut Queue<VectorMemory>, mutate: impl FnOnce(&mut Snapshot)) {
-    let mut snapshot = stored_records(queue.cell.bytes()).unwrap();
+    let mut snapshot = stored_records(queue.cell.get().as_slice()).unwrap();
     mutate(&mut snapshot);
-    queue.cell.try_set(encode(&snapshot).unwrap()).unwrap();
+    queue.cell.set(encode(&snapshot).unwrap()).unwrap();
 }
 
 #[test]
 fn aliased_backing_refuses_reopen_until_the_final_handle_drops() {
     let backing = VectorMemory::default();
-    let mut queue = Queue::open(MeteredBacking::new(backing.clone()), Some(config()))
+    let mut queue = Queue::open(MeteredMemory::new(backing.clone()), Some(config()))
         .unwrap()
         .0;
     let id = queue.create(increment(100)).unwrap().value;
-    let before = queue.cell.bytes().to_vec();
+    let before = queue.cell.get().as_slice().to_vec();
     // Independent metering wrappers must identify the same physical backing.
-    let alias = MeteredBacking::new(backing);
+    let alias = MeteredMemory::new(backing);
     let refused = || {
         assert!(matches!(
             Queue::open(alias.clone(), None),
@@ -106,11 +55,14 @@ fn aliased_backing_refuses_reopen_until_the_final_handle_drops() {
         assert_eq!(alias.counts(), Default::default());
     };
     refused();
-    let handle = queue.cell.into_memory();
+    drop(queue);
+    // A detached checked lease also retains custody after its runtime drops.
+    let handle = queue_memory(alias.clone()).unwrap();
+    alias.reset();
     refused();
     drop(handle);
     let reopened = Queue::open(alias, None).unwrap().0;
-    assert_eq!(reopened.cell.bytes(), before);
+    assert_eq!(reopened.cell.get().as_slice(), before);
     assert_eq!(reopened.inspect(id).unwrap().id, id);
 }
 
@@ -278,16 +230,16 @@ fn refused_management_preserves_stable_bytes_and_blocked_delivery() {
         if uncertain {
             queue.finish(&deliveries[0], 1, Outcome::Uncertain).unwrap();
         }
-        let before = queue.cell.bytes().to_vec();
+        let before = queue.cell.get().as_slice().to_vec();
         assert!(queue.pause(id, 2).is_err());
         assert!(queue.resume(id, 2).is_err());
         assert!(queue.reschedule(id, Timing::Once(100), 2).is_err());
-        assert_eq!(queue.cell.bytes(), before);
+        assert_eq!(queue.cell.get().as_slice(), before);
         assert_eq!(queue.dispatch(2).unwrap().value.work, 0);
-        assert_eq!(queue.cell.bytes(), before);
+        assert_eq!(queue.cell.get().as_slice(), before);
     }
     let pending = queue.create(increment(100)).unwrap().value;
-    let before = queue.cell.bytes().to_vec();
+    let before = queue.cell.get().as_slice().to_vec();
     assert_eq!(queue.pause(999, 2), Err(Error::UnknownJob));
     assert!(queue.resume(pending, 2).is_err());
     assert!(
@@ -303,7 +255,7 @@ fn refused_management_preserves_stable_bytes_and_blocked_delivery() {
             )
             .is_err()
     );
-    assert_eq!(queue.cell.bytes(), before);
+    assert_eq!(queue.cell.get().as_slice(), before);
 }
 
 #[test]
@@ -413,7 +365,7 @@ fn skip_and_refused_mutations_preserve_committed_bytes() {
         queue.inspect(id).unwrap().status,
         Status::Pending { due_ns: 130 }
     );
-    let before = queue.cell.bytes().to_vec();
+    let before = queue.cell.get().as_slice().to_vec();
     assert!(
         queue
             .create(Create {
@@ -426,9 +378,9 @@ fn skip_and_refused_mutations_preserve_committed_bytes() {
             })
             .is_err()
     );
-    assert_eq!(queue.cell.bytes(), before);
+    assert_eq!(queue.cell.get().as_slice(), before);
     assert_eq!(queue.cancel(999, 125), Err(Error::UnknownJob));
-    assert_eq!(queue.cell.bytes(), before);
+    assert_eq!(queue.cell.get().as_slice(), before);
 }
 
 #[test]
@@ -611,12 +563,12 @@ fn running_and_uncertain_survive_reopen_and_require_exact_receipts() {
         );
         let mut stale = delivery.clone();
         stale.sequence += 1;
-        let before = sender.cell.bytes().to_vec();
+        let before = sender.cell.get().as_slice().to_vec();
         assert_eq!(
             sender.finish(&stale, 102, Outcome::Success),
             Err(Error::ReceiptMismatch)
         );
-        assert_eq!(sender.cell.bytes(), before);
+        assert_eq!(sender.cell.get().as_slice(), before);
         sender.finish(delivery, 102, Outcome::Success).unwrap();
         assert_eq!(sender.inspect(id).unwrap().status, Status::Completed);
         assert_eq!(sender.dispatch(103).unwrap().value.work, 0);
@@ -670,7 +622,7 @@ fn completion_refusals_preserve_input_receipt_and_clock_precedence() {
             };
             let outstanding = matches!(task, Task::Deliver(_))
                 && matches!(state, JobState::Running | JobState::Uncertain { .. });
-            let before = queue.cell.bytes().to_vec();
+            let before = queue.cell.get().as_slice().to_vec();
             let mismatch = if outstanding {
                 Error::ReceiptMismatch
             } else {
@@ -712,7 +664,11 @@ fn completion_refusals_preserve_input_receipt_and_clock_precedence() {
                     Err(expected),
                     "{name}: {task:?}, {state:?}"
                 );
-                assert_eq!(queue.cell.bytes(), before, "{name}: stable bytes changed");
+                assert_eq!(
+                    queue.cell.get().as_slice(),
+                    before,
+                    "{name}: stable bytes changed"
+                );
             }
         }
     }
@@ -736,7 +692,7 @@ fn unrelated_corruption_precedes_completion_lookup_receipt_and_clock_checks() {
     let corrupt = queue.create(increment(20)).unwrap().value;
     let delivery = queue.dispatch(10).unwrap().value.deliveries.remove(0);
     queue.corrupt_record(corrupt).unwrap();
-    let before = queue.cell.bytes().to_vec();
+    let before = queue.cell.get().as_slice().to_vec();
     for candidate in [
         Delivery {
             job: corrupt + 1,
@@ -752,7 +708,7 @@ fn unrelated_corruption_precedes_completion_lookup_receipt_and_clock_checks() {
             queue.finish(&candidate, 9, Outcome::Success),
             Err(Error::InvalidStorage)
         );
-        assert_eq!(queue.cell.bytes(), before);
+        assert_eq!(queue.cell.get().as_slice(), before);
     }
 }
 
@@ -763,9 +719,9 @@ fn corrupt_future_record_blocks_due_dispatch_and_recovery_without_reset() {
     queue.create(increment(100)).unwrap();
     let corrupt = queue.create(increment(200)).unwrap().value;
     queue.corrupt_record(corrupt).unwrap();
-    let bytes = queue.cell.bytes().to_vec();
+    let bytes = queue.cell.get().as_slice().to_vec();
     assert!(queue.dispatch(100).is_err());
-    assert_eq!(queue.cell.bytes(), bytes);
+    assert_eq!(queue.cell.get().as_slice(), bytes);
     drop(queue);
     assert!(Queue::open(backing, None).is_err());
 }
@@ -776,15 +732,15 @@ fn assert_invalid_record_blocks_queue(
     now: u64,
     healthy: u64,
 ) {
-    let bytes = queue.cell.bytes().to_vec();
+    let bytes = queue.cell.get().as_slice().to_vec();
     let expected = job_error(ic_jobs::JobError::InvalidRecord);
     assert_eq!(queue.dispatch(now), Err(expected.clone()));
     assert_eq!(queue.summary(), Err(expected.clone()));
     assert_eq!(queue.inspect(healthy), Err(expected.clone()));
-    assert_eq!(queue.cell.bytes(), bytes);
+    assert_eq!(queue.cell.get().as_slice(), bytes);
     drop(queue);
     assert!(matches!(Queue::open(backing.clone(), None), Err(error) if error == expected));
-    assert_eq!(retained_cell(backing, MAX_BYTES).bytes(), bytes);
+    assert_eq!(retained_cell(backing, MAX_BYTES).get().as_slice(), bytes);
 }
 
 #[test]
@@ -883,7 +839,7 @@ fn snapshot_admission_preserves_restore_and_collection_error_order() {
         .0;
     queue.create(increment(100)).unwrap();
     queue.create(increment(200)).unwrap();
-    let bytes = queue.cell.bytes().to_vec();
+    let bytes = queue.cell.get().as_slice().to_vec();
     let cases: [(&str, Mutation, Error); 4] = [
         (
             "header before restore",
@@ -938,7 +894,7 @@ fn snapshot_admission_preserves_restore_and_collection_error_order() {
             "{name}"
         );
     }
-    assert_eq!(queue.cell.bytes(), bytes);
+    assert_eq!(queue.cell.get().as_slice(), bytes);
 }
 
 #[test]
@@ -966,16 +922,16 @@ fn view_projection_preserves_large_ids_and_refuses_unadmitted_identities() {
     assert_eq!(delivery.job, id);
     assert_eq!(queue.outstanding(id).unwrap(), delivery);
     // Refused identities must never produce a view or delivery from retained intent.
-    let mut snapshot: Snapshot = stored_records(queue.cell.bytes()).unwrap();
+    let mut snapshot: Snapshot = stored_records(queue.cell.get().as_slice()).unwrap();
 
     for invalid_id in [u128::from(u64::MAX), u128::from(u64::MAX) + 1, u128::MAX] {
         snapshot.jobs[0].job.id = JobId(invalid_id);
         let bytes = encode(&snapshot).unwrap();
-        queue.cell.try_set(bytes.clone()).unwrap();
+        queue.cell.set(bytes.clone()).unwrap();
         assert_eq!(queue.inspect(id), Err(Error::InvalidStorage));
         assert_eq!(queue.page(None, 8), Err(Error::InvalidStorage));
         assert_eq!(queue.outstanding(id), Err(Error::InvalidStorage));
-        assert_eq!(queue.cell.bytes(), bytes);
+        assert_eq!(queue.cell.get().as_slice(), bytes);
     }
 }
 
@@ -1008,11 +964,11 @@ fn typed_commit_preserves_canonical_snapshot_bytes_and_metadata() {
     queue.pause(later, 102).unwrap();
     // The raw canonical writer and typed writer must retain the same metadata,
     // payloads, receipt and blocked/terminal/paused records byte for byte.
-    let stored: Snapshot = stored_records(queue.cell.bytes()).unwrap();
+    let stored: Snapshot = stored_records(queue.cell.get().as_slice()).unwrap();
     let expected = encode(&stored).unwrap();
     let loaded = queue.load().unwrap();
     assert_eq!(queue.commit(loaded, ()).unwrap().next_due_ns, None);
-    assert_eq!(queue.cell.bytes(), expected);
+    assert_eq!(queue.cell.get().as_slice(), expected);
     drop(queue);
     let (queue, due) = Queue::open(memory, None).unwrap();
     assert_eq!(due, None);
@@ -1091,7 +1047,7 @@ fn typed_commit_refuses_invalid_collection_metadata_without_changing_bytes() {
         }),
     ];
     for (name, mutate) in cases {
-        let before = queue.cell.bytes().to_vec();
+        let before = queue.cell.get().as_slice().to_vec();
         let mut loaded = queue.load().unwrap();
         mutate(&mut loaded, &receipt);
         assert_eq!(
@@ -1099,10 +1055,10 @@ fn typed_commit_refuses_invalid_collection_metadata_without_changing_bytes() {
             Err(Error::InvalidStorage),
             "{name}"
         );
-        assert_eq!(queue.cell.bytes(), before, "{name}");
+        assert_eq!(queue.cell.get().as_slice(), before, "{name}");
     }
     // Encoded capacity still takes precedence over invalid collection metadata.
-    let before = queue.cell.bytes().to_vec();
+    let before = queue.cell.get().as_slice().to_vec();
     let mut loaded = queue.load().unwrap();
     loaded.next_id = 0;
     loaded.jobs[0].task = Task::Deliver(DeliveryPayload {
@@ -1110,7 +1066,7 @@ fn typed_commit_refuses_invalid_collection_metadata_without_changing_bytes() {
         message: "x".repeat(MAX_BYTES),
     });
     assert_eq!(queue.commit(loaded, ()), Err(Error::Capacity));
-    assert_eq!(queue.cell.bytes(), before);
+    assert_eq!(queue.cell.get().as_slice(), before);
 }
 
 #[test]
@@ -1124,14 +1080,17 @@ fn retired_snapshot_is_refused_without_replacing_the_cell() {
         let bytes = frozen.to_vec();
         let backing = VectorMemory::default();
         let mut queue = Queue::open(backing.clone(), Some(config())).unwrap().0;
-        queue.cell.try_set(bytes.clone()).unwrap();
+        queue.cell.set(bytes.clone()).unwrap();
         drop(queue);
         for initial in [None, Some(config())] {
             assert!(matches!(
                 Queue::open(backing.clone(), initial),
                 Err(Error::InvalidStorage)
             ));
-            assert_eq!(retained_cell(backing.clone(), MAX_BYTES).bytes(), bytes);
+            assert_eq!(
+                retained_cell(backing.clone(), MAX_BYTES).get().as_slice(),
+                bytes
+            );
         }
     }
 }
@@ -1153,7 +1112,7 @@ fn raw_invalid_intervals_preserve_storage_and_unknown_job_precedence() {
             every_ns: 0,
         },
     ] {
-        let before = queue.cell.bytes().to_vec();
+        let before = queue.cell.get().as_slice().to_vec();
         assert_eq!(
             queue.create(Create {
                 timing: timing.clone(),
@@ -1166,10 +1125,10 @@ fn raw_invalid_intervals_preserve_storage_and_unknown_job_precedence() {
             Err(Error::InvalidInput)
         );
         assert_eq!(queue.reschedule(999, timing, 0), Err(Error::UnknownJob));
-        assert_eq!(queue.cell.bytes(), before);
+        assert_eq!(queue.cell.get().as_slice(), before);
     }
     queue.corrupt_record(id).unwrap();
-    let before = queue.cell.bytes().to_vec();
+    let before = queue.cell.get().as_slice().to_vec();
     assert_eq!(queue.dispatch(100), Err(Error::InvalidStorage));
     assert_eq!(
         queue.reschedule(
@@ -1182,7 +1141,7 @@ fn raw_invalid_intervals_preserve_storage_and_unknown_job_precedence() {
         ),
         Err(Error::InvalidStorage)
     );
-    assert_eq!(queue.cell.bytes(), before);
+    assert_eq!(queue.cell.get().as_slice(), before);
 }
 
 // Sparse nonzero runs retain the complete backing, including manager/Cell headers.
@@ -1192,12 +1151,38 @@ struct FrozenMemory {
     pages: u64,
     runs: Vec<(u64, String)>,
     snapshot: String,
+    #[serde(default)]
+    queue_hex: Option<String>,
+}
+
+// Expand only the bounded, checked-in historical backing fixtures. This raw
+// construction precedes all Storage custody and is never a runtime reader.
+fn frozen_backing(frozen: &FrozenMemory, maximum_pages: u64) -> VectorMemory {
+    assert!(frozen.pages <= maximum_pages);
+    let backing = VectorMemory::default();
+    let mut bytes = backing.borrow_mut();
+    bytes.resize(frozen.pages as usize * 65_536, 0);
+    let mut previous_end = 0;
+    for (offset, run) in &frozen.runs {
+        assert_eq!(run.len() % 2, 0);
+        let start = usize::try_from(*offset).unwrap();
+        let end = start.checked_add(run.len() / 2).unwrap();
+        assert!(start >= previous_end && end <= bytes.len());
+        for (byte, hex) in bytes[start..end]
+            .iter_mut()
+            .zip(run.as_bytes().as_chunks::<2>().0.iter())
+        {
+            *byte = u8::from_str_radix(std::str::from_utf8(hex).unwrap(), 16).unwrap();
+        }
+        previous_end = end;
+    }
+    drop(bytes);
+    backing
 }
 
 fn assert_frozen_memory_refused(frozen: &FrozenMemory) {
-    // Memory owns expansion; Jobs owns provenance and the three-page ceiling.
-    let backing = memory_from_sparse_hex(frozen.pages, &frozen.runs, 3).unwrap();
-    let memory = MeteredBacking::new(backing);
+    let backing = frozen_backing(frozen, 3);
+    let memory = MeteredMemory::new(backing);
     let before = memory.backing().borrow().clone();
     for initial in [None, Some(config())] {
         assert!(matches!(
@@ -1260,7 +1245,7 @@ fn memory_wire_cut_refuses_cbor_without_releasing_blocked_work() {
 }
 
 #[test]
-fn json_queue_cut_preserves_current_ledger_and_outstanding_effect_evidence() {
+fn json_queue_cut_preserves_retired_backing_and_outstanding_effect_evidence() {
     let frozen: FrozenMemory =
         serde_json::from_str(include_str!("fixtures/stable-image-json01749.json")).unwrap();
     assert_eq!(
@@ -1291,26 +1276,89 @@ fn json_queue_cut_preserves_current_ledger_and_outstanding_effect_evidence() {
         Err(Error::InvalidStorage)
     ));
 
-    let backing = memory_from_sparse_hex(frozen.pages, &frozen.runs, 3).unwrap();
-    let cell_memory = retained_cell(backing.clone(), MAX_BYTES).into_memory();
-    let mut before = vec![0; ic_memory::STABLE_CELL_HEADER_SIZE + frozen.snapshot.len()];
-    cell_memory.read(0, &mut before);
-    drop(cell_memory);
-    let memory = MeteredBacking::new(backing.clone());
-    for initial in [None, Some(config())] {
+    assert_frozen_memory_refused(&frozen);
+}
+
+#[test]
+fn storage_064_refuses_the_previous_wire_installation_without_releasing_effects() {
+    let frozen: FrozenMemory =
+        serde_json::from_str(include_str!("fixtures/stable-image-storage063.json")).unwrap();
+    assert!(
+        frozen
+            .producer
+            .contains("ic-memory 0.63.0 / ic-storage 0.63.0")
+    );
+    let hex = frozen.queue_hex.as_ref().unwrap();
+    assert_eq!(hex.len() % 2, 0);
+    let bytes: Vec<_> = hex
+        .as_bytes()
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
+        .collect();
+    // The application Wire schema still admits the exact old payload and keeps
+    // both outstanding effects blocked. Its retired physical image cannot open.
+    let snapshot = decode(&bytes).unwrap();
+    assert_eq!(
+        serde_json::to_value(&snapshot).unwrap(),
+        serde_json::from_str::<serde_json::Value>(&frozen.snapshot).unwrap()
+    );
+    assert_eq!(
+        snapshot.jobs[0].job.record().state,
+        JobState::Uncertain { started_ns: 100 }
+    );
+    assert_eq!(snapshot.jobs[1].job.record().state, JobState::Running);
+    assert_eq!(snapshot.next_due_ns(), None);
+    assert_eq!(snapshot.receipts.len(), 2);
+    for (entry, receipt) in snapshot.jobs.iter().zip(&snapshot.receipts) {
+        assert_eq!(entry.delivery().unwrap(), *receipt);
+    }
+    assert_frozen_memory_refused(&frozen);
+}
+
+#[test]
+fn storage_065_reopens_064_cells_without_releasing_effects_or_writing() {
+    let frozen: FrozenMemory =
+        serde_json::from_str(include_str!("fixtures/stable-image-storage064.json")).unwrap();
+    assert!(
+        frozen
+            .producer
+            .contains("ic-storage 0.64.0 / Runtime 0.17.1")
+    );
+    let expected = serde_json::from_str::<Snapshot>(&frozen.snapshot)
+        .unwrap()
+        .admit()
+        .unwrap();
+    assert_eq!(expected.jobs.len(), 2);
+    assert_eq!(expected.receipts.len(), 2);
+    assert_eq!(
+        expected.jobs[0].job.record().state,
+        JobState::Uncertain { started_ns: 100 }
+    );
+    assert_eq!(expected.jobs[1].job.record().state, JobState::Running);
+    let backing = frozen_backing(&frozen, 4);
+    let before = backing.borrow().clone();
+    let memory = MeteredMemory::new(backing.clone());
+    for _ in 0..2 {
+        let (mut queue, due) = Queue::open(memory.clone(), None).unwrap();
+        assert_eq!(due, None);
+        queue.authorize(manager()).unwrap();
+        for entry in &expected.jobs {
+            let delivery = entry.delivery().unwrap();
+            assert_eq!(queue.outstanding(delivery.job).unwrap(), delivery);
+            assert_eq!(queue.receipt(manager(), &delivery).unwrap(), Some(delivery));
+        }
+        assert!(queue.dispatch(200).unwrap().value.deliveries.is_empty());
+        drop(queue);
         assert!(matches!(
-            Queue::open(memory.clone(), initial),
+            Queue::open(memory.clone(), Some(config())),
             Err(Error::InvalidStorage)
         ));
+        assert_eq!(memory.counts().writes, 0);
+        assert_eq!(memory.counts().grows, 0);
         assert!(!memory.counts().overflowed);
-        // Bootstrap may write allocation bookkeeping. The refused Cell header,
-        // payload, outstanding attempts and receipts must remain byte-identical.
-        let cell = retained_cell(backing.clone(), MAX_BYTES);
-        assert_eq!(cell.bytes(), frozen.snapshot.as_bytes());
-        let cell_memory = cell.into_memory();
-        let mut after = vec![0; before.len()];
-        cell_memory.read(0, &mut after);
-        assert_eq!(after, before);
+        assert_eq!(*backing.borrow(), before);
     }
 }
 
@@ -1379,7 +1427,7 @@ fn bounded_wire_queue_preserves_full_history_payloads_receipts_and_schedule_shap
     assert!(expected.len() <= MAX_BYTES);
     stored_records(&expected).unwrap();
     assert_eq!(queue.commit(snapshot, ()).unwrap().next_due_ns, Some(100));
-    assert_eq!(queue.cell.bytes(), expected);
+    assert_eq!(queue.cell.get().as_slice(), expected);
     assert_eq!(queue.create(increment(200)), Err(Error::Capacity));
     drop(queue);
     let (queue, due) = Queue::open(backing, None).unwrap();
@@ -1397,7 +1445,7 @@ fn wire_queue_refuses_wrong_identity_malformed_trailing_and_exhausted_budgets() 
         .unwrap()
         .0;
     queue.create(increment(100)).unwrap();
-    let original = queue.cell.bytes().to_vec();
+    let original = queue.cell.get().as_slice().to_vec();
     let mut wrong_identity = original.clone();
     wrong_identity[0] ^= 1;
     let mut trailing = original.clone();
@@ -1413,15 +1461,15 @@ fn wire_queue_refuses_wrong_identity_malformed_trailing_and_exhausted_budgets() 
         if bytes.len() <= MAX_BYTES {
             let memory = VectorMemory::default();
             let mut damaged = Queue::open(memory.clone(), Some(config())).unwrap().0;
-            damaged.cell.try_set(bytes.clone()).unwrap();
+            damaged.cell.set(bytes.clone()).unwrap();
             assert_eq!(damaged.dispatch(100), Err(Error::InvalidStorage));
-            assert_eq!(damaged.cell.bytes(), bytes);
+            assert_eq!(damaged.cell.get().as_slice(), bytes);
             drop(damaged);
             assert!(matches!(
                 Queue::open(memory.clone(), None),
                 Err(Error::InvalidStorage)
             ));
-            assert_eq!(retained_cell(memory, MAX_BYTES).bytes(), bytes);
+            assert_eq!(retained_cell(memory, MAX_BYTES).get().as_slice(), bytes);
         }
     }
     let payload = original.strip_prefix(FORMAT).unwrap();
@@ -1446,7 +1494,7 @@ fn wire_queue_refuses_wrong_identity_malformed_trailing_and_exhausted_budgets() 
             Err(ic_wire::Error::Limit)
         );
     }
-    assert_eq!(queue.cell.bytes(), original);
+    assert_eq!(queue.cell.get().as_slice(), original);
 }
 
 #[test]
@@ -1459,7 +1507,7 @@ fn idle_dispatch_validates_the_complete_snapshot_without_stable_writes() {
         Some((JobState::Uncertain { started_ns: 100 }, 100)),
         Some((JobState::Completed, 100)),
     ] {
-        let memory = MeteredBacking::new(VectorMemory::default());
+        let memory = MeteredMemory::new(VectorMemory::default());
         let mut queue = Queue::open(memory.clone(), Some(config())).unwrap().0;
         let id = state.map(|_| queue.create(increment(100)).unwrap().value);
         let mut loaded = queue.load().unwrap();
@@ -1468,7 +1516,7 @@ fn idle_dispatch_validates_the_complete_snapshot_without_stable_writes() {
         }
         queue.commit(loaded, ()).unwrap();
         let expected_due = queue.summary().unwrap().next_due_ns;
-        let before = queue.cell.bytes().to_vec();
+        let before = queue.cell.get().as_slice().to_vec();
         memory.reset();
         assert_eq!(
             queue.dispatch(99).unwrap(),
@@ -1483,19 +1531,19 @@ fn idle_dispatch_validates_the_complete_snapshot_without_stable_writes() {
         );
         assert!(!memory.counts().overflowed);
         assert_eq!(memory.counts().writes, 0, "state {state:?}");
-        assert_eq!(queue.cell.bytes(), before, "state {state:?}");
+        assert_eq!(queue.cell.get().as_slice(), before, "state {state:?}");
         if let Some(id) = id {
             queue.corrupt_record(id).unwrap();
-            let before = queue.cell.bytes().to_vec();
+            let before = queue.cell.get().as_slice().to_vec();
             memory.reset();
             assert!(queue.dispatch(99).is_err(), "state {state:?}");
             assert!(!memory.counts().overflowed);
             assert_eq!(memory.counts().writes, 0);
-            assert_eq!(queue.cell.bytes(), before);
+            assert_eq!(queue.cell.get().as_slice(), before);
         }
     }
     // Real due work still writes its metadata and local effect together.
-    let memory = MeteredBacking::new(VectorMemory::default());
+    let memory = MeteredMemory::new(VectorMemory::default());
     let mut queue = Queue::open(memory.clone(), Some(config())).unwrap().0;
     queue.create(increment(100)).unwrap();
     memory.reset();
@@ -1521,11 +1569,11 @@ fn opening_returns_the_admitted_deadline_without_rewriting_retained_records() {
     assert_eq!(due, None);
     queue.create(increment(200)).unwrap();
     let first = queue.create(increment(100)).unwrap().value;
-    let before = queue.cell.bytes().to_vec();
+    let before = queue.cell.get().as_slice().to_vec();
     drop(queue);
     let (mut queue, due) = Queue::open(memory.clone(), None).unwrap();
     assert_eq!(due, Some(100));
-    assert_eq!(queue.cell.bytes(), before);
+    assert_eq!(queue.cell.get().as_slice(), before);
     queue.pause(first, 0).unwrap();
     drop(queue);
     let (mut queue, due) = Queue::open(memory.clone(), None).unwrap();
@@ -1602,7 +1650,7 @@ fn mutation_replies_return_the_fresh_committed_deadline() {
 
 #[test]
 fn receipt_extraction_and_duplicate_acknowledgement_leave_storage_unchanged() {
-    let memory = MeteredBacking::new(VectorMemory::default());
+    let memory = MeteredMemory::new(VectorMemory::default());
     let mut queue = Queue::open(
         memory.clone(),
         Some(Init {
@@ -1627,7 +1675,7 @@ fn receipt_extraction_and_duplicate_acknowledgement_leave_storage_unchanged() {
     for receipt in &receipts {
         assert_eq!(queue.receive(manager(), receipt.clone()).unwrap(), *receipt);
     }
-    let before = queue.cell.bytes().to_vec();
+    let before = queue.cell.get().as_slice().to_vec();
     memory.reset();
     for receipt in receipts.iter().rev() {
         assert_eq!(
@@ -1657,15 +1705,15 @@ fn receipt_extraction_and_duplicate_acknowledgement_leave_storage_unchanged() {
     assert_eq!(queue.summary().unwrap().value.receipts, 3);
     assert!(!memory.counts().overflowed);
     assert_eq!(memory.counts().writes, 0);
-    assert_eq!(queue.cell.bytes(), before);
+    assert_eq!(queue.cell.get().as_slice(), before);
     drop(queue);
     let mut queue = Queue::open(memory, None).unwrap().0;
-    assert_eq!(queue.cell.bytes(), before);
+    assert_eq!(queue.cell.get().as_slice(), before);
     assert_eq!(queue.summary().unwrap().value.receipts, 3);
     // Both receiver entrypoints reject an unauthenticated caller before decoding
     // corrupt private storage, and neither refusal replaces the retained bytes.
-    queue.cell.try_set(b"not a snapshot".to_vec()).unwrap();
-    let corrupt = queue.cell.bytes().to_vec();
+    queue.cell.set(b"not a snapshot".to_vec()).unwrap();
+    let corrupt = queue.cell.get().as_slice().to_vec();
     assert_eq!(
         queue.receive(Principal::anonymous(), receipts[0].clone()),
         Err(Error::Unauthorized)
@@ -1674,7 +1722,7 @@ fn receipt_extraction_and_duplicate_acknowledgement_leave_storage_unchanged() {
         queue.receipt(Principal::anonymous(), &receipts[0]),
         Err(Error::Unauthorized)
     );
-    assert_eq!(queue.cell.bytes(), corrupt);
+    assert_eq!(queue.cell.get().as_slice(), corrupt);
 }
 
 #[test]
@@ -1682,12 +1730,13 @@ fn oversized_retained_cell_is_refused_without_replacing_its_payload() {
     let backing = VectorMemory::default();
     let queue = Queue::open(backing.clone(), Some(config())).unwrap().0;
     drop(queue);
-    // Deliberately raise only the corruption fixture's write ceiling. The
-    // consumer's normal limit must still refuse the retained oversized payload.
+    // Load with a larger fixture ceiling; the consumer's normal recovery limit
+    // must still refuse the retained oversized payload before allocation.
     let mut oversized = retained_cell(backing.clone(), MAX_BYTES + 1);
-    oversized.try_set(vec![b'x'; MAX_BYTES + 1]).unwrap();
-    let memory = oversized.into_memory();
-    let mut before = vec![0; ic_memory::STABLE_CELL_HEADER_SIZE + MAX_BYTES + 1];
+    oversized.set(vec![b'x'; MAX_BYTES + 1]).unwrap();
+    drop(oversized);
+    let memory = queue_memory(backing.clone()).unwrap();
+    let mut before = vec![0; ic_storage::STABLE_CELL_HEADER_SIZE + MAX_BYTES + 1];
     memory.read(0, &mut before);
     drop(memory);
     for initial in [None, Some(config())] {
@@ -1695,7 +1744,7 @@ fn oversized_retained_cell_is_refused_without_replacing_its_payload() {
             Queue::open(backing.clone(), initial),
             Err(Error::InvalidStorage)
         ));
-        let memory = retained_cell(backing.clone(), MAX_BYTES + 1).into_memory();
+        let memory = queue_memory(backing.clone()).unwrap();
         let mut after = vec![0; before.len()];
         memory.read(0, &mut after);
         // Bootstrap may update allocation metadata. The refused cell's header
@@ -1704,26 +1753,42 @@ fn oversized_retained_cell_is_refused_without_replacing_its_payload() {
     }
 }
 
-// Restrict only this fixture's writer after releasing its prior allocation lease.
-// Failed Cell admission preserves committed payload bytes without simulating IC rollback.
-fn with_current_write_ceiling(
-    queue: Queue<VectorMemory>,
-    backing: VectorMemory,
-) -> Queue<VectorMemory> {
-    let Queue {
-        cell,
-        init,
-        metrics,
-        logs,
-    } = queue;
-    let maximum = cell.bytes().len();
-    drop(cell);
-    Queue {
-        cell: retained_cell(backing, maximum),
-        init,
-        metrics,
-        logs,
+#[test]
+fn checksummed_cell_corruption_is_refused_without_writes_or_reset() {
+    let backing = VectorMemory::default();
+    drop(Queue::open(backing.clone(), Some(config())).unwrap());
+    // Infrastructure fault injection uses an exclusive checked lease after
+    // dropping the cell. The payload changes while its checksum stays intact.
+    let memory = queue_memory(backing.clone()).unwrap();
+    let offset = ic_storage::STABLE_CELL_HEADER_SIZE as u64;
+    let mut byte = [0];
+    memory.read(offset, &mut byte);
+    byte[0] ^= 1;
+    memory.write(offset, &byte);
+    drop(memory);
+    let before = backing.borrow().clone();
+    let memory = MeteredMemory::new(backing.clone());
+    for initial in [None, Some(config())] {
+        assert!(matches!(
+            Queue::open(memory.clone(), initial),
+            Err(Error::InvalidStorage)
+        ));
+        assert_eq!(memory.counts().writes, 0);
+        assert!(!memory.counts().overflowed);
+        assert_eq!(*backing.borrow(), before);
     }
+}
+
+#[test]
+fn recovery_of_empty_backing_does_not_initialize_replacement_storage() {
+    let backing = VectorMemory::default();
+    let memory = MeteredMemory::new(backing.clone());
+    assert!(matches!(
+        Queue::open(memory.clone(), None),
+        Err(Error::InvalidStorage)
+    ));
+    assert_eq!(memory.counts(), Default::default());
+    assert!(backing.borrow().is_empty());
 }
 
 #[test]
@@ -1821,16 +1886,23 @@ fn job_metrics_separate_retries_uncertainty_and_receipt_reconciliation() {
 }
 
 #[test]
-fn job_metrics_exclude_rejected_commits_and_leave_running_intent_blocked() {
+fn job_metrics_exclude_rejected_mutations_and_leave_running_intent_blocked() {
     let backing = VectorMemory::default();
     let mut queue = Queue::open(backing.clone(), Some(config())).unwrap().0;
-    queue.create(increment(100)).unwrap();
-    let mut queue = with_current_write_ceiling(queue, backing);
-    let before = queue.cell.bytes().to_vec();
+    queue
+        .create(Create {
+            timing: Timing::AfterCompletion {
+                first_ns: 100,
+                every_ns: u64::MAX,
+            },
+            task: Task::Increment(1),
+        })
+        .unwrap();
+    let before = queue.cell.get().as_slice().to_vec();
     let counters = queue.job_metrics(7);
     let logs = log_page(&queue);
     assert!(queue.dispatch(100).is_err());
-    assert_eq!(queue.cell.bytes(), before);
+    assert_eq!(queue.cell.get().as_slice(), before);
     assert_eq!(queue.job_metrics(7), counters);
     assert_eq!(log_page(&queue), logs);
 
@@ -1838,7 +1910,10 @@ fn job_metrics_exclude_rejected_commits_and_leave_running_intent_blocked() {
     let mut queue = Queue::open(backing.clone(), Some(config())).unwrap().0;
     queue
         .create(Create {
-            timing: Timing::Once(100),
+            timing: Timing::AfterCompletion {
+                first_ns: 100,
+                every_ns: u64::MAX,
+            },
             task: Task::Deliver(DeliveryPayload {
                 destination: manager(),
                 message: "keep intent".into(),
@@ -1846,12 +1921,11 @@ fn job_metrics_exclude_rejected_commits_and_leave_running_intent_blocked() {
         })
         .unwrap();
     let delivery = queue.dispatch(100).unwrap().value.deliveries.pop().unwrap();
-    let mut queue = with_current_write_ceiling(queue, backing.clone());
-    let before = queue.cell.bytes().to_vec();
+    let before = queue.cell.get().as_slice().to_vec();
     let counters = queue.job_metrics(7);
     let logs = log_page(&queue);
     assert!(queue.finish(&delivery, 101, Outcome::Success).is_err());
-    assert_eq!(queue.cell.bytes(), before);
+    assert_eq!(queue.cell.get().as_slice(), before);
     assert_eq!(queue.job_metrics(7), counters);
     assert_eq!(log_page(&queue), logs);
     assert_eq!(queue.inspect(1).unwrap().status, Status::Running);
@@ -1879,7 +1953,7 @@ fn job_metrics_authorize_reset_and_never_change_durable_authority() {
         })
         .unwrap();
     let delivery = queue.dispatch(100).unwrap().value.deliveries.pop().unwrap();
-    let before = queue.cell.bytes().to_vec();
+    let before = queue.cell.get().as_slice().to_vec();
     let observed = queue.job_metrics(7);
     assert_eq!(
         queue.authorize(Principal::anonymous()),
@@ -1890,7 +1964,7 @@ fn job_metrics_authorize_reset_and_never_change_durable_authority() {
     assert_eq!(reset.canister_version, observed.canister_version);
     assert_eq!(reset.reset_sequence, Some(1));
     assert_eq!(reset.dispatched.total, 0);
-    assert_eq!(queue.cell.bytes(), before);
+    assert_eq!(queue.cell.get().as_slice(), before);
     assert!(queue.dispatch(200).unwrap().value.deliveries.is_empty());
     assert_eq!(queue.outstanding(1).unwrap(), delivery);
     queue.corrupt_record(1).unwrap();
@@ -1943,7 +2017,7 @@ fn job_logs_capture_committed_outcomes_without_payloads_or_read_side_effects() {
     assert_eq!(before.entries[1].topic, "dispatch");
     assert_eq!(before.entries[1].created_at_secs, 1);
     assert_eq!(before.omitted.total, 0);
-    let bytes = queue.cell.bytes().to_vec();
+    let bytes = queue.cell.get().as_slice().to_vec();
     assert_eq!(
         queue.authorize(Principal::anonymous()),
         Err(Error::Unauthorized)
@@ -1963,7 +2037,7 @@ fn job_logs_capture_committed_outcomes_without_payloads_or_read_side_effects() {
     assert_eq!(queue.dispatch(3_000_000_000).unwrap().value.work, 0);
     queue.reset_job_metrics(7);
     assert_eq!(log_page(&queue), before);
-    assert_eq!(queue.cell.bytes(), bytes);
+    assert_eq!(queue.cell.get().as_slice(), bytes);
     queue
         .finish(&delivery, 4_000_000_000, Outcome::Success)
         .unwrap();

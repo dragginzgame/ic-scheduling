@@ -4,14 +4,14 @@
 //! reopens actual stable cells on VectorMemory. These native fixtures do not
 //! model IC message rollback, installed upgrades or live timers.
 
-use std::{io, num::NonZeroU16};
+use std::io;
 
 use ic_jobs::{Job, JobError, JobId, JobState, MissedRunPolicy, Outcome, RetryPolicy, Schedule};
-use ic_memory::{
-    GenericAllocationPolicy, MemoryAllocationPool, MemoryAuthority, MemoryManagerConfig,
-    MemoryRequest, MemoryRuntime, RuntimeOpenError, SealedDeclarationSnapshot, VectorMemory,
-};
 use ic_storage::adapter::StableCell;
+use ic_storage::{
+    AllocationGrants, GenericAllocationPolicy, MemoryAuthority, MemoryRequest, MemoryRuntime,
+    RuntimeOpenError, SealedDeclarationSnapshot, StorageConfig, VectorMemory,
+};
 mod consumer_support;
 
 use consumer_support::{
@@ -26,14 +26,11 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
         Maintenance::memory_request()?,
     ];
     let declarations = SealedDeclarationSnapshot::new(requests.to_vec())?;
-    let pool = MemoryAllocationPool::new(
-        vec![
-            MemoryAuthority::new("test.notifications", "test.notifications.")?,
-            MemoryAuthority::new("test.maintenance", "test.maintenance.")?,
-        ],
-        vec![],
-    )?;
-    let config = MemoryManagerConfig::new(NonZeroU16::MIN);
+    let grants = AllocationGrants::new(vec![
+        MemoryAuthority::new("test-notifications", "test.notifications.")?,
+        MemoryAuthority::new("test-maintenance", "test.maintenance.")?,
+    ])?;
+    let config = StorageConfig::default();
     for uncertain in [false, true] {
         let backing = VectorMemory::default();
         let mut sender = Notifications::new()?;
@@ -58,10 +55,10 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
         let ids;
         {
             let mut host = MemoryRuntime::new_with_config(backing.clone(), config)?;
-            host.bootstrap(&declarations, &pool, &GenericAllocationPolicy)?;
+            host.bootstrap(&declarations, &grants, &GenericAllocationPolicy)?;
             ids = [
-                host.memory_id(requests[0].stable_key())?,
-                host.memory_id(requests[1].stable_key())?,
+                host.allocation_id(requests[0].stable_key()).unwrap(),
+                host.allocation_id(requests[1].stable_key()).unwrap(),
             ];
             assert_ne!(ids[0], ids[1]);
             for (request, bytes) in requests
@@ -74,7 +71,7 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
                     &SealedDeclarationSnapshot::new(vec![request.clone()])?,
                     request.authority(),
                 )?;
-                StableCell::create(host.open_memory(request.stable_key())?, bytes.clone());
+                StableCell::create(host.open_memory(request.stable_key())?, bytes.clone())?;
             }
         }
         drop(sender);
@@ -82,14 +79,14 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
         // A foreign claim cannot commit or open either store, nor change bytes.
         let before = backing.borrow().clone();
         let foreign = SealedDeclarationSnapshot::new(vec![MemoryRequest::new(
-            "test.maintenance",
+            "test-maintenance",
             requests[0].stable_key().as_str(),
         )?])?;
         {
             let mut rejected = MemoryRuntime::new_with_config(backing.clone(), config)?;
             assert!(
                 rejected
-                    .bootstrap(&foreign, &pool, &GenericAllocationPolicy)
+                    .bootstrap(&foreign, &grants, &GenericAllocationPolicy)
                     .is_err()
             );
             assert!(matches!(
@@ -102,13 +99,23 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
         // the same backing, including the original payload and blocked attempt.
         for reopen in 0..2 {
             let mut host = MemoryRuntime::new_with_config(backing.clone(), config)?;
-            host.bootstrap(&declarations, &pool, &GenericAllocationPolicy)?;
-            assert_eq!(host.memory_id(requests[0].stable_key())?, ids[0]);
-            assert_eq!(host.memory_id(requests[1].stable_key())?, ids[1]);
-            let mut queue =
-                StableCell::<Vec<u8>, _>::load(host.open_memory(requests[0].stable_key())?)?;
-            let state =
-                StableCell::<Vec<u8>, _>::load(host.open_memory(requests[1].stable_key())?)?;
+            host.bootstrap(&declarations, &grants, &GenericAllocationPolicy)?;
+            assert_eq!(
+                host.allocation_id(requests[0].stable_key()).unwrap(),
+                ids[0]
+            );
+            assert_eq!(
+                host.allocation_id(requests[1].stable_key()).unwrap(),
+                ids[1]
+            );
+            let mut queue = StableCell::<Vec<u8>, _>::load(
+                host.open_memory(requests[0].stable_key())?,
+                24 * 1024,
+            )?;
+            let state = StableCell::<Vec<u8>, _>::load(
+                host.open_memory(requests[1].stable_key())?,
+                24 * 1024,
+            )?;
             let mut restored = Notifications::from_bytes(queue.get().clone());
             let restored_maintenance = Maintenance::from_bytes(state.get().clone());
             assert_eq!(restored.outstanding()?, vec![delivery.clone()]);
@@ -126,7 +133,7 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
             );
             if reopen == 0 {
                 restored.cancel(NOTIFICATION_MANAGER, JobId(3), 150)?;
-                queue.set(restored.store.bytes);
+                queue.set(restored.store.bytes)?;
                 // Unrelated consumer bytes remain intact after the queue commit.
                 assert_eq!(state.get(), &restored_maintenance.store.bytes);
             }

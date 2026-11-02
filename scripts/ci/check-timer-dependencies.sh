@@ -21,11 +21,11 @@ open my $cargo, '-|', 'cargo', 'metadata', '--locked', '--offline', '--format-ve
 my $bytes = do { local $/; <$cargo> };
 close $cargo or die "Cargo runtime identity observation failed\n";
 my $metadata = decode_json($bytes);
-my @platform = grep { $_->{name} eq 'ic-platform-runtime' && $_->{version} =~ /^0\.17\./ }
+my @platform = grep { $_->{name} eq 'ic-platform-runtime' && $_->{version} =~ /^0\.18\./ }
     @{$metadata->{packages}};
 @platform == 1
     && ($platform[0]{source} // '') eq 'registry+https://github.com/rust-lang/crates.io-index'
-    or die "expected one qualified registry ic-platform-runtime 0.17 runtime owner\n";
+    or die "expected one qualified registry ic-platform-runtime 0.18 runtime owner\n";
 my @guard = grep { $_->{name} eq 'ic-platform-runtime-guard' } @{$metadata->{packages}};
 @guard == 1 && $guard[0]{version} eq $platform[0]{version}
     && ($guard[0]{source} // '') eq 'registry+https://github.com/rust-lang/crates.io-index'
@@ -75,6 +75,6 @@ for my $target ('wasm32-unknown-unknown', $host) {
 my @worker = ('perl', 'scripts/ci/check-cargo-graph.pl', '--consumer', getcwd(),
     '--package', 'ic-timers-pocketic', '--target', $host, '--all-features');
 push @worker, map { ('--forbid', $_) }
-    qw(ic-platform-runtime ic-platform-runtime-guard ic-cdk-executor ic0 ic-testkit pocket-ic candid ic-wire ic-timers ic-timers-test-protocol);
+    qw(ic-platform-runtime ic-platform-runtime-guard ic-platform-pocket-ic ic-cdk-executor ic0 ic-testkit pocket-ic candid ic-wire ic-timers ic-timers-test-protocol);
 system(@worker) == 0 or die "Timers build coordinator dependency boundary failed\n";
 PERL

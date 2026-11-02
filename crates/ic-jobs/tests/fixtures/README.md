@@ -45,9 +45,10 @@ receipts. The old producer cold-opened the queue and refused overdue redispatch
 before capture. A test-only metadata read establishes these unresolved effects;
 the production reader never decodes retained JSON.
 
-Current Memory accepts this ledger, while queue recovery and fresh creation
-refuse the retired payload without replacing the Cell header or payload bytes.
-Bootstrap may update allocation bookkeeping. This proof is distinct from the
+At the original qualification, Memory accepted this ledger while the queue
+refused the retired payload without replacing its Cell header or payload bytes;
+bootstrap could update allocation bookkeeping. Current Storage refuses that
+complete retired image before payload admission, with zero writes. This proof is distinct from the
 zero-write refusal of incompatible Memory ledgers above. No existing installation
 is reset, converted or authorized to repeat an effect.
 
@@ -56,6 +57,26 @@ Fixture SHA-256:
 The original source archive, one-shot producer/test log, lockfile and old Wasm
 are retained at `/tmp/ic-jobs-78-upstream.Mso2Zod0/`; the current consumer guide
 owns the explicit retained-installation retirement procedure.
+
+## Storage Cell transition evidence
+
+The consumer retains two additional complete physical images:
+
+- [Storage 0.63 / Memory image](../../../../apps/ic-jobs-test-consumer/src/queue/fixtures/stable-image-storage063.json):
+  a valid Wire queue with Running/Uncertain attempts and two exact receipts.
+  Current Storage refuses the retired physical format without writes or reset;
+  the unchanged application payload still enters through Job::restore blocked.
+- [Storage 0.64 Cell image](../../../../apps/ic-jobs-test-consumer/src/queue/fixtures/stable-image-storage064.json):
+  captured with the previous reader before the Storage 0.65, Runtime 0.18 and
+  Wire 0.15 update. Cold reopen preserves both blocked states, authority and exact
+  receipts. Idle dispatch and refused fresh creation leave all bytes intact,
+  with zero writes or growth. The consumer uses Cells, not the changed map format.
+
+Each image records its producer, old dependency-lock digest, bounded physical
+pages, sparse runs and snapshot metadata; the Wire images retain exact payload
+hex too. The 0.64 capture log and complete incoming source/lock evidence are under
+`target/current-all-upstream-adoption`. These are native backing observations,
+not installed IC recovery, rollback or authorization to reset retained data.
 
 ## 0.16 refusal inputs
 

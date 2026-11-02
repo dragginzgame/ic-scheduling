@@ -1,7 +1,7 @@
 //! Fresh, caller-owned testkit servers and IC instances from the verified binary.
 
-use ic_platform::pocket_ic::{PocketIc, PocketIcBuilder};
-use ic_platform::principal::ExternalPrincipal;
+use ic_platform_pocket_ic::{PocketIc, PocketIcBuilder};
+use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{
     CanisterInstallExt, InstallSpec, PocketIcInstance, PocketIcStartupConfig, WireCallError,
     WireCallSpec, tick_until,

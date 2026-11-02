@@ -3,7 +3,7 @@ use ic_jobs::{
     Attempt, ExecutionId, Job, JobError, JobId, JobRecord, Outcome, RetryPolicy, Schedule,
     next_due_ns, start_next,
 };
-use ic_memory::MemoryRequest;
+use ic_storage::MemoryRequest;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt, io};
 
@@ -90,7 +90,7 @@ impl Notifications {
     // The eventual host supplies allocation policy and owns one bootstrap.
     pub(crate) fn memory_request() -> Result<MemoryRequest> {
         Ok(MemoryRequest::new(
-            "test.notifications",
+            "test-notifications",
             "test.notifications.queue.v1",
         )?)
     }

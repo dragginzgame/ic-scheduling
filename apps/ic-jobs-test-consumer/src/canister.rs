@@ -4,8 +4,8 @@ use std::{
 };
 
 use ic_jobs::Outcome;
-use ic_memory::DefaultMemoryImpl;
 use ic_platform_runtime::cdk;
+use ic_storage::DefaultMemoryImpl;
 use ic_timers::{
     TimerCadence, TimerIdentity, WatchdogReconcileState, WatchdogRegistration, WatchdogRunResult,
     reconcile_watchdog,

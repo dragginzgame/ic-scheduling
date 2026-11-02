@@ -32,10 +32,10 @@ retain their own assessment under [Canic #502](https://github.com/dragginzgame/c
 | Observability | No metrics/logging provider | Canic attribution, bounded reporting and committed-transition observations |
 
 The Jobs library depends only on Serde and requires Rust 1.99.1.
-Adopting it does not require Canic to select this repository's Memory, Storage,
+Adopting it does not require Canic to select this repository's Storage,
 Platform, Timers or Wire versions. Canic's composed graph must retain its own
 single runtime identities and qualified installation format. This repository's
-Memory 0.56 ledger cut applies to its qualification fixtures; it is not a Jobs
+Storage 0.64 physical-format cut applies to its qualification fixtures; it is not a Jobs
 library installation prerequisite. Canic's own release/reset rules remain its
 authority and never follow implicitly from this document.
 

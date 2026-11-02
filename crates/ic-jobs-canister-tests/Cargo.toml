@@ -20,7 +20,8 @@ ic-host-fs = { workspace = true, features = ["test-support"] }
 ic-host-process = { workspace = true, features = ["test-support"] }
 ic-jobs-canister-test-support.workspace = true
 ic-jobs-test-consumer.workspace = true
-ic-platform = { workspace = true, features = ["pocket-ic", "principal-self-authenticating"] }
+ic-platform-pocket-ic.workspace = true
+ic-platform-types = { workspace = true, features = ["principal-external", "principal-self-authenticating"] }
 ic-testkit = { workspace = true, features = ["wire"] }
 ic-wire.workspace = true
 serde.workspace = true

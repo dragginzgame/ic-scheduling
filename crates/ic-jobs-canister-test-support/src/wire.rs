@@ -4,7 +4,8 @@ use ic_jobs_test_consumer::{
     api::Init,
     management_wire::{Method, REQUEST_LIMITS, RESPONSE_LIMITS},
 };
-use ic_platform::{pocket_ic::PocketIc, principal::ExternalPrincipal};
+use ic_platform_pocket_ic::PocketIc;
+use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{WireCallError, WireCallSpec, query_wire, update_wire};
 use serde::{Serialize, de::DeserializeOwned};
 

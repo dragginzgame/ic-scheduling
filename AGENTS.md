@@ -10,6 +10,8 @@ This file is the local overlay. Read [the current handoff](docs/status/current.m
 - Every restore path uses the validated Job::restore boundary. Keep error
   transitions unchanged and uncertain effects blocked until explicit disposition.
 - New storage/scheduling policy must have a concrete consumer requirement.
+- Consumer integration uses Storage's checked allocation/backing APIs and its
+  test-support IO meters. The retired `ic-memory` crate must not be reintroduced.
 - For Canic adapter work, read [the integration guide](docs/canic-integration.md).
   It describes a proposed consumer integration, not an implemented Canic API.
 - Follow the [shared validation cadence](DRAGGINZGAME.md#validation-and-evidence).
@@ -41,12 +43,9 @@ This file is the local overlay. Read [the current handoff](docs/status/current.m
   publication. Direct release delivery uses `origin`/`main`; `make publish` is
   a separate, explicitly authorized crates.io upload.
 
-## Runtime and dependency cohort
+## Runtime integration
 
-The workspace selects direct Runtime 0.17.1 for Timers and CDK probes,
-canonical Types 0.16 for native DTOs, Platform 0.17 and Testkit/Native 0.78.
-The registry cohort also requires Core 0.14.1, Endpoint 0.4, Metrics 0.25 and
-Memory/Storage 0.62. Qualify the actual locked registry graph. Keep the exact
-singleton guard and explicit installed IC recovery qualification. Upstream crate
-delivery remains user-owned; local adoption does not authorize upstream pushes,
-releases or publication.
+Timers and CDK probes select Runtime directly; native DTOs use canonical Types.
+Root manifests and locks own the supplier cohort. Preserve the exact Runtime
+guard and explicitly selected installed IC recovery qualification. Supplier
+adoption or a dependency blocker never authorizes another repository's release.

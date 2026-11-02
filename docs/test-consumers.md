@@ -50,7 +50,7 @@ The explicitly selected live case
 access, reset nonmutation and empty observations after same-format reconstruction.
 Historical runs and their exact graph boundaries are recorded in the
 [current handoff](status/current.md). Compilation alone is not live acceptance;
-earlier executions do not qualify a changed Memory format.
+earlier executions do not qualify a changed Storage format.
 
 The tooling fixture binds its Cargo stubs in Make's incoming PATH, including
 direct and recursive demo recipes on macOS GNU Make 3.81. Failed demo commands
@@ -65,7 +65,7 @@ focused consumer work; run the example separately with
 `bash scripts/dev/minimum-rust.sh cargo run -p ic-jobs --example persisted_job --locked --offline`.
 Configured CI also runs this target on the three supported hosts. The harness
 and its support modules belong to the unpublished consumer package; the core
-package has no Memory or Timers development dependency. `check-consumer` selects
+package has no Storage or Timers development dependency. `check-consumer` selects
 the consumer library and frozen API-wire tests separately, avoiding a second
 composition or stored Wire run. Installation, management and delivery use Wire
 with consumer-owned identities and limits. Typed Wire attributes retain each
@@ -170,12 +170,12 @@ idle; restored intent stays blocked until exact destination evidence resolves it
 
 These flows use the existing byte-replacement store and immutable payloads.
 They establish consumer composition evidence only. The native host fixture below
-uses committed IC Memory allocations; the separate canister fixture owns its
+uses committed IC Storage allocations; the separate canister fixture owns its
 lifecycle integration. Neither path assigns component memory-ID ranges.
 
 ## Consumer memory requests
 
-The unpublished consumer selects IC Memory from the root workspace catalog;
+The unpublished consumer selects IC Storage from the root workspace catalog;
 `Cargo.lock` records the exact release. Each fixture contributes one checked `MemoryRequest`
 with a distinct authority and permanent logical key: `test.notifications.queue.v1`
 for job records and immutable notification payloads, and
@@ -191,14 +191,14 @@ sealed requests alone do not grant committed allocation authority. Authority
 labels express ownership policy, not caller authentication.
 
 The fault-injection consumers retain their bounded byte store. A separate native
-host fixture uses IC Memory allocation leases and IC Storage cells: one pool grants the
+host fixture uses IC Storage allocation leases and cells: namespace grants admit the
 two namespaces without component ranges or numeric IDs; the host bootstraps once
 before component adoption/open. Stable cells persist the same bounded snapshot
 bytes. Cold reopens retain allocation IDs, payloads and pending deadlines; reads
 restore through the existing `Job::restore` boundary. Running/Uncertain intent
 remains blocked, and cancellation persists across a subsequent cold reopen.
 Foreign-owner bootstrap fails without changing backing bytes or granting opens.
-This is actual stable-structure persistence on native VectorMemory, not an IC
+This is actual Storage collection persistence on native VectorMemory, not an IC
 upgrade, message rollback, final Canic/IcyDB composition or live timer evidence.
 Canic/IcyDB composition needs those applications' own qualification. No old
 allocation API or fallback remains in Jobs' consumers. The current format and
@@ -224,7 +224,7 @@ and lost-result scenarios. Durable management now covers pause/resume,
 unstarted-occurrence rescheduling, wakeup reconstruction and real management trap
 rollback. The live harness also checks Wire endpoint refusal, authorization,
 metrics/logging and receipt persistence. The handoff records historical passing
-graphs separately from the current Memory 0.56 graph, whose installed recovery
+graphs separately from the current Storage 0.65 graph, whose installed recovery
 has not been selected. The original small native consumers remain focused models;
 they do not substitute for those IC observations.
 
@@ -242,9 +242,12 @@ round-trip current records and retain unresolved dispatch as blocked. Frozen
 retired JSON and Candid replies are negative inputs. Earlier physical images are
 ledger-refusal evidence, not a compatibility promise. The frozen Memory 0.55.2
 installation still contains valid current queue JSON whose Running job restores
-as blocked; its outer CBOR ledger refuses without any reset. IC Memory's selected
-`testing::memory_from_sparse_hex` expands the old physical images; Jobs owns their
-producer/schema assertions and three-page fixture ceiling. Both retained opening
+as blocked; its outer CBOR ledger refuses without any reset. Jobs expands its
+checked-in physical images before any runtime acquires custody, enforcing the
+three-page fixture ceiling and producer/schema assertions. The captured 0.63
+Wire installation retains both Running/Uncertain intent and exact receipts; its
+old physical image is also refused without writes. Current Cells use explicit
+load ceilings and checksums; empty recovery never initializes replacement state. Both retained opening
 and fresh creation refuse those ledgers with zero writes and identical backing
 bytes. Current-format corruption remains a queue-wide refusal. Raw zero intervals
 return `InvalidInput` without committing, and the fault endpoint deliberately

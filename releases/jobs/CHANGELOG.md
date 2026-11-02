@@ -4,6 +4,24 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer`, `ic-jobs-canister-test-su
 and `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.1]
+
+### 📦 Dependencies
+
+- Adopt Runtime 0.18, Types 0.17, Wire 0.15, Endpoint 0.5 and Testkit 0.80
+  with the independent Platform PocketIC 0.18 native client. Preserve RPC
+  identities, budgets, queue payloads and validated Job restoration. The public
+  Serde-only Jobs API and Rust 1.99.1 requirement are unchanged.
+- Replace Memory with Storage 0.65 for private checked allocation and Cells.
+  Use Storage's native IO meters and remove the Testkit Native bridge. Retain
+  existing 0.64 Cell installations and blocked effects; retired Memory images
+  are refused without writes or reset. Retiring those old installations still
+  requires explicit owner disposition of outstanding effects and authorization.
+- Select Logging 0.24.1, Metrics 0.27.0, Build 0.74.0 and Host
+  Artifacts/FS/Process 0.74.1 for private diagnostics and artifact tooling.
+- Refresh Shared Tooling to 0.27.28. Retain the complete release gate;
+  optional group-scoped validation plans remain unselected.
+
 ## [0.34.0] - 2026-11-02
 
 ### ⚠️ Breaking

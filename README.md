@@ -48,7 +48,7 @@ It supplies no global queue, database, lifecycle exports or exactly-once effects
 | --- | --- |
 | Validated records, attempts, transitions and due-time selection | Published `ic-jobs`: `Job::restore`, `Job` methods, `next_due_ns` and `start_next`; Serde is its only runtime dependency |
 | Payloads, authorization, stable queue and lifecycle endpoints | Consumer applications; the unpublished `apps/ic-jobs-test-consumer` demonstrates this integration |
-| Stable allocation and fixture Cell admission | IC Memory; IC Storage supplies governed native test cells |
+| Stable allocation and fixture Cell admission | IC Storage supplies checked allocation leases and checksummed Cells |
 | Volatile wakeups and watchdog recovery | IC Timers, called directly by the consumer |
 | Principal and explicit-codec canister runtime | Published IC Platform; Jobs retains endpoints, schemas, limits and error policy |
 | Installation, management and delivery encoding and bounded decoding | Published IC Wire; Jobs retains method identities, limits and receipt policy |
@@ -101,7 +101,7 @@ application's selected target graph and source rather than counting manifests.
 For example, inspect the qualification Wasm's paths with:
 
 ```sh
-cargo tree -p ic-jobs-test-consumer --target wasm32-unknown-unknown --edges normal,build --invert ic-platform@0.16.0 --locked --offline
+cargo tree -p ic-jobs-test-consumer --target wasm32-unknown-unknown --edges normal,build --invert ic-platform-runtime@0.18.0 --locked --offline
 cargo tree -p ic-jobs-test-consumer --target wasm32-unknown-unknown --edges normal,build --invert ic-platform-runtime-guard --locked --offline
 ```
 
@@ -109,17 +109,20 @@ The selected published boundary is IC Platform, with defaults disabled.
 The [workspace catalog](Cargo.toml) owns requirements; [Cargo.lock](Cargo.lock)
 owns the resolved versions. The [handoff](docs/status/current.md) records the
 selected adoption and its source-bound evidence.
-The qualification app selects Platform's `cdk` feature only on Wasm. Native
-consumer builds explicitly select Platform's `principal` feature for Serde DTOs
-and Wire contracts. Jobs, Memory and Timers remain Wasm/test dependencies; JSON
+The qualification app selects Runtime's `cdk` feature only on Wasm. Native
+consumer builds select canonical Types directly for Serde DTOs
+and Wire contracts. Jobs, Storage and Timers remain Wasm/test dependencies; JSON
 is limited to native fixtures and tooling. Parser, Agent,
-certification and crypto features are not selected. Platform 0.16 owns the reviewed
-runtime adapters and generator; its embedded executor and IC0 are shared with Timers. The qualification Wasm selects neither Candid nor full `ic-cdk`.
+certification and crypto features are not selected. Runtime 0.18 owns the
+deployed executor, IC0 adapters and generator shared with Timers, Storage 0.65 and Wire Endpoint 0.5. The qualification Wasm
+selects neither Candid nor full `ic-cdk`.
 Owned native DTO principals exclude external Principal and SHA-2 dependencies.
-The Wasm application selects neither principal conversion nor SHA-2 hashing;
-stable-structures retains its own external Principal dependency.
+The Wasm application selects neither principal conversion nor SHA-2 hashing.
+Storage supplies native IO metering under its test-support feature.
 Native tests select `principal-self-authenticating` explicitly;
-the harness's `pocket-ic` feature supplies external conversions.
+the native harness selects `principal-external` and the independent Platform
+PocketIC 0.18 client directly, matching Testkit 0.80. The deployed graph has
+one Runtime 0.18 owner and exact matching executor guard.
 
 Installation, management, fixture controls and delivery use IC Wire native Serde
 frames. Consumer-owned method identities and request/reply budgets live in
@@ -162,15 +165,16 @@ Cargo roots and its catalog and feature selections are reviewed separately.
 in CI/release validation: all-feature native and Wasm core graphs exclude the
 local tests/tooling and IC integrations; the all-feature qualification Wasm excludes
 host-only packages, JSON, Candid and full CDK. It requires one Timers, Platform runtime guard and entrypoint generator; registry
-executor and IC0 packages are excluded. The application, Timers and Memory share Platform 0.16, including the
-stable-structures supplier.
+executor and IC0 packages are excluded. The application, Timers and Storage share one Runtime identity through the
+selected Platform owners. Storage owns its collections; the deployed graph
+excludes the retired Memory package and stable-structures substrate.
 The graph excludes application principal conversion and SHA-2.
-A fourth context excludes Jobs, Memory, Timers, JSON and the IC runtime from
+A fourth context excludes Jobs, Memory, Storage, Timers, JSON and the IC runtime from
 ordinary native consumer builds, including the
 Platform `cdk` feature.
 The fifth context keeps Candid, PocketIC and Testkit out of the native capture
-binary's normal/build graph. Candid remains only in native recovery tests:
-Testkit enables Platform's PocketIC integration, and PocketIC itself uses Candid
+binary's normal/build graph. Native Testkit and Platform's independent PocketIC
+client retain the Candid boundary; PocketIC itself uses Candid
 management and transport DTOs. Testkit owns no Candid codec adapter. Disabling
 dependency defaults
 cannot remove those required edges. Jobs-owned RPCs continue to use Wire.
@@ -192,7 +196,7 @@ snapshot check alone does not establish deployment admission.
 `make test-consumers` aggregates native notification/maintenance scenarios, stored
 Wire conformance and the packaged adapter example on Rust 1.99.1. They cover commit
 failures, reconstruction, exact receipt reconciliation, stale continuations and
-bounded recurring work. The composition fixtures request IC Memory allocations
+bounded recurring work. The composition fixtures request IC Storage allocations
 through the [workspace-selected dependency](Cargo.toml); the host fixture reopens actual
 stable cells. See [test consumers](docs/test-consumers.md) for their storage and
 timer boundaries.

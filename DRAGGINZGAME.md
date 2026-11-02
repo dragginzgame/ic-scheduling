@@ -36,9 +36,13 @@ same approach: mandatory local constraints first, task-specific references after
   including routine group/version/order choices under
   [delegated delivery](rules/contributions.md#delegated-delivery). Do not ask again
   for each necessary command; guidance and readiness questions do not execute it.
-- Relevant cross-repository contributions in `dragginzgame/*` have standing
-  isolated-PR authority. Follow the [contribution workflow](rules/contributions.md#cross-repository-pull-requests)
-  before external writes. `toko` and `toko-miner` remain excluded without explicit
+- Work and delivery stay with the requested repository. A dependency blocker
+  does not authorize another repository's release or deployment. Cross-repository
+  source contributions require explicit scope. Open PRs only when requested or
+  required by that repository's authorized delivery workflow; routine
+  version/snapshot adoption stays with the receiving owner. Follow the
+  [contribution workflow](rules/contributions.md#cross-repository-pull-requests).
+  `toko` and `toko-miner` remain excluded without explicit
   authorization; DFINITY contributions remain excluded. Merges, integration-branch
   pushes, history rewrites, releases, publication, deployment and paid effects
   require delivery or specific action authority and retain enforced protections.
@@ -185,7 +189,10 @@ before interface or storage changes.
 `make release-patch`, `make release-minor` and `make release-major` share the
 [release contract](rules/engineering-details.md#release-commands). Read it and the
 local adapter before authorized release work. Normal releases start fresh;
-specific-attempt recovery uses `release-resume`. Preserve required full validation.
+specific-attempt recovery uses `release-resume`. Preserve complete qualification
+of the selected release. Independent groups may adopt an explicitly qualified
+[group validation plan](docs/release-group-validation.md); until adoption, keep
+the existing full gate. Repository-wide CI remains separate and unchanged.
 
 ## Changelogs and artifact preservation
 
@@ -231,11 +238,17 @@ Dependency adoption must distinguish required compatibility/security changes fro
 optional refreshes and check the destination graph before planning downstream
 releases. A newer external patch alone does not require republishing consumers.
 Follow the [adoption planning contract](docs/cargo-graph-checks.md#dependency-adoption-planning).
-Use root-owned dependency selections, reviewed shared tooling, explicit setup
-and the product's declared compiler/host requirements. External
-IC dependencies go through `ic-platform`; its canonical `ic-platform-types`
-identity owner may additionally select only `ic_principal` for explicit registry
-conversions and unchanged self-authentication. npm SDK Core uses
+Use root-owned dependency selections, reviewed shared tooling and explicit setup.
+Rust 1.99.1 is the approved minimum and pinned development/release compiler;
+follow the [compiler support policy](rules/cargo-dependencies.md#minimum-supported-rust-version-msrv)
+when adopting it and consolidating duplicate compiler checks. Preserve product
+host requirements. Select canonical identities
+from `ic-platform-types`, IC0/execution from `ic-platform-runtime`, and crypto or
+external IC adapters from `ic-platform`, following the
+[Platform ownership rules](rules/cargo-dependencies.md#platform-package-owners).
+External IC dependencies remain behind that reviewed boundary; Types alone may
+add `ic_principal` for explicit registry conversions. Self-authentication does
+not enable those conversions. npm SDK Core uses
 `@tokostudios/ic-platform`. Keep reusable cores independently upgradable;
 adapters own their matching integration stacks and must not impose consumer
 framework dependencies on core development. Follow the

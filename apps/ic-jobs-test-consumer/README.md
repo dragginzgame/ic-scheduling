@@ -3,11 +3,11 @@
 This package also owns the native notification/maintenance composition harness
 in `tests/composition.rs`, plus stored-record Wire checks in `tests/stored_wire.rs`.
 `make test-consumers` aggregates both targets and the packaged adapter example;
-`check-msrv` qualifies core and consumer targets separately on Rust 1.99.1. Memory and
+`check-msrv` qualifies core and consumer targets separately on Rust 1.99.1. Storage and
 Timers integration dependencies belong here, outside the core package tests.
 
 Ordinary native library builds expose `api` DTOs and management/delivery identities/limits,
-and depend on Platform's Principal, Wire and Serde. Jobs, Memory and Timers are
+and depend on Platform's Principal, Wire and Serde. Jobs, Storage and Timers are
 selected only for Wasm builds and native tests; JSON is native-test-only. The
 recovery harness can share the DTOs without
 pulling in the consumer's storage or timer implementation. The existing native
@@ -21,7 +21,7 @@ keeps its validated job, cache entries and effect counter in one snapshot,
 committing after each completed occurrence. Both readers decode records and
 enter through `Job::restore`; serialized metadata keeps its canonical shape.
 
-This unpublished canister is an application-owned consumer of Jobs, Memory and
+This unpublished canister is an application-owned consumer of Jobs, Storage and
 Timers. It is a qualification fixture with deliberate fault endpoints, and must
 not be deployed as a production service. The Jobs library acquires no storage,
 authentication, payload, lifecycle or direct CDK timer ownership.
@@ -60,10 +60,11 @@ field is removed. Rebuild the qualification canister and harness together for
 this management-response cut. Stored jobs and delivery receipts keep their
 logical fields; this response change alone needs no storage reset or conversion.
 
-Memory's fixture-only `FixtureCell` bootstraps the `test.jobs.` namespace and
-opens the permanent `test.jobs.consumer.management.v1` key. Installation selects
-bounded fresh creation; recovery selects bounded retained opening, with Cell
-header and size admission before payload loading. One stable cell retains a
+The consumer host supplies Storage with the `test-jobs` authority and `test.jobs.`
+namespace grant, then opens the permanent `test.jobs.consumer.management.v1` key.
+Storage assigns the opaque allocation identity and supplies the exclusive lease.
+Installation selects `StableCell::create`; recovery selects `StableCell::load`
+with a 24 KiB ceiling, validating the header, length and checksum before decoding. One stable cell retains a
 native Wire snapshot prefixed with the queue-owned identity `JQW\x01`:
 manager/receiver configuration, ID authority, JobRecords, immutable payloads,
 counter and receipts. The queue holds at most 32 jobs and 32 receipts, each
@@ -80,7 +81,7 @@ for the complete synchronous operation. Each in-memory entry keeps its job and
 payload together; the scheduler borrows only the jobs through an iterator. Commit
 serializes validated jobs directly and checks collection metadata by borrowing
 entries before replacing stable bytes. Encoded capacity still takes precedence
-over collection errors. Memory 0.48's bounded `try_set` persists admitted bytes;
+over collection errors. Storage's fallible `StableCell::set` persists admitted bytes;
 write refusals propagate before a committed reply or deadline is returned.
 Reads restore each record before its entry metadata
 checks, after header admission and before receipt checks. Separate job/payload
@@ -91,42 +92,44 @@ allocations. Oversized-cell refusal preserves the exact cell header and payload;
 bootstrap may update allocation bookkeeping before that refusal. The frozen
 incompatible-ledger cases separately retain their zero-write proof.
 
-Memory supplies the backing interfaces and bounded fixture cell. Native fixtures
-use IC Storage's governed `adapter::StableCell` for collection
-setup and reopening, with Memory allocation leases consumed rather than cloned.
-Memory requires `MemoryBacking` identity at queue opening. The native
-metering wrapper delegates identity to its underlying VectorMemory; independent
-wrappers cannot create overlapping runtimes. Reopening releases the old owner
-and every detached handle first. Full manager validation occurs at construction,
-initial bootstrap, lease opening and growth. Ordinary size/read/write operations
-trust exclusive custody and retain bounds and poisoning checks. Raw backing edits
-during a live lease are prohibited and need not be detected until a full validation
-boundary. Consumer IC cost measurements remain separate qualification.
-The oversized-payload fixture raises only its Memory writer ceiling, retaining
-exact header/payload refusal checks against the consumer's normal limit. No
-queue format changes are required by that fixture. Direct `ic-stable-structures`
-dependencies are forbidden; the substrate remains transitive through its owners.
+Storage owns the backing interface, allocation directory and governed Cell used
+by both native composition and the qualification canister. `MemoryBacking`
+identifies aliases; the native metering wrapper delegates physical identity to
+its VectorMemory. A cell or detached lease retains custody until it is dropped.
+The consumer never assigns numeric IDs or creates unmanaged stores.
+Storage's `test-support` feature supplies native `MeteredMemory` and
+`MemoryIoCounts`, including backing identity. The old Testkit Native dependency
+and its trait bridge are removed; deployed Wasm selects no metering helpers or
+stable-structures substrate.
 
-**Memory 0.56 installation boundary:** the allocation ledger and its enclosing
-Cell value now use bounded Wire (`ICML`/`ICMWIRE1`) instead of CBOR. This is
-independent of the queue's own `JQW\x01` format; RPC bytes and application
-collection/substrate headers are unchanged by the ledger cut.
-An installation retaining an earlier Memory ledger cannot be upgraded in place
-with this reader: both recovery and fresh creation refuse those bytes without
-resetting or overwriting them. Use a fresh qualification canister, or qualify an
-explicit consumer-owned transition before installing over retained data. Keep
-the old binaries, backups, exact outstanding attempts and receipts until the
-owner resolves their disposition. Reinstalling discards application data and
-requires its owner's authorization; never clear only the allocation ledger while
-leaving collections behind. This dependency update resets no existing data and
-adds no migration engine or compatibility reader. Same-format reconstruction
-continues to restore Running/Uncertain jobs as blocked.
+The oversized-payload fixture uses a larger Cell load ceiling and writes a
+checksummed oversized value; normal recovery refuses it without replacing bytes.
+Native tests also damage a checksum and reject empty recovery without creating
+replacement storage. These checks do not establish IC rollback.
+
+**Storage 0.64 installation boundary:** Storage replaces the separate Memory
+package and fixed-slot ledger with an owned allocation directory and checksummed
+Cell framing. Older complete physical images, including the previous 0.63 Wire
+queue installation, cannot be upgraded in place. Both recovery and fresh creation
+refuse them with zero writes and identical backing bytes. Use fresh qualification
+backing; do not clear only the directory or queue. No reset or migration is
+performed by this adoption. Preserve old binaries, locks, backups, exact blocked
+attempts and receipts until their owner resolves the effects and authorizes any
+destructive retirement. The queue's own `JQW\x01` payload remains unchanged.
+Current Storage-format cold reopen still restores Running/Uncertain jobs blocked.
+
+**Storage 0.65 Cell continuity:** this consumer uses Cells, not the changed map
+format. A real 0.64 installation captured before the update reopens under 0.65,
+Wire 0.15 and Types 0.17 with both Running/Uncertain attempts and receipts intact.
+Cold admission, idle dispatch and refused fresh creation perform no writes or
+growth. No reset is required for these qualified Cells. This native evidence
+does not establish installed IC upgrade/rollback or compatibility for old maps.
 
 **Queue JSON retirement:**
 [#78 — Replace job-consumer JSON queue persistence with bounded IC Wire payloads](https://github.com/dragginzgame/ic-jobs/issues/78).
 The current reader accepts only `JQW\x01`
 and bounded native Wire. Existing JSON queues are refused, including those
-with a current Memory ledger. There is no JSON fallback, converter, automatic
+with an otherwise valid historical Memory ledger. There is no JSON fallback, converter, automatic
 reset or in-place upgrade path. No retained installation is reset by this update.
 For a local qualification run, create fresh test canisters. For any retained
 installation, quiesce management and dispatch, keep the exact old Wasm, lockfile,
@@ -141,8 +144,8 @@ disposition; updating the host harness cannot make retained JSON readable.
 
 The frozen Memory 0.56.0 JSON installation retains both Running and Uncertain
 attempts plus exact receipts. Current retained opening and fresh creation refuse
-its payload while preserving the Cell header and bytes. Memory bootstrap may
-update allocation bookkeeping before that refusal, as with oversized Cells.
+its complete retired physical image before payload loading, preserving every
+backing byte without allocation bookkeeping writes.
 Same-format Wire reopen/upgrade still restores blocked jobs without redispatch.
 
 **0.16 hard cut:** Construct `Task::Deliver(DeliveryPayload { destination,
@@ -163,8 +166,8 @@ qualification and provenance are recorded with the stored-record fixtures.
 
 The frozen 0.7.5, Memory 0.40 and Memory 0.55.2 physical images are refused during
 both recovery and installation, before payload admission and with zero stable writes,
-unchanged pages and identical backing bytes. The queue codec and Memory's outer
-ledger are independent admission boundaries. The stable key identifies the
+unchanged pages and identical backing bytes. The queue codec and Storage's outer
+directory are independent admission boundaries. The stable key identifies the
 consumer allocation; it does not make incompatible payload formats readable.
 The Memory 0.55.2 image retains historical queue JSON with Running intent. A
 test-only read of its frozen metadata crosses Job::restore as blocked; neither
@@ -219,30 +222,26 @@ unchanged. Earlier Candid files are frozen negative inputs, with no
 compatibility decoder. The native consumer DTO/codec graph has no PocketIC,
 Candid, process or server dependency.
 
-On Wasm, Platform 0.8's `cdk` feature supplies explicit-codec entrypoints, raw calls,
-system helpers and protected spawning. Full upstream `ic-cdk` is absent; its
-reviewed runtime adapters are owned by Platform. The selected registry executor
-2.0.0 and ic0 1.2.0 remain shared with Timers 0.32 and Memory through one
-Platform 0.8 identity. The Wasm graph requires one executor, IC0 provider and
-entrypoint generator and excludes application principal conversion and SHA-2.
-Stable-structures retains its own external Principal dependency.
-The consumer selects Metrics 0.18.0 arithmetic and reset-window bookkeeping only
-on Wasm and in tests; native DTOs remain independent of Metrics. Timers retains
-its required Metrics 0.17 dependency, locked to 0.17.7. The consumer does not pass
-Metrics values across that version boundary: each owner retains its diagnostics,
-and the RPC projects consumer-owned numeric DTOs. Counter arithmetic and the
-existing report shapes are unchanged by 0.18's added summary/histogram transport.
-The Wasm timer subtree contains neither Wire nor Candid.
+On Wasm, `ic-platform-runtime` supplies explicit-codec entrypoints, raw calls,
+system helpers and protected spawning. Timers shares that Runtime owner and its
+exact singleton guard; full upstream `ic-cdk` and a second executor are excluded.
+Canonical Types owns application identities. Native DTO normal/build graphs stay
+independent of the runtime; external client conversions remain at their boundary.
+The root dependency catalog owns the selected Runtime, Types and Metrics versions.
+The consumer selects Metrics arithmetic and reset bookkeeping only on Wasm and in
+tests; RPCs project consumer-owned numeric DTOs. The Wasm timer subtree contains
+neither Wire nor Candid. No stable-structures substrate remains in the workspace.
 The consumer's own Wire dependency supplies its endpoint codecs. Metrics has no
 optional `wire` feature; its optional keyed heap `recording` feature stays disabled.
 Published `ic-jobs` remains independent of Metrics.
 Metrics now lives in the IC Observability repository with the same published
-crate identity and arithmetic. The selected Platform 0.8 supplies explicit endpoint
-codecs and bounded external decoding used by this consumer and its host harness.
-Its transport boundary is separate from Memory's installation cut above.
-Native DTOs select Platform 0.8's owned `principal` feature. Native tests explicitly
-select `principal-self-authenticating`; the recovery harness selects `pocket-ic`
-and hashing for its fixture identities. The application uses its owned Principal;
+crate identity and arithmetic. Runtime 0.18 and Wire 0.15 supply explicit endpoint
+codecs and bounded decoding for this consumer and its host harness.
+Its transport boundary is separate from Storage's installation cut above.
+Native DTOs select canonical Types 0.17. Native tests explicitly select
+`principal-self-authenticating`; the recovery harness selects Types' explicit
+external conversions and the independent Platform PocketIC 0.18 client with
+Testkit 0.80. The application uses its owned Principal;
 PocketIC calls retain the external Principal and convert explicitly when
 constructing application DTOs. Native DTO normal/build graphs exclude external
 Principal and hashing dependencies; Wasm excludes the application conversion
@@ -372,8 +371,8 @@ Their API must never be copied into a production canister. Live execution and
 native macOS acceptance are recorded separately in the
 [handoff](../../docs/status/current.md). It records passing installed recovery on
 earlier source/graphs, including all three hosts for 0.17.46, separately from the
-Memory 0.56 adoption's native/Wasm checks. No installed recovery for the new
-ledger format is claimed. Harness compilation alone does not establish it.
+current Storage 0.65 native/Wasm checks. No installed recovery for the new
+storage format is claimed. Harness compilation alone does not establish it.
 
 ## Committed job-outcome diagnostics
 
@@ -421,7 +420,7 @@ unmeasured; other hosts retain their own qualification.
 
 ## Committed transition logs
 
-The consumer uses IC Logging 0.18.0 for a heap-only history of the most recent
+The consumer uses IC Logging 0.24.1 for a heap-only history of the most recent
 128 events. Each retained message is at most 192 UTF-8 bytes and labels are at
 most 32 bytes. The combined retained source/topic/message budget is 32 KiB,
 derived as `128 * (192 + 2 * 32)` so every individually admitted row retains

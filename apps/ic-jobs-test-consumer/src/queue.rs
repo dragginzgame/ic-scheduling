@@ -1,14 +1,15 @@
-use std::num::{NonZeroU16, NonZeroU64};
+use std::num::NonZeroU64;
 
 use ic_jobs::{
     Attempt, Job, JobId, JobRecord, JobState, MissedRunPolicy, Outcome, RetryPolicy, Schedule,
     next_due_ns, start_next,
 };
-use ic_memory::{
-    Memory, MemoryBacking, MemoryManagerConfig,
-    testing::{FixtureCell, FixtureCellError},
-};
 use ic_platform_types::Principal;
+use ic_storage::{
+    AllocationGrants, GenericAllocationPolicy, Memory, MemoryAuthority, MemoryBacking,
+    MemoryRequest, MemoryRuntime, RuntimeMemory, SealedDeclarationSnapshot, StableKey,
+    adapter::{CollectionError, StableCell},
+};
 use ic_wire::{Limits, native};
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +19,7 @@ use crate::metrics::{Counts, JobWindow};
 
 const MAX_JOBS: usize = 32;
 const MAX_BYTES: usize = 24 * 1024;
-// This queue's identity is independent of Memory's allocation-ledger format.
+// This queue's identity is independent of Storage's allocation-directory format.
 const FORMAT: &[u8; 4] = b"JQW\x01";
 const LIMITS: Limits = Limits {
     bytes: MAX_BYTES - FORMAT.len(),
@@ -205,10 +206,10 @@ fn receipt_key(delivery: &Delivery) -> (u64, u64) {
     (delivery.job, delivery.occurrence)
 }
 
-// Memory owns fixture allocation and bounded Cell admission; the consumer owns
+// Storage owns checked allocation and Cell admission; the consumer owns
 // its snapshot codec, collection semantics and explicit lifecycle calls.
 pub(crate) struct Queue<M: Memory> {
-    cell: FixtureCell<M>,
+    cell: StableCell<Vec<u8>, M>,
     init: Init,
     metrics: JobWindow,
     logs: JobLogs,
@@ -219,6 +220,36 @@ fn job_error(error: ic_jobs::JobError) -> Error {
 }
 fn memory_error(error: impl std::fmt::Display) -> Error {
     Error::Memory(error.to_string())
+}
+
+fn cell_error(error: CollectionError) -> Error {
+    match error {
+        CollectionError::NotEmpty
+        | CollectionError::Cell(_)
+        | CollectionError::Format
+        | CollectionError::Checksum
+        | CollectionError::Corrupt(_) => Error::InvalidStorage,
+        other => memory_error(other),
+    }
+}
+
+// The consumer host composes one namespace; Storage alone assigns allocation IDs.
+fn queue_memory<M: MemoryBacking>(memory: M) -> Result<RuntimeMemory<M>, Error> {
+    let mut runtime = MemoryRuntime::new(memory).map_err(memory_error)?;
+    let requests = SealedDeclarationSnapshot::new(vec![
+        MemoryRequest::new("test-jobs", KEY).map_err(memory_error)?,
+    ])
+    .map_err(memory_error)?;
+    let grants = AllocationGrants::new(vec![
+        MemoryAuthority::new("test-jobs", "test.jobs.").map_err(memory_error)?,
+    ])
+    .map_err(memory_error)?;
+    runtime
+        .bootstrap(&requests, &grants, &GenericAllocationPolicy)
+        .map_err(memory_error)?;
+    runtime
+        .open_memory(&StableKey::parse(KEY).map_err(memory_error)?)
+        .map_err(memory_error)
 }
 
 fn task_valid(task: &Task) -> bool {
@@ -281,28 +312,27 @@ impl<M: Memory> Queue<M> {
     where
         M: MemoryBacking,
     {
-        let config = MemoryManagerConfig::new(NonZeroU16::MIN);
-        let mut cell = if initial.is_some() {
-            FixtureCell::create_bounded(memory, "test.jobs", "test.jobs.", KEY, config, MAX_BYTES)
-        } else {
-            FixtureCell::open_bounded(memory, "test.jobs", "test.jobs.", KEY, config, MAX_BYTES)
+        if initial.is_none() && memory.size() == 0 {
+            return Err(Error::InvalidStorage);
         }
-        .map_err(|error| match error {
-            FixtureCellError::Occupied | FixtureCellError::Payload(_) => Error::InvalidStorage,
-            other => memory_error(other),
-        })?;
-        if let Some(init) = initial {
+        let memory = queue_memory(memory)?;
+        let cell = if let Some(init) = initial {
             // Fresh admission cannot overwrite a retained allocation.
-            cell.try_set(encode(&Snapshot::<JobRecord> {
-                init,
-                next_id: 1,
-                jobs: vec![],
-                counter: 0,
-                receipts: vec![],
-            })?)
-            .map_err(memory_error)?;
-        }
-        let snapshot = decode(cell.bytes())?;
+            StableCell::create(
+                memory,
+                encode(&Snapshot::<JobRecord> {
+                    init,
+                    next_id: 1,
+                    jobs: vec![],
+                    counter: 0,
+                    receipts: vec![],
+                })?,
+            )
+            .map_err(cell_error)?
+        } else {
+            StableCell::load(memory, MAX_BYTES).map_err(cell_error)?
+        };
+        let snapshot = decode(cell.get())?;
         let next_due_ns = snapshot.next_due_ns();
         Ok((
             Self {
@@ -360,7 +390,7 @@ impl<M: Memory> Queue<M> {
     }
 
     fn load(&self) -> Result<Snapshot<Job>, Error> {
-        let snapshot = decode(self.cell.bytes())?;
+        let snapshot = decode(self.cell.get())?;
         if snapshot.init != self.init {
             return Err(Error::InvalidStorage);
         }
@@ -383,7 +413,7 @@ impl<M: Memory> Queue<M> {
             )?;
         }
         check_receipts(&snapshot.receipts)?;
-        self.cell.try_set(bytes).map_err(memory_error)?;
+        self.cell.set(bytes).map_err(memory_error)?;
         Ok(Committed { value, next_due_ns })
     }
 
@@ -628,7 +658,7 @@ impl<M: Memory> Queue<M> {
         snapshot.index(id)?;
         let mut bytes = encode(&snapshot)?;
         bytes.pop();
-        self.cell.try_set(bytes).map_err(memory_error)?;
+        self.cell.set(bytes).map_err(memory_error)?;
         Ok(())
     }
 }

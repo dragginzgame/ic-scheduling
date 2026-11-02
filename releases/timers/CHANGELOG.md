@@ -7,6 +7,27 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.38.0]
+
+### ⚠️ Breaking
+
+- Align the publicly re-exported measurement types with Metrics 0.27. Consumers
+  exchanging those types with a direct Metrics dependency must select 0.27 too;
+  optional native report metadata uses Wire 0.15. Arithmetic remains unchanged.
+- Select Runtime 0.18 and its exact executor guard. Applications must align
+  other executor and endpoint suppliers with that generation; callback,
+  cancellation and deployed scheduling behavior are unchanged.
+
+### 📦 Dependencies
+
+- Adopt Wire 0.15 and Testkit 0.80 with the independent Platform PocketIC 0.18
+  client for private checkpoints and native qualification. Preserve encoded
+  checkpoints and keep client transport outside deployed Wasm.
+- Select Build 0.74.0 and Host Artifacts/FS/Process 0.74.1 for qualification
+  builds and retained reports. The Rust 1.99.1 requirement is unchanged.
+- Refresh Shared Tooling to 0.27.28. Retain the complete release gate;
+  optional group-scoped validation plans remain unselected.
+
 ## [0.37.0] - 2026-11-02
 
 ### ⚠️ Breaking

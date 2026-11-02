@@ -28,6 +28,10 @@
     "allowed_packages": []
   },
   {
+    "dependency": "ic-platform-pocket-ic",
+    "allowed_packages": []
+  },
+  {
     "dependency": "ic-platform-runtime-guard",
     "allowed_packages": []
   },

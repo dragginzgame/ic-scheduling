@@ -6,10 +6,8 @@ use ic_jobs_test_consumer::{
     delivery_wire::{RECEIPT_ID, RECEIVE_ID, REQUEST_LIMITS, RESPONSE_LIMITS},
     management_wire::{self as control, Method},
 };
-use ic_platform::{
-    pocket_ic::{ErrorCode, PocketIc, PocketIcBuilder, RejectResponse},
-    principal::ExternalPrincipal,
-};
+use ic_platform_pocket_ic::{ErrorCode, PocketIc, PocketIcBuilder, RejectResponse};
+use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{
     CanisterDiagnosticsRequest, CanisterInstallError, CanisterInstallExt, CanisterLogRenderLimits,
     InstallSpec, PocketIcCallFailure, PocketIcDiagnosticsExt, PocketIcInstance,
