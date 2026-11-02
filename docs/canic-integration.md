@@ -31,7 +31,7 @@ retain their own assessment under [Canic #502](https://github.com/dragginzgame/c
 | Management | Pause/resume/reschedule/cancel transitions | Caller admission, endpoints, atomic writes and reconciliation of committed demand |
 | Observability | No metrics/logging provider | Canic attribution, bounded reporting and committed-transition observations |
 
-The Jobs library depends only on Serde; its next release requires Rust 1.99.1.
+The Jobs library depends only on Serde and requires Rust 1.99.1.
 Adopting it does not require Canic to select this repository's Memory, Storage,
 Platform, Timers or Wire versions. Canic's composed graph must retain its own
 single runtime identities and qualified installation format. This repository's
