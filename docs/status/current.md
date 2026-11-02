@@ -1,5 +1,19 @@
 # Current handoff
 
+## Platform Runtime 0.19 qualification branch
+
+This isolated branch extends the existing Runtime requirement to >=0.17.1, <0.20.
+Only dependency admission and notes change; timer bodies and the maintained
+Scheduling lock remain unchanged. This is not Scheduling main or a release.
+Platform selects this immutable source for its mandatory composition proof.
+
+Native/Wasm Clippy and 175 Timers unit tests pass at Rust 1.99.1 against Platform
+source 885a329 with isolated candidate Runtime/macros/guard 0.19.0 metadata and
+Types 0.18.0. The native graph has one Runtime and matching guard, no external
+executor. Evidence lives under /tmp/platform-runtime019-scheduling.EBatnW/.
+Installed composition remains Platform's release obligation; this is not fresh
+Scheduling release, macOS or published-provider qualification.
+
 ## Delivered Rust 1.99.1 policy — 2026-11-02
 
 [Issue #87](https://github.com/dragginzgame/ic-scheduling/issues/87) is completed.

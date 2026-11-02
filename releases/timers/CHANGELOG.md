@@ -11,10 +11,10 @@ entry alone does not establish publication.
 
 ### 🔧 Changed
 
-- Admit Runtime 0.18 alongside the qualified 0.17.1 line for Timers' unchanged
+- Admit Runtime 0.18 and 0.19 alongside the qualified 0.17.1 line for Timers' unchanged
   executor/IC0 APIs. Retain the exact singleton guard and one resolved owner.
   Existing locked consumers retain 0.17.1; the Platform qualification root can
-  select its 0.18 candidate explicitly. No timer policy, callback body or
+  select its 0.19 candidate explicitly. No timer policy, callback body or
   scheduling/checkpoint bytes change.
 
 ## [0.37.0] - 2026-11-02
