@@ -1,99 +1,91 @@
 # Current handoff
 
-## Complete local upstream adoption — 2026-11-02
+## Delivered upstream adoption — 2026-11-02
 
-The root selects Runtime/guard 0.18.1, Types 0.17.0, Wire/Derive 0.15.0,
-Endpoint 0.5.0, Storage 0.65.0, Metrics 0.27.0 and Testkit 0.80.1. Build 0.74.0,
-Host Artifacts/FS/Process 0.74.1, Logging 0.24.1 and native Platform PocketIC
-0.18.0 are current. Official registry checksums and source identities were
-verified for the new cohort. Previous published-supplier blockers are resolved.
+Both release groups were delivered to `origin/main` with annotated tags and
+published to crates.io under the authorized Scheduling deployment:
 
-Both native harnesses retain the independent PocketIC client and explicit Types
-conversions. The deployed graph has one Runtime 0.18, matching guard and canonical
-Types identity. Source and feature checks reject competing or substituted owners.
-Jobs remains Serde-only; Timers retains the sole private timer provider and FFI.
-The Rust floor and pinned compiler stay 1.99.1 for all nine owned members.
+| Group | Version | Release commit | Tag |
+| --- | --- | --- | --- |
+| Timers | 0.38.0 | `97a55b612a559b7f2f66e15964e463d8b6dcbbe6` | `timers-v0.38.0` |
+| Jobs | 0.34.1 | `db1a35afd3ad076d8f8eab4f43b5d277e2f16ed2` | `jobs-v0.34.1` |
 
-Storage now supplies native IO metering through test-support. The old bridge,
-Testkit Native dependency and unused direct Platform facade selection are removed.
+The source adoption is `8d6453f`. Both downloaded registry archives match the
+non-yanked sparse-index checksums, exact release source commits, original
+manifests and Rust 1.99.1 metadata. No sibling repository was changed or released.
+Hosted release CI was still pending/running at the recorded observation; it is
+asynchronous and is not claimed as fresh macOS qualification.
+
+The delivered lock selects Runtime/guard 0.18.1, Types 0.17.0, Wire/Derive 0.15.0,
+Endpoint 0.5.0, Storage 0.65.0, Metrics 0.27.1, Logging 0.24.2 and Testkit 0.80.1.
+Build 0.74.0, Host Artifacts/FS/Process 0.74.1 and native Platform PocketIC 0.18.0
+remain selected. Manifest minima allow the Logging and Metrics patch selections.
 No ic-memory, ic-stable-structures or ic-testkit-native package remains in the lock.
-Only the Metrics 0.27 identity remains in the working graph.
+Only one Runtime/guard, canonical Types and Metrics identity is selected.
 
-## Retained data and consumer actions
+Timers 0.38 is a minor compatibility boundary for its public Metrics identity
+and Runtime supplier cohort. Consumers must adopt those suppliers together.
+Jobs' public Serde model is unchanged; its patch release carries the qualified
+consumer/tooling adoption. Jobs retains consumer-owned storage/lifecycle authority;
+Timers retains the sole private timer provider, exact guard and confined FFI.
+The Rust floor and pinned compiler remain 1.99.1 for all nine owned members.
+
+## Qualification and storage boundary
+
+Each group independently passed the complete local Linux release gate: full CI,
+Clippy, provider/dependency/graph guards, tooling and recovery fixtures, native
+core/consumer tests, Wasm checks, documentation and both public package archives.
+Each also passed all 35 installed PocketIC watchdog cases and the policy-cohort
+comparison. Publication repeated clean-source, exact remote-tag and full Clippy
+admission. Shared's optional group-validation narrowing/reuse was not activated.
+These results do not establish fresh macOS execution or the separately selected
+live Jobs recovery/rollback matrix.
 
 The qualification consumer uses Cells, not Storage 0.65's changed map format.
-Before changing its reader, a real 0.64 installation was frozen with Running and
-Uncertain attempts plus exact destination receipts. New native tests reopen that
-complete image on 0.65/Wire 0.15/Types 0.17 without writes, growth or redispatch.
-Stored JQW payloads, bounded Cell loading, validated Job::restore and refusal
-ordering remain intact. Empty recovery never initializes replacement state.
+A real 0.64 installation was frozen with Running and Uncertain attempts plus
+exact destination receipts. Native tests reopen that complete image on
+0.65/Wire 0.15/Types 0.17 without writes, growth or redispatch. Storage owns native
+IO metering through test-support; the local bridge is removed. Stored JQW payloads,
+bounded Cell loading, validated Job::restore and refusal ordering remain intact.
+Empty recovery never initializes replacement state.
 
 The older 0.63/Memory physical image stays refused without writes/reset, while
 its unchanged Wire payload preserves the blocked Jobs. Earlier JSON/CBOR images
 retain provenance and refusal coverage. Retiring incompatible installations still
 requires owner disposition of outstanding effects and explicit authorization.
-Adoption resets, migrates or installs nothing. Native Cell continuity does not
-establish installed IC recovery/rollback or compatibility of old map images.
+This library release resets, migrates or deploys no consumer installation.
+Native Cell continuity does not establish compatibility of old map images.
 
-Release delivery is now authorized for this repository only: Timers 0.38.0,
-then Jobs 0.34.1, followed by each selected crates.io publication. Preparation
-uses an isolated main checkout. The frozen working lock also includes Logging
-0.24.2 and Metrics 0.27.1 patch selections; the complete release gates will
-qualify those exact inputs before version preparation. No result is claimed yet.
-The earlier ordinary checkout and concurrent edits remain preserved.
+Shared snapshot 0.27.28 at `8c7fae6605c69a930e3b1f14e1ff5c4c9dafbcb7` was exported
+from a clean committed source. All 142 payloads verify. Entrypoints and tool pins
+are retained. Standard tool admission reused qualified cached selections, including
+Testkit 0.80 and the Build 0.74 metadata editor. PocketIC 16.1.0 was explicitly
+installed in the isolated checkout for the release runtime qualifications.
 
-## Shared Tooling and qualification
+## Evidence, checkout and next actions
 
-Shared snapshot 0.27.28 at `8c7fae6605c69a930e3b1f14e1ff5c4c9dafbcb7` was refreshed
-through the canonical exporter from a clean source. All 142 payloads verify.
-Entrypoints and tool pins are retained. The new group-validation capability is
-not opted into: repository CI and both groups keep their existing complete gates.
-Common tool admission required standard re-preparation for the current kernel
-identity; admitted cached selections were reused. Testkit CLI 0.80 and the Build
-0.74 metadata editor pass admission. No PocketIC server was installed or started.
+`.git/release-state/deployment-upstreams.UjAXfFHz/` retains the incoming tree,
+source patch/hashes, exact source checkout pointer, both release logs and journals,
+validation/preparation receipts, full runtime diagnostics/cohort receipts, registry
+archives/checksum receipts and hosted-CI observations. The isolated delivery source
+remains under `target/upstream-release-source.jyvBPzEt/`; do not clean it or replay
+completed release increments/uploads. `target/current-all-upstream-adoption`
+retains the preceding focused adoption evidence and old-reader capture.
 
-All 269 selected tests pass: 75 consumer, 175 Timers, 3 protocol and 16 native
-helper cases. Two explicitly live tests remain ignored. Strict native and Wasm
-Clippy, release Wasm builds and all four size-probe feature checks pass. Independent
-core/consumer compiler checks, dependency/provider/pin guards, consumer/dependency
-fixtures, formatting hooks and both groups' metadata fixtures pass. Formatting,
-ShellCheck and documentation links pass. Full CI, fresh macOS and installed IC
-qualification were not selected; a release retains those applicable gates.
+The ordinary checkout was fast-forwarded after confirming no concurrent edits.
+Its complete pre-deployment adoption remains in a named preservation stash,
+identified by `preserved-adoption-stash.txt` in the deployment evidence directory.
+Do not pop that stash: its source and old package metadata are already delivered.
+Earlier release journals, evidence and preservation stashes also remain intact.
 
-`target/current-all-upstream-adoption` identifies source/registry archives,
-incoming-state snapshots, old-reader capture, qualification/tool logs and receipts.
-Both physical images and their provenance remain in the consumer's queue fixtures;
-the canonical fixture guide explains their different compatibility boundaries.
-Earlier adoption/rejected-probe evidence remains under the previous target pointers.
-Existing work and unresolved release-recovery evidence below remain preserved.
+Next work belongs to consumers: adopt Timers 0.38 with the aligned supplier
+cohort, and explicitly qualify their installed recovery/rollback paths before
+changing any persisted deployment. Library publication is complete. No application
+production deployment target is owned by this repository.
 
-## Delivered baseline and recovery
-
-[Issue #87](https://github.com/dragginzgame/ic-scheduling/issues/87) is completed.
-The compiler-policy implementation is `a2a6cdd423843d8f7ce5f639c8aeac7711c953c6`.
-Both groups were pushed to `origin/main` with annotated tags and published,
-non-yanked crates.io versions before this local adoption:
-
-| Group | Version | Release commit | Tag |
-| --- | --- | --- | --- |
-| Jobs | 0.34.0 | `41391e23c3116fe60901331cd95ac78ec2f11460` | `jobs-v0.34.0` |
-| Timers | 0.37.0 | `1389d8e5e55ae3a8efbe6a49d66fc9164055be81` | `timers-v0.37.0` |
-
-Their downloaded registry archives match index checksums and release source
-identities, including Rust 1.99.1 metadata. Each release separately passed full
-local Linux CI, 35 installed watchdog cases and the policy-cohort comparison.
-Those results do not qualify this newer dependency graph or establish fresh
-macOS execution or the separate live Jobs recovery matrix.
-
-`.git/release-state/deployment-msrv-87.uUHPASl6/` retains the delivery receipt,
-all attempts, registry verification, journals and source-bound runtime archives.
-The isolated delivery checkout remains under `target/msrv-87/delivery/` with its
-private tool store. Standard private-store setup resolved shared-store contention;
-no live lock was removed or validation bypassed. Do not replay completed increments,
-uploads or the preserved pre-delivery stash, which includes already delivered work.
-
-The pre-adoption handoff is retained at
-`cc78b6258cacdacb44872a9b66e430609108e349:docs/status/current.md`; earlier context
-is at `a2a6cdd423843d8f7ce5f639c8aeac7711c953c6:docs/status/current.md`.
-Historical Rust 1.91 evidence remains unchanged. Prior Wire/tooling delivery
-evidence remains at `.git/release-state/deployment-wire-tooling.w6Z6gClk/`.
+[Issue #87](https://github.com/dragginzgame/ic-scheduling/issues/87) remains complete.
+Its original delivery evidence is retained at
+`.git/release-state/deployment-msrv-87.uUHPASl6/`; the pre-adoption handoff is
+`cc78b6258cacdacb44872a9b66e430609108e349:docs/status/current.md`.
+Earlier Wire/tooling evidence remains at
+`.git/release-state/deployment-wire-tooling.w6Z6gClk/`.
