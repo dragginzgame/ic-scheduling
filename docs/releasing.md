@@ -74,6 +74,11 @@ receipts stop recovery rather than authorizing another effect.
 
 ## Preparation and verification
 
+Rust 1.99.1 is both the consumer floor and pinned release compiler. The release
+CI gate runs `rust-policy-check` before product compilation and records actual
+Cargo/rustc identities. Native and Wasm package coverage, archive verification
+and the explicit installed watchdog/cohort gate remain required.
+
 Prepare selected dependencies with `cargo fetch --locked`. Use
 `make install-tools`, `make tools-check`, `make install-testkit-tools` and
 `make install-release-tools` for explicit setup and offline admission. The

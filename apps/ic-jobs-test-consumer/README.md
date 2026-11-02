@@ -3,7 +3,7 @@
 This package also owns the native notification/maintenance composition harness
 in `tests/composition.rs`, plus stored-record Wire checks in `tests/stored_wire.rs`.
 `make test-consumers` aggregates both targets and the packaged adapter example;
-`check-msrv` qualifies core and consumer targets separately on Rust 1.91. Memory and
+`check-msrv` qualifies core and consumer targets separately on Rust 1.99.1. Memory and
 Timers integration dependencies belong here, outside the core package tests.
 
 Ordinary native library builds expose `api` DTOs and management/delivery identities/limits,

@@ -29,7 +29,10 @@ This file is the local overlay. Read [the current handoff](docs/status/current.m
   ledger; policy alias rosters cover each catalog entry. Dependencies and the lock
   remain root-owned. Sibling Timers source is provenance,
   not a build input. Grouping does not relax runtime or combined-consumer checks.
-- Rust floor: 1.91 for core and consumer-owned Timers integration. Qualify both separately.
+- Rust floor and pinned compiler: 1.99.1, approved in [#87](https://github.com/dragginzgame/ic-scheduling/issues/87).
+  This owner-approved policy supersedes the old lowest-floor promise. Qualify core
+  and consumer-owned Timers integration separately with the same compiler; preserve
+  native host, Wasm, archive and explicitly selected installed-runtime coverage.
 - Host workflows support Linux and macOS Intel/Apple Silicon. Bind native and
   live IC recovery qualification to their tested source and dependency graph;
   native tests do not establish IC recovery.

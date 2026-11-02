@@ -61,7 +61,7 @@ but it does not promise that a task will happen exactly once.
 | Working-tree API line | `0.33` (pending release) |
 
 IC Timers is written in Rust 2024 and supports Rust
-1.91.0 and newer. The private backend owns one-shot dispatch through IC
+1.99.1 and newer. The private backend owns one-shot dispatch through IC
 system calls and the shared CDK executor through `ic-platform`. See the [backend design](../../docs/timers/design/0.26-owned-timer-backend.md)
 for implementation and qualification boundaries.
 

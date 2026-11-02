@@ -37,24 +37,19 @@ jobs:
           cp .shared-tooling.snapshot "$evidence/shared-tooling.snapshot"
       - name: Prepare host parsers for Rust policy selection
         run: make install-host-tools
-      - name: Read the declared Rust toolchains
+      - name: Read the declared compiler policy
         id: rust-policy
         run: |
           export PATH="$PWD/.tools/host/bin:$PATH"
-          minimum="$(bash scripts/dev/minimum-rust.sh --print)"
-          development="$(yq -p toml -o yaml -r '.toolchain.channel' rust-toolchain.toml)"
-          printf 'minimum=%s\ndevelopment=%s\n' "$minimum" "$development" >> "$GITHUB_OUTPUT"
-      - name: Prepare development and minimum toolchains
-        uses: ./.github/actions/prepare-rust-toolchains
-        with:
-          development: ${{ steps.rust-policy.outputs.development }}
-          minimum: ${{ steps.rust-policy.outputs.minimum }}
-          minimum-target: wasm32-unknown-unknown
+          toolchain="$(bash scripts/dev/minimum-rust.sh --print)"
+          printf 'toolchain=%s\n' "$toolchain" >> "$GITHUB_OUTPUT"
+      - name: Prepare the declared compiler once
+        id: rust-setup
+        run: bash scripts/dev/prepare-rust-toolchain.sh --toolchain-file rust-toolchain.toml
       - name: Record prepared toolchain identities
         run: |
           {
-            rustc --version --verbose
-            bash scripts/dev/minimum-rust.sh rustc --version --verbose
+            bash scripts/dev/minimum-rust.sh --check
           } > "$RUNNER_TEMP/jobs-recovery/toolchains.txt"
       - name: Prepare and admit the complete common toolset
         run: |

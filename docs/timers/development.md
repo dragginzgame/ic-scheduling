@@ -35,7 +35,7 @@ For changes to local release-group fixtures, select
 publication admission. The latter substitutes uploads and the full release gate
 inside disposable repositories; it never publishes a real crate.
 
-The root owns one Cargo lock, Rust 1.91 floor, development toolchain, formatting,
+The root owns one Cargo lock, Rust 1.99.1 floor, development toolchain, formatting,
 CI and publication path. The `timer-probe` profile retains its previous optimization
 settings. Ordinary builds default to both published crates. Probe packages remain
 unpublished. The timer registry, callbacks and unsafe IC dispatch remain private

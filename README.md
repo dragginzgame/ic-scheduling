@@ -190,7 +190,7 @@ snapshot check alone does not establish deployment admission.
 ## Consumer qualification
 
 `make test-consumers` aggregates native notification/maintenance scenarios, stored
-Wire conformance and the packaged adapter example on Rust 1.91. They cover commit
+Wire conformance and the packaged adapter example on Rust 1.99.1. They cover commit
 failures, reconstruction, exact receipt reconciliation, stale continuations and
 bounded recurring work. The composition fixtures request IC Memory allocations
 through the [workspace-selected dependency](Cargo.toml); the host fixture reopens actual
@@ -209,10 +209,13 @@ check -p ic-jobs-test-consumer --lib --target wasm32-unknown-unknown --locked
 --all-targets --locked --offline -- -D warnings`, or select the Wasm target
 when runtime integration changes.
 
-The minimum-compiler launcher reads `workspace.package.rust-version` from
-[Cargo.toml](Cargo.toml), normalizes its toolchain selection and installs nothing.
-Make and both hosted workflows use that same projection. Hosted setup prepares
-the pinned host parsers first; development Rust comes from `rust-toolchain.toml`.
+The compiler launcher reads `workspace.package.rust-version` from
+[Cargo.toml](Cargo.toml) and requires the same pin in `rust-toolchain.toml`.
+`make rust-policy-check` records and admits actual Cargo/rustc identities without
+installing anything. Both hosted workflows prepare that single compiler, its
+components and Wasm target once, after preparing the host parsers. Full CI retains
+independent core, consumer, Wasm and archive coverage on that compiler; the focused
+`check-msrv` target remains available without repeating it in the aggregate.
 
 `make clippy`, `make check-wasm`, `make check-msrv` and the other package-group
 targets aggregate several checks. `make ci` runs the full release suite and
@@ -235,7 +238,7 @@ Release-adapter fixtures can be selected independently with
 aggregate still runs every group and the publication eligibility fixture.
 The retention selection needs no prepared metadata editor or formatters.
 
-The package and its direct Timers qualification consumer require Rust 1.91. Compiler
+The package and its direct Timers qualification consumer require Rust 1.99.1. Compiler
 selections are recorded in [rust-toolchain.toml](rust-toolchain.toml) and
 [the local tool catalog](ci/tool-versions.env). Linux and macOS Intel/Apple Silicon
 host workflows are maintained. See [the current handoff](docs/status/current.md)

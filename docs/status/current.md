@@ -1,5 +1,56 @@
 # Current handoff
 
+## Rust 1.99.1 policy adopted locally for #87 — 2026-11-02
+
+[Issue #87](https://github.com/dragginzgame/ic-scheduling/issues/87) records the
+maintainer-approved change to Rust 1.99.1 as both consumer floor and pinned
+contributor/release compiler. All nine members inherit that floor; the existing
+1.99.1 pin now also declares the Wasm target. No package release version changed.
+Jobs has pending 0.34.0 notes and Timers has pending 0.37.0 notes because raising a
+published library's supported compiler floor changes its consumer contract.
+
+The local `minimum-rust.sh` projection requires the manifest floor and pin to
+agree. Its new `--check` mode records actual Cargo/rustc identities and rejects
+mismatches without installing tools. Clippy, including publication's Clippy gate,
+and the focused `check-msrv` target require that admission. Both hosted workflows
+prepare one compiler with rustfmt, Clippy and Wasm through the existing Shared
+helper. Shared-owned payloads were not edited; the snapshot remains 0.27.26.
+The owner-approved policy in #87 supersedes the earlier lowest-floor promise.
+
+Coverage mapping after consolidation:
+
+| Obligation | Retained caller |
+| --- | --- |
+| Independent Jobs core, all features/targets | `check`, `test-jobs`; focused `check-msrv` remains available |
+| Native queue, API/Wire and composition | `check-consumer`, `test-consumers` |
+| Core/consumer Wasm and proc-macro builds | `check-wasm`, `check-consumer` |
+| Timers, protocol, runtime/size probes and host driver | `test-timers`, `check-timer-probes`, existing size-feature selections |
+| Public package/archive and isolated group consumer | `package-all`, release-metadata fixtures |
+| Native Linux/macOS Intel/Apple Silicon | Existing `validate` and `recovery` matrix identities unchanged |
+| Installed semantics | Existing explicit recovery workflow and release watchdog/cohort gates unchanged |
+
+The aggregate no longer repeats `check-msrv` after its native package/consumer
+proofs already run on the same compiler. Workflow fixtures prove a single setup,
+policy-driven Make/hosted selection and refusal for divergent/moving pins or a
+wrong Cargo/rustc. CI classification and failure-evidence routing still pass.
+
+Focused Linux qualification passes on actual Cargo/rustc 1.99.1: separate core
+and integration compilation, 48 core tests plus 249 consumer/Timers/protocol cases,
+public/consumer/Wasm Clippy, actual core/consumer/runtime-probe Wasm builds, all
+four size-probe feature builds, native transport/driver checks and both normalized
+public package verifications. Both archived manifests require 1.99.1. Grouped
+metadata fixtures, dependency/provider gates, workflow lint and ShellCheck pass.
+This task did not select full release CI, installed-runtime execution or fresh
+native macOS runs; their existing obligations remain in place.
+
+Evidence and input snapshots are under `target/msrv-87/evidence/`; local archive
+artifacts use `target/msrv-87/package/`, preserving earlier release archives.
+The incoming Cargo.lock was already dirty, and a concurrent cc 1.10.0 to 1.11.0
+edit was observed and retained. No dependency update command was run. Final
+qualification uses that current locked graph. Historical fixtures, caches and
+release evidence remain intact. These are uncommitted implementation changes;
+no release, push, publication or sibling contribution was performed.
+
 ## Delivered Jobs 0.33.5 and Timers 0.36.0 — 2026-11-01
 
 Both Scheduling groups are pushed to `origin/main` with annotated group tags

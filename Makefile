@@ -116,7 +116,11 @@ test-demo-cli: consumer-server-check
 	+$(MINIMUM_RUST) cargo build -p ic-jobs-canister-tests --example queue --locked --offline
 	+bash scripts/dev/queue-command.sh test-demo-cli
 
-check-msrv:
+.PHONY: rust-policy-check
+rust-policy-check:
+	+bash scripts/dev/minimum-rust.sh --check
+
+check-msrv: rust-policy-check
 	+$(MINIMUM_RUST) cargo check -p ic-jobs --lib --locked --offline
 	+$(MINIMUM_RUST) cargo check -p ic-jobs-test-consumer --test composition --test stored_wire --locked --offline
 
@@ -124,7 +128,7 @@ check-wasm:
 	+$(MINIMUM_RUST) cargo check -p ic-jobs --lib --target wasm32-unknown-unknown --locked --offline
 	+$(MINIMUM_RUST) cargo check -p ic-jobs-test-consumer --lib --target wasm32-unknown-unknown --locked --offline
 
-clippy:
+clippy: rust-policy-check
 	+cargo clippy -p ic-jobs --all-targets --all-features --locked --offline -- -D warnings
 	+cargo clippy -p ic-jobs-test-consumer -p ic-jobs-canister-test-support -p ic-jobs-canister-tests -p ic-timers --all-targets --locked --offline -- -D warnings
 	+cargo clippy -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline -- -D warnings
@@ -257,7 +261,7 @@ ci: shared-tooling-check
 		validation-tools-check check-release-groups clippy check-timer-provider check-timer-dependencies check-timer-probes check-doc-links check-pins check-dependency-boundaries check-dependency-graphs check-release-commands \
 		test-release-tooling test-formatting-evidence test-consumer-tooling test-ci-change-selection test-recovery-evidence test-release-status test-timers test-timer-dependencies \
 		formatting-hook-check fmt-check check test-jobs test-consumers \
-		check-consumer check-msrv check-wasm docs-check package-all
+		check-consumer check-wasm docs-check package-all
 
 .PHONY: release-version release-preflight release-verify release-prepare-version release-prepared-check release-files release-commit-check release-committed-check release-tagged-check release-push-check
 version:

@@ -7,6 +7,8 @@ root="${BASH_SOURCE[0]}"
 root="$(cd -P "${root%/*}/../.." && printf '%s/.' "$PWD")"
 root="${root%/.}"
 export PATH="$root/.tools/host/bin:$PATH"
+JOBS_CONSUMER_RUST_VERSION="$(bash "$root/scripts/dev/minimum-rust.sh" --print)"
+export JOBS_CONSUMER_RUST_VERSION
 # shellcheck source=scripts/ci/fixture-lifecycle.sh
 source "$root/scripts/ci/fixture-lifecycle.sh"
 fixture="$(fixture_create "${TMPDIR:-/tmp}/jobs-consumer-tooling.XXXXXX")"
@@ -25,7 +27,7 @@ prepare_phase() {
     cp "$root/scripts/dev/"{install-rust-tools,tool-store,cargo-tool-build,testkit-tool,queue-command}.sh "$fixture/scripts/dev/"
     cp "$root/scripts/dev/minimum-rust.sh" "$fixture/scripts/dev/"
     cp "$root/scripts/ci/read-cargo-workspace-rust-version.sh" "$fixture/scripts/ci/"
-    cp "$root/Cargo.toml" "$fixture/"
+    cp "$root/Cargo.toml" "$root/rust-toolchain.toml" "$fixture/"
     cp "$root/scripts/ci/"{verify-file-checksum,test-canister,fixture-lifecycle}.sh "$fixture/scripts/ci/"
     cp "$root/Cargo.lock" "$fixture/Cargo.lock"
     export JOBS_CONSUMER_TOOLING_EVENTS="$fixture/events"
@@ -73,7 +75,7 @@ cat > "$fixture/.tools/rust/common/bin/rustc" <<'RUSTC'
 #!/usr/bin/env bash
 case "$*" in
     '--print sysroot') printf '%s\n' "$JOBS_CONSUMER_COMPILER" ;;
-    -vV) printf 'rustc fixture\nhost: fixture-host\nrelease: 1.91.0\n' ;;
+    -vV) printf 'rustc fixture\nhost: fixture-host\nrelease: %s\n' "$JOBS_CONSUMER_RUST_VERSION" ;;
     *) printf 'unexpected rustc dispatch\n' >> "$JOBS_CONSUMER_TOOLING_EVENTS"; exit 49 ;;
 esac
 RUSTC
@@ -223,12 +225,12 @@ cat > "$fixture/.tools/rust/common/bin/cargo" <<'CARGO'
 set -euo pipefail
 printf 'cargo %s\n' "$*" >> "$JOBS_CONSUMER_TOOLING_EVENTS"
 case "$*" in
-    '+1.91.0 metadata --format-version 1 --no-deps --locked --offline')
+    "+${JOBS_CONSUMER_RUST_VERSION} metadata --format-version 1 --no-deps --locked --offline")
         printf '{"target_directory":"%s"}\n' "$JOBS_CONSUMER_WASM_TARGET" ;;
-    '+1.91.0 build -p ic-jobs-test-consumer --release --target wasm32-unknown-unknown --locked --offline'|\
-    '+1.91.0 build -p ic-jobs-canister-tests --example queue --locked --offline'|\
-    '+1.91.0 test -p ic-jobs-canister-tests --example queue --locked --offline --no-run') ;;
-    '+1.91.0 test -p ic-jobs-canister-tests --test queue_cli --locked --offline -- --ignored --nocapture')
+    "+${JOBS_CONSUMER_RUST_VERSION} build -p ic-jobs-test-consumer --release --target wasm32-unknown-unknown --locked --offline"|\
+    "+${JOBS_CONSUMER_RUST_VERSION} build -p ic-jobs-canister-tests --example queue --locked --offline"|\
+    "+${JOBS_CONSUMER_RUST_VERSION} test -p ic-jobs-canister-tests --example queue --locked --offline --no-run") ;;
+    "+${JOBS_CONSUMER_RUST_VERSION} test -p ic-jobs-canister-tests --test queue_cli --locked --offline -- --ignored --nocapture")
         [[ "$IC_JOBS_QUEUE_SERVER" == "$JOBS_CONSUMER_WASM_TARGET/server binary" &&
            "$IC_JOBS_QUEUE_BIN" == "$JOBS_CONSUMER_WASM_TARGET/debug/examples/queue" &&
            "$IC_JOBS_CONSUMER_WASM" == "$JOBS_CONSUMER_WASM_TARGET/wasm32-unknown-unknown/release/ic_jobs_test_consumer.wasm" ]] ;;
@@ -255,17 +257,17 @@ for command in demo test-demo test-demo-cli; do
         exit "$status"
     fi
     {
-        printf 'admission\nserver check\ncargo +1.91.0 build -p ic-jobs-test-consumer --release --target wasm32-unknown-unknown --locked --offline\n'
+        printf 'admission\nserver check\ncargo +%s build -p ic-jobs-test-consumer --release --target wasm32-unknown-unknown --locked --offline\n' "$JOBS_CONSUMER_RUST_VERSION"
         if [[ "$command" == test-demo ]]; then
-            printf 'cargo +1.91.0 test -p ic-jobs-canister-tests --example queue --locked --offline --no-run\n'
+            printf 'cargo +%s test -p ic-jobs-canister-tests --example queue --locked --offline --no-run\n' "$JOBS_CONSUMER_RUST_VERSION"
         else
-            printf 'cargo +1.91.0 build -p ic-jobs-canister-tests --example queue --locked --offline\n'
+            printf 'cargo +%s build -p ic-jobs-canister-tests --example queue --locked --offline\n' "$JOBS_CONSUMER_RUST_VERSION"
         fi
-        printf 'admission\ncargo +1.91.0 metadata --format-version 1 --no-deps --locked --offline\n'
+        printf 'admission\ncargo +%s metadata --format-version 1 --no-deps --locked --offline\n' "$JOBS_CONSUMER_RUST_VERSION"
         case "$command" in
             demo) printf 'server check\nqueue\n' ;;
             test-demo) printf 'server run --ttl 900 -- bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --example queue --locked --offline -- --ignored --nocapture --test-threads=1\n' ;;
-            test-demo-cli) printf 'server check\ncargo +1.91.0 test -p ic-jobs-canister-tests --test queue_cli --locked --offline -- --ignored --nocapture\n' ;;
+            test-demo-cli) printf 'server check\ncargo +%s test -p ic-jobs-canister-tests --test queue_cli --locked --offline -- --ignored --nocapture\n' "$JOBS_CONSUMER_RUST_VERSION" ;;
         esac
     } > "$fixture/expected-events"
     cmp "$fixture/events" "$fixture/expected-events"
@@ -333,7 +335,7 @@ capture="$fixture/wasm/debug/jobs-capture-artifact"
 printf 'retained Wasm input\n' > "$fixture/input"
 # shellcheck disable=SC2030,SC2031 # Stub inputs intentionally stay inside this phase.
 local -x JOBS_CONSUMER_WASM_TARGET="$fixture/wasm"
-target="$(cargo +1.91.0 metadata --format-version 1 --no-deps --locked --offline | jq -er .target_directory)"
+target="$(cargo "+$JOBS_CONSUMER_RUST_VERSION" metadata --format-version 1 --no-deps --locked --offline | jq -er .target_directory)"
 cp "$target/debug/jobs-capture-artifact" "$capture"
 stub_target_directory
 # The real recovery wrapper must consume one frozen original even if the live
@@ -359,7 +361,7 @@ printf '%040d\n' 1
 GIT
 cat > "$fixture/.tools/rust/common/bin/rustc" <<'RUSTC'
 #!/usr/bin/env bash
-[[ "$*" == '+1.91.0 --version --verbose' ]] || exit 49
+[[ "$*" == "+${JOBS_CONSUMER_RUST_VERSION} --version --verbose" ]] || exit 49
 echo 'rustc fixture'
 RUSTC
 cat > "$fixture/ic-bin/wasm-opt" <<'OPTIMIZER'
@@ -522,6 +524,7 @@ for selection in 1.92 1.92.3; do
         's/^rust-version = "[^"]*"/rust-version = "$ENV{POLICY_FLOOR}"/' "$fixture/Cargo.toml"
     expected="$selection"
     [[ "$expected" == *.*.* ]] || expected="$expected.0"
+    POLICY_PIN="$expected" perl -pi -e 's/^channel = "[^"]*"/channel = "$ENV{POLICY_PIN}"/' "$fixture/rust-toolchain.toml"
     : > "$fixture/events"
     make --no-print-directory -C "$fixture" build-consumer > "$fixture/$selection.log" 2>&1
     printf '+%s build -p ic-jobs-test-consumer --release --target wasm32-unknown-unknown --locked --offline\n' \
@@ -532,7 +535,7 @@ done
 # Exercise both actual hosted selection steps without installing any compiler.
 POLICY_FLOOR=1.92 perl -pi -e \
     's/^rust-version = "[^"]*"/rust-version = "$ENV{POLICY_FLOOR}"/' "$fixture/Cargo.toml"
-perl -pi -e 's/^channel = "[^"]*"/channel = "1.98.0"/' "$fixture/rust-toolchain.toml"
+perl -pi -e 's/^channel = "[^"]*"/channel = "1.92.0"/' "$fixture/rust-toolchain.toml"
 for workflow in ci recovery; do
     job=validate
     [[ "$workflow" != recovery ]] || job=recovery
@@ -540,8 +543,57 @@ for workflow in ci recovery; do
     bash "$root/scripts/ci/extract-workflow-step.sh" "$fixture/steps.json" rust-policy > "$fixture/selection.sh"
     : > "$fixture/outputs"
     (cd "$fixture" && GITHUB_OUTPUT="$fixture/outputs" bash -e -o pipefail selection.sh)
-    printf 'minimum=1.92.0\ndevelopment=1.98.0\n' > "$fixture/expected"
+    printf 'toolchain=1.92.0\n' > "$fixture/expected"
     cmp "$fixture/expected" "$fixture/outputs"
+done
+
+# The actual hosted setup prepares components and Wasm exactly once.
+cp "$root/scripts/dev/prepare-rust-toolchain.sh" "$fixture/scripts/dev/"
+cat > "$fixture/.tools/rust/common/bin/rustup" <<'RUSTUP'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$JOBS_CONSUMER_TOOLING_EVENTS"
+RUSTUP
+chmod +x "$fixture/.tools/rust/common/bin/rustup"
+for workflow in ci recovery; do
+    job=validate
+    [[ "$workflow" != recovery ]] || job=recovery
+    yq -o json '.' "$root/.github/workflows/$workflow.yml" | jq --arg job "$job" '.jobs[$job].steps' > "$fixture/steps.json"
+    bash "$root/scripts/ci/extract-workflow-step.sh" "$fixture/steps.json" rust-setup > "$fixture/setup.sh"
+    : > "$fixture/events"
+    (cd "$fixture" && PATH="$fixture/.tools/rust/common/bin:$PATH" bash -e -o pipefail setup.sh)
+    printf 'toolchain install 1.92.0 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown\n' > "$fixture/expected"
+    cmp "$fixture/expected" "$fixture/events"
+done
+
+# Enforce actual compiler identities, including a correct rustc with wrong Cargo.
+export JOBS_CONSUMER_POLICY_VERSION=1.92.0
+for compiler in rustc cargo; do
+    cat > "$fixture/.tools/rust/common/bin/$compiler" <<'COMPILER'
+#!/usr/bin/env bash
+[[ "$*" == '--version --verbose' ]] || exit 49
+name="${0##*/}"
+version="$JOBS_CONSUMER_POLICY_VERSION"
+[[ "${JOBS_CONSUMER_WRONG_COMPILER:-}" != "$name" ]] || version=0.0.1
+printf '%s fixture\nrelease: %s\n' "$name" "$version"
+COMPILER
+    chmod +x "$fixture/.tools/rust/common/bin/$compiler"
+done
+(cd "$fixture" && PATH="$fixture/.tools/rust/common/bin:$PATH" make --no-print-directory rust-policy-check) > "$fixture/identities.log"
+for compiler in rustc cargo; do
+    status=0
+    (cd "$fixture" && PATH="$fixture/.tools/rust/common/bin:$PATH" JOBS_CONSUMER_WRONG_COMPILER="$compiler" \
+        make --no-print-directory clippy) > "$fixture/wrong-$compiler.log" 2>&1 || status=$?
+    [[ "$status" != 0 ]] || exit 1
+    grep -F "Rust policy mismatch: $compiler reports" "$fixture/wrong-$compiler.log" > /dev/null
+done
+
+# Divergent or moving development pins refuse before any Cargo dispatch.
+for pin in 1.98.0 stable; do
+    POLICY_PIN="$pin" perl -pi -e 's/^channel = "[^"]*"/channel = "$ENV{POLICY_PIN}"/' "$fixture/rust-toolchain.toml"
+    : > "$fixture/events"
+    status=0
+    make --no-print-directory -C "$fixture" build-consumer > "$fixture/pin-$pin.log" 2>&1 || status=$?
+    [[ "$status" != 0 && ! -s "$fixture/events" ]] || exit 1
 done
 
 # A malformed policy cannot fall back or dispatch a plausible Cargo command.
@@ -550,7 +602,7 @@ perl -pi -e 's/^rust-version = "[^"]*"/rust-version = "invalid"/' "$fixture/Carg
 status=0
 make --no-print-directory -C "$fixture" build-consumer > "$fixture/invalid.log" 2>&1 || status=$?
 [[ "$status" != 0 && ! -s "$fixture/events" ]] || exit 1
-echo 'Manifest Rust floor reaches actual Make/hosted selection; invalid policy refuses before Cargo (substitute compiler only)'
+echo 'Unified compiler policy reaches Make/hosted setup once; drift and wrong Cargo/rustc refuse (substitute compiler only)'
 )
 
 phase_cli_admission

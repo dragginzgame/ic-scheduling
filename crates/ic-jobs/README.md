@@ -280,7 +280,7 @@ Remove `features = ["timers"]` from the Jobs dependency. Call IC Timers directly
 as described above; the `ic_jobs::timers` module is removed. This cut preserves
 the Jobs stored-record layout, job identities and transition behavior.
 
-The package and its qualification consumer require Rust 1.91.
+The package and its qualification consumer require Rust 1.99.1.
 See the [repository guide](https://github.com/dragginzgame/ic-jobs) and
 [safety contract](https://github.com/dragginzgame/ic-jobs/blob/main/SAFETY.md)
 for the complete persistence and recovery obligations.

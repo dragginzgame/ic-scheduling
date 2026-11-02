@@ -7,6 +7,19 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.37.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Require Rust 1.99.1 for library consumers and pin the same compiler for
+  development and releases. [#87](https://github.com/dragginzgame/ic-scheduling/issues/87).
+
+### 🧪 Testing
+
+- Prepare one compiler in hosted workflows and admit actual Cargo/rustc
+  identities through `rust-policy-check`. Retain native hosts, independent
+  core/consumer checks, Wasm, archives and explicit installed-runtime gates.
+
 ## [0.36.0] - 2026-11-01
 
 ### ⚠️ Breaking
