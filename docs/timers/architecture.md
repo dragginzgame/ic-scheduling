@@ -33,10 +33,11 @@ canister graphs must still exclude older providers that lack that key.
 | Capability | Canonical owner | Local integration |
 | --- | --- | --- |
 | Volatile scheduling, claim/generation authority, policy arbitration and timer observations | `crates/ic-timers/src/{runtime,registry,control,schedule,snapshot}` | Public crate facade |
-| One-shot dispatch, pending queue and authenticated IC callbacks | Private `crates/ic-timers/src/platform`; `ic-platform` exposes the shared CDK executor for future polling and call-context cleanup | Only `platform/ffi.rs` owns unsafe exports/callback registration |
+| Watchdog control state and pure scheduling/completion decisions | Private `crates/ic-timers/src/registry/watchdog.rs` | Parent registry retains claim admission, entry mutation and provider-handle ownership |
+| One-shot dispatch, pending queue and authenticated IC callbacks | Private `crates/ic-timers/src/platform`; `ic-platform-runtime` owns the shared executor for future polling and call-context cleanup | Only `platform/ffi.rs` owns unsafe exports/callback registration |
 | Measurement arithmetic | `ic-metrics` | Timer-specific event names, recording/sample boundaries and memory extents in `snapshot/metrics.rs` |
 | Durable jobs, readiness, lifecycle order and operator-health labels | Consuming application/framework | Registration claims and snapshots; no durable task database or application lifecycle exports here |
-| Wasm compilation and artifact-cache custody | `ic-build`, with explicit child custody from `ic-host-process` | `testing/crates/ic-timers-pocketic/src/build/mod.rs` selects packages, profile, features and artifact lifetime |
+| Wasm compilation and artifact-cache custody | `ic-build`, with explicit child custody from `ic-host-process` | `crates/ic-timers-pocketic/src/build/mod.rs` selects packages, profile, features and artifact lifetime |
 | Native report alias admission and atomic publication | `ic-host-fs` | The qualification driver protects its reviewed baseline and selects report schema, path and permissions |
 | PocketIC client types and raw call transport | `ic-platform` | Native tests import `pocket_ic` directly and retain bounded Wire requests |
 | PocketIC server selection, admission, lifecycle and bounded progress | `ic-testkit` | `scripts/dev/testkit-server.sh` selects the root-lock CLI; the native harness supplies instance configuration |

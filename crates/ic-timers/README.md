@@ -509,19 +509,28 @@ for commands and qualification. The [architecture](../../docs/timers/architectur
 [design records](../../docs/timers/design/0.26-owned-timer-backend.md) and
 [retained changelog](../../releases/timers/CHANGELOG.md) document the runtime and its history.
 
+## Runtime compatibility
+
+Timers 0.38 selects Runtime 0.18.1 or a compatible 0.18 patch directly for IC0
+and execution. Runtime requires its exact matching executor guard. A consumer
+retaining Runtime 0.17 cannot adopt Timers 0.38 alone: update every executor
+supplier together, including Platform CDK facade and endpoint dependencies that
+still select the older Runtime. Cargo rejects mixed generations through their
+shared singleton `links` identity. Keep Timers 0.37 until that coordinated
+adoption is possible; removing or overriding the guard is not a compatibility fix.
+
+Consumers exchanging Timers' public measurement types with a direct Metrics
+dependency must select Metrics 0.27. Canister entrypoints select Runtime's `cdk`
+feature; canonical identities come from Types 0.17. The qualification consumer
+uses Storage 0.65, Wire Core 0.15 and Endpoint 0.5. Native qualification selects
+the independent Platform PocketIC 0.18 client and Testkit 0.80.1; the retired
+Testkit Native and Memory crates are absent.
+
+These are the qualified integration selections, not additional dependencies of
+the published Timers library. Native and Wasm compilation do not establish
+installed IC recovery qualification; consumers retain their own lifecycle and
+persisted-state recovery obligations.
+
 ## License
 
 MIT
-
-### Independent Runtime adoption
-
-Timers 0.36 selects Runtime 0.17.1 directly for IC0 and
-execution. Canisters select its CDK entrypoints and canonical Types 0.16. Native
-clients use Platform 0.17 and Testkit/Native 0.78, sharing the owned PocketIC client
-and Wire 0.14 limits.
-The exact guard still rejects mixed old/new executors.
-
-The application cohort also selects Wire Core 0.14.1 and Endpoint 0.4.
-Testkit 0.78 supplies the matching Wire dependency. Keep a single Runtime
-executor across all suppliers; native and Wasm compilation do not establish
-installed IC recovery qualification.

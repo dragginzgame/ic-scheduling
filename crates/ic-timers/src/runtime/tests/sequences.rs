@@ -3,6 +3,30 @@
 
 use super::*;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ProviderFault {
+    None,
+    Admission,
+    Binding,
+}
+
+impl ProviderFault {
+    fn inject(self) {
+        match self {
+            Self::None => {}
+            Self::Admission => {
+                platform::ADMISSION_FAULT.set(Some((0, platform::AdmissionError::Capacity)));
+            }
+            Self::Binding => inject_provider_install_fault(),
+        }
+    }
+
+    fn clear() {
+        platform::ADMISSION_FAULT.set(None);
+        PROVIDER_INSTALL_FAULT_AFTER.with(|fault| fault.set(None));
+    }
+}
+
 fn declaration(
     policy: TestPolicy,
     timer: &TimerIdentity,
@@ -48,27 +72,32 @@ fn generated_command_sequences_preserve_authority_and_handle_ownership() {
     enum Command {
         Ensure,
         Reconcile,
+        ReconcileWithAdmissionFailure,
+        ReconcileWithBindingFailure,
         Cancel,
         Replace,
         Tick,
         Discard,
     }
-    const COMMANDS: [Command; 6] = [
+    const COMMANDS: [Command; 8] = [
         Command::Ensure,
         Command::Reconcile,
+        Command::ReconcileWithAdmissionFailure,
+        Command::ReconcileWithBindingFailure,
         Command::Cancel,
         Command::Replace,
         Command::Tick,
         Command::Discard,
     ];
 
-    // Exhaust every four-command word over six operations, for all three
-    // policies and both lifetimes: 7,776 traces. Include each command prefix.
+    // Exhaust every four-command word over eight operations, for all three
+    // policies and both lifetimes: 24,576 traces. Include each command prefix.
     for policy in TestPolicy::ALL {
         for lifetime in [
             DeclarationLifetime::Retained,
             DeclarationLifetime::RemoveWhenStopped,
         ] {
+            let mut failures = [0; 2];
             for word in 0..COMMANDS.len().pow(4) {
                 let _fixture = setup();
                 let timer = identity("sequence");
@@ -102,6 +131,12 @@ fn generated_command_sequences_preserve_authority_and_handle_ownership() {
                     } else {
                         None
                     };
+                    let fault = match command {
+                        Command::ReconcileWithAdmissionFailure => ProviderFault::Admission,
+                        Command::ReconcileWithBindingFailure => ProviderFault::Binding,
+                        _ => ProviderFault::None,
+                    };
+                    fault.inject();
                     let result = match command {
                         Command::Ensure if policy == TestPolicy::Once => ensure_once_claim(
                             &claim,
@@ -109,8 +144,17 @@ fn generated_command_sequences_preserve_authority_and_handle_ownership() {
                             TimerSchedule::After(Duration::from_nanos(5)),
                         ),
                         Command::Ensure => ensure_recurring_claim(&claim, None),
-                        Command::Reconcile => {
-                            let schedule = Some(TimerSchedule::After(Duration::from_nanos(7)));
+                        Command::Reconcile
+                        | Command::ReconcileWithAdmissionFailure
+                        | Command::ReconcileWithBindingFailure => {
+                            // A faulted request differs from prior deadlines so
+                            // it can reach provider admission rather than coalesce.
+                            let delay = if fault == ProviderFault::None {
+                                7
+                            } else {
+                                11 + step
+                            };
+                            let schedule = Some(TimerSchedule::After(Duration::from_nanos(delay)));
                             if policy == TestPolicy::Watchdog {
                                 reconcile_watchdog_claim(&claim, None, schedule)
                             } else {
@@ -138,10 +182,43 @@ fn generated_command_sequences_preserve_authority_and_handle_ownership() {
                             Ok(())
                         }
                     };
+                    // Deferred or coalesced requests need not consume the fault.
+                    // Never let it affect stale-delivery checks or later commands.
+                    ProviderFault::clear();
+                    let failed = match (&result, fault) {
+                        (Err(TimerError::BackendCapacity), ProviderFault::Admission) => {
+                            failures[0] += 1;
+                            true
+                        }
+                        (Err(TimerError::OwnershipInvariant), ProviderFault::Binding) => {
+                            failures[1] += 1;
+                            true
+                        }
+                        _ => false,
+                    };
                     assert!(
-                        result.is_ok() || matches!(result, Err(TimerError::RegistrationExpired)),
+                        result.is_ok()
+                            || matches!(result, Err(TimerError::RegistrationExpired))
+                            || failed,
                         "{trace:?}: {result:?}"
                     );
+                    if failed {
+                        let snapshot = timer_snapshot(&timer).unwrap();
+                        if lifetime == DeclarationLifetime::Retained {
+                            assert_eq!(
+                                snapshot.unwrap().state(),
+                                TimerRuntimeStateSnapshot::Inactive {
+                                    reason: InactiveReason::ControlFailure(
+                                        crate::TimerControlFailure::ProviderBindingFailed,
+                                    ),
+                                },
+                                "failed control: {trace:?}"
+                            );
+                        } else {
+                            assert!(snapshot.is_none(), "failed declaration: {trace:?}");
+                        }
+                        assert_eq!(timer_count(), 1, "failed handles: {trace:?}");
+                    }
                     for old in &retired {
                         assert!(
                             matches!(
@@ -220,6 +297,10 @@ fn generated_command_sequences_preserve_authority_and_handle_ownership() {
                 sentinel.unregister().unwrap();
                 assert_eq!(timer_count(), 0);
             }
+            assert!(
+                failures.into_iter().all(|count| count > 0),
+                "both provider failures must execute: {policy:?}/{lifetime:?}"
+            );
         }
     }
 }
@@ -250,10 +331,15 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
             DeclarationLifetime::RemoveWhenStopped,
         ] {
             for abandon in [false, true] {
-                // Abandonment never installs a successor, so an admission fault
+                // Abandonment never installs a successor, so a provider fault
                 // cannot distinguish another execution path there.
-                for admission_failure in
-                    [false, true].into_iter().filter(|fault| !abandon || !fault)
+                for fault in [
+                    ProviderFault::None,
+                    ProviderFault::Admission,
+                    ProviderFault::Binding,
+                ]
+                .into_iter()
+                .filter(|fault| !abandon || *fault == ProviderFault::None)
                 {
                     for word in 0..COMMANDS.len().pow(3) {
                         let _fixture = setup();
@@ -315,19 +401,16 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                             commands /= COMMANDS.len();
                             assert_eq!(timer_count(), 0, "running work owns no pending wakeup");
                         }
-                        if admission_failure {
-                            platform::ADMISSION_FAULT
-                                .set(Some((0, platform::AdmissionError::Capacity)));
-                        }
+                        fault.inject();
                         gate.resume();
                         if abandon {
                             assert!(discard_next_due());
                         } else {
                             assert!(run_next_due());
                         }
-                        platform::ADMISSION_FAULT.set(None);
+                        ProviderFault::clear();
                         let binding_failed =
-                            !abandon && admission_failure && expected_deadline.is_some();
+                            !abandon && fault != ProviderFault::None && expected_deadline.is_some();
                         if abandon || binding_failed {
                             expected_deadline = None;
                         }
@@ -338,7 +421,7 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                         assert_eq!(
                             snapshot.is_none(),
                             removed,
-                            "declaration: {word}/{recurring}/{abandon}/{admission_failure}"
+                            "declaration: {word}/{recurring}/{abandon}/{fault:?}"
                         );
                         assert_eq!(timer_count(), usize::from(expected_deadline.is_some()));
                         if let Some(snapshot) = snapshot {
@@ -373,7 +456,7 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                                 cancel_claim(&claim, Some(&token)),
                                 Err(TimerError::RegistrationExpired)
                             ),
-                            "stale context: recurring={recurring} lifetime={lifetime:?} abandon={abandon} fault={admission_failure} word={word}"
+                            "stale context: recurring={recurring} lifetime={lifetime:?} abandon={abandon} fault={fault:?} word={word}"
                         );
                         if timer_snapshot(&timer).unwrap().is_some() {
                             unregister_claim(&claim).unwrap();

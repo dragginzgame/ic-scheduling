@@ -90,9 +90,9 @@ metadata checks use the same grouped policy for working and selected commits.
 | Built artifact | Candid exposure | CDK exposure |
 | --- | --- | --- |
 | Published `ic-jobs` library | None | None; normal dependencies contain only Serde |
-| Published `ic-timers` library | None | Platform's embedded executor and IC0; no full CDK |
-| Qualification `ic_jobs_test_consumer.wasm` | None; all owned inputs/replies use Wire | Platform's Wasm-only `cdk` runtime supplies entrypoints; upstream `ic-cdk` is absent, and Timers shares its embedded executor |
-| Native recovery tests and queue demo | PocketIC requires Candid for external simulator/management protocols; Jobs RPCs use Wire | Platform's `cdk` feature is enabled only for the qualification Wasm |
+| Published `ic-timers` library | None | Runtime's executor and IC0; no full CDK |
+| Qualification `ic_jobs_test_consumer.wasm` | None; all owned inputs/replies use Wire | Runtime's Wasm-only `cdk` feature supplies entrypoints; upstream `ic-cdk` is absent, and Timers shares that executor |
+| Native recovery tests and queue demo | PocketIC requires Candid for external simulator/management protocols; Jobs RPCs use Wire | Runtime's `cdk` feature is enabled only for the qualification Wasm |
 | `jobs-capture-artifact` host binary | No Candid dependency in its normal/build graph | No CDK dependency in its normal/build graph |
 
 The Wasm above is an unpublished test fixture, not a production service. This
@@ -101,7 +101,7 @@ application's selected target graph and source rather than counting manifests.
 For example, inspect the qualification Wasm's paths with:
 
 ```sh
-cargo tree -p ic-jobs-test-consumer --target wasm32-unknown-unknown --edges normal,build --invert ic-platform-runtime@0.18.0 --locked --offline
+cargo tree -p ic-jobs-test-consumer --target wasm32-unknown-unknown --edges normal,build --invert ic-platform-runtime --locked --offline
 cargo tree -p ic-jobs-test-consumer --target wasm32-unknown-unknown --edges normal,build --invert ic-platform-runtime-guard --locked --offline
 ```
 

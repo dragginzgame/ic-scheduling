@@ -1,5 +1,19 @@
 # Current handoff
 
+## Timers maintenance release preparation — 0.38.1
+
+The compatible maintenance batch corrects adoption guidance, moves watchdog
+control/pure decisions to a private registry child and extends generated fault
+interleavings. Claim authority and provider-handle ownership remain in the parent.
+All 175 focused Timers tests, strict native/Wasm Clippy, provider/package checks
+and documentation checks passed before release preparation.
+
+Release and crates.io publication are authorized for Timers 0.38.1 only.
+An isolated checkout retains the delivered lock (including Storage 0.65.0);
+newer supplier patches in the ordinary checkout remain separate local work.
+The complete CI and installed watchdog/cohort gate will qualify this exact source
+before metadata preparation. No new release result is claimed yet.
+
 ## Delivered upstream adoption — 2026-11-02
 
 Both release groups were delivered to `origin/main` with annotated tags and
@@ -13,8 +27,9 @@ published to crates.io under the authorized Scheduling deployment:
 The source adoption is `8d6453f`. Both downloaded registry archives match the
 non-yanked sparse-index checksums, exact release source commits, original
 manifests and Rust 1.99.1 metadata. No sibling repository was changed or released.
-Hosted release CI was still pending/running at the recorded observation; it is
-asynchronous and is not claimed as fresh macOS qualification.
+Hosted CI on `af0e67d` subsequently passed Linux, macOS Apple Silicon and Intel:
+[retained run](https://github.com/dragginzgame/ic-scheduling/actions/runs/41506308631).
+That hosted result predates the local maintenance batch above.
 
 The delivered lock selects Runtime/guard 0.18.1, Types 0.17.0, Wire/Derive 0.15.0,
 Endpoint 0.5.0, Storage 0.65.0, Metrics 0.27.1, Logging 0.24.2 and Testkit 0.80.1.

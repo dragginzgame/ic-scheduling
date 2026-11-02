@@ -7,6 +7,24 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.38.1] - Unreleased
+
+### 🛠️ Maintenance
+
+- Keep watchdog control and pure schedule/completion decisions in a private
+  registry module. Claim authority, provider-handle ownership and public timer
+  behavior remain unchanged.
+- Correct consumer guidance for the Runtime 0.18, Metrics 0.27 and Wire 0.15
+  cohort. Explain why applications retaining Runtime 0.17 cannot update Timers
+  alone, and remove the stale patch-specific graph command.
+
+### 🧪 Testing
+
+- Extend generated command interleavings with provider admission and binding
+  failures, checking declaration retirement, stale authority and handle cleanup.
+  Cover binding failure after suspended ordinary work completes as well as
+  admission failure and abandonment.
+
 ## [0.38.0] - 2026-11-02
 
 ### ⚠️ Breaking

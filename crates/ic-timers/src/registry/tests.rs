@@ -1,5 +1,5 @@
 use super::*;
-use crate::{TimerLastOutcome, TimerRegistrationStatus};
+use crate::{TimerLastOutcome, TimerRegistrationStatus, WatchdogDecision};
 use std::time::Duration;
 
 impl TimerRegistry {
