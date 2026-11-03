@@ -422,7 +422,7 @@ unmeasured; other hosts retain their own qualification.
 
 ## Committed transition logs
 
-The consumer uses IC Logging 0.24.4 for a heap-only history of the most recent
+The consumer uses IC Logging 0.24.5 for a heap-only history of the most recent
 128 events. Each retained message is at most 192 UTF-8 bytes and labels are at
 most 32 bytes. The combined retained source/topic/message budget is 32 KiB,
 derived as `128 * (192 + 2 * 32)` so every individually admitted row retains

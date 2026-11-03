@@ -9,6 +9,10 @@ This checkout is `/home/adam/projects/ic-scheduling` on `main`; delivery targets
 and `jobs-v0.34.2`. Direct integration-branch push approval is still required by
 `rules/contributions.md`; complete local preparation before requesting it.
 No supplier release or alternate delivery checkout is authorized.
+The owner selected Logging 0.24.5 after an unexpected lockfile change interrupted
+qualification of 0.24.4. Both locks and the interrupted attempt are preserved.
+The published 0.24.5 archive checksum is admitted and its Rust source matches
+0.24.4; qualify the selected identity before delivery.
 
 Incoming source is preserved under
 `.git/release-state/deployment-current.0NCjlIWS/`. Development `target/` scratch
@@ -39,7 +43,7 @@ module's original bytes, Cargo metadata, focused logs and installed diagnostics.
 ## Adopted supplier cohort and prior evidence
 
 Shared Tooling remains 0.28.2 at `5cf67f81c50c56ac17389ae71a3a87d46e86e8a2`
-(145 canonical payloads). Logging 0.24.4, Testkit 0.83 and facade/PocketIC 0.20
+(145 canonical payloads). Logging 0.24.5, Testkit 0.83 and facade/PocketIC 0.20
 resolve the old client-identity blocker. Other supplier lines are Metrics 0.28,
 Runtime/macros/guard 0.19, Types 0.18, Storage 0.66, Wire/Derive 0.16 and Endpoint
 0.6. Rust 1.99.1 remains pinned. Runtime's exact guard and typed rejection versus

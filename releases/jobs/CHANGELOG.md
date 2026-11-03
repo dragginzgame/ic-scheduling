@@ -12,7 +12,7 @@ and [coordinated history through 0.33.1](../history.md).
   0.18, Storage 0.66, Testkit 0.83, Wire 0.16 and Endpoint 0.6. Select the native
   PocketIC client and facade on Testkit's matching 0.20 line, resolving the
   earlier client-identity blocker. The public Serde-only Jobs contract is unchanged.
-- Select Logging 0.24.4 for bounded heap-only consumer diagnostics.
+- Select Logging 0.24.5 for bounded heap-only consumer diagnostics.
 - Adopt the reviewed Shared Tooling 0.28.2 snapshot, including complete owned-tree
   inventory admission and updated release-group checks. Retain explicit group
   versions and runtime safety requirements.
