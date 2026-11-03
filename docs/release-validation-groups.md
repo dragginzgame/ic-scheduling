@@ -106,3 +106,14 @@ the actual Cargo metadata/editor, version transaction, journal and local Git
 delivery adapters with product commands and uploads substituted. Existing root
 CI still runs the complete release-tooling fixture set. These fixtures establish
 selection and custody behavior, not live IC or macOS product qualification.
+
+## Delivered qualification
+
+Timers 0.39.1 exercised the complete five-stage plan against source `720ed0c`
+with Testkit 0.84 and Rust 1.99.1. Full CI, CLI/server admission, all 35 installed
+watchdog subjects and the policy cohort passed on Linux. The adapter admitted
+the exact metadata projection to release commit `b2c34a6`; its journal completed
+and the separately authorized publication succeeded. This establishes a real
+installed execution in addition to the substituted-command fixtures above.
+Jobs installed recovery and hosted macOS acceptance retain their separate scopes.
+The [current handoff](status/current.md) records durable release evidence.
