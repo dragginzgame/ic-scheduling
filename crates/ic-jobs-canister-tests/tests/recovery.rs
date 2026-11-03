@@ -6,13 +6,13 @@ use ic_jobs_test_consumer::{
     delivery_wire::{RECEIPT_ID, RECEIVE_ID, REQUEST_LIMITS, RESPONSE_LIMITS},
     management_wire::{self as control, Method},
 };
-use ic_platform_pocket_ic::{ClientError, ErrorCode, PocketIc, PocketIcBuilder, RejectResponse};
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{
     CanisterDiagnosticsRequest, CanisterInstallError, CanisterInstallExt, CanisterLogRenderLimits,
     InstallSpec, PocketIcDiagnosticsExt, PocketIcInstance, PocketIcStartupConfig, RetryPolicy,
     WireCallError, advance_and_tick, query_wire, tick_until,
 };
+use ic_testkit::pocket_ic::{ClientError, ErrorCode, PocketIc, PocketIcBuilder, RejectResponse};
 use ic_wire::native;
 use serde::{Serialize, de::DeserializeOwned};
 use std::{convert::Infallible, path::PathBuf, task::Poll, time::Duration};

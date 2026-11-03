@@ -57,12 +57,12 @@ but it does not promise that a task will happen exactly once.
 
 | Field | Value |
 | --- | --- |
-| Released API line | `0.32` |
-| Working-tree API line | `0.33` (pending release) |
+| Released API line | `0.39` |
 
 IC Timers is written in Rust 2024 and supports Rust
 1.99.1 and newer. The private backend owns one-shot dispatch through IC
-system calls and the shared CDK executor through `ic-platform`. See the [backend design](../../docs/timers/design/0.26-owned-timer-backend.md)
+system calls and the shared executor through `ic-platform-runtime`. See the
+[backend design](../../docs/timers/design/0.26-owned-timer-backend.md)
 for implementation and qualification boundaries.
 
 One IC Timers runtime can manage up to 64 named timers and 128 timer handles.
@@ -185,9 +185,9 @@ The canister's existing inspection hook should refuse
 ingress policy. Timers exports no `canister_inspect_message` of its own:
 
 ```rust,ignore
-#[ic_platform::cdk::inspect_message]
+#[ic_platform_runtime::cdk::inspect_message]
 fn inspect_message() {
-    let method = ic_platform::cdk::api::msg_method_name();
+    let method = ic_platform_runtime::cdk::api::msg_method_name();
     if ic_timers::is_timer_dispatch_method(&method) {
         return; // Do not accept private timer ingress.
     }
@@ -205,23 +205,19 @@ does not make inspection an authorization or zero-cost guarantee.
 
 ## Minimal `Once` example
 
-The registration examples apply to Timers 0.38 and the pending 0.39 line.
-The published pin below selects Timers 0.38.1 with Runtime 0.18 and Metrics 0.27.
-The working tree adopts Runtime 0.19 and Metrics 0.28 for the next 0.39 release;
-registry consumers must select a published, coherent runtime/measurement cohort.
-
-Select one exact published package version when this crate participates in a
-shared framework/application registry:
+The examples below use published Timers 0.39.0 with Runtime 0.19 and Metrics 0.28.
+Align the complete canister graph with the
+[runtime compatibility requirements](#runtime-compatibility):
 
 ```toml
 [dependencies]
-ic-timers = "=0.38.1"
+ic-timers = "0.39.0"
 ```
 
-Every framework and application crate linked into the same canister must use
-that same exact package version. Mixing this pin with an older exact release
-can resolve two package identities and therefore create two independent timer
-registries.
+Every framework and application crate linked into the same canister must resolve
+the same exact `ic-timers` package ID. Compatible version requirements are supported;
+exact manifest pins are not required. Check the composed locked graph, since
+different resolved versions contain independent timer registries.
 
 With typed registration setup, initialize the runtime from the
 canister's existing lifecycle owner, create and schedule a timer in one call,
@@ -373,7 +369,7 @@ It distinguishes empty from measured zero and returns `SampleCountOverflow` on
 actual count overflow even when scale is zero. An exact count bounds the scaled
 result within `u128`; there is no separate projection-error case.
 
-The pending Timers **0.39** API uses
+Timers **0.39** uses
 `ic_timers::{MeasurementCounter, MeasurementSummary}` from Metrics **0.28**.
 Align direct Metrics dependencies when exchanging these values with other
 libraries. Timers 0.38 uses Metrics 0.27.
@@ -476,7 +472,7 @@ multiple versions that declare that same key. Older releases lack the key, so
 dependency-graph and final-Wasm checks must still verify one timer owner.
 
 Canic, IcyDB, and application timers motivated this shared model. The
-[Canic adapter contract](../../docs/timers/adoption/canic.md) and
+[historical Canic adoption record](../../docs/timers/adoption/canic.md) and
 [IcyDB adoption record](../../docs/timers/adoption/icydb.md) preserve the exact downstream
 mapping and evidence without making patch-specific worktree state part of
 this README.
@@ -511,7 +507,7 @@ for commands and qualification. The [architecture](../../docs/timers/architectur
 
 ## Runtime compatibility
 
-The pending Timers 0.39 selects Runtime 0.19.0 or a compatible 0.19 patch
+Timers 0.39 selects Runtime 0.19.0 or a compatible 0.19 patch
 for IC0 and execution. Runtime requires its exact matching executor guard.
 Applications retaining Runtime 0.18 must align all executor and Endpoint
 suppliers together before adopting it. Timers 0.38 remains on Runtime 0.18;
@@ -520,11 +516,11 @@ removing or overriding the singleton guard is not a compatibility fix.
 Consumers exchanging Timers' public measurement types with a direct Metrics
 dependency select Metrics 0.28. Canister entrypoints select Runtime's `cdk`
 feature; canonical identities come from Types 0.18. The qualification consumer
-selects Storage 0.66, Wire Core 0.16 and Endpoint 0.6. Native qualification uses
-Platform PocketIC client 0.20 and Testkit 0.83; the client identity must match
-Testkit's public interfaces. No retired Testkit Native or Memory crate is used.
+selects Storage 0.66, Wire Core 0.16 and Endpoint 0.6. The native harness selects
+Testkit 0.84, which owns the PocketIC client at `ic_testkit::pocket_ic`; no separate
+client dependency is needed. No retired Testkit Native or Memory crate is used.
 
-These are the qualified integration selections, not additional dependencies of
+These are the current integration selections, not additional dependencies of
 the published Timers library. Native and Wasm compilation do not establish
 installed IC recovery qualification; consumers retain their own lifecycle and
 persisted-state recovery obligations.

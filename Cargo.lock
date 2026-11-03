@@ -577,7 +577,6 @@ checksum = "6e634e2e0ebac1ee034020da1ca582e17ffe4e0f5e985823721e168928136dcb"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
- "zlib-rs",
 ]
 
 [[package]]
@@ -855,9 +854,9 @@ dependencies = [
 
 [[package]]
 name = "ic-build"
-version = "0.74.1"
+version = "0.74.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ed106efef97b990faabc68ed44a64985f4898d281f9a8ca0eb4b4ebe8d0dc6f"
+checksum = "c999cf66b5a17279ef46f289f518f90ab8eaf78c2ef20505cf9f2cda27ae5ef4"
 dependencies = [
  "cargo_metadata",
  "ic-host-artifacts",
@@ -937,7 +936,6 @@ dependencies = [
  "ic-host-fs",
  "ic-host-process",
  "ic-jobs-test-consumer",
- "ic-platform-pocket-ic",
  "ic-platform-types",
  "ic-testkit",
  "ic-wire",
@@ -1012,38 +1010,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-platform-pocket-ic"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb41e1e22f9ab9c953bf5bdde690c21a06308de92908c3d2dd68bee2b2c70dbc"
-dependencies = [
- "backon",
- "base64",
- "candid",
- "flate2",
- "hex",
- "ic-certification",
- "ic-management-canister-types",
- "ic-transport-types",
- "reqwest",
- "schemars",
- "semver",
- "serde",
- "serde_cbor",
- "serde_json",
- "sha2 0.10.9",
- "slog",
- "strum",
- "strum_macros",
- "tempfile",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "ic-platform-runtime"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1093,22 +1059,42 @@ dependencies = [
 
 [[package]]
 name = "ic-testkit"
-version = "0.83.0"
+version = "0.84.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd9292b33c111a6cab4b1188e3e7e6a8467705991fc3b11b34511403197115d4"
+checksum = "be5b12efa43c51293328a0c2802864e40b05af3e4c23fb51fc593deac26ab0d8"
 dependencies = [
+ "backon",
+ "base64",
+ "candid",
+ "flate2",
+ "hex",
+ "ic-certification",
  "ic-host-artifacts",
  "ic-host-fs",
  "ic-host-process",
+ "ic-management-canister-types",
  "ic-platform",
- "ic-platform-pocket-ic",
  "ic-platform-runtime",
  "ic-platform-types",
+ "ic-transport-types",
  "ic-wire",
  "libc",
+ "reqwest",
+ "schemars",
+ "semver",
  "serde",
+ "serde_cbor",
+ "serde_json",
+ "sha2 0.10.9",
+ "slog",
+ "strum",
+ "strum_macros",
+ "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -1129,7 +1115,6 @@ dependencies = [
  "ic-host-artifacts",
  "ic-host-fs",
  "ic-host-process",
- "ic-platform-pocket-ic",
  "ic-platform-types",
  "ic-testkit",
  "ic-timers-test-protocol",
@@ -1187,9 +1172,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire"
-version = "0.16.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7405eaf0d977aa1765f7f2ab06724154653ef2235da72a99b9c92a19fbd75230"
+checksum = "ef5c9c1d5a07ba652379ed698a1eec7e92b6c10bc2b305eee311cca113eae942"
 dependencies = [
  "bytemuck",
  "ic-wire-derive",
@@ -1200,9 +1185,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire-derive"
-version = "0.16.0"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "022f7cfa0eb58ac31669b30e9d65f4476ad16d2c09e42585938f2c3f524c5e14"
+checksum = "806f1fc46fb963176e2af03b8c53acdb55a6b2a8d6a7a190d0d55d007ef3167f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1211,9 +1196,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire-endpoint"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69b59e101b8ae98b55a230975a26aefc78af05fafb263bc3589a214b2b49bbd3"
+checksum = "9850a616da62dc225db1c354105e15be87e5763e7c7b8fdf2adfb20d9c40c9b5"
 dependencies = [
  "ic-platform-runtime",
  "ic-wire",
@@ -3151,12 +3136,6 @@ dependencies = [
  "quote",
  "syn 3.0.9",
 ]
-
-[[package]]
-name = "zlib-rs"
-version = "0.6.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b268e58e7c693d7c271f93ffc4ba3b380412554231c85bf61ca7af91042a4112"
 
 [[package]]
 name = "zmij"

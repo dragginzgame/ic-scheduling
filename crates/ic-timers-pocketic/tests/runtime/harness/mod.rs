@@ -1,11 +1,11 @@
 //! Fresh, caller-owned testkit servers and IC instances from the verified binary.
 
-use ic_platform_pocket_ic::{ClientError, PocketIc, PocketIcBuilder, RejectResponse};
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{
     CanisterInstallExt, InstallSpec, PocketIcInstance, PocketIcStartupConfig, WireCallError,
     WireCallSpec, tick_until,
 };
+use ic_testkit::pocket_ic::{ClientError, PocketIc, PocketIcBuilder, RejectResponse};
 use ic_timers_test_protocol::rpc::{Method, REQUEST_LIMITS, RESPONSE_LIMITS};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{convert::Infallible, env, fmt::Debug, path::PathBuf, task::Poll, time::Duration};

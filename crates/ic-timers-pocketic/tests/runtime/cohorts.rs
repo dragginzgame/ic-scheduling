@@ -1,8 +1,8 @@
 use super::harness::{fresh_pocket_ic, install_probe, update_unit};
 use super::harness::{query_wire, update_wire};
-use ic_platform_pocket_ic::PocketIc;
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::advance_and_tick;
+use ic_testkit::pocket_ic::PocketIc;
 use ic_timers_pocketic::{BuildContext, Cohort};
 use ic_timers_pocketic::{CalibrationMetrics, Measurements, PolicyMetrics};
 use ic_timers_test_protocol::rpc::Method;

@@ -4,6 +4,15 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.3] - Unreleased
+
+### 📦 Dependencies
+
+- Adopt Testkit 0.84's maintained PocketIC client for the private recovery harness
+  and queue example, removing the separate Platform client dependency. Preserve
+  explicit harness selection, caller identities and uncertain-effect recovery;
+  the public Serde-only Jobs contract is unchanged.
+
 ## [0.34.2] - 2026-11-03
 
 ### 📦 Dependencies

@@ -7,6 +7,23 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.39.1] - Unreleased
+
+### 📦 Dependencies
+
+- Adopt Testkit 0.84's maintained PocketIC client in native qualification and
+  remove the separate Platform client dependency. Keep the deployed timer API,
+  Runtime guard, probe protocol and explicitly selected installed gates unchanged.
+- Select Build 0.74.2, Wire/Derive 0.16.1 and Endpoint 0.6.1 in the private artifact
+  and probe graph. The published timer library's dependency requirements are unchanged.
+
+### 📚 Documentation
+
+- Update consumer examples and integration guidance for published Timers 0.39.0,
+  Metrics 0.28 and Runtime 0.19. Clarify that compatible dependency requirements
+  must resolve one shared timer provider and preserve consumer-owned lifecycle
+  and recovery policy.
+
 ## [0.39.0] - 2026-11-03
 
 ### ⚠️ Breaking

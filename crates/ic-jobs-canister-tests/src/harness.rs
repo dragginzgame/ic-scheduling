@@ -4,9 +4,9 @@ use ic_jobs_test_consumer::{
     api::Init,
     management_wire::{Method, REQUEST_LIMITS, RESPONSE_LIMITS},
 };
-use ic_platform_pocket_ic::PocketIc;
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{InstallSpec, WireCallError, WireCallSpec, query_wire, update_wire};
+use ic_testkit::pocket_ic::PocketIc;
 use serde::{Serialize, de::DeserializeOwned};
 
 // Transport and the management contract converge here. Each caller still owns

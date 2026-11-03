@@ -5,11 +5,11 @@ use ic_jobs_test_consumer::{
     api::{Create, Error as ApiError, Init, Status, Summary, Task, Timing, View},
     management_wire::Method,
 };
-use ic_platform_pocket_ic::{PocketIc, PocketIcBuilder};
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{
     CanisterInstallExt, PocketIcInstance, PocketIcStartupConfig, advance_and_tick,
 };
+use ic_testkit::pocket_ic::{PocketIc, PocketIcBuilder};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
     collections::BTreeMap,

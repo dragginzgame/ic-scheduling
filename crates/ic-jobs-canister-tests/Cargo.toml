@@ -12,7 +12,6 @@ default = []
 # Explicitly enable the native recovery transport and queue example.
 harness = [
     "dep:ic-jobs-test-consumer",
-    "dep:ic-platform-pocket-ic",
     "dep:ic-platform-types",
     "dep:ic-testkit",
     "dep:ic-wire",
@@ -25,7 +24,6 @@ ic-build.workspace = true
 ic-host-process.workspace = true
 # Disabled for ordinary artifact-capture builds.
 ic-jobs-test-consumer = { workspace = true, optional = true }
-ic-platform-pocket-ic = { workspace = true, optional = true }
 ic-platform-types = { workspace = true, optional = true, features = ["principal-external", "principal-self-authenticating"] }
 ic-testkit = { workspace = true, optional = true, features = ["wire"] }
 ic-wire = { workspace = true, optional = true }

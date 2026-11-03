@@ -1,8 +1,8 @@
 use super::harness::{INIT_CYCLES, fresh_pocket_ic, install_probe, update_unit, wait_for_probe};
 use super::harness::{canister_rejection, query_wire, update_wire};
-use ic_platform_pocket_ic::{CanisterSettings, ErrorCode, PocketIc, RejectCode};
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{PocketIcInstance, advance_and_tick};
+use ic_testkit::pocket_ic::{CanisterSettings, ErrorCode, PocketIc, RejectCode};
 use ic_timers_test_protocol::rpc::{
     Method, OrdinaryPolicy, ProbeLifetime, ProbePolicy, SchedulerReconcileMode,
 };
@@ -291,7 +291,7 @@ fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
     assert_eq!(context.method_id, id);
     assert!(matches!(
         source.as_ref(),
-        ic_platform_pocket_ic::ClientError::Canister(_)
+        ic_testkit::pocket_ic::ClientError::Canister(_)
     ));
     let error = query_wire::<bool, _>(pic, canister_id, caller, Method::OrdinaryObservation, ())
         .unwrap_err();
@@ -531,7 +531,7 @@ fn trapped_work_keeps_committed_successor_and_executor_is_private() {
     assert!(
         matches!(
             external,
-            Err(ic_platform_pocket_ic::ClientError::Canister(_))
+            Err(ic_testkit::pocket_ic::ClientError::Canister(_))
         ),
         "provider executor must reject external ingress: {external:?}"
     );
@@ -2091,7 +2091,7 @@ fn shared_watchdog_survives_trap_and_upgrade() {
     assert!(
         matches!(
             external,
-            Err(ic_platform_pocket_ic::ClientError::Canister(_))
+            Err(ic_testkit::pocket_ic::ClientError::Canister(_))
         ),
         "the timer backend must reject external ingress: {external:?}"
     );

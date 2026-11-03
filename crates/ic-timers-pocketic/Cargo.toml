@@ -17,7 +17,6 @@ serde_json.workspace = true
 
 [dev-dependencies]
 ic-host-fs = { workspace = true, features = ["test-support"] }
-ic-platform-pocket-ic.workspace = true
 ic-platform-types = { workspace = true, features = ["principal-external"] }
 ic-testkit = { workspace = true, features = ["wire"] }
 ic-timers-test-protocol.workspace = true

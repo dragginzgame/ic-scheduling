@@ -207,7 +207,7 @@ check-dependency-graphs:
 		--forbid-feature ic-platform/pocket-ic
 	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)" --package ic-jobs-canister-tests \
 		--target "$$(rustc -vV | sed -n 's/^host: //p')" --features harness --edges normal \
-		--require ic-platform-pocket-ic=1 --require ic-platform-types=1 \
+		--require ic-testkit=1 --require ic-platform-types=1 --forbid ic-platform-pocket-ic --forbid pocket-ic \
 		--require ic-platform=1 --require ic-wire=1
 
 check-release-commands:

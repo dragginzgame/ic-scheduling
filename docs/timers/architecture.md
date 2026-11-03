@@ -39,9 +39,9 @@ canister graphs must still exclude older providers that lack that key.
 | Durable jobs, readiness, lifecycle order and operator-health labels | Consuming application/framework | Registration claims and snapshots; no durable task database or application lifecycle exports here |
 | Wasm compilation and artifact-cache custody | `ic-build`, with explicit child custody from `ic-host-process` | `crates/ic-timers-pocketic/src/build/mod.rs` selects packages, profile, features and artifact lifetime |
 | Native report alias admission and atomic publication | `ic-host-fs` | The qualification driver protects its reviewed baseline and selects report schema, path and permissions |
-| PocketIC client types and raw call transport | `ic-platform` | Native tests import `pocket_ic` directly and retain bounded Wire requests |
+| PocketIC client types and raw call transport | `ic-testkit::pocket_ic`; canonical identities from `ic-platform-types` | Native tests retain bounded Wire requests |
 | PocketIC server selection, admission, lifecycle and bounded progress | `ic-testkit` | `scripts/dev/testkit-server.sh` selects the root-lock CLI; the native harness supplies instance configuration |
-| Controlled probe codecs | Published `ic-wire::native` and Serde; Testkit owns native typed call handling | The unpublished protocol owns method identities/limits; Platform hooks translate canister failures to traps; the native harness selects the protocol and caller |
+| Controlled probe codecs | Published `ic-wire::native` and Serde; Testkit owns native typed call handling | The unpublished protocol owns method identities/limits; Wire Endpoint binds canister entrypoints; the native harness selects the protocol and caller |
 | Common tools, fixture dependency closure, evidence transport and release mechanics | Reviewed Shared Tooling snapshot | Local Make selections, product release/source policy and evidence identity; see [adoption boundaries](development.md) |
 
 The [root manifest](../../Cargo.toml) owns all eight maintained packages and every
@@ -52,49 +52,39 @@ not scheduling authority. The native platform substitute is test-only; it does
 not replace IC execution or prove recovery. Runtime subjects and policy cohorts
 remain separate evidence selections in the [release guide](development.md).
 
-Metrics 0.18 supplies the exact public `MeasurementCounter` and
-`MeasurementSummary` identities, including snapshot getter results. Counter and
-summary arithmetic is unchanged, but the new Cargo minor identity is a Timers
-0.33 API cut. Serde transport and native Wire metadata belong to Metrics.
-Consumers exchanging values with direct Metrics dependencies must select 0.18
-too. The extracted stable adapter belongs to Persistence; Timers does not depend
-on it or introduce a persisted-format migration.
+Timers 0.39 uses Metrics 0.28 for the public `MeasurementCounter` and
+`MeasurementSummary` identities, including snapshot getter results. Consumers
+exchanging values with direct Metrics dependencies must select the same identity.
+Serde transport and native Wire metadata belong to Metrics. Timers does not
+depend on a stable metrics adapter or introduce a persisted-format migration.
 
 ## Candid and CDK dependency boundary
 
-Registry-published `ic-platform` is the selected boundary; the current lock and
-source-qualified receipts are recorded in [current status](../status/current.md).
-Published Platform owns the maintained non-cryptographic runtime and
-explicit-codec generator. Platform 0.12 embeds its maintained IC0 bindings and
-executor instead of selecting their registry packages; it selects no full CDK.
-The root catalog disables default Platform features. The library selects only
-`executor` and `ic0`; the two canister probes select `cdk` (including its new
-`runtime` feature) for entrypoint contexts,
+Registry-published `ic-platform-runtime` 0.19 is the selected execution boundary.
+The current lock and source-qualified receipts are recorded in
+[current status](../status/current.md).
+Runtime owns the maintained IC0 bindings and executor. The root catalog disables
+default Runtime features. The library selects only `executor` and `ic0`; the two
+canister probes select `cdk` for entrypoint contexts,
 protected calls/spawning, traps, cycle burning and stable byte I/O. The native
-harness selects `pocket-ic` explicitly, including `principal-external`, and uses
-`principal::ExternalPrincipal`
-for PocketIC's external API identity. The protocol package has no Platform edge.
-Parser, Agent, certification and ledger capabilities remain unselected.
+harness selects Testkit 0.84's `pocket_ic` module for clients and
+`ic-platform-types` 0.18 with `principal-external` for canonical identities.
+The protocol package selects Wire and Serde without a direct Runtime dependency.
 
-The private platform uses `ic_platform::ic0` for its existing system calls,
+The private platform uses `ic_platform_runtime::ic0` for system calls,
 retaining context placement, protected spawning and callback/trap cleanup.
-Method/task handles now have Platform identity. Cargo's inherited executor
-singleton guard, selected through Platform 0.12.0's optional version-matched
-helper, rejects a parallel executor owner. The helper has no runtime API;
-only Platform selects it. Applications must coordinate
-all canister runtime consumers on Platform 0.12 without handle conversions or
-temporary runtime patches. Deployed roots have one Platform and no standalone
+Runtime selects its exact matching executor singleton guard. Applications must
+align all executor and Endpoint suppliers with Runtime 0.19; removing or
+overriding the guard does not establish compatibility. Deployed roots have one
+Runtime executor owner and no standalone
 `ic-cdk-executor` or `ic0` package. Native substitutes cannot
 qualify those IC paths. [The call ownership boundary](../../crates/ic-timers/SAFETY.md#platform-and-application-call-ownership)
-keeps application call builders and Relay above the runtime. The library's Platform
+keeps application call builders and Relay above the runtime. The library's Runtime
 selection remains executor/system-only, excluding Principal/Account, SHA-2, text
-encoding and Candid. Metrics 0.18 owns required Serde numeric transport and
+encoding and Candid. Metrics 0.28 owns required Serde numeric transport and
 native Wire metadata. The Wasm library excludes Wire, Postcard, JSON parsing and
-host tooling; Timers declares no direct codec dependency. Probe entrypoint/runtime
-features imply owned `principal`, excluding the external Principal and hashing
-dependencies. Byte representations and behavior are retained.
-None of those identities cross the published timer API or probe wire records;
-this adoption changes no stored data or codec representation.
+host tooling; Timers declares no direct codec dependency. Runtime types do not
+cross the published timer API or probe wire records.
 
 Probe records use Serde and published Wire's native codec. The shared
 `test-protocol::rpc` roster owns explicit method IDs; both endpoint hooks and
@@ -102,23 +92,19 @@ native callers bind to those identities. Request limits admit at most 1 KiB,
 16 KiB allocation charge, 1,024 nodes and depth 16; replies retain a 64 KiB byte
 ceiling with a 1 MiB allocation charge, 16,384 nodes and depth 32. These are Wire
 budgets, not renamed Candid quotas. Pre-copy guards check incoming IC size before
-Platform copies arguments. Decode failure prevents the handler; reply encoding
+Runtime copies arguments. Decode failure prevents the handler; reply encoding
 failure traps rather than committing a partial response. Empty RPCs still carry
 a method-bound frame. Init and upgrade hooks take raw empty arguments.
 
-Platform's explicit-codec entrypoints retain query/update contexts and protected
-spawning; redundant `hidden` flags are removed. The two private canister
-adapters translate codec rejection to traps; they own no serialization arithmetic
-or timer authority. Real self-call gates and queue pressure use raw Wire frames,
-retaining their IC suspension and call-failure behavior. The production dispatch
-remains its authenticated eight-byte payload, without a Wire envelope.
+Wire Endpoint 0.6 binds the probes' explicit-codec entrypoints to Runtime contexts
+and protected spawning. Wire owns codec admission and failure diagnostics; the
+probes retain method identities and limits. Real self-call gates and queue pressure
+use raw Wire frames, retaining their IC suspension and call-failure behavior. The
+production dispatch remains its authenticated eight-byte payload, without a Wire
+envelope.
 
-Platform owns the exact `ic-cdk-executor = "=2.0.0"` and `ic0 = "=1.2.0"`
-constraints. Their direct declarations and local pin exceptions are removed.
-The executor/IC0 exports preserve upstream identities and safe/unsafe signatures;
-all callback registration remains in the private FFI owner. This completes the
-published boundaries requested in [Platform #7](https://github.com/dragginzgame/ic-platform/issues/7)
-and [#8](https://github.com/dragginzgame/ic-platform/issues/8) without a local facade.
+All unsafe callback registration remains confined to Timers' private FFI owner;
+Runtime owns the executor and system bindings it calls.
 
 The runtime fixture's named four-field checkpoint preserves the original
 `(bool, bool, u64, u64)` field order and encoded bytes. It uses a
@@ -126,36 +112,35 @@ bounded Wire frame with a checked little-endian length prefix in its existing
 stable-memory fixture page. Both upgrade participants use this one format;
 there is no Candid reader or cross-release probe migration. Database/application
 storage is outside this fixture. Stable byte I/O and cycle burning remain
-Platform's maintained runtime adapters, originally adopted under
+Runtime's maintained adapters, originally adopted under
 [Platform #19 — Timers stable-helper and cycle-burn boundary](https://github.com/dragginzgame/ic-platform/issues/19).
 
 No workspace member declares Candid or any CDK-family package directly.
 The library and both qualification canisters have no Candid or full CDK/macros
-in their normal/build graphs. Probe graphs retain Platform's generator and the
+in their normal/build graphs. Probe graphs retain Runtime's generator and the
 shared executor; only the canisters select `cdk`. Raw counter/page observations
-use Platform's exact IC0 exports. Its maintained spawning adapter preserves the
-unfinished-task drop policy. Call/error/stable-error types now belong to Platform;
+use Runtime's IC0 exports. Its maintained spawning adapter preserves the
+unfinished-task drop policy. Call/error/stable-error types belong to Runtime;
 no such runtime types cross the published timer API or the probe wire boundary.
 
 The native driver retains published Testkit for server admission, lifecycle and
 bounded progress. Native tests borrow clients through `PocketIcInstance::instance()`
-while retaining the owner through teardown. PocketIC clients/DTOs come from Platform;
-Testkit no longer forwards them. Probe RPCs use Testkit's typed query/update helpers
+while retaining the owner through teardown. Testkit owns PocketIC clients/DTOs
+in `ic_testkit::pocket_ic`. Probe RPCs use Testkit's typed query/update helpers
 with shared Wire identities/limits. Candid and management types remain upstream transport
 implementation details. The retired `ic-testkit-candid` package remains absent.
-The driver selects Platform, Testkit, Wire and the probe protocol only for its
+The driver selects PocketIC, Types, Testkit, Wire and the probe protocol only for its
 test binary. Its normal build coordinator uses Build and Host for artifacts and
 process custody, plus Clap/Serde/JSON for commands and receipts. It does not link
 the simulator or codecs. Build, Host and Testkit share the published family
-selected by the root lockfile. The driver uses Platform 0.12 and Wire 0.11; Testkit 0.73 uses
-Platform 0.13 for native transport with the same external Principal identity.
-Both select the same external Principal and PocketIC package identities.
+selected by the root lockfile. The harness uses Wire 0.16 and Testkit 0.84, with
+canonical Types 0.18 identities. The independent Platform PocketIC client is absent.
 Timers passes external client types across the test boundary, not owned
 Principal values.
 Testkit also selects Candid/management support for native provider
 fixtures; PocketIC retains Candid for its simulator protocols. These are native
 qualification dependencies. Independent library and canister graphs
-remain Candid-free and select only Platform 0.12.
+remain Candid-free and select Runtime 0.19.
 These host-only providers do not enter deployed graphs; there is no unpublished
 override.
 The local provider check also rejects Candid codec paths and default-codec
@@ -163,8 +148,8 @@ query/update attributes in maintained probe source.
 
 The Candid-free runtime introduced in Platform 0.2.0 was requested in
 [#31 — Support Candid-free raw and Wire canister entrypoints](https://github.com/dragginzgame/ic-platform/issues/31).
-The two small adapters translate consumer-owned Wire limits/errors into Platform
-hooks. Wire retains this native Serde codec and its encoder bytes;
+Wire Endpoint binds consumer-owned method identities and limits to Runtime hooks.
+Wire retains the native Serde codec and its encoder bytes;
 the current probe records need no layout or limit changes. Testkit's optional
 helpers own request encoding, one call without retry, response decoding and typed
 failure context in the native harness. Raw malformed-input tests remain direct
@@ -173,19 +158,19 @@ without reserializing values. Maps, sets and custom visitors may normalize input
 successful decoding is not proof of byte canonicality. Current probe records use
 structs, tuples, scalars and vectors, with no signature/hash or exact-frame retry
 protocol. Such protocols must retain original frames and own semantic validation.
-The protocol package must not acquire a Platform dependency to
-hide the canister adapters. Host metadata generation
+The protocol package must not acquire a Runtime dependency to
+hide the canister endpoint bindings. Host metadata generation
 remains native-only and is excluded from deployed probe graphs.
 
 The published library retains three direct dependencies: Metrics owns counter
-arithmetic, Platform owns executor/system bindings, and Thiserror owns the
+arithmetic, Runtime owns executor/system bindings, and Thiserror owns the
 maintained typed error implementations. Reimplementing those capabilities to
-remove their declarations would create competing owners. Platform supplies
+remove their declarations would create competing owners. Runtime supplies
 the lean executor/IC0 feature boundary requested in
 [#40 — Keep executor/IC0-only graphs free of Principal, Serde and crypto dependencies](https://github.com/dragginzgame/ic-platform/issues/40);
-Timers consumes it without bypassing Platform or copying bindings. Metrics'
+Timers consumes it without bypassing Runtime or copying bindings. Metrics'
 numeric transport is an independent dependency path; its Serde and native Wire
-metadata do not change Platform's executor/IC0-only feature selection.
+metadata do not change Runtime's executor/IC0-only feature selection.
 
 The [dependency policy](../../ci/cargo-dependency-boundaries.json) is enforced through
 Shared's canonical checker in `actions-check`, alongside pin/inheritance checks.
