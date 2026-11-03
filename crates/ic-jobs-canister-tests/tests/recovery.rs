@@ -1,17 +1,17 @@
 //! Explicit live PocketIC tests. Ordinary CI compiles these without launching a server.
 
-use ic_jobs_canister_test_support::wire;
+use ic_jobs_canister_tests::harness;
 use ic_jobs_test_consumer::{
     api::{Create, Delivery, DeliveryPayload, Error, Init, Status, Summary, Task, Timing, View},
     delivery_wire::{RECEIPT_ID, RECEIVE_ID, REQUEST_LIMITS, RESPONSE_LIMITS},
     management_wire::{self as control, Method},
 };
-use ic_platform_pocket_ic::{ErrorCode, PocketIc, PocketIcBuilder, RejectResponse};
+use ic_platform_pocket_ic::{ClientError, ErrorCode, PocketIc, PocketIcBuilder, RejectResponse};
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{
     CanisterDiagnosticsRequest, CanisterInstallError, CanisterInstallExt, CanisterLogRenderLimits,
-    InstallSpec, PocketIcCallFailure, PocketIcDiagnosticsExt, PocketIcInstance,
-    PocketIcStartupConfig, RetryPolicy, WireCallError, advance_and_tick, query_wire, tick_until,
+    InstallSpec, PocketIcDiagnosticsExt, PocketIcInstance, PocketIcStartupConfig, RetryPolicy,
+    WireCallError, advance_and_tick, query_wire, tick_until,
 };
 use ic_wire::native;
 use serde::{Serialize, de::DeserializeOwned};
@@ -31,17 +31,17 @@ impl Fixture {
         manager: ExternalPrincipal,
         delivery_sender: Option<ExternalPrincipal>,
     ) -> ExternalPrincipal {
-        pic.try_create_and_install(InstallSpec {
-            wasm: wasm.to_vec(),
-            init_bytes: wire::init_bytes(&Init {
-                manager: manager.into(),
-                delivery_sender: delivery_sender.map(Into::into),
-            })
+        pic.try_create_and_install(
+            harness::install_spec(
+                wasm.to_vec(),
+                &Init {
+                    manager: manager.into(),
+                    delivery_sender: delivery_sender.map(Into::into),
+                },
+                "ic-jobs-test-consumer",
+            )
             .unwrap(),
-            cycles: 10_000_000_000_000,
-            install_sender: None,
-            label: Some("ic-jobs-test-consumer".into()),
-        })
+        )
         .unwrap_or_else(|error| {
             if let CanisterInstallError::InstallCode { canister_id, .. } = &error {
                 // Diagnostics are subordinate to the original install failure,
@@ -108,7 +108,7 @@ impl Fixture {
         match self.client(self.sender, caller).update(method, &args) {
             Ok(value) => Ok(value),
             Err(WireCallError::Call { source, .. }) => match *source {
-                PocketIcCallFailure::Rejected(response) => Err(response),
+                ClientError::Canister(response) => Err(response),
                 other => panic!("PocketIC Wire call failed: {other:?}"),
             },
             Err(other) => panic!("PocketIC Wire contract failed: {other:?}"),
@@ -124,8 +124,12 @@ impl Fixture {
             .query(method, &args)
             .expect("PocketIC Wire call")
     }
-    fn client(&self, canister: ExternalPrincipal, caller: ExternalPrincipal) -> wire::Client<'_> {
-        wire::Client {
+    fn client(
+        &self,
+        canister: ExternalPrincipal,
+        caller: ExternalPrincipal,
+    ) -> harness::Client<'_> {
+        harness::Client {
             pic: self.pic.instance(),
             canister,
             caller,
@@ -155,7 +159,7 @@ impl Fixture {
     fn summary(&self, id: ExternalPrincipal) -> Summary {
         self.query(id, Method::Summary, ()).unwrap()
     }
-    fn upgrade(&self, id: ExternalPrincipal) -> Result<(), RejectResponse> {
+    fn upgrade(&self, id: ExternalPrincipal) -> Result<(), ClientError> {
         self.pic
             .instance()
             .upgrade_canister(id, self.wasm.clone(), Vec::new(), None)
@@ -172,7 +176,11 @@ impl Fixture {
     }
 }
 
-fn assert_canister_trap(error: RejectResponse) {
+fn assert_canister_trap(error: impl Into<ClientError>) {
+    let error = error.into();
+    let ClientError::Canister(error) = error else {
+        panic!("expected canister rejection, got {error:?}");
+    };
     assert_eq!(
         error.error_code,
         ErrorCode::CanisterCalledTrap,
@@ -317,7 +325,7 @@ fn delivery_wire_endpoints_refuse_candid_and_preserve_authorized_receipts() {
                 .instance()
                 .update_call(receiver, fixture.sender, method, bytes)
                 .unwrap_err();
-            assert_eq!(error.error_code, ErrorCode::CanisterCalledTrap);
+            assert_canister_trap(error);
             assert_eq!(fixture.summary(receiver).receipts, 0);
         }
         let error = fixture
@@ -396,6 +404,7 @@ fn management_upgrade_and_real_watchdog_delivery() {
         .pic
         .instance()
         .get_time()
+        .expect("read IC time")
         .as_nanos_since_unix_epoch();
     let unauthorized: Result<u64, Error> = fixture
         .update_as(
@@ -428,7 +437,11 @@ fn management_upgrade_and_real_watchdog_delivery() {
         .query(fixture.sender, Method::List, (Some(first), 1_u8))
         .unwrap();
     assert_eq!(page, vec![before]);
-    fixture.pic.instance().advance_time(Duration::from_secs(40));
+    fixture
+        .pic
+        .instance()
+        .advance_time(Duration::from_secs(40))
+        .expect("advance IC time");
     fixture.until(|| fixture.view(second).status == Status::Completed);
     assert_eq!(fixture.view(first).status, Status::Cancelled);
     assert_eq!(fixture.summary(fixture.sender).counter, 7);
@@ -442,6 +455,7 @@ fn management_upgrade_and_real_watchdog_delivery() {
                         .pic
                         .instance()
                         .get_time()
+                        .expect("read IC time")
                         .as_nanos_since_unix_epoch()
                         + 10_000_000_000,
                 ),
@@ -453,12 +467,16 @@ fn management_upgrade_and_real_watchdog_delivery() {
         )
         .unwrap();
     fixture.upgrade(fixture.sender).unwrap();
-    fixture.pic.instance().advance_time(Duration::from_secs(15));
+    fixture
+        .pic
+        .instance()
+        .advance_time(Duration::from_secs(15))
+        .expect("advance IC time");
     fixture.until(|| fixture.view(third).status == Status::Completed);
     assert_eq!(fixture.summary(receiver).receipts, 1);
     fixture.upgrade(fixture.sender).unwrap();
     fixture.upgrade(receiver).unwrap();
-    advance_and_tick(fixture.pic.instance(), Duration::ZERO, 3);
+    advance_and_tick(fixture.pic.instance(), Duration::ZERO, 3).expect("advance and tick PocketIC");
     assert_eq!(fixture.summary(receiver).receipts, 1);
 }
 
@@ -474,6 +492,7 @@ fn synchronous_trap_rolls_back_storage_identity_and_timer_changes() {
                     .pic
                     .instance()
                     .get_time()
+                    .expect("read IC time")
                     .as_nanos_since_unix_epoch()
                     + 60_000_000_000,
                 3,
@@ -489,6 +508,7 @@ fn synchronous_trap_rolls_back_storage_identity_and_timer_changes() {
                 .pic
                 .instance()
                 .get_time()
+                .expect("read IC time")
                 .as_nanos_since_unix_epoch()
                 + 30_000_000_000,
             9,
@@ -510,6 +530,7 @@ fn synchronous_trap_rolls_back_storage_identity_and_timer_changes() {
                     .pic
                     .instance()
                     .get_time()
+                    .expect("read IC time")
                     .as_nanos_since_unix_epoch()
                     + 120_000_000_000,
                 4,
@@ -527,6 +548,7 @@ fn watchdog_batch_trap_rolls_back_then_recovers_without_repeating_local_effects(
         .pic
         .instance()
         .get_time()
+        .expect("read IC time")
         .as_nanos_since_unix_epoch()
         + 10_000_000_000;
     let healthy: u64 = fixture
@@ -544,7 +566,11 @@ fn watchdog_batch_trap_rolls_back_then_recovers_without_repeating_local_effects(
     fixture
         .update::<(), _>(Method::TrapWatchdogBatch, (true,))
         .unwrap();
-    fixture.pic.instance().advance_time(Duration::from_secs(10));
+    fixture
+        .pic
+        .instance()
+        .advance_time(Duration::from_secs(10))
+        .expect("advance IC time");
     // Observe a real trap, not merely a dispatched callback awaiting execution.
     let marker = b"fixture: watchdog trap after stable batch write";
     fixture.until(|| {
@@ -590,7 +616,11 @@ fn watchdog_batch_trap_rolls_back_then_recovers_without_repeating_local_effects(
     fixture
         .update::<(), _>(Method::TrapWatchdogBatch, (false,))
         .unwrap();
-    fixture.pic.instance().advance_time(Duration::from_secs(2));
+    fixture
+        .pic
+        .instance()
+        .advance_time(Duration::from_secs(2))
+        .expect("advance IC time");
     fixture.until(|| fixture.view(healthy).status == Status::Completed);
     assert_eq!(fixture.view(failed).status, Status::Failed);
     assert_eq!(fixture.view(healthy).sequence, 1);
@@ -604,12 +634,17 @@ fn watchdog_batch_trap_rolls_back_then_recovers_without_repeating_local_effects(
         Status::Pending { due_ns: later_due }
     );
 
-    fixture.pic.instance().advance_time(Duration::from_secs(40));
+    fixture
+        .pic
+        .instance()
+        .advance_time(Duration::from_secs(40))
+        .expect("advance IC time");
     fixture.until(|| fixture.view(later).status == Status::Completed);
     assert_eq!(fixture.summary(fixture.sender).counter, 5);
     assert!(!fixture.summary(fixture.sender).armed);
     fixture.upgrade(fixture.sender).unwrap();
-    advance_and_tick(fixture.pic.instance(), Duration::from_secs(3), 12);
+    advance_and_tick(fixture.pic.instance(), Duration::from_secs(3), 12)
+        .expect("advance and tick PocketIC");
     assert_eq!(fixture.summary(fixture.sender).counter, 5);
     assert_eq!(fixture.view(failed).status, Status::Failed);
     assert!(!fixture.summary(fixture.sender).armed);
@@ -704,6 +739,7 @@ fn lost_result_keeps_intent_blocked_and_receipt_resolution_does_not_redeliver() 
                                 .pic
                                 .instance()
                                 .get_time()
+                                .expect("read IC time")
                                 .as_nanos_since_unix_epoch()
                         )
                     )
@@ -727,6 +763,7 @@ fn invalid_restore_refuses_upgrade_and_preserves_the_controller_snapshot() {
                     .pic
                     .instance()
                     .get_time()
+                    .expect("read IC time")
                     .as_nanos_since_unix_epoch()
                     + 3_600_000_000_000,
                 1,
@@ -747,7 +784,7 @@ fn invalid_restore_refuses_upgrade_and_preserves_the_controller_snapshot() {
         Error::InvalidStorage
     ));
     let rejected = fixture.upgrade(fixture.sender).unwrap_err();
-    assert_eq!(rejected.error_code, ErrorCode::CanisterCalledTrap);
+    assert_canister_trap(rejected);
     fixture.restore_snapshot(fixture.sender, backup);
     // Snapshot loading consumes installation resources too. Testkit owns the
     // bounded rate-limit retry; every other rejection must fail immediately.
@@ -775,6 +812,7 @@ fn overdue_fixed_rate_work_reconstructs_catch_up_and_skip_policies() {
         .pic
         .instance()
         .get_time()
+        .expect("read IC time")
         .as_nanos_since_unix_epoch()
         + 10_000_000_000;
     let mut ids = vec![];
@@ -796,7 +834,11 @@ fn overdue_fixed_rate_work_reconstructs_catch_up_and_skip_policies() {
         fixture.update::<(), _>(Method::Pause, (id,)).unwrap();
     }
     fixture.upgrade(fixture.sender).unwrap();
-    fixture.pic.instance().advance_time(Duration::from_secs(13));
+    fixture
+        .pic
+        .instance()
+        .advance_time(Duration::from_secs(13))
+        .expect("advance IC time");
     for id in &ids {
         assert_eq!(fixture.view(*id).status, Status::Paused);
         assert_eq!(fixture.view(*id).occurrence, 0);
@@ -817,6 +859,7 @@ fn overdue_fixed_rate_work_reconstructs_catch_up_and_skip_policies() {
                 .pic
                 .instance()
                 .get_time()
+                .expect("read IC time")
                 .as_nanos_since_unix_epoch()
     );
     for id in ids {
@@ -824,7 +867,8 @@ fn overdue_fixed_rate_work_reconstructs_catch_up_and_skip_policies() {
     }
     assert!(!fixture.summary(fixture.sender).armed);
     let before = fixture.summary(fixture.sender).counter;
-    advance_and_tick(fixture.pic.instance(), Duration::from_secs(30), 3);
+    advance_and_tick(fixture.pic.instance(), Duration::from_secs(30), 3)
+        .expect("advance and tick PocketIC");
     assert_eq!(fixture.summary(fixture.sender).counter, before);
 }
 
@@ -840,6 +884,7 @@ fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
                     .pic
                     .instance()
                     .get_time()
+                    .expect("read IC time")
                     .as_nanos_since_unix_epoch()
                     + 30_000_000_000,
                 5,
@@ -865,12 +910,14 @@ fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
     assert_eq!(fixture.summary(fixture.sender).next_due_ns, None);
     assert!(!fixture.summary(fixture.sender).armed);
     fixture.upgrade(fixture.sender).unwrap();
-    advance_and_tick(fixture.pic.instance(), Duration::from_secs(40), 3);
+    advance_and_tick(fixture.pic.instance(), Duration::from_secs(40), 3)
+        .expect("advance and tick PocketIC");
     assert_eq!(fixture.summary(fixture.sender).counter, 0);
     let later = fixture
         .pic
         .instance()
         .get_time()
+        .expect("read IC time")
         .as_nanos_since_unix_epoch()
         + 100_000_000_000;
     fixture
@@ -888,6 +935,7 @@ fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
         .pic
         .instance()
         .get_time()
+        .expect("read IC time")
         .as_nanos_since_unix_epoch()
         + 15_000_000_000;
     fixture
@@ -905,6 +953,7 @@ fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
                     .pic
                     .instance()
                     .get_time()
+                    .expect("read IC time")
                     .as_nanos_since_unix_epoch()
                     + 5_000_000_000,
             ),
@@ -918,7 +967,11 @@ fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
     assert_eq!(fixture.view(id), before);
     assert_eq!(fixture.summary(fixture.sender), summary);
     fixture.upgrade(fixture.sender).unwrap();
-    fixture.pic.instance().advance_time(Duration::from_secs(20));
+    fixture
+        .pic
+        .instance()
+        .advance_time(Duration::from_secs(20))
+        .expect("advance IC time");
     fixture.until(|| fixture.view(id).status == Status::Completed);
     assert_eq!(fixture.summary(fixture.sender).counter, 5);
     assert_eq!(fixture.view(id).sequence, 1);
@@ -939,7 +992,7 @@ fn job_metrics_are_authorized_resettable_and_restart_on_upgrade() {
         fixture.pic.instance(),
         fixture.sender,
         ExternalPrincipal::anonymous(),
-        wire::control(Method::JobMetrics),
+        harness::control(Method::JobMetrics),
         &(),
     )
     .unwrap();
@@ -989,7 +1042,7 @@ fn job_logs_are_manager_only_and_restart_without_changing_jobs() {
         fixture.pic.instance(),
         fixture.sender,
         ExternalPrincipal::anonymous(),
-        wire::control(Method::JobLogs),
+        harness::control(Method::JobLogs),
         &request,
     )
     .unwrap();

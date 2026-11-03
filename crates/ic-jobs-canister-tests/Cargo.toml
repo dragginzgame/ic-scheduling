@@ -1,4 +1,4 @@
-# Tests and tooling packages: native capture, recovery harness and local queue client.
+# Native artifact capture with an explicitly enabled recovery harness and queue client.
 [package]
 name = "ic-jobs-canister-tests"
 version = "0.34.1"
@@ -7,24 +7,46 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+default = []
+# Explicitly enable the native recovery transport and queue example.
+harness = [
+    "dep:ic-jobs-test-consumer",
+    "dep:ic-platform-pocket-ic",
+    "dep:ic-platform-types",
+    "dep:ic-testkit",
+    "dep:ic-wire",
+    "dep:serde",
+]
+
 [dependencies]
 clap = { workspace = true, features = ["derive", "std", "help", "usage", "error-context"] }
 ic-build.workspace = true
 ic-host-process.workspace = true
+# Disabled for ordinary artifact-capture builds.
+ic-jobs-test-consumer = { workspace = true, optional = true }
+ic-platform-pocket-ic = { workspace = true, optional = true }
+ic-platform-types = { workspace = true, optional = true, features = ["principal-external", "principal-self-authenticating"] }
+ic-testkit = { workspace = true, optional = true, features = ["wire"] }
+ic-wire = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
 
-# Wire and PocketIC support recovery tests against the qualification canister;
-# they are not dependencies of the published ic-jobs library or capture binary.
 [dev-dependencies]
 ctrlc.workspace = true
 ic-host-fs = { workspace = true, features = ["test-support"] }
 ic-host-process = { workspace = true, features = ["test-support"] }
-ic-jobs-canister-test-support.workspace = true
-ic-jobs-test-consumer.workspace = true
-ic-platform-pocket-ic.workspace = true
-ic-platform-types = { workspace = true, features = ["principal-external", "principal-self-authenticating"] }
-ic-testkit = { workspace = true, features = ["wire"] }
-ic-wire.workspace = true
-serde.workspace = true
+
+[[example]]
+name = "queue"
+required-features = ["harness"]
+
+[[test]]
+name = "recovery"
+required-features = ["harness"]
+
+[[test]]
+name = "queue_cli"
+required-features = ["harness"]
 
 [lints]
 workspace = true

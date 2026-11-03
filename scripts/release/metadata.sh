@@ -24,6 +24,10 @@ read_version() { bash "$root/scripts/release/group.sh" version; }
 # state custody. No receipt is written for ordinary version/plan observations.
 # shellcheck source=scripts/ci/release-receipts.sh
 source "$root/scripts/ci/release-receipts.sh"
+validation_identity() {
+    release_receipt_identity || return
+    perl "$root/scripts/release/validation.pl" identity "$receipt_state"
+}
 [[ "${RELEASE_VERSION:-}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || exit 2
 receipt_state="$(git rev-parse --git-path release-state)/$RELEASE_GROUP-$RELEASE_VERSION.receipts"
 [[ ! -L "$receipt_state" ]] || exit 1
@@ -58,8 +62,12 @@ admit_editor() {
 case "$operation" in
     validated)
         mkdir -p "$receipt_state"
-        release_receipt_archive "$receipt_state/archive.XXXXXX" "$receipt_state/validated" "$receipt_state/prepared"
-        release_receipt_write "$receipt_state/validated" release_receipt_identity
+        [[ "${RELEASE_VALIDATION_EVIDENCE:-}" =~ ^validation\.[A-Za-z0-9]+$ ]] || exit 1
+        perl "$root/scripts/release/validation.pl" check "$receipt_state/$RELEASE_VALIDATION_EVIDENCE"
+        admit_files
+        release_receipt_archive "$receipt_state/archive.XXXXXX" "$receipt_state/validated" "$receipt_state/prepared" "$receipt_state/validation-evidence"
+        release_receipt_write "$receipt_state/validation-evidence" printf '%s\n' "$RELEASE_VALIDATION_EVIDENCE"
+        release_receipt_write "$receipt_state/validated" validation_identity
         ;;
     preflight)
         current_version="$(read_version)"
@@ -94,14 +102,14 @@ case "$operation" in
     prepare)
         current_version="$(read_version)"
         [[ "$current_version" == "${RELEASE_PREVIOUS:?}" ]] || exit 1
-        release_receipt_check "$receipt_state/validated" release_receipt_identity
+        release_receipt_check "$receipt_state/validated" validation_identity
         select_release_tools
         admit_editor
         bash "$root/scripts/ci/cargo-release-metadata.sh" prepare "$primary"
         release_receipt_write "$receipt_state/prepared" release_receipt_payload '' "${release_files[@]}"
         ;;
     check|commit-check)
-        release_receipt_check "$receipt_state/validated" release_receipt_identity
+        release_receipt_check "$receipt_state/validated" validation_identity
         # Shared owns selected-tree metadata checks and retained failure custody.
         bash "$root/scripts/ci/cargo-release-metadata.sh" check "$primary" --manifest-order-grouped
         release_receipt_check "$receipt_state/prepared" release_receipt_payload "${RELEASE_COMMIT:-}" "${release_files[@]}"

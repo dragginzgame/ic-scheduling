@@ -1,0 +1,1 @@
+{"groups":["jobs","timers"],"schema":1,"stages":["ci","install-testkit-tools","install-consumer-server","test-timer-watchdog","test-timer-cohorts"]}

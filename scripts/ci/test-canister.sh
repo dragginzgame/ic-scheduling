@@ -58,7 +58,7 @@ for variant in "${variants[@]}"; do
     "$cli" run --ttl 900 --server-stdout "$evidence/$variant/server.stdout" \
         --server-stderr "$evidence/$variant/server.stderr" \
         -- bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests \
-        --test recovery --locked --offline -- --ignored --test-threads=1 --nocapture \
+        --test recovery --features harness --locked --offline -- --ignored --test-threads=1 --nocapture \
         2>&1 | tee "$evidence/$variant/test.log"
 done
 complete=true

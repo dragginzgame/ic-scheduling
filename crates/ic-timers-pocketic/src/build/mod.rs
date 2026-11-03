@@ -26,18 +26,40 @@ const CONFIGURATION_LIMITS: ConfigurationLimits = ConfigurationLimits {
 };
 
 /// Full qualification or an explicitly narrower development selection.
+#[derive(clap::Subcommand, Debug, Eq, PartialEq)]
 pub enum Qualification {
     Watchdog,
+    /// Run exact runtime subjects; does not replace watchdog qualification.
     Focused {
+        #[arg(required = true, num_args = 1..)]
         subjects: Vec<String>,
     },
     Cohorts {
+        #[arg(long, default_value = "target/timer-cohorts.json")]
         report: PathBuf,
+        #[arg(long)]
         baseline: Option<PathBuf>,
     },
 }
 
 impl Qualification {
+    /// Re-enter the same parsed qualification in the supervised worker.
+    pub fn configure_worker(&self, worker: &mut Command) {
+        worker.args(["--worker", self.name()]);
+        match self {
+            Self::Watchdog => {}
+            Self::Focused { subjects } => {
+                worker.args(subjects);
+            }
+            Self::Cohorts { report, baseline } => {
+                worker.arg("--report").arg(report);
+                if let Some(baseline) = baseline {
+                    worker.arg("--baseline").arg(baseline);
+                }
+            }
+        }
+    }
+
     pub const fn name(&self) -> &'static str {
         match self {
             Self::Watchdog => "watchdog",

@@ -59,10 +59,16 @@ fn run_cohort(cohort: Cohort) -> PolicyMetrics {
         assert!(scheduled.next_deadline_ns.is_some());
     }
 
-    let cycles_before_dispatch = pic.cycle_balance(canister_id);
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 16);
-    let dispatch_cycles = cycles_before_dispatch.saturating_sub(pic.cycle_balance(canister_id));
+    let cycles_before_dispatch = pic
+        .cycle_balance(canister_id)
+        .expect("read canister cycles");
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
+    let dispatch_cycles = cycles_before_dispatch.saturating_sub(
+        pic.cycle_balance(canister_id)
+            .expect("read canister cycles"),
+    );
     let completed = observe(pic, canister_id);
     match cohort {
         Cohort::Baseline => {
@@ -102,8 +108,9 @@ fn run_cohort(cohort: Cohort) -> PolicyMetrics {
     );
     assert_eq!(observe(pic, canister_id).next_deadline_ns, None);
     assert!(!update_measurement(pic, canister_id, Method::Cancel).changed);
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 16);
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let cancelled = observe(pic, canister_id);
     assert_eq!(cancelled.callbacks, completed.callbacks);
     assert_eq!(cancelled.next_deadline_ns, None);
@@ -159,10 +166,16 @@ fn run_watchdog_calibration(representative_work: bool) -> CalibrationMetrics {
     let start = update_measurement(pic, canister_id, Method::CohortStart);
     assert!(start.changed);
 
-    let cycles_before_dispatch = pic.cycle_balance(canister_id);
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 16);
-    let dispatch_cycles = cycles_before_dispatch.saturating_sub(pic.cycle_balance(canister_id));
+    let cycles_before_dispatch = pic
+        .cycle_balance(canister_id)
+        .expect("read canister cycles");
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
+    let dispatch_cycles = cycles_before_dispatch.saturating_sub(
+        pic.cycle_balance(canister_id)
+            .expect("read canister cycles"),
+    );
     let completed = observe(pic, canister_id);
     assert_eq!(completed.scheduler_instruction_samples, 1);
     assert_eq!(completed.work_instruction_samples, 1);
@@ -206,12 +219,14 @@ fn observe(pic: &PocketIc, canister_id: ExternalPrincipal) -> CohortObservation 
         (),
     )
     .expect("probe query succeeds");
-    assert!(!observed.schedule_requests.total_overflowed);
-    assert!(!observed.scheduler_started.total_overflowed);
-    assert!(!observed.wakeups_armed.total_overflowed);
-    assert!(!observed.work_dispatched.total_overflowed);
-    assert!(!observed.work_started.total_overflowed);
-    assert!(!observed.work_completed.total_overflowed);
-    assert!(!observed.coalesced.total_overflowed);
+    super::harness::assert_exact_counters(&[
+        observed.schedule_requests,
+        observed.scheduler_started,
+        observed.wakeups_armed,
+        observed.work_dispatched,
+        observed.work_started,
+        observed.work_completed,
+        observed.coalesced,
+    ]);
     observed
 }

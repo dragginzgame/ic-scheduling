@@ -8,10 +8,10 @@ thread_local! {
     static ENABLED: Cell<bool> = const { Cell::new(true) };
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::PressureAndStart as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::PressureAndStart as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::PressureAndStart as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn pressure_and_start() {
     start_pressure();
@@ -56,26 +56,26 @@ fn send_pressure() {
     });
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ReleasePressure as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::ReleasePressure as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::ReleasePressure as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn release_pressure() {
     ENABLED.set(false);
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::PressureReply as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::PressureReply as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::PressureReply as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn pressure_reply() {}
 
-#[ic_platform_runtime::cdk::query(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::PressureObservation as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::PressureObservation as u64 }>"
+#[ic_wire_endpoint::query(
+    id = ic_timers_test_protocol::rpc::Method::PressureObservation as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn pressure_observation() -> (u64, u64) {
     (SUBMISSION_FAILURES.get(), REPLIES.get())

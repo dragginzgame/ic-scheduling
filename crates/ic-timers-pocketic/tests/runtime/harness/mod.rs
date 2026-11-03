@@ -1,6 +1,6 @@
 //! Fresh, caller-owned testkit servers and IC instances from the verified binary.
 
-use ic_platform_pocket_ic::{PocketIc, PocketIcBuilder};
+use ic_platform_pocket_ic::{ClientError, PocketIc, PocketIcBuilder, RejectResponse};
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{
     CanisterInstallExt, InstallSpec, PocketIcInstance, PocketIcStartupConfig, WireCallError,
@@ -22,7 +22,7 @@ pub fn wait_for_probe<T: Debug>(
 ) -> T {
     let remaining = rounds.checked_sub(1).expect("positive probe round budget");
     let mut last = None;
-    pic.tick();
+    pic.tick().expect("tick PocketIC");
     tick_until(pic, remaining, Duration::ZERO, |pic| {
         let observation = observe(pic);
         if ready(&observation) {
@@ -112,4 +112,22 @@ pub fn query_wire<T: DeserializeOwned, A: Serialize>(
     args: A,
 ) -> Result<T, WireCallError> {
     ic_testkit::pic::query_wire(pic, canister_id, caller, wire_call(method), &args)
+}
+
+/// Exact measurements must not silently include overflowed counters.
+pub fn assert_exact_counters(counters: &[ic_timers_test_protocol::CounterObservation]) {
+    for (index, counter) in counters.iter().enumerate() {
+        assert!(
+            !counter.total_overflowed,
+            "counter[{index}] overflowed: {counter:?}"
+        );
+    }
+}
+
+/// Reject transport/protocol failures instead of treating them as IC rejection.
+pub fn canister_rejection(error: ClientError) -> RejectResponse {
+    match error {
+        ClientError::Canister(response) => response,
+        other => panic!("expected canister rejection, got {other:?}"),
+    }
 }

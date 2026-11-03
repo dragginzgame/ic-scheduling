@@ -100,12 +100,12 @@ thread_local! {
 
 // Deliberately violates the consumer destructor contract to exercise an actual
 // dispatch response trap and its IC cleanup callback, without backend hooks.
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::TrapOrdinaryCaptureDrop as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::TrapOrdinaryCaptureDrop as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::TrapOrdinaryCaptureDrop as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
-fn trap_ordinary_capture_drop(enabled: bool) {
+fn trap_ordinary_capture_drop((enabled,): (bool,)) {
     TRAP_CAPTURE_DROP.set(enabled);
 }
 
@@ -113,12 +113,12 @@ fn identity() -> TimerIdentity {
     TimerIdentity::try_new("ic-timers", "await-probe", "ordinary").expect("fixed identity")
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartOrdinary as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::StartOrdinary as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::StartOrdinary as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
-fn start_ordinary(policy: OrdinaryPolicy, lifetime: ProbeLifetime) {
+fn start_ordinary((policy, lifetime): (OrdinaryPolicy, ProbeLifetime)) {
     let initial = TimerSchedule::At(ic_platform_runtime::cdk::api::time());
     let start = if lifetime == ProbeLifetime::RemoveWhenStopped {
         TimerStart::RemoveWhenStopped { initial }
@@ -204,10 +204,10 @@ async fn work() -> TimerCompletion {
     TimerCompletion::success(1)
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::OrdinaryGate as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::OrdinaryGate as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::OrdinaryGate as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn ordinary_gate() -> bool {
     assert_eq!(
@@ -218,21 +218,21 @@ fn ordinary_gate() -> bool {
     GATE_OPEN.with(Cell::get)
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ReleaseOrdinaryWork as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::ReleaseOrdinaryWork as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::ReleaseOrdinaryWork as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn release_ordinary_work() {
     GATE_OPEN.with(|open| open.set(true));
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::TrapOrdinaryWork as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::TrapOrdinaryWork as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::TrapOrdinaryWork as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
-fn trap_ordinary_work(before_await: bool) {
+fn trap_ordinary_work((before_await,): (bool,)) {
     TRAP_POINT.with(|point| {
         point.set(if before_await {
             TrapPoint::BeforeAwait
@@ -242,19 +242,19 @@ fn trap_ordinary_work(before_await: bool) {
     });
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ClearOrdinaryTrap as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::ClearOrdinaryTrap as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::ClearOrdinaryTrap as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn clear_ordinary_trap() {
     TRAP_POINT.with(|point| point.set(TrapPoint::None));
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ExpiredOrdinaryContextRejected as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::ExpiredOrdinaryContextRejected as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::ExpiredOrdinaryContextRejected as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn expired_ordinary_context_rejected() -> bool {
     WORK_CONTEXT.with_borrow(|slot| {
@@ -266,10 +266,10 @@ fn expired_ordinary_context_rejected() -> bool {
     })
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::DiscardExpiredOrdinaryClaim as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::DiscardExpiredOrdinaryClaim as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::DiscardExpiredOrdinaryClaim as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn discard_expired_ordinary_claim() {
     REGISTRATION.with_borrow_mut(|slot| {
@@ -290,12 +290,12 @@ fn reconcile(registration: &Registration, desired: Option<TimerSchedule>) {
     result.expect("ordinary reconciliation");
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ReconcileOrdinaryAt as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::ReconcileOrdinaryAt as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::ReconcileOrdinaryAt as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
-fn reconcile_ordinary_at(deadline_ns: u64) {
+fn reconcile_ordinary_at((deadline_ns,): (u64,)) {
     REGISTRATION.with_borrow(|slot| {
         reconcile(
             slot.as_ref().expect("registered"),
@@ -304,10 +304,10 @@ fn reconcile_ordinary_at(deadline_ns: u64) {
     });
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::CancelOrdinary as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::CancelOrdinary as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::CancelOrdinary as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn cancel_ordinary() {
     REGISTRATION
@@ -318,19 +318,19 @@ fn cancel_ordinary() {
         .expect("explicit ordinary cancellation");
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ReconcileOrdinaryInactive as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::ReconcileOrdinaryInactive as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::ReconcileOrdinaryInactive as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn reconcile_ordinary_inactive() {
     REGISTRATION.with_borrow(|slot| reconcile(slot.as_ref().expect("registered"), None));
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::UnregisterOrdinary as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::UnregisterOrdinary as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::UnregisterOrdinary as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn unregister_ordinary() {
     let registration = REGISTRATION
@@ -343,10 +343,10 @@ fn unregister_ordinary() {
     .expect("ordinary unregister");
 }
 
-#[ic_platform_runtime::cdk::query(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::OrdinaryObservation as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::OrdinaryObservation as u64 }>"
+#[ic_wire_endpoint::query(
+    id = ic_timers_test_protocol::rpc::Method::OrdinaryObservation as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn ordinary_observation() -> OrdinaryObservation {
     let snapshot = timer_snapshot(&identity()).expect("ordinary snapshot");
@@ -409,12 +409,12 @@ fn ordinary_observation() -> OrdinaryObservation {
 }
 
 /// Remove armed authority in one message before any consumer work can start.
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::RemoveArmedCallback as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::RemoveArmedCallback as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::RemoveArmedCallback as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
-fn remove_armed_callback(policy: ProbePolicy) {
+fn remove_armed_callback((policy,): (ProbePolicy,)) {
     let deadline = ic_platform_runtime::cdk::api::time()
         .checked_add(super::CADENCE_NS)
         .expect("fixture deadline");
@@ -459,12 +459,12 @@ fn remove_armed_callback(policy: ProbePolicy) {
 }
 
 /// A rejected initial request must not leave callback authority in the IC heap.
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::RejectInitialSchedule as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::RejectInitialSchedule as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::RejectInitialSchedule as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
-fn reject_initial_schedule(policy: ProbePolicy, lifetime: ProbeLifetime) -> (bool, u64, bool) {
+fn reject_initial_schedule((policy, lifetime): (ProbePolicy, ProbeLifetime)) -> (bool, u64, bool) {
     let before = timer_inventory().expect("initial inventory");
     let dropped_before = CAPTURES_DROPPED.with(Cell::get);
     let initial = TimerSchedule::After(std::time::Duration::MAX);
@@ -508,12 +508,12 @@ fn reject_initial_schedule(policy: ProbePolicy, lifetime: ProbeLifetime) -> (boo
 }
 
 /// A rejected first lifecycle reconciliation must leave its owner slot empty.
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::RejectInitialReconciliation as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::RejectInitialReconciliation as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::RejectInitialReconciliation as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
-fn reject_initial_reconciliation(policy: ProbePolicy) -> (bool, bool, u64, bool) {
+fn reject_initial_reconciliation((policy,): (ProbePolicy,)) -> (bool, bool, u64, bool) {
     let before = timer_inventory().expect("initial inventory");
     let dropped_before = CAPTURES_DROPPED.with(Cell::get);
     let captured = CapturedState;

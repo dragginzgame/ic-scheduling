@@ -14,7 +14,7 @@ catalog, including private qualification members that no other member uses.
 
 Every public and private group member has an explicit version equal to its
 group's primary package. The root has no `workspace.package.version` and its
-changelog is an index. Jobs owns three private qualification packages; Timers
+changelog is an index. Jobs owns two private qualification packages; Timers
 owns four private probe/harness packages.
 All remain unpublished. Earlier coordinated history through 0.33.1 is retained
 once in [shared history](../releases/history.md); its existing
@@ -93,14 +93,25 @@ and candidates, restores selected metadata on handled failure, and keeps failed
 evidence. Source admission and exact staging remain consumer/runner boundaries.
 Abrupt interruption still requires inspecting the retained attempt before resume.
 
-Both groups retain the complete `release-verify` gate: combined CI, Testkit/server
-preparation, installed Timers watchdog and policy-cohort qualifications. Group
-selection does not narrow it. CI packages both public crates with `package-all`.
+Both groups use the qualified [release validation plan](release-validation-groups.md).
+Jobs-owned changes since its admitted annotated release baseline run complete
+native/Wasm CI without standalone Timers watchdog/cohort installation. Timers,
+shared inputs, changed manifests/locks and uncertain scope retain the complete
+five-stage gate. Repository CI and its three native hosts remain unchanged;
+CI packages both public crates with `package-all`.
 Independent core qualification stays explicit; the Jobs model remains Serde-only.
 The real Jobs consumer still composes Jobs, Timers, Storage, Wire and Runtime.
 Its commit-before-dispatch, exact attempts/receipts, uncertain effects and
 trap/upgrade obligations remain mandatory. One lockfile continues to resolve all
-nine members; release groups do not isolate incompatible runtime stacks.
+eight members; release groups do not isolate incompatible runtime stacks.
+
+New validation receipts additionally bind the canonical group plan/policy,
+input checkpoint, native/compiler/build configuration and successful stage
+evidence. Required stages are executed; excluded stages are not applicable.
+No proof reuse is enabled. Durable evidence stays beside the group's journal;
+missing, changed or failed evidence refuses preparation and recovery. Older
+whole-workspace attempts must use their recorded source/adapters, rather than
+having their receipts reinterpreted as group qualification.
 
 ## Publication
 
@@ -126,6 +137,9 @@ plans, cross-group resume refusal, same-group resume and publication selection.
 Validation-receipt tampering refuses before metadata mutation.
 The full product gate, tool setup and registry/upload effects are substituted;
 Cargo metadata, the selected metadata editor and Git effects are real and local.
+`make test-release-validation` separately exercises the actual selector, shared
+plan runner, input checkpoints and composed receipt checks with substituted
+native/installed commands, including Jobs omission and full-gate fallback.
 Focused subsets are `test-release-tooling-metadata`, `-recovery`, `-delivery`,
 `-publication` and `-retention`. The latter selects failed-candidate custody checks.
 These fixtures do not establish installed recovery or native macOS execution.

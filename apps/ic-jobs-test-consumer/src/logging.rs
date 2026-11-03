@@ -2,7 +2,8 @@
 
 use std::num::NonZeroUsize;
 
-use ic_jobs::{Attempt, Outcome};
+use crate::observations::Event;
+use ic_jobs::Outcome;
 use ic_logging::{EntryInput, Filter, Level, Limits, Log, PageRequest, TopicMatch};
 use ic_metrics::MeasurementCounter;
 
@@ -20,18 +21,6 @@ const LIMITS: Limits = Limits {
     max_text_bytes: MAX_ENTRIES * (MAX_MESSAGE_BYTES + 2 * MAX_LABEL_BYTES),
 };
 const MAX_SCANNED: NonZeroUsize = NonZeroUsize::new(32).unwrap();
-
-pub(crate) enum Event {
-    Dispatch {
-        attempt: Attempt,
-        retry: bool,
-    },
-    Outcome {
-        attempt: Attempt,
-        outcome: Outcome,
-        reconciled: bool,
-    },
-}
 
 pub(crate) struct JobLogs {
     history: Log,

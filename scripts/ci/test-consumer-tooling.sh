@@ -1,5 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# With no arguments, retain the complete CI fixture. Local changes can select
+# only their affected caller phases, without replaying installer/hosted suites.
+phases=("$@")
+if [[ $# == 0 ]]; then
+    phases=(cli-admission server-commands workflow-selection demo-commands input-admission artifact-capture ci-admission rust-policy)
+fi
+for phase in "${phases[@]}"; do
+    case "$phase" in
+        cli-admission|server-commands|workflow-selection|demo-commands|input-admission|artifact-capture|ci-admission|rust-policy) ;;
+        *) echo "unknown consumer tooling phase: $phase" >&2; exit 2 ;;
+    esac
+done
 unset MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 
 root="${BASH_SOURCE[0]}"
@@ -215,7 +227,7 @@ set -euo pipefail
 printf 'server %s\n' "$*" >> "$JOBS_CONSUMER_TOOLING_EVENTS"
 case "$*" in
     check) printf '%s\n' "$JOBS_CONSUMER_WASM_TARGET/server binary" ;;
-    'run --ttl 900 -- bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --example queue --locked --offline -- --ignored --nocapture --test-threads=1')
+    'run --ttl 900 -- bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --example queue --features harness --locked --offline -- --ignored --nocapture --test-threads=1')
         [[ "$IC_JOBS_CONSUMER_WASM" == "$JOBS_CONSUMER_WASM_TARGET/wasm32-unknown-unknown/release/ic_jobs_test_consumer.wasm" ]] ;;
     *) exit 49 ;;
 esac
@@ -228,9 +240,9 @@ case "$*" in
     "+${JOBS_CONSUMER_RUST_VERSION} metadata --format-version 1 --no-deps --locked --offline")
         printf '{"target_directory":"%s"}\n' "$JOBS_CONSUMER_WASM_TARGET" ;;
     "+${JOBS_CONSUMER_RUST_VERSION} build -p ic-jobs-test-consumer --release --target wasm32-unknown-unknown --locked --offline"|\
-    "+${JOBS_CONSUMER_RUST_VERSION} build -p ic-jobs-canister-tests --example queue --locked --offline"|\
-    "+${JOBS_CONSUMER_RUST_VERSION} test -p ic-jobs-canister-tests --example queue --locked --offline --no-run") ;;
-    "+${JOBS_CONSUMER_RUST_VERSION} test -p ic-jobs-canister-tests --test queue_cli --locked --offline -- --ignored --nocapture")
+    "+${JOBS_CONSUMER_RUST_VERSION} build -p ic-jobs-canister-tests --example queue --features harness --locked --offline"|\
+    "+${JOBS_CONSUMER_RUST_VERSION} test -p ic-jobs-canister-tests --example queue --features harness --locked --offline --no-run") ;;
+    "+${JOBS_CONSUMER_RUST_VERSION} test -p ic-jobs-canister-tests --test queue_cli --features harness --locked --offline -- --ignored --nocapture")
         [[ "$IC_JOBS_QUEUE_SERVER" == "$JOBS_CONSUMER_WASM_TARGET/server binary" &&
            "$IC_JOBS_QUEUE_BIN" == "$JOBS_CONSUMER_WASM_TARGET/debug/examples/queue" &&
            "$IC_JOBS_CONSUMER_WASM" == "$JOBS_CONSUMER_WASM_TARGET/wasm32-unknown-unknown/release/ic_jobs_test_consumer.wasm" ]] ;;
@@ -259,15 +271,15 @@ for command in demo test-demo test-demo-cli; do
     {
         printf 'admission\nserver check\ncargo +%s build -p ic-jobs-test-consumer --release --target wasm32-unknown-unknown --locked --offline\n' "$JOBS_CONSUMER_RUST_VERSION"
         if [[ "$command" == test-demo ]]; then
-            printf 'cargo +%s test -p ic-jobs-canister-tests --example queue --locked --offline --no-run\n' "$JOBS_CONSUMER_RUST_VERSION"
+            printf 'cargo +%s test -p ic-jobs-canister-tests --example queue --features harness --locked --offline --no-run\n' "$JOBS_CONSUMER_RUST_VERSION"
         else
-            printf 'cargo +%s build -p ic-jobs-canister-tests --example queue --locked --offline\n' "$JOBS_CONSUMER_RUST_VERSION"
+            printf 'cargo +%s build -p ic-jobs-canister-tests --example queue --features harness --locked --offline\n' "$JOBS_CONSUMER_RUST_VERSION"
         fi
         printf 'admission\ncargo +%s metadata --format-version 1 --no-deps --locked --offline\n' "$JOBS_CONSUMER_RUST_VERSION"
         case "$command" in
             demo) printf 'server check\nqueue\n' ;;
-            test-demo) printf 'server run --ttl 900 -- bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --example queue --locked --offline -- --ignored --nocapture --test-threads=1\n' ;;
-            test-demo-cli) printf 'server check\ncargo +%s test -p ic-jobs-canister-tests --test queue_cli --locked --offline -- --ignored --nocapture\n' "$JOBS_CONSUMER_RUST_VERSION" ;;
+            test-demo) printf 'server run --ttl 900 -- bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --example queue --features harness --locked --offline -- --ignored --nocapture --test-threads=1\n' ;;
+            test-demo-cli) printf 'server check\ncargo +%s test -p ic-jobs-canister-tests --test queue_cli --features harness --locked --offline -- --ignored --nocapture\n' "$JOBS_CONSUMER_RUST_VERSION" ;;
         esac
     } > "$fixture/expected-events"
     cmp "$fixture/events" "$fixture/expected-events"
@@ -381,7 +393,7 @@ variant="${5%/server.stdout}"; variant="${variant##*/}"
 printf 'server stdout\n' > "$5"
 printf 'server stderr\n' > "$7"
 shift 8
-[[ "$*" == 'bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --test recovery --locked --offline -- --ignored --test-threads=1 --nocapture' ]] || exit 49
+[[ "$*" == 'bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --test recovery --features harness --locked --offline -- --ignored --test-threads=1 --nocapture' ]] || exit 49
 printf '%s\n' "$IC_JOBS_CONSUMER_WASM" >> "$JOBS_CONSUMER_CAPTURED/paths"
 cp "$IC_JOBS_CONSUMER_WASM" "$JOBS_CONSUMER_CAPTURED/$variant.wasm"
 printf 'replaced mutable producer\n' > "$JOBS_CONSUMER_PRODUCER"
@@ -444,11 +456,14 @@ phase_ci_admission() (
 local fixture
 trap - EXIT
 prepare_phase ci-admission
+# These local release inputs are part of Make's common checkpoint inventory.
+mkdir -p "$fixture/scripts/release"
+cp "$root/scripts/release/"{validation.pl,verify.sh} "$fixture/scripts/release/"
 # Run Jobs' actual CI route only through its first admission stage. Substitute
 # tool effects and mutate a selected input there; the logger must block all
 # subsequent product checks without compilation, installation or server effects.
 cp "$root/"{Cargo.toml,.shared-tooling.snapshot,rust-toolchain.toml} "$fixture/"
-for member in crates/ic-jobs apps/ic-jobs-test-consumer crates/ic-jobs-canister-test-support crates/ic-jobs-canister-tests crates/ic-timers crates/ic-timers-pocketic crates/ic-timers-runtime-probe crates/ic-timers-size-probe crates/ic-timers-test-protocol; do
+for member in crates/ic-jobs apps/ic-jobs-test-consumer crates/ic-jobs-canister-tests crates/ic-timers crates/ic-timers-pocketic crates/ic-timers-runtime-probe crates/ic-timers-size-probe crates/ic-timers-test-protocol; do
     mkdir -p "$fixture/$member"
     cp "$root/$member/Cargo.toml" "$fixture/$member/"
 done
@@ -605,12 +620,7 @@ make --no-print-directory -C "$fixture" build-consumer > "$fixture/invalid.log" 
 echo 'Unified compiler policy reaches Make/hosted setup once; drift and wrong Cargo/rustc refuse (substitute compiler only)'
 )
 
-phase_cli_admission
-phase_server_commands
-phase_workflow_selection
-phase_demo_commands
-phase_input_admission
-phase_artifact_capture
-phase_ci_admission
-phase_rust_policy
+for phase in "${phases[@]}"; do
+    "phase_${phase//-/_}"
+done
 fixture_complete=true

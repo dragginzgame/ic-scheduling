@@ -7,7 +7,7 @@ publish = false
 license.workspace = true
 
 [dependencies]
-clap.workspace = true
+clap = { workspace = true, features = ["derive"] }
 ic-build.workspace = true
 ic-host-artifacts.workspace = true
 ic-host-fs.workspace = true

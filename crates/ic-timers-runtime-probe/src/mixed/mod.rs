@@ -40,10 +40,10 @@ fn record_callback(
     });
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeStart as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeStart as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::StartupTimerProbeStart as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn startup_timer_probe_start() -> bool {
     if WATCHDOG_TIMER.with_borrow(Option::is_some) {
@@ -95,10 +95,10 @@ fn startup_timer_probe_start() -> bool {
     true
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeStop as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::StartupTimerProbeStop as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::StartupTimerProbeStop as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn startup_timer_probe_stop() {
     WATCHDOG_TIMER.with_borrow_mut(|slot| {
@@ -117,10 +117,10 @@ fn startup_timer_probe_stop() {
     });
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeArmTrap as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeArmTrap as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::StartupTimerProbeArmTrap as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn startup_timer_probe_arm_trap() -> u64 {
     let trap_at = ic_platform_runtime::cdk::api::time().saturating_add(WATCHDOG_INTERVAL_NANOS);
@@ -133,10 +133,10 @@ fn startup_timer_probe_arm_trap() -> u64 {
     trap_at
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeArmExhaustion as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeArmExhaustion as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::StartupTimerProbeArmExhaustion as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn startup_timer_probe_arm_exhaustion() -> u64 {
     let exhaust_at = ic_platform_runtime::cdk::api::time().saturating_add(WATCHDOG_INTERVAL_NANOS);
@@ -149,10 +149,10 @@ fn startup_timer_probe_arm_exhaustion() -> u64 {
     exhaust_at
 }
 
-#[ic_platform_runtime::cdk::query(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeSnapshot as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::StartupTimerProbeSnapshot as u64 }>"
+#[ic_wire_endpoint::query(
+    id = ic_timers_test_protocol::rpc::Method::StartupTimerProbeSnapshot as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn startup_timer_probe_snapshot() -> TimerProbeSnapshot {
     TimerProbeSnapshot {

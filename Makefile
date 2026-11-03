@@ -31,7 +31,18 @@ VALIDATION_INPUTS := --input Cargo.toml --input Cargo.lock --input rust-toolchai
 	--input .shared-tooling.snapshot --input Makefile --input scripts/dev/testkit-tool.sh --input scripts/dev/queue-command.sh --input scripts/dev/minimum-rust.sh --input ci/tool-versions.env \
 	--input ci/ic-tools.tsv --input ci/release-delivery.txt --input ci/cargo-dependency-boundaries.json --input ci/cargo-release-groups.json \
 	--input .github/workflows/ci.yml --input .github/workflows/recovery.yml --input ci/docs-only-paths.txt --input scripts/ci/classify-ci-change.pl \
+	--input ci/release-validation.json --input scripts/release/validation.pl --input scripts/release/verify.sh \
 	$(foreach manifest,$(wildcard crates/*/Cargo.toml apps/*/Cargo.toml),--input $(manifest))
+
+# Exhaustive outer gate; ci retains the complete native/Wasm/integration roster.
+override RELEASE_VALIDATION_STAGES := ci install-testkit-tools install-consumer-server test-timer-watchdog test-timer-cohorts
+
+.PHONY: release-validation-stages test-release-validation
+release-validation-stages:
+	@printf '%s\n' $(RELEASE_VALIDATION_STAGES)
+
+test-release-validation:
+	+bash scripts/release/test-validation.sh
 
 .PHONY: help version install-hooks check test-jobs test-consumers check-msrv check-wasm clippy docs-check check-doc-links shared-tooling-check check-pins check-release-commands test-release-tooling test-formatting-evidence package publish-check publish ci
 help:
@@ -70,7 +81,7 @@ test-consumers:
 check-consumer:
 	+$(MINIMUM_RUST) cargo test -p ic-jobs-test-consumer --lib --test api_wire --locked --offline
 	+$(MAKE) --no-print-directory build-consumer
-	+$(MINIMUM_RUST) cargo test -p ic-jobs-canister-tests --bin jobs-capture-artifact --example queue --test queue_cli --test recovery --locked --offline
+	+$(MINIMUM_RUST) cargo test -p ic-jobs-canister-tests --bin jobs-capture-artifact --example queue --test queue_cli --test recovery --features harness --locked --offline
 
 build-consumer:
 	+$(MINIMUM_RUST) cargo build -p ic-jobs-test-consumer --release --target wasm32-unknown-unknown --locked --offline
@@ -96,24 +107,24 @@ consumer-server-check:
 test-canister test-canister-optimized: consumer-server-check
 	+$(MAKE) --no-print-directory build-consumer
 	+$(MAKE) --no-print-directory build-recovery-tools
-	+$(MINIMUM_RUST) cargo test -p ic-jobs-canister-tests --test recovery --locked --offline --no-run
+	+$(MINIMUM_RUST) cargo test -p ic-jobs-canister-tests --test recovery --features harness --locked --offline --no-run
 	+bash scripts/ci/test-canister.sh $(if $(filter test-canister-optimized,$@),--optimized)
 
 .PHONY: demo test-demo test-demo-cli
 demo: consumer-server-check
 	+$(MAKE) --no-print-directory build-consumer
-	+$(MINIMUM_RUST) cargo build -p ic-jobs-canister-tests --example queue --locked --offline
+	+$(MINIMUM_RUST) cargo build -p ic-jobs-canister-tests --example queue --features harness --locked --offline
 	+bash scripts/dev/queue-command.sh demo
 
 test-demo: consumer-server-check
 	+$(MAKE) --no-print-directory build-consumer
-	+$(MINIMUM_RUST) cargo test -p ic-jobs-canister-tests --example queue --locked --offline --no-run
+	+$(MINIMUM_RUST) cargo test -p ic-jobs-canister-tests --example queue --features harness --locked --offline --no-run
 	+bash scripts/dev/queue-command.sh test-demo
 
 # Spawn-mode process tests intentionally do not borrow the batch runner's server.
 test-demo-cli: consumer-server-check
 	+$(MAKE) --no-print-directory build-consumer
-	+$(MINIMUM_RUST) cargo build -p ic-jobs-canister-tests --example queue --locked --offline
+	+$(MINIMUM_RUST) cargo build -p ic-jobs-canister-tests --example queue --features harness --locked --offline
 	+bash scripts/dev/queue-command.sh test-demo-cli
 
 .PHONY: rust-policy-check
@@ -130,7 +141,7 @@ check-wasm:
 
 clippy: rust-policy-check
 	+cargo clippy -p ic-jobs --all-targets --all-features --locked --offline -- -D warnings
-	+cargo clippy -p ic-jobs-test-consumer -p ic-jobs-canister-test-support -p ic-jobs-canister-tests -p ic-timers --all-targets --locked --offline -- -D warnings
+	+cargo clippy -p ic-jobs-test-consumer -p ic-jobs-canister-tests -p ic-timers --all-targets --features ic-jobs-canister-tests/harness --locked --offline -- -D warnings
 	+cargo clippy -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline -- -D warnings
 
 docs-check:
@@ -155,12 +166,13 @@ check-dependency-boundaries:
 	+bash scripts/ci/check-cargo-dependency-boundaries.sh --consumer "$(CURDIR)" --external-ic
 
 # Jobs owns these concrete exclusions; Shared owns observation and matching.
+HOST_GRAPH_FORBIDDEN_PATTERN := ^ic-(?:build(?:-|$$)|host-|testkit(?:-|$$))
 CORE_GRAPH_FORBIDDEN := clap ctrlc candid candid_derive candid_parser ic-cdk ic-cdk-macros \
 	ic-cdk-executor ic-cdk-timers ic-platform ic-platform-pocket-ic ic-platform-runtime ic-platform-types ic-platform-macros ic-platform-runtime-guard ic0 ic-memory ic-stable-structures ic-storage \
-	ic-timers ic-metrics ic-logging ic-wire ic-wire-derive postcard ic-build ic-host-fs ic-host-process ic-testkit \
-	ic-testkit-candid ic-testkit-native ic-jobs-test-consumer ic-jobs-canister-test-support pocket-ic serde_json serde_test
-QUALIFICATION_GRAPH_FORBIDDEN := ic-cdk-executor ic0 ic-platform ic-platform-pocket-ic clap ctrlc serde_json ic-memory ic-stable-structures candid candid_derive candid_parser ic-cdk ic-agent ic-build ic-host-fs \
-	ic-host-process ic-host-artifacts ic-host-text ic-testkit ic-testkit-candid ic-testkit-native ic-jobs-canister-test-support pocket-ic tokio
+	ic-timers ic-metrics ic-logging ic-wire ic-wire-derive postcard \
+	 ic-jobs-test-consumer ic-jobs-canister-tests pocket-ic serde_json serde_test
+QUALIFICATION_GRAPH_FORBIDDEN := ic-cdk-executor ic0 ic-platform ic-platform-pocket-ic clap ctrlc serde_json ic-memory ic-stable-structures candid candid_derive candid_parser ic-cdk ic-agent \
+	 ic-jobs-canister-tests pocket-ic tokio
 # Jobs and Timers share one Runtime owner; Storage keeps its allocation facade.
 # Keep one executor, raw-system provider and entrypoint generator, without
 # application Principal conversion or hashing in the deployed graph.
@@ -168,15 +180,18 @@ QUALIFICATION_GRAPH_FORBIDDEN := ic-cdk-executor ic0 ic-platform ic-platform-poc
 check-dependency-graphs:
 	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)" --package ic-jobs \
 		--target "$$(rustc -vV | sed -n 's/^host: //p')" --all-features \
+		--forbid-pattern '$(HOST_GRAPH_FORBIDDEN_PATTERN)' \
 		$(foreach dependency,$(CORE_GRAPH_FORBIDDEN),--forbid $(dependency))
 	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)" --package ic-jobs \
 		--target wasm32-unknown-unknown --all-features \
+		--forbid-pattern '$(HOST_GRAPH_FORBIDDEN_PATTERN)' \
 		$(foreach dependency,$(CORE_GRAPH_FORBIDDEN),--forbid $(dependency))
 	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)" --package ic-jobs-test-consumer \
 		--target wasm32-unknown-unknown --all-features \
 		--require ic-timers=1 --require ic-platform-runtime-guard=1 \
 		--require ic-platform-runtime=1 --require ic-platform-types=1 --require ic-platform-macros=1 \
 		--forbid sha2 --forbid-feature ic-platform/principal-external \
+		--forbid-pattern '$(HOST_GRAPH_FORBIDDEN_PATTERN)' \
 		$(foreach dependency,$(QUALIFICATION_GRAPH_FORBIDDEN),--forbid $(dependency))
 	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)" --package ic-jobs-test-consumer \
 		--target "$$(rustc -vV | sed -n 's/^host: //p')" --all-features \
@@ -184,12 +199,17 @@ check-dependency-graphs:
 		--forbid ic-jobs --forbid ic-memory --forbid ic-storage --forbid ic-timers --forbid serde_json \
 		--forbid ic-stable-structures --forbid ic-cdk-executor --forbid ic0 --forbid ic-metrics --forbid ic-logging \
 		--forbid ic_principal --forbid sha2 \
+		--forbid-pattern '$(HOST_GRAPH_FORBIDDEN_PATTERN)' \
 		$(foreach dependency,$(QUALIFICATION_GRAPH_FORBIDDEN),--forbid $(dependency))
 	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)" --package ic-jobs-canister-tests \
-		--target "$$(rustc -vV | sed -n 's/^host: //p')" --all-features \
+		--target "$$(rustc -vV | sed -n 's/^host: //p')" \
 		--forbid candid --forbid candid_derive --forbid candid_parser \
-		--forbid pocket-ic --forbid ic-platform-pocket-ic --forbid ic-testkit --forbid ic-jobs-canister-test-support --forbid ctrlc --forbid-feature ic-platform/candid \
+		--forbid pocket-ic --forbid ic-platform-pocket-ic --forbid ic-testkit --forbid ic-jobs-test-consumer --forbid ic-wire --forbid ctrlc --forbid-feature ic-platform/candid \
 		--forbid-feature ic-platform/pocket-ic
+	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)" --package ic-jobs-canister-tests \
+		--target "$$(rustc -vV | sed -n 's/^host: //p')" --features harness --edges normal \
+		--require ic-platform-pocket-ic=1 --require ic-platform-types=1 \
+		--require ic-platform=1 --require ic-wire=1
 
 check-release-commands:
 	RELEASE_GROUP=jobs bash scripts/ci/check-release-commands.sh . make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/run-formatting.sh scripts/ci/check-release-delivery.sh ci/release-delivery.txt
@@ -259,7 +279,7 @@ validation-tools-check: tools-check format-tools-check
 ci: shared-tooling-check
 	+bash scripts/ci/run-validation-targets.sh --fail-fast $(VALIDATION_INPUTS) \
 		validation-tools-check check-release-groups clippy check-timer-provider check-timer-dependencies check-timer-probes check-doc-links check-pins check-dependency-boundaries check-dependency-graphs check-release-commands \
-		test-release-tooling test-formatting-evidence test-consumer-tooling test-ci-change-selection test-recovery-evidence test-release-status test-timers test-timer-dependencies \
+		test-release-tooling test-release-validation test-formatting-evidence test-consumer-tooling test-ci-change-selection test-recovery-evidence test-release-status test-timers test-timer-dependencies \
 		formatting-hook-check fmt-check check test-jobs test-consumers \
 		check-consumer check-wasm docs-check package-all
 
@@ -281,8 +301,7 @@ release-preflight:
 	+@bash scripts/release/metadata.sh preflight
 
 release-verify:
-	+CARGO_NET_OFFLINE=true VALIDATION_FAILURE_LOG_DIR="$$(git rev-parse --git-path release-state)/validation-failures" bash scripts/ci/run-validation-targets.sh --fail-fast $(VALIDATION_INPUTS) ci install-testkit-tools install-consumer-server test-timer-watchdog test-timer-cohorts
-	+@if test -n "$${RELEASE_SOURCE:-}"; then bash scripts/release/metadata.sh validated; fi
+	+bash scripts/release/verify.sh
 
 release-prepare-version:
 	+@bash scripts/release/metadata.sh prepare

@@ -118,9 +118,9 @@ attempts and receipts until their owner resolves the effects and authorizes any
 destructive retirement. The queue's own `JQW\x01` payload remains unchanged.
 Current Storage-format cold reopen still restores Running/Uncertain jobs blocked.
 
-**Storage 0.65 Cell continuity:** this consumer uses Cells, not the changed map
-format. A real 0.64 installation captured before the update reopens under 0.65,
-Wire 0.15 and Types 0.17 with both Running/Uncertain attempts and receipts intact.
+**Storage 0.66 Cell continuity:** this consumer uses Cells, not the changed map
+format. A real 0.64 installation captured before the update reopens under 0.66,
+Wire 0.16 and Types 0.18 with both Running/Uncertain attempts and receipts intact.
 Cold admission, idle dispatch and refused fresh creation perform no writes or
 growth. No reset is required for these qualified Cells. This native evidence
 does not establish installed IC upgrade/rollback or compatibility for old maps.
@@ -235,13 +235,13 @@ The consumer's own Wire dependency supplies its endpoint codecs. Metrics has no
 optional `wire` feature; its optional keyed heap `recording` feature stays disabled.
 Published `ic-jobs` remains independent of Metrics.
 Metrics now lives in the IC Observability repository with the same published
-crate identity and arithmetic. Runtime 0.18 and Wire 0.15 supply explicit endpoint
+crate identity and arithmetic. Runtime 0.19 and Wire 0.16 supply explicit endpoint
 codecs and bounded decoding for this consumer and its host harness.
 Its transport boundary is separate from Storage's installation cut above.
-Native DTOs select canonical Types 0.17. Native tests explicitly select
+Native DTOs select canonical Types 0.18. Native tests explicitly select
 `principal-self-authenticating`; the recovery harness selects Types' explicit
-external conversions and the independent Platform PocketIC 0.18 client with
-Testkit 0.80. The application uses its owned Principal;
+external conversions and the independent Platform PocketIC 0.20 client with
+Testkit 0.83. The application uses its owned Principal;
 PocketIC calls retain the external Principal and convert explicitly when
 constructing application DTOs. Native DTO normal/build graphs exclude external
 Principal and hashing dependencies; Wasm excludes the application conversion
@@ -371,8 +371,10 @@ Their API must never be copied into a production canister. Live execution and
 native macOS acceptance are recorded separately in the
 [handoff](../../docs/status/current.md). It records passing installed recovery on
 earlier source/graphs, including all three hosts for 0.17.46, separately from the
-current Storage 0.65 native/Wasm checks. No installed recovery for the new
-storage format is claimed. Harness compilation alone does not establish it.
+current Storage 0.66 native/Wasm checks and six selected installed cases. Those
+cases use fresh current Wasm and same-source upgrades; they do not establish
+cross-version installed migration, rollback or old-map compatibility. Harness
+compilation alone does not establish installed behavior.
 
 ## Committed job-outcome diagnostics
 
@@ -420,7 +422,7 @@ unmeasured; other hosts retain their own qualification.
 
 ## Committed transition logs
 
-The consumer uses IC Logging 0.24.1 for a heap-only history of the most recent
+The consumer uses IC Logging 0.24.4 for a heap-only history of the most recent
 128 events. Each retained message is at most 192 UTF-8 bytes and labels are at
 most 32 bytes. The combined retained source/topic/message budget is 32 KiB,
 derived as `128 * (192 + 2 * 32)` so every individually admitted row retains

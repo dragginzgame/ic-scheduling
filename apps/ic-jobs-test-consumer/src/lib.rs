@@ -11,4 +11,6 @@ pub mod management_wire;
 #[cfg(any(test, target_arch = "wasm32"))]
 mod metrics;
 #[cfg(any(test, target_arch = "wasm32"))]
+mod observations;
+#[cfg(any(test, target_arch = "wasm32"))]
 mod queue;

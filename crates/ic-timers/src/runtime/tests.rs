@@ -1,3 +1,6 @@
+mod faults;
+use faults::ProviderFault;
+
 use super::*;
 use crate::{
     AfterCompletionDecision, InactiveReason, MemoryPageSample, OnceDecision, TimerLastOutcome,
@@ -179,7 +182,8 @@ fn dropped_ordinary_deliveries_retire_confirmed_scheduled_and_running_work() {
                     captured,
                 );
                 if lifetime == DeclarationLifetime::Retained {
-                    reconcile_ordinary_claim(&claim, None, Some(TimerSchedule::At(10))).unwrap();
+                    reconcile_ordinary_claim(Declared(&claim), Some(TimerSchedule::At(10)))
+                        .unwrap();
                 }
                 set_time(10);
                 if started {
@@ -193,7 +197,7 @@ fn dropped_ordinary_deliveries_retire_confirmed_scheduled_and_running_work() {
                 assert_eq!(timer_count(), 0);
                 if let Some(token) = context.borrow().as_ref() {
                     assert!(matches!(
-                        cancel_claim(token.claim(), Some(token)),
+                        cancel_claim(Executing(token)),
                         Err(TimerError::RegistrationExpired)
                     ));
                 }
@@ -215,14 +219,8 @@ fn dropped_ordinary_deliveries_retire_confirmed_scheduled_and_running_work() {
                         u128::from(started)
                     );
                     assert_eq!(counters.work_completed().exact_total().unwrap(), 0);
-                    assert_eq!(
-                        observations
-                            .performance()
-                            .work_instructions()
-                            .aggregate()
-                            .samples(),
-                        0
-                    );
+                    let performance = observations.performance();
+                    assert_eq!(performance.work_instructions().aggregate().samples(), 0);
                     assert_eq!(
                         observations.outcomes().last_outcome(),
                         Some(TimerLastOutcome::Unacknowledged)
@@ -235,7 +233,8 @@ fn dropped_ordinary_deliveries_retire_confirmed_scheduled_and_running_work() {
                     if !started {
                         gate.ready.set(true);
                     }
-                    reconcile_ordinary_claim(&claim, None, Some(TimerSchedule::At(30))).unwrap();
+                    reconcile_ordinary_claim(Declared(&claim), Some(TimerSchedule::At(30)))
+                        .unwrap();
                     set_time(30);
                     assert!(run_next_due());
                     let completed = timer_snapshot(&timer).unwrap().unwrap();
@@ -281,18 +280,21 @@ fn abandoned_running_work_discards_scheduling_commands_and_finishes_unregistrati
                     Rc::new(()),
                 );
                 if lifetime == DeclarationLifetime::Retained {
-                    reconcile_ordinary_claim(&claim, None, Some(TimerSchedule::At(10))).unwrap();
+                    reconcile_ordinary_claim(Declared(&claim), Some(TimerSchedule::At(10)))
+                        .unwrap();
                 }
                 set_time(10);
                 assert!(run_next_due());
                 match command {
-                    "cancel" => cancel_claim(&claim, None).unwrap(),
+                    "cancel" => cancel_claim(Declared(&claim)).unwrap(),
                     "reconcile" => {
-                        reconcile_ordinary_claim(&claim, None, Some(TimerSchedule::At(40)))
+                        reconcile_ordinary_claim(Declared(&claim), Some(TimerSchedule::At(40)))
                             .unwrap();
                     }
-                    "ensure" if after_completion => ensure_recurring_claim(&claim, None).unwrap(),
-                    "ensure" => ensure_once_claim(&claim, None, TimerSchedule::At(40)).unwrap(),
+                    "ensure" if after_completion => {
+                        ensure_recurring_claim(Declared(&claim)).unwrap();
+                    }
+                    "ensure" => ensure_once_claim(Declared(&claim), TimerSchedule::At(40)).unwrap(),
                     "unregister" => unregister_claim(&claim).unwrap(),
                     _ => unreachable!("fixed command matrix"),
                 }
@@ -324,7 +326,7 @@ fn abandoned_running_work_discards_scheduling_commands_and_finishes_unregistrati
                 let token = context.borrow();
                 let token = token.as_ref().unwrap();
                 assert!(matches!(
-                    cancel_claim(token.claim(), Some(token)),
+                    cancel_claim(Executing(token)),
                     Err(TimerError::RegistrationExpired)
                 ));
                 assert_eq!(timer_count(), 0);
@@ -451,8 +453,8 @@ fn unconfirmed_ordinary_delivery_drop_preserves_binding_failure_accounting() {
             Rc::new(RefCell::new(None)),
             Rc::new(()),
         );
-        inject_provider_install_fault();
-        assert!(reconcile_ordinary_claim(&claim, None, Some(TimerSchedule::At(10))).is_err());
+        ProviderFault::BINDING.inject();
+        assert!(reconcile_ordinary_claim(Declared(&claim), Some(TimerSchedule::At(10))).is_err());
         let snapshot = timer_snapshot(&timer).unwrap().unwrap();
         assert_eq!(
             snapshot.state(),
@@ -1534,9 +1536,9 @@ fn ordinary_callback_borrow_failure_stops_without_invoking_or_measuring_work() {
         })
         .unwrap();
         if recurring {
-            ensure_recurring_claim(&claim, None).unwrap();
+            ensure_recurring_claim(Declared(&claim)).unwrap();
         } else {
-            ensure_once_claim(&claim, None, TimerSchedule::At(15)).unwrap();
+            ensure_once_claim(Declared(&claim), TimerSchedule::At(15)).unwrap();
         }
         assert_eq!(timer_count(), 1);
 
@@ -2822,7 +2824,7 @@ fn immediate_watchdog_provider_replacement_failure_traps_for_message_rollback() 
     set_time(15);
     assert!(run_next_due(), "scheduler should commit cadence safety");
 
-    inject_provider_install_fault();
+    ProviderFault::BINDING.inject();
     let trapped = catch_unwind(AssertUnwindSafe(run_next_due));
     assert!(
         trapped.is_err(),
@@ -2848,7 +2850,7 @@ fn public_immediate_watchdog_replacement_failure_retires_false_scheduled_state()
         .ensure_scheduled()
         .expect("cadence scheduler should arm");
 
-    inject_provider_install_fault();
+    ProviderFault::BINDING.inject();
     assert!(matches!(
         registration.ensure_scheduled_immediately(),
         Err(TimerError::OwnershipInvariant)
@@ -2954,11 +2956,11 @@ fn unchanged_watchdog_successor_and_queued_work_stay_bound_without_reinstallatio
             assert_eq!(timer_count(), 1);
             // Only the replacement scheduler binds. Queued work must remain
             // installed, without consuming another provider admission.
-            inject_provider_install_fault_after(1);
+            ProviderFault::Binding { after: 1 }.inject();
             registration.ensure_scheduled().unwrap();
             assert_eq!(timer_count(), 2);
         } else {
-            inject_provider_install_fault();
+            ProviderFault::BINDING.inject();
         }
         // Continue retains its prearmed successor without rebinding it.
         assert!(run_next_due());
@@ -3063,7 +3065,7 @@ fn rejected_and_coalesced_requests_preserve_bound_handles_without_reinstallation
     let before = timer_snapshot(&timer).unwrap().unwrap();
 
     // If either request attempts a handle reinstall it consumes this fault.
-    inject_provider_install_fault();
+    ProviderFault::BINDING.inject();
     assert!(matches!(
         registration.ensure_scheduled(TimerSchedule::After(Duration::MAX)),
         Err(TimerError::Schedule(ScheduleError::DelayOutOfRange))
@@ -3117,7 +3119,7 @@ fn public_provider_install_failure_retires_false_scheduled_state() {
         .ensure_scheduled(TimerSchedule::At(100))
         .expect("initial provider arm should succeed");
     assert_eq!(timer_count(), 1);
-    inject_provider_install_fault();
+    ProviderFault::BINDING.inject();
     assert!(matches!(
         registration.ensure_scheduled(TimerSchedule::At(15)),
         Err(TimerError::OwnershipInvariant)
@@ -3159,7 +3161,7 @@ fn inactive_ordinary_provider_install_failure_retires_false_scheduled_state() {
                 },
             )
             .unwrap();
-            inject_provider_install_fault();
+            ProviderFault::BINDING.inject();
             registration.ensure_scheduled()
         } else {
             let registration = register_once(
@@ -3168,7 +3170,7 @@ fn inactive_ordinary_provider_install_failure_retires_false_scheduled_state() {
                 |_| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
             )
             .unwrap();
-            inject_provider_install_fault();
+            ProviderFault::BINDING.inject();
             registration.ensure_scheduled(TimerSchedule::At(15))
         };
         assert!(matches!(result, Err(TimerError::OwnershipInvariant)));
@@ -3184,10 +3186,13 @@ fn watchdog_failed_dispatch_clears_handles_without_confirming_work() {
         DeclarationLifetime::RemoveWhenStopped,
     ] {
         for failure_stage in [
-            "successor-admission",
-            "work-admission",
-            "successor-binding",
-            "work-binding",
+            ProviderFault::ADMISSION,
+            ProviderFault::Admission {
+                after: 1,
+                error: platform::AdmissionError::IdentityExhausted,
+            },
+            ProviderFault::BINDING,
+            ProviderFault::Binding { after: 1 },
         ] {
             let _fixture = setup();
             let timer = identity("provider-watchdog-dispatch-fault");
@@ -3204,18 +3209,7 @@ fn watchdog_failed_dispatch_clears_handles_without_confirming_work() {
             )
             .expect("registration should succeed");
 
-            match failure_stage {
-                "successor-admission" => {
-                    platform::ADMISSION_FAULT.set(Some((0, platform::AdmissionError::Capacity)));
-                }
-                "work-admission" => {
-                    platform::ADMISSION_FAULT
-                        .set(Some((1, platform::AdmissionError::IdentityExhausted)));
-                }
-                "successor-binding" => inject_provider_install_fault(),
-                "work-binding" => inject_provider_install_fault_after(1),
-                _ => unreachable!("closed failure stages"),
-            }
+            failure_stage.inject();
             set_time(15);
             assert!(run_next_due(), "scheduler callback should execute");
             assert_eq!(timer_count(), 0, "failed dispatch must clear every handle");
@@ -3319,7 +3313,7 @@ fn remove_on_stop_provider_failure_removes_the_expired_claim() {
     )
     .expect("registration should succeed");
 
-    inject_provider_install_fault();
+    ProviderFault::BINDING.inject();
     assert!(matches!(
         registration.ensure_scheduled(TimerSchedule::At(15)),
         Err(TimerError::OwnershipInvariant)
@@ -4300,7 +4294,7 @@ fn coalesced_watchdog_requests_preserve_paired_handles_without_reinstallation() 
         TimerCadence::from_nanos(5).unwrap(),
         TimerStart::Retained { initial: None },
         |context| {
-            inject_provider_install_fault();
+            ProviderFault::BINDING.inject();
             context.ensure_scheduled().unwrap();
             context.ensure_scheduled_immediately().unwrap();
             // The pending immediate request would replace the successor; Stop
@@ -4314,7 +4308,7 @@ fn coalesced_watchdog_requests_preserve_paired_handles_without_reinstallation() 
     set_time(15);
     assert!(run_next_due());
     assert_eq!(timer_count(), 2);
-    inject_provider_install_fault();
+    ProviderFault::BINDING.inject();
     registration.ensure_scheduled().unwrap();
     registration.ensure_scheduled_immediately().unwrap();
     assert_eq!(timer_count(), 2);
@@ -4418,7 +4412,7 @@ fn cancellation_and_unregistration_release_captures_after_provider_cleanup() {
             if unregister {
                 unregister_claim(&claim).unwrap();
             } else {
-                cancel_claim(&claim, None).unwrap();
+                cancel_claim(Declared(&claim)).unwrap();
             }
             assert!(dropped.get());
         }
@@ -4511,7 +4505,7 @@ fn terminal_provider_and_scheduler_failures_release_captures_outside_registry_bo
         }),
     )
     .unwrap();
-    inject_provider_install_fault();
+    ProviderFault::BINDING.inject();
     assert!(matches!(
         registration.ensure_scheduled(TimerSchedule::At(20)),
         Err(TimerError::OwnershipInvariant)
@@ -4691,7 +4685,7 @@ fn failed_first_reconciliation_retires_all_policies_before_retry() {
             })
             .unwrap();
             if rejection == Rejection::ProviderBinding {
-                inject_provider_install_fault();
+                ProviderFault::BINDING.inject();
             }
             let result = slot.reconcile(
                 &timer,
@@ -4823,7 +4817,7 @@ fn later_reconciliation_provider_error_retains_original_callback_for_retry() {
         )
         .unwrap();
         let original_id = timer_snapshot(&timer).unwrap().unwrap().registration_id();
-        inject_provider_install_fault();
+        ProviderFault::BINDING.inject();
         let result = slot.reconcile(&timer, cadence, true, None, Rc::clone(&ignored_calls));
         assert!(matches!(result, Err(TimerError::OwnershipInvariant)));
         assert!(slot.claim().is_some());
@@ -4984,7 +4978,7 @@ fn initial_provider_failures_retire_all_policies_and_lifetimes_before_capture_dr
                 timer: timer.clone(),
                 dropped: Rc::clone(&dropped),
             };
-            inject_provider_install_fault();
+            ProviderFault::BINDING.inject();
             let result = initial_registration_with_capture(
                 policy,
                 timer,
@@ -5014,7 +5008,7 @@ fn backend_admission_failure_retires_initial_claim_before_capture_drop() {
                 timer: timer.clone(),
                 dropped: Rc::clone(&dropped),
             };
-            platform::ADMISSION_FAULT.set(Some((0, error)));
+            ProviderFault::Admission { after: 0, error }.inject();
             let result = initial_registration_with_capture(
                 policy,
                 timer,

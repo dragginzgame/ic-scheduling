@@ -1,8 +1,18 @@
+mod snapshot;
+
+#[cfg(test)]
+use crate::api::{DeliveryPayload, Status};
+use snapshot::{
+    Entry, MAX_BYTES, MAX_JOBS, Snapshot, check_entry, check_receipts, decode, delivery_valid,
+    encode, task_valid,
+};
+#[cfg(test)]
+use snapshot::{FORMAT, LIMITS, MAX_MESSAGE};
+
 use std::num::NonZeroU64;
 
 use ic_jobs::{
-    Attempt, Job, JobId, JobRecord, JobState, MissedRunPolicy, Outcome, RetryPolicy, Schedule,
-    next_due_ns, start_next,
+    Job, JobId, JobRecord, JobState, MissedRunPolicy, Outcome, RetryPolicy, Schedule, start_next,
 };
 use ic_platform_types::Principal;
 use ic_storage::{
@@ -10,103 +20,16 @@ use ic_storage::{
     MemoryRequest, MemoryRuntime, RuntimeMemory, SealedDeclarationSnapshot, StableKey,
     adapter::{CollectionError, StableCell},
 };
+#[cfg(test)]
 use ic_wire::{Limits, native};
-use serde::{Deserialize, Serialize};
+#[cfg(test)]
+use serde::Deserialize;
 
-use crate::api::{Create, Delivery, DeliveryPayload, Error, Init, Status, Task, Timing, View};
-use crate::logging::{Event, JobLogs};
-use crate::metrics::{Counts, JobWindow};
+use crate::api::{Create, Delivery, Error, Init, Task, Timing, View};
+use crate::observations::{Event, Observations};
 
-const MAX_JOBS: usize = 32;
-const MAX_BYTES: usize = 24 * 1024;
-// This queue's identity is independent of Storage's allocation-directory format.
-const FORMAT: &[u8; 4] = b"JQW\x01";
-const LIMITS: Limits = Limits {
-    bytes: MAX_BYTES - FORMAT.len(),
-    allocation: 1024 * 1024,
-    nodes: 8192,
-    depth: 32,
-};
-const MAX_MESSAGE: usize = 256;
 pub(crate) const BATCH: usize = 2;
 const KEY: &str = "test.jobs.consumer.management.v1";
-
-#[derive(Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct Entry<J = JobRecord> {
-    job: J,
-    task: Task,
-}
-
-#[derive(Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-struct Snapshot<J = JobRecord> {
-    init: Init,
-    next_id: u64,
-    jobs: Vec<Entry<J>>,
-    counter: u64,
-    receipts: Vec<Delivery>,
-}
-
-impl<J> Snapshot<J> {
-    fn check_header(&self) -> Result<(), Error> {
-        if self.jobs.len() > MAX_JOBS || self.receipts.len() > MAX_JOBS || self.next_id == 0 {
-            return Err(Error::InvalidStorage);
-        }
-        Ok(())
-    }
-}
-
-fn check_entry(id: JobId, task: &Task, next_id: u64, previous: &mut u128) -> Result<(), Error> {
-    if id.0 <= *previous || id.0 >= u128::from(next_id) || !task_valid(task) {
-        return Err(Error::InvalidStorage);
-    }
-    *previous = id.0;
-    Ok(())
-}
-
-fn check_receipts(receipts: &[Delivery]) -> Result<(), Error> {
-    for (index, receipt) in receipts.iter().enumerate() {
-        if !delivery_valid(receipt)
-            || receipts[..index]
-                .iter()
-                .any(|other| receipt_key(other) == receipt_key(receipt))
-        {
-            return Err(Error::InvalidStorage);
-        }
-    }
-    Ok(())
-}
-
-impl Snapshot {
-    // Consume each record and payload together, restoring before checking that
-    // entry's metadata. Typed writes use the same collection checks by borrowing.
-    fn admit(self) -> Result<Snapshot<Job>, Error> {
-        self.check_header()?;
-        let mut previous = 0u128;
-        let jobs = self
-            .jobs
-            .into_iter()
-            .map(|entry| {
-                let id = entry.job.id;
-                let job = Job::restore(entry.job).map_err(job_error)?;
-                check_entry(id, &entry.task, self.next_id, &mut previous)?;
-                Ok(Entry {
-                    job,
-                    task: entry.task,
-                })
-            })
-            .collect::<Result<_, _>>()?;
-        check_receipts(&self.receipts)?;
-        Ok(Snapshot {
-            init: self.init,
-            next_id: self.next_id,
-            jobs,
-            counter: self.counter,
-            receipts: self.receipts,
-        })
-    }
-}
 
 /// Consumer-local reply and deadline from successfully admitted durable state.
 /// Mutated state is committed before return; idle dispatch does not write.
@@ -130,89 +53,12 @@ pub(crate) struct QueueTotals {
     pub(crate) receipts: u64,
 }
 
-impl Snapshot<Job> {
-    fn next_due_ns(&self) -> Option<u64> {
-        next_due_ns(self.jobs.iter().map(|entry| &entry.job))
-    }
-
-    fn index(&self, id: u64) -> Result<usize, Error> {
-        self.jobs
-            .iter()
-            .position(|entry| entry.job.record().id == JobId(u128::from(id)))
-            .ok_or(Error::UnknownJob)
-    }
-
-    fn take_entry(mut self, id: u64) -> Result<Entry<Job>, Error> {
-        let index = self.index(id)?;
-        Ok(self.jobs.swap_remove(index))
-    }
-
-    fn receipt_index(&self, delivery: &Delivery) -> Option<usize> {
-        let key = receipt_key(delivery);
-        self.receipts
-            .iter()
-            .position(|receipt| receipt_key(receipt) == key)
-    }
-}
-
-impl Entry<Job> {
-    fn into_view(self) -> View {
-        let record = self.job.record();
-        View {
-            // Admission bounds IDs below the u64 allocator; creation uses it directly.
-            id: record.id.0 as u64,
-            task: self.task,
-            status: match record.state {
-                JobState::Pending { due_ns } => Status::Pending { due_ns },
-                JobState::Paused { .. } => Status::Paused,
-                JobState::Running => Status::Running,
-                JobState::Uncertain { .. } => Status::Uncertain,
-                JobState::Completed => Status::Completed,
-                JobState::Failed => Status::Failed,
-                JobState::Cancelled => Status::Cancelled,
-            },
-            sequence: record.sequence,
-            occurrence: record.occurrence,
-        }
-    }
-
-    fn delivery_parts(&self) -> Result<(Attempt, &DeliveryPayload), Error> {
-        let attempt = self.job.active_attempt().ok_or(Error::InvalidInput)?;
-        let Task::Deliver(payload) = &self.task else {
-            return Err(Error::InvalidInput);
-        };
-        Ok((attempt, payload))
-    }
-
-    fn delivery(&self) -> Result<Delivery, Error> {
-        let (attempt, payload) = self.delivery_parts()?;
-        Ok(Delivery {
-            // The admitted entry and its active attempt retain the same bounded ID.
-            job: attempt.execution.job.0 as u64,
-            occurrence: attempt.execution.occurrence,
-            sequence: attempt.sequence,
-            payload: payload.clone(),
-        })
-    }
-}
-
-fn delivery_valid(delivery: &Delivery) -> bool {
-    delivery.job != 0 && delivery.sequence != 0 && payload_valid(&delivery.payload)
-}
-
-// Receipt identity is one logical occurrence within the authenticated sender.
-// Exact confirmation still compares the full envelope, including its sequence.
-fn receipt_key(delivery: &Delivery) -> (u64, u64) {
-    (delivery.job, delivery.occurrence)
-}
-
 // Storage owns checked allocation and Cell admission; the consumer owns
 // its snapshot codec, collection semantics and explicit lifecycle calls.
 pub(crate) struct Queue<M: Memory> {
     cell: StableCell<Vec<u8>, M>,
     init: Init,
-    metrics: JobWindow,
-    logs: JobLogs,
+    observations: Observations,
 }
 
 fn job_error(error: ic_jobs::JobError) -> Error {
@@ -252,17 +98,6 @@ fn queue_memory<M: MemoryBacking>(memory: M) -> Result<RuntimeMemory<M>, Error> 
         .map_err(memory_error)
 }
 
-fn task_valid(task: &Task) -> bool {
-    match task {
-        Task::Increment(_) => true,
-        Task::Deliver(payload) => payload_valid(payload),
-    }
-}
-
-fn payload_valid(payload: &DeliveryPayload) -> bool {
-    payload.message.len() <= MAX_MESSAGE
-}
-
 fn schedule(timing: Timing) -> Result<Schedule, Error> {
     Ok(match timing {
         Timing::Once(at_ns) => Schedule::Once { at_ns },
@@ -284,27 +119,6 @@ fn schedule(timing: Timing) -> Result<Schedule, Error> {
             every_ns: NonZeroU64::new(every_ns).ok_or(Error::InvalidInput)?,
         },
     })
-}
-
-fn decode(bytes: &[u8]) -> Result<Snapshot<Job>, Error> {
-    if bytes.len() > MAX_BYTES {
-        return Err(Error::InvalidStorage);
-    }
-    let payload = bytes.strip_prefix(FORMAT).ok_or(Error::InvalidStorage)?;
-    let snapshot: Snapshot = native::decode(payload, LIMITS).map_err(|_| Error::InvalidStorage)?;
-    // Every decoded JobRecord enters through the validated restore boundary.
-    snapshot.admit()
-}
-
-fn encode<J: Serialize>(snapshot: &Snapshot<J>) -> Result<Vec<u8>, Error> {
-    let payload = native::encode(snapshot, LIMITS).map_err(|error| match error {
-        ic_wire::Error::Limit => Error::Capacity,
-        _ => Error::InvalidStorage,
-    })?;
-    let mut bytes = Vec::with_capacity(FORMAT.len() + payload.len());
-    bytes.extend_from_slice(FORMAT);
-    bytes.extend_from_slice(&payload);
-    Ok(bytes)
 }
 
 impl<M: Memory> Queue<M> {
@@ -338,8 +152,7 @@ impl<M: Memory> Queue<M> {
             Self {
                 cell,
                 init: snapshot.init,
-                metrics: JobWindow::new(Counts::EMPTY),
-                logs: JobLogs::new(),
+                observations: Observations::new(),
             },
             next_due_ns,
         ))
@@ -355,14 +168,11 @@ impl<M: Memory> Queue<M> {
     // Management entrypoints authorize before projecting heap diagnostics, just
     // as they do before ordinary queue operations. These reads need no reload.
     pub(crate) fn job_metrics(&self, version: u64) -> crate::api::JobMetrics {
-        self.metrics
-            .state()
-            .snapshot(self.metrics.sequence(), version)
+        self.observations.metrics(version)
     }
 
     pub(crate) fn reset_job_metrics(&mut self, version: u64) -> crate::api::JobMetrics {
-        self.metrics.reset(Counts::EMPTY);
-        self.job_metrics(version)
+        self.observations.reset_metrics(version)
     }
 
     pub(crate) fn job_logs(
@@ -370,23 +180,7 @@ impl<M: Memory> Queue<M> {
         request: crate::api::JobLogRequest,
         version: u64,
     ) -> Result<crate::api::JobLogPage, Error> {
-        self.logs.page(request, version)
-    }
-
-    // A single event projects into both diagnostic owners, only after commit.
-    // A refused log append cannot undo the metric or the durable transition.
-    fn observe(&mut self, now: u64, event: Event) {
-        match &event {
-            Event::Dispatch { retry, .. } => self.metrics.state_mut().dispatch(*retry),
-            Event::Outcome {
-                outcome,
-                reconciled,
-                ..
-            } => {
-                self.metrics.state_mut().outcome(*outcome, *reconciled);
-            }
-        }
-        self.logs.record(now, event);
+        self.observations.logs(request, version)
     }
 
     fn load(&self) -> Result<Snapshot<Job>, Error> {
@@ -542,7 +336,7 @@ impl<M: Memory> Queue<M> {
             // Commit the complete batch before delivery envelopes escape.
             let committed = self.commit(snapshot, DispatchBatch { deliveries, work })?;
             for event in events {
-                self.observe(now, event);
+                self.observations.record(now, event);
             }
             Ok(committed)
         } else {
@@ -594,7 +388,7 @@ impl<M: Memory> Queue<M> {
             job.finish(attempt, now, outcome).map_err(job_error)?;
         }
         let committed = self.commit(snapshot, ())?;
-        self.observe(
+        self.observations.record(
             now,
             Event::Outcome {
                 attempt,

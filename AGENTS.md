@@ -16,8 +16,10 @@ This file is the local overlay. Read [the current handoff](docs/status/current.m
   It describes a proposed consumer integration, not an implemented Canic API.
 - Follow the [shared validation cadence](DRAGGINZGAME.md#validation-and-evidence).
   Local focused checks include package tests, MSRV/Wasm checks and tooling
-  fixtures; `make ci` is the full release suite. Live PocketIC qualification
-  retains its separate explicit selection.
+  fixtures; `make ci` is the full repository suite. Releases use the qualified
+  [group plan](docs/release-validation-groups.md): Jobs-only changes may omit
+  standalone Timers installed checks; shared, Timers or uncertain inputs retain
+  them. Explicit live PocketIC qualification remains separate from native CI.
 - Timers owns the sole private IC timer provider; retain its unsafe FFI confinement,
   dependency checks, runtime qualification and policy cohort gates. Jobs stays
   Serde-only and does not acquire a runtime dependency on Timers.

@@ -11,12 +11,12 @@ trap 'fixture_finish "$?" "$fixture" "Failed library-boundary fixture retained"'
 # Real Cargo resolution against the maintained catalog and lock. Empty fixture
 # source is never built; no sibling source or network dependency is introduced.
 bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" \
-    scripts/ci/check-timer-dependencies.sh scripts/ci/check-cargo-dependency-boundaries.sh \
+    scripts/ci/check-timer-dependencies.sh scripts/ci/check-timer-provider.sh scripts/ci/check-make-execution.sh scripts/ci/check-cargo-dependency-boundaries.sh \
     ci/cargo-dependency-boundaries.json
 RUSTUP_AUTO_INSTALL=0 cargo metadata --locked --offline --format-version 1 > "$fixture/workspace.json"
 platform_version="$(perl -MJSON::PP -0777 -e '
     my $metadata = decode_json(<>);
-    my @platform = grep { $_->{name} eq "ic-platform-runtime" && $_->{version} =~ /^0\.18\.[0-9]+$/ }
+    my @platform = grep { $_->{name} eq "ic-platform-runtime" && $_->{version} =~ /^0\.19\.[0-9]+$/ }
         @{$metadata->{packages}};
     @platform == 1 or die "expected one selected runtime Platform\n";
     print $platform[0]{version};
@@ -241,7 +241,7 @@ if bash "$checker" > identity-failure.log 2>&1; then
     echo 'error: library admitted an unqualified Platform source at the same version' >&2
     exit 1
 fi
-grep -q 'expected one qualified registry ic-platform-runtime 0.18 runtime owner' identity-failure.log
+grep -q 'expected one qualified registry ic-platform-runtime 0.19 runtime owner' identity-failure.log
 reset_manifests
 
 # The feature-selected helper is also registry-owned and must match the facade.
@@ -290,6 +290,47 @@ if bash "$direct_checker" --consumer "$fixture" --external-ic > direct-guard-fai
 fi
 grep -q 'ic-timers -> ic-platform-runtime-guard' direct-guard-failure.log
 reset_manifests
+
+# The actual Make admission must reject a new Host family member without
+# needing that concrete package name in another exclusion roster.
+cp "$root/Makefile" Makefile
+cp -R "$root/make" make
+mkdir -p future-host/src
+printf '[package]\nname="ic-host-unlisted-fixture"\nversion="0.0.0"\nedition="2024"\n' > future-host/Cargo.toml
+printf '' > future-host/src/lib.rs
+cat >> crates/ic-jobs/Cargo.toml <<'EOF'
+
+[target.'cfg(unix)'.dependencies]
+ic-host-unlisted-fixture = { path = "../../future-host" }
+EOF
+cargo metadata --offline --format-version 1 > /dev/null
+if make --no-print-directory check-dependency-graphs > future-host-failure.log 2>&1; then
+    echo 'error: Jobs admitted an unlisted Host family member' >&2; exit 1
+fi
+grep -q 'forbidden pattern.*ic-host-unlisted-fixture\|ic-host-unlisted-fixture.*forbidden pattern' future-host-failure.log
+reset_manifests
+
+# Static provider admission follows the real probe declarations without building
+# a canister. Mutations retain the surrounding source and change one obligation.
+for package in ic-timers ic-timers-runtime-probe ic-timers-size-probe; do
+    cp -R "$root/crates/$package/src/." "crates/$package/src/"
+done
+bash scripts/ci/check-timer-provider.sh
+probe=crates/ic-timers-runtime-probe/src/lib.rs
+cp "$probe" original-probe.rs
+for mutation in identity budget bare; do
+    cp original-probe.rs "$probe"
+    case "$mutation" in
+        identity) perl -0777 -pi -e 's/id = ic_timers_test_protocol::rpc::Method::\w+ as u64/id = 0/' "$probe" ;;
+        budget) perl -0777 -pi -e 's/request = ic_timers_test_protocol::rpc::REQUEST_LIMITS/request = another_limit/' "$probe" ;;
+        bare) printf '\n#[ic_platform_runtime::cdk::query]\nfn unadmitted_probe() {}\n' >> "$probe" ;;
+    esac
+    if bash scripts/ci/check-timer-provider.sh > "provider-$mutation-failure.log" 2>&1; then
+        echo "error: probe admitted $mutation mutation" >&2; exit 1
+    fi
+    grep -q 'probe entrypoints require' "provider-$mutation-failure.log"
+done
+cp original-probe.rs "$probe"
 
 cmp "$root/Cargo.lock" Cargo.lock
 fixture_complete=true

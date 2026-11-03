@@ -53,21 +53,20 @@ It supplies no global queue, database, lifecycle exports or exactly-once effects
 | Principal and explicit-codec canister runtime | Published IC Platform; Jobs retains endpoints, schemas, limits and error policy |
 | Installation, management and delivery encoding and bounded decoding | Published IC Wire; Jobs retains method identities, limits and receipt policy |
 | PocketIC transport and startup | IC Testkit; Jobs supplies Wire frames and retains scenario policy |
-| Shared native management client | Private `ic-jobs-canister-test-support`, used only by the recovery harness and queue example |
+| Shared native management client | Feature-gated `ic-jobs-canister-tests::harness`, used only by the recovery test and queue example |
 | Artifact retention and native filesystem/process mechanics | IC Build and IC Host; Jobs retains optimizer flags and evidence naming |
 | Common setup, formatting and release mechanics | Reviewed Shared Tooling snapshot; Jobs owns its gates, direct-delivery policy and package upload admission |
 
 ## Dependency exposure
 
-Only `ic-jobs` and `ic-timers` are publishable. All seven supporting packages
+Only `ic-jobs` and `ic-timers` are publishable. All six supporting packages
 set `publish = false`; their separation keeps host tooling out of Wasm and
 qualification dependencies out of the libraries.
 
 | Private package | Purpose |
 | --- | --- |
 | `ic-jobs-test-consumer` | Consumer-owned durable state, qualification canister and native composition tests |
-| `ic-jobs-canister-tests` | Native artifact capture, installed recovery tests and queue demo |
-| `ic-jobs-canister-test-support` | Management transport shared by recovery tests and the demo, excluded from the capture binary |
+| `ic-jobs-canister-tests` | Lightweight native artifact capture; explicit `harness` feature for installed recovery tests and queue demo |
 | `ic-timers-pocketic` | Native runtime qualification and cohort runner |
 | `ic-timers-runtime-probe` | Wasm canister exercising timer runtime behavior |
 | `ic-timers-size-probe` | Separate minimal Wasm builds measuring each timer policy's size |
@@ -75,7 +74,7 @@ qualification dependencies out of the libraries.
 
 Root `[workspace.dependencies]` entries select versions; each member opts into
 them. Their presence in the root catalog does not put them in every build.
-The Jobs and Timers blocks list all nine members with full versions and paths,
+The Jobs and Timers blocks list all eight members with full versions and paths,
 including unused private qualification entries; group policy rosters keep those
 real requirements aligned during releases.
 The catalog labels `Production dependencies` and `Tests and tooling only`
@@ -296,7 +295,7 @@ parsing and preserves the original/optimized capture invocation forms.
 The public repository is [dragginzgame/ic-scheduling](https://github.com/dragginzgame/ic-scheduling).
 Select `RELEASE_GROUP=jobs` or `RELEASE_GROUP=timers` explicitly for releases,
 resume and publication. There is no default release group or shared root version.
-The [group policy](ci/cargo-release-groups.json) covers all nine members.
+The [group policy](ci/cargo-release-groups.json) covers all eight members.
 See the [Jobs ledger](releases/jobs/CHANGELOG.md), [Timers ledger](releases/timers/CHANGELOG.md)
 and [shared history through 0.33.1](releases/history.md).
 

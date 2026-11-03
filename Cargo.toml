@@ -4,7 +4,6 @@
 members = [
     "apps/ic-jobs-test-consumer",
     "crates/ic-jobs",
-    "crates/ic-jobs-canister-test-support",
     "crates/ic-jobs-canister-tests",
     "crates/ic-timers",
     "crates/ic-timers-pocketic",
@@ -26,7 +25,6 @@ repository = "https://github.com/dragginzgame/ic-scheduling"
 # Jobs
 # Changelog : releases/jobs/CHANGELOG.md
 ic-jobs = { path = "crates/ic-jobs", version = "0.34.1" }
-ic-jobs-canister-test-support = { path = "crates/ic-jobs-canister-test-support", version = "0.34.1" }
 ic-jobs-canister-tests = { path = "crates/ic-jobs-canister-tests", version = "0.34.1" }
 ic-jobs-test-consumer = { path = "apps/ic-jobs-test-consumer", version = "0.34.1" }
 
@@ -40,8 +38,8 @@ ic-timers-test-protocol = { path = "crates/ic-timers-test-protocol", version = "
 
 # Production dependencies
 # Metrics and Serde also serve qualification consumers.
-ic-metrics = { version = "0.27.0", default-features = false }
-ic-platform-runtime = { version = "0.18.1", default-features = false }
+ic-metrics = { version = "0.28.0", default-features = false }
+ic-platform-runtime = { version = "0.19.0", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"
 
@@ -52,13 +50,13 @@ ic-build = "0.74.0"
 ic-host-artifacts = "0.74.1"
 ic-host-fs = { version = "0.74.1", default-features = false }
 ic-host-process = { version = "0.74.1", default-features = false }
-ic-logging = { version = "0.24.1", default-features = false }
-ic-platform-pocket-ic = { version = "0.18.0", default-features = false }
-ic-platform-types = { version = "0.17.0", default-features = false }
-ic-storage = "0.65.0"
-ic-testkit = "0.80.1"
-ic-wire = "0.15.0"
-ic-wire-endpoint = "0.5.0"
+ic-logging = { version = "0.24.4", default-features = false }
+ic-platform-pocket-ic = { version = "0.20.0", default-features = false }
+ic-platform-types = { version = "0.18.0", default-features = false }
+ic-storage = "0.66.0"
+ic-testkit = "0.83.0"
+ic-wire = "0.16.0"
+ic-wire-endpoint = "0.6.0"
 serde_json = "1.0"
 serde_test = "1.0"
 

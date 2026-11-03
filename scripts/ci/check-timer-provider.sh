@@ -42,11 +42,14 @@ for my $probe (qw(ic-timers-runtime-probe ic-timers-size-probe ic-timers-test-pr
         my $text = do { local $/; <$input> };
         $text !~ /(?:ic_platform_runtime::candid|\bcandid::|\bCandidType\b|\b(?:query_candid_args|update_candid_args|stable_save|stable_restore)\s*[(<])/s
             or die "probe protocols must use Wire: $file\n";
-        while ($text =~ /#\[ic_platform_runtime::cdk::(?:query|update)\b(.*?)\]/sg) {
+        $text !~ /#\[ic_platform_runtime::cdk::(?:query|update)\b/
+            or die "probe entrypoints require canonical Wire Endpoint attributes: $file\n";
+        while ($text =~ /#\[ic_wire_endpoint::(?:query|update)\b(.*?)\]/sg) {
             my $attributes = $1;
-            $attributes =~ /decode_with\s*=/ && $attributes =~ /encode_with\s*=/
-                && $attributes =~ /guard\s*=\s*"crate::codec::admit_request"/
-                or die "probe entrypoints require admitted Wire hooks: $file\n";
+            $attributes =~ /id\s*=\s*ic_timers_test_protocol::rpc::Method::[A-Za-z0-9_]+\s+as\s+u64/
+                && $attributes =~ /request\s*=\s*ic_timers_test_protocol::rpc::REQUEST_LIMITS/
+                && $attributes =~ /response\s*=\s*ic_timers_test_protocol::rpc::RESPONSE_LIMITS/
+                or die "probe entrypoints require explicit protocol identity and Wire budgets: $file\n";
         }
     }}, @probe_roots);
 }

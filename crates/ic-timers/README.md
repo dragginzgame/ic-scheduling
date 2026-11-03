@@ -205,17 +205,17 @@ does not make inspection an authorization or zero-cost guarantee.
 
 ## Minimal `Once` example
 
-The registration examples below work with released 0.32 and pending 0.33.
-The installation pin remains a published 0.32 package. The working tree's
-Metrics 0.18 and embedded Platform 0.9 executor require the matching Timers 0.33
-release before registry consumers can adopt that coordinated runtime graph.
+The registration examples apply to Timers 0.38 and the pending 0.39 line.
+The published pin below selects Timers 0.38.1 with Runtime 0.18 and Metrics 0.27.
+The working tree adopts Runtime 0.19 and Metrics 0.28 for the next 0.39 release;
+registry consumers must select a published, coherent runtime/measurement cohort.
 
 Select one exact published package version when this crate participates in a
 shared framework/application registry:
 
 ```toml
 [dependencies]
-ic-timers = "=0.32.2"
+ic-timers = "=0.38.1"
 ```
 
 Every framework and application crate linked into the same canister must use
@@ -373,10 +373,10 @@ It distinguishes empty from measured zero and returns `SampleCountOverflow` on
 actual count overflow even when scale is zero. An exact count bounds the scaled
 result within `u128`; there is no separate projection-error case.
 
-The pending Timers **0.33** API uses
-`ic_timers::{MeasurementCounter, MeasurementSummary}` from Metrics **0.18**.
+The pending Timers **0.39** API uses
+`ic_timers::{MeasurementCounter, MeasurementSummary}` from Metrics **0.28**.
 Align direct Metrics dependencies when exchanging these values with other
-libraries. Released Timers 0.32 uses Metrics 0.17; Timers 0.31 used Metrics 0.16.
+libraries. Timers 0.38 uses Metrics 0.27.
 The [root dependency catalog](../../Cargo.toml) and
 lockfile select that package identity; different Metrics lines have distinct Rust
 types. Preserve wide totals in reports/codecs, or use checked conversions when
@@ -511,20 +511,18 @@ for commands and qualification. The [architecture](../../docs/timers/architectur
 
 ## Runtime compatibility
 
-Timers 0.38 selects Runtime 0.18.1 or a compatible 0.18 patch directly for IC0
-and execution. Runtime requires its exact matching executor guard. A consumer
-retaining Runtime 0.17 cannot adopt Timers 0.38 alone: update every executor
-supplier together, including Platform CDK facade and endpoint dependencies that
-still select the older Runtime. Cargo rejects mixed generations through their
-shared singleton `links` identity. Keep Timers 0.37 until that coordinated
-adoption is possible; removing or overriding the guard is not a compatibility fix.
+The pending Timers 0.39 selects Runtime 0.19.0 or a compatible 0.19 patch
+for IC0 and execution. Runtime requires its exact matching executor guard.
+Applications retaining Runtime 0.18 must align all executor and Endpoint
+suppliers together before adopting it. Timers 0.38 remains on Runtime 0.18;
+removing or overriding the singleton guard is not a compatibility fix.
 
 Consumers exchanging Timers' public measurement types with a direct Metrics
-dependency must select Metrics 0.27. Canister entrypoints select Runtime's `cdk`
-feature; canonical identities come from Types 0.17. The qualification consumer
-uses Storage 0.65, Wire Core 0.15 and Endpoint 0.5. Native qualification selects
-the independent Platform PocketIC 0.18 client and Testkit 0.80.1; the retired
-Testkit Native and Memory crates are absent.
+dependency select Metrics 0.28. Canister entrypoints select Runtime's `cdk`
+feature; canonical identities come from Types 0.18. The qualification consumer
+selects Storage 0.66, Wire Core 0.16 and Endpoint 0.6. Native qualification uses
+Platform PocketIC client 0.20 and Testkit 0.83; the client identity must match
+Testkit's public interfaces. No retired Testkit Native or Memory crate is used.
 
 These are the qualified integration selections, not additional dependencies of
 the published Timers library. Native and Wasm compilation do not establish

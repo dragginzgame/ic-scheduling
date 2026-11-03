@@ -1,5 +1,5 @@
 use super::*;
-use ic_jobs::{ExecutionId, JobId};
+use ic_jobs::{Attempt, ExecutionId, JobId};
 
 fn event() -> Event {
     Event::Dispatch {

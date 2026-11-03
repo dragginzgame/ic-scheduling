@@ -21,11 +21,11 @@ open my $cargo, '-|', 'cargo', 'metadata', '--locked', '--offline', '--format-ve
 my $bytes = do { local $/; <$cargo> };
 close $cargo or die "Cargo runtime identity observation failed\n";
 my $metadata = decode_json($bytes);
-my @platform = grep { $_->{name} eq 'ic-platform-runtime' && $_->{version} =~ /^0\.18\./ }
+my @platform = grep { $_->{name} eq 'ic-platform-runtime' && $_->{version} =~ /^0\.19\./ }
     @{$metadata->{packages}};
 @platform == 1
     && ($platform[0]{source} // '') eq 'registry+https://github.com/rust-lang/crates.io-index'
-    or die "expected one qualified registry ic-platform-runtime 0.18 runtime owner\n";
+    or die "expected one qualified registry ic-platform-runtime 0.19 runtime owner\n";
 my @guard = grep { $_->{name} eq 'ic-platform-runtime-guard' } @{$metadata->{packages}};
 @guard == 1 && $guard[0]{version} eq $platform[0]{version}
     && ($guard[0]{source} // '') eq 'registry+https://github.com/rust-lang/crates.io-index'
@@ -50,7 +50,7 @@ for my $target ('wasm32-unknown-unknown', $host) {
         push @check, '--forbid-pattern', '^ic-(?:build(?:-|$)|host-|testkit(?:-|$))';
         if ($library) {
             push @check, '--forbid-pattern', '^ic-timers-';
-            # Metrics owns required Serde transport and native Wire metadata.
+            # Metrics owns validated Serde transport.
             # Neither its host codecs nor host parsing belong in deployed Wasm.
             if ($target eq 'wasm32-unknown-unknown') {
                 push @check, '--forbid-pattern', '^ic-wire(?:-|$)';

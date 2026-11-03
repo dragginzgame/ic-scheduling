@@ -16,10 +16,10 @@ case "$1" in
     test-demo)
         export IC_JOBS_CONSUMER_WASM="$wasm"
         exec "$cli" run --ttl 900 -- bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests \
-            --example queue --locked --offline -- --ignored --nocapture --test-threads=1 ;;
+            --example queue --features harness --locked --offline -- --ignored --nocapture --test-threads=1 ;;
     test-demo-cli)
         IC_JOBS_QUEUE_SERVER="$("$cli" check)"
         export IC_JOBS_QUEUE_SERVER IC_JOBS_CONSUMER_WASM="$wasm" IC_JOBS_QUEUE_BIN="$binary"
         exec bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --test queue_cli \
-            --locked --offline -- --ignored --nocapture ;;
+            --features harness --locked --offline -- --ignored --nocapture ;;
 esac

@@ -3,30 +3,6 @@
 
 use super::*;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ProviderFault {
-    None,
-    Admission,
-    Binding,
-}
-
-impl ProviderFault {
-    fn inject(self) {
-        match self {
-            Self::None => {}
-            Self::Admission => {
-                platform::ADMISSION_FAULT.set(Some((0, platform::AdmissionError::Capacity)));
-            }
-            Self::Binding => inject_provider_install_fault(),
-        }
-    }
-
-    fn clear() {
-        platform::ADMISSION_FAULT.set(None);
-        PROVIDER_INSTALL_FAULT_AFTER.with(|fault| fault.set(None));
-    }
-}
-
 fn declaration(
     policy: TestPolicy,
     timer: &TimerIdentity,
@@ -132,18 +108,17 @@ fn generated_command_sequences_preserve_authority_and_handle_ownership() {
                         None
                     };
                     let fault = match command {
-                        Command::ReconcileWithAdmissionFailure => ProviderFault::Admission,
-                        Command::ReconcileWithBindingFailure => ProviderFault::Binding,
+                        Command::ReconcileWithAdmissionFailure => ProviderFault::ADMISSION,
+                        Command::ReconcileWithBindingFailure => ProviderFault::BINDING,
                         _ => ProviderFault::None,
                     };
                     fault.inject();
                     let result = match command {
                         Command::Ensure if policy == TestPolicy::Once => ensure_once_claim(
-                            &claim,
-                            None,
+                            Declared(&claim),
                             TimerSchedule::After(Duration::from_nanos(5)),
                         ),
-                        Command::Ensure => ensure_recurring_claim(&claim, None),
+                        Command::Ensure => ensure_recurring_claim(Declared(&claim)),
                         Command::Reconcile
                         | Command::ReconcileWithAdmissionFailure
                         | Command::ReconcileWithBindingFailure => {
@@ -156,12 +131,12 @@ fn generated_command_sequences_preserve_authority_and_handle_ownership() {
                             };
                             let schedule = Some(TimerSchedule::After(Duration::from_nanos(delay)));
                             if policy == TestPolicy::Watchdog {
-                                reconcile_watchdog_claim(&claim, None, schedule)
+                                reconcile_watchdog_claim(Declared(&claim), schedule)
                             } else {
-                                reconcile_ordinary_claim(&claim, None, schedule)
+                                reconcile_ordinary_claim(Declared(&claim), schedule)
                             }
                         }
-                        Command::Cancel => cancel_claim(&claim, None),
+                        Command::Cancel => cancel_claim(Declared(&claim)),
                         Command::Replace => {
                             if exists {
                                 unregister_claim(&claim).unwrap();
@@ -186,11 +161,11 @@ fn generated_command_sequences_preserve_authority_and_handle_ownership() {
                     // Never let it affect stale-delivery checks or later commands.
                     ProviderFault::clear();
                     let failed = match (&result, fault) {
-                        (Err(TimerError::BackendCapacity), ProviderFault::Admission) => {
+                        (Err(TimerError::BackendCapacity), ProviderFault::ADMISSION) => {
                             failures[0] += 1;
                             true
                         }
-                        (Err(TimerError::OwnershipInvariant), ProviderFault::Binding) => {
+                        (Err(TimerError::OwnershipInvariant), ProviderFault::BINDING) => {
                             failures[1] += 1;
                             true
                         }
@@ -222,7 +197,7 @@ fn generated_command_sequences_preserve_authority_and_handle_ownership() {
                     for old in &retired {
                         assert!(
                             matches!(
-                                cancel_claim(old, None),
+                                cancel_claim(Declared(old)),
                                 Err(TimerError::RegistrationExpired)
                             ),
                             "{trace:?}"
@@ -335,8 +310,8 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                 // cannot distinguish another execution path there.
                 for fault in [
                     ProviderFault::None,
-                    ProviderFault::Admission,
-                    ProviderFault::Binding,
+                    ProviderFault::ADMISSION,
+                    ProviderFault::BINDING,
                 ]
                 .into_iter()
                 .filter(|fault| !abandon || *fault == ProviderFault::None)
@@ -355,7 +330,7 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                             Rc::clone(&context),
                             Rc::clone(&captured),
                         );
-                        reconcile_ordinary_claim(&claim, None, Some(TimerSchedule::At(10)))
+                        reconcile_ordinary_claim(Declared(&claim), Some(TimerSchedule::At(10)))
                             .unwrap();
                         set_time(10);
                         assert!(run_next_due());
@@ -383,16 +358,15 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                                 }
                             }
                             match command {
-                                Command::Cancel => cancel_claim(&claim, None),
+                                Command::Cancel => cancel_claim(Declared(&claim)),
                                 Command::Ensure if recurring => {
-                                    ensure_recurring_claim(&claim, None)
+                                    ensure_recurring_claim(Declared(&claim))
                                 }
                                 Command::Ensure => {
-                                    ensure_once_claim(&claim, None, TimerSchedule::At(20))
+                                    ensure_once_claim(Declared(&claim), TimerSchedule::At(20))
                                 }
                                 Command::Reconcile => reconcile_ordinary_claim(
-                                    &claim,
-                                    None,
+                                    Declared(&claim),
                                     Some(TimerSchedule::At(30)),
                                 ),
                                 Command::Unregister => unregister_claim(&claim),
@@ -453,7 +427,7 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
 
                         assert!(
                             matches!(
-                                cancel_claim(&claim, Some(&token)),
+                                cancel_claim(Executing(&token)),
                                 Err(TimerError::RegistrationExpired)
                             ),
                             "stale context: recurring={recurring} lifetime={lifetime:?} abandon={abandon} fault={fault:?} word={word}"

@@ -7,6 +7,46 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.39.0]
+
+### ⚠️ Breaking
+
+- Adopt Metrics 0.28 for the public measurement types and Runtime 0.19 with its
+  exact executor guard. Consumers exchanging measurement values must update
+  direct Metrics dependencies; applications must align all Runtime/Endpoint
+  suppliers before adopting this Timers release.
+
+### 📦 Dependencies
+
+- Qualify Types 0.18, Wire/Derive 0.16, Endpoint 0.6, Storage 0.66 and Testkit
+  0.83 in the combined consumer. Native qualification selects PocketIC client
+  and facade 0.20 to match Testkit's public client type.
+- Adopt the reviewed Shared Tooling 0.28.2 snapshot, including complete owned-tree
+  inventory admission and updated release-group checks. Retain explicit group
+  versions and runtime safety requirements.
+
+### 🧹 Cleanup
+
+- Carry callback or registration authority as one private value, deriving the
+  claim from it while retaining running-attempt validation and failure ordering.
+- Use shared Wire Endpoint bindings in the qualification probes and a typed
+  runner command definition. Preserve method identities, tuple payloads and
+  explicit byte, node and depth budgets; malformed probe diagnostics now come
+  directly from Wire.
+
+### 🧪 Testing
+
+- Handle native client failures explicitly during clock/cycle observation and
+  simulated progression. Preserve typed canister rejection assertions; report
+  demo transport errors through its existing error path without automatic retry.
+- Adopt explicit group validation plans and durable stage evidence. Timers
+  releases retain their complete installed watchdog/cohort gate; repository
+  CI and combined-consumer checks remain complete.
+- Share native provider-fault selection and installed counter-overflow checks
+  while preserving scenario-specific outcomes and exact measurement admission.
+- Check probe endpoint identities and budgets at the provider boundary, with
+  rejection fixtures for missing protocol declarations and bare entrypoints.
+
 ## [0.38.1] - 2026-11-02
 
 ### 🛠️ Maintenance

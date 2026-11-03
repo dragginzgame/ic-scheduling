@@ -22,8 +22,6 @@ use ic_timers::{
     register_watchdog,
 };
 
-mod codec;
-
 const _: () = assert!(
     cfg!(feature = "baseline") as u8
         + cfg!(feature = "once") as u8
@@ -64,10 +62,10 @@ fn init() {
     }
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::CohortStart as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::CohortStart as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::CohortStart as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn cohort_start() -> OperationMeasurement {
     let (changed, instructions) = measure(start_inner);
@@ -77,10 +75,10 @@ fn cohort_start() -> OperationMeasurement {
     }
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::EnsureAgain as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::EnsureAgain as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::EnsureAgain as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn ensure_again() -> OperationMeasurement {
     let (changed, instructions) = measure(ensure_again_inner);
@@ -90,10 +88,10 @@ fn ensure_again() -> OperationMeasurement {
     }
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::Cancel as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::Cancel as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::Cancel as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn cancel() -> OperationMeasurement {
     let (changed, instructions) = measure(cancel_inner);
@@ -106,10 +104,10 @@ fn cancel() -> OperationMeasurement {
 /// Isolate the raw instruction cost of the start/end page reads used by one
 /// normally completed callback. This probe-only endpoint does not alter the
 /// runtime's callback instruction aggregate.
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::MemorySamplingOverhead as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::MemorySamplingOverhead as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::MemorySamplingOverhead as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn memory_sampling_overhead() -> MemorySamplingMeasurement {
     let ((), empty_bracket_instructions) = measure(|| {
@@ -129,19 +127,19 @@ fn memory_sampling_overhead() -> MemorySamplingMeasurement {
 /// Select a bounded non-trivial callback body for the probe's next Watchdog
 /// registration. This endpoint exists only in the Watchdog test canister.
 #[cfg(feature = "watchdog")]
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::UseRepresentativeWatchdogWork as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::UseRepresentativeWatchdogWork as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::UseRepresentativeWatchdogWork as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn use_representative_watchdog_work() {
     REPRESENTATIVE_WATCHDOG_WORK.with(|enabled| enabled.set(true));
 }
 
-#[ic_platform_runtime::cdk::query(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::Observe as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::Observe as u64 }>"
+#[ic_wire_endpoint::query(
+    id = ic_timers_test_protocol::rpc::Method::Observe as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn observe() -> CohortObservation<&'static str> {
     let snapshot_before = ic_platform_runtime::ic0::performance_counter(1);

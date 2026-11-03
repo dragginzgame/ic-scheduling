@@ -224,9 +224,11 @@ and lost-result scenarios. Durable management now covers pause/resume,
 unstarted-occurrence rescheduling, wakeup reconstruction and real management trap
 rollback. The live harness also checks Wire endpoint refusal, authorization,
 metrics/logging and receipt persistence. The handoff records historical passing
-graphs separately from the current Storage 0.65 graph, whose installed recovery
-has not been selected. The original small native consumers remain focused models;
-they do not substitute for those IC observations.
+graphs separately from the current Storage 0.66 graph. Six selected installed
+cases cover current-source upgrades, invalid restore, blocked effects/receipts,
+Wire refusal and diagnostics. They do not establish cross-version installed
+migration/rollback or old-map compatibility. The original small native consumers
+remain focused models; they do not substitute for those IC observations.
 
 The queue now contains known no-effect local counter failures as terminal jobs,
 while keeping the two-attempt bound and corrupt-record refusal. The additional

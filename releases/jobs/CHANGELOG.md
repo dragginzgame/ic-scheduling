@@ -1,8 +1,46 @@
 # IC Jobs changelog
 
-This ledger covers `ic-jobs`, `ic-jobs-test-consumer`, `ic-jobs-canister-test-support`
-and `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
+This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
+`ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
+
+## [0.34.2]
+
+### 📦 Dependencies
+
+- Update the private integration cohort to Metrics 0.28, Runtime 0.19, Types
+  0.18, Storage 0.66, Testkit 0.83, Wire 0.16 and Endpoint 0.6. Select the native
+  PocketIC client and facade on Testkit's matching 0.20 line, resolving the
+  earlier client-identity blocker. The public Serde-only Jobs contract is unchanged.
+- Select Logging 0.24.4 for bounded heap-only consumer diagnostics.
+- Adopt the reviewed Shared Tooling 0.28.2 snapshot, including complete owned-tree
+  inventory admission and updated release-group checks. Retain explicit group
+  versions and runtime safety requirements.
+
+### 🧹 Cleanup
+
+- Fold the private management transport into `ic-jobs-canister-tests::harness`
+  behind the explicit `harness` feature. Recovery tests and the queue example
+  share that module; the default artifact-capture build retains its lightweight
+  dependency graph. Remove the redundant support package from the workspace and
+  Jobs release catalog, updating native entrypoints and graph checks together.
+- Give the qualification consumer one management-method roster, one committed
+  observation coordinator and a private bounded snapshot module. Retain RPC IDs,
+  stored queue bytes, validated restoration and consumer-owned effects.
+- Share the valid canister installation recipe between the recovery harness and
+  queue demo. Keep deliberately invalid installation tests independent.
+
+### 🧪 Testing
+
+- Handle native client failures explicitly during clock/cycle observation and
+  simulated progression. Preserve typed canister rejection assertions; report
+  demo transport errors through its existing error path without automatic retry.
+- Adopt scoped release validation: changes confined to Jobs run complete
+  native/Wasm CI without standalone Timers watchdog/cohort installation.
+  Shared, dependency, Timers or uncertain changes retain the full gate.
+  Bind group selection and successful execution evidence to release recovery.
+- Match forbidden Build, Host and Testkit dependency families in the consumer
+  graph checks, including future family members.
 
 ## [0.34.1] - 2026-11-02
 

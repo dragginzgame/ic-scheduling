@@ -1,6 +1,6 @@
 //! Interactive host client for the real qualification canister in local PocketIC.
 use clap::{CommandFactory, Parser, Subcommand};
-use ic_jobs_canister_test_support::wire;
+use ic_jobs_canister_tests::harness;
 use ic_jobs_test_consumer::{
     api::{Create, Error as ApiError, Init, Status, Summary, Task, Timing, View},
     management_wire::Method,
@@ -8,7 +8,7 @@ use ic_jobs_test_consumer::{
 use ic_platform_pocket_ic::{PocketIc, PocketIcBuilder};
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{
-    CanisterInstallExt, InstallSpec, PocketIcInstance, PocketIcStartupConfig, advance_and_tick,
+    CanisterInstallExt, PocketIcInstance, PocketIcStartupConfig, advance_and_tick,
 };
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
@@ -179,19 +179,23 @@ impl Demo {
         let manager = ExternalPrincipal::self_authenticating(b"jobs-queue-demo-manager");
         let canister = pic
             .instance()
-            .try_create_and_install(InstallSpec {
-                wasm: std::fs::read(wasm)?,
-                init_bytes: wire::init_bytes(&Init {
-                    manager: manager.into(),
-                    delivery_sender: None,
-                })
+            .try_create_and_install(
+                harness::install_spec(
+                    std::fs::read(wasm)?,
+                    &Init {
+                        manager: manager.into(),
+                        delivery_sender: None,
+                    },
+                    "jobs-queue-demo",
+                )
                 .map_err(failure)?,
-                cycles: 10_000_000_000_000,
-                install_sender: None,
-                label: Some("jobs-queue-demo".into()),
-            })
+            )
             .map_err(failure)?;
-        let origin_ns = pic.instance().get_time().as_nanos_since_unix_epoch();
+        let origin_ns = pic
+            .instance()
+            .get_time()
+            .map_err(failure)?
+            .as_nanos_since_unix_epoch();
         println!(
             "Connected to local canister {canister} (PocketIC).\n\
             Each job increments the canister counter. This session starts fresh.\n\
@@ -206,8 +210,13 @@ impl Demo {
         })
     }
 
-    fn now(&self) -> u64 {
-        self.pic.instance().get_time().as_nanos_since_unix_epoch()
+    fn now(&self) -> io::Result<u64> {
+        Ok(self
+            .pic
+            .instance()
+            .get_time()
+            .map_err(failure)?
+            .as_nanos_since_unix_epoch())
     }
 
     fn query<T: DeserializeOwned>(&self, method: Method, args: &impl Serialize) -> io::Result<T> {
@@ -224,8 +233,8 @@ impl Demo {
             .map_err(failure)
     }
 
-    fn client(&self) -> wire::Client<'_> {
-        wire::Client {
+    fn client(&self) -> harness::Client<'_> {
+        harness::Client {
             pic: self.pic.instance(),
             canister: self.canister,
             caller: self.manager,
@@ -255,7 +264,7 @@ impl Demo {
         catch_up: bool,
     ) -> io::Result<()> {
         let first_ns = self
-            .now()
+            .now()?
             .checked_add(u64::try_from(after.as_nanos()).map_err(failure)?)
             .ok_or_else(|| io::Error::other("deadline exceeds the canister timestamp range"))?;
         let (timing, schedule) = if let Some(interval) = every {
@@ -296,7 +305,7 @@ impl Demo {
 
     fn show_views(&self, views: &mut [View]) -> io::Result<()> {
         let summary: Summary = self.query(Method::Summary, &())?;
-        let now = self.now();
+        let now = self.now()?;
         println!(
             "\nIC clock +{} | counter={} | watchdog={}",
             span(now.saturating_sub(self.origin_ns) / 1_000_000_000 * 1_000_000_000),
@@ -347,7 +356,7 @@ impl Demo {
     }
 
     fn advance(&self, advance: Duration, before: Option<Vec<View>>) -> io::Result<Vec<View>> {
-        self.now()
+        self.now()?
             .checked_add(u64::try_from(advance.as_nanos()).map_err(failure)?)
             .ok_or_else(|| io::Error::other("clock exceeds the canister timestamp range"))?;
         // Watch carries only the previous step's result; other commands start
@@ -358,7 +367,7 @@ impl Demo {
         };
         // Drive real timer callbacks; never invoke dispatch_due from the host.
         // Fixed rounds keep a large CatchUp backlog from blocking the terminal.
-        advance_and_tick(self.pic.instance(), advance, 32);
+        advance_and_tick(self.pic.instance(), advance, 32).map_err(failure)?;
         let mut after = self.views()?;
         for view in &after {
             let previous = before

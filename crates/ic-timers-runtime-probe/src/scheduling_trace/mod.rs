@@ -35,10 +35,10 @@ fn install_once(name: &str, seconds: u64, event: u8) {
     .expect("trace registration");
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartSchedulingTrace as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::StartSchedulingTrace as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::StartSchedulingTrace as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn start_scheduling_trace() {
     assert!(!STARTED.replace(true), "fresh trace");
@@ -86,10 +86,10 @@ fn start_scheduling_trace() {
     .expect("self-cancelling one-shot registration");
 }
 
-#[ic_platform_runtime::cdk::query(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::SchedulingTrace as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::SchedulingTrace as u64 }>"
+#[ic_wire_endpoint::query(
+    id = ic_timers_test_protocol::rpc::Method::SchedulingTrace as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn scheduling_trace() -> Vec<u8> {
     EVENTS.with_borrow(Clone::clone)

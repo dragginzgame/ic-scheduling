@@ -63,11 +63,19 @@ completed/cancelled jobs, so its existing limit of 32 jobs applies. The payload
 is a counter increment, providing an observable canister effect for each run.
 This fixture is not a production deployment or a persistent background service.
 
+## Package boundary
+
+The default package builds `jobs-capture-artifact` without PocketIC, Testkit,
+Wire or the qualification-consumer library. Enable `--features harness` to build
+`ic_jobs_canister_tests::harness`, the recovery test or the queue example. The
+Make demo/recovery targets select this feature explicitly; those targets retain
+their existing separate server admission and live-test selection.
+
 ## CLI tests
 
 ```bash
 # Parser/input tests; compiles the live scenario without starting a server.
-bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --example queue --locked --offline
+bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --example queue --features harness --locked --offline
 
 # Explicit local canister test, with visible schedules and assertions.
 make test-demo

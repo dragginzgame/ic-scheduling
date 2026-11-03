@@ -6,7 +6,7 @@ use ic_jobs_test_consumer::{
 };
 use ic_platform_pocket_ic::PocketIc;
 use ic_platform_types::principal::ExternalPrincipal;
-use ic_testkit::pic::{WireCallError, WireCallSpec, query_wire, update_wire};
+use ic_testkit::pic::{InstallSpec, WireCallError, WireCallSpec, query_wire, update_wire};
 use serde::{Serialize, de::DeserializeOwned};
 
 // Transport and the management contract converge here. Each caller still owns
@@ -44,6 +44,21 @@ impl Client<'_> {
 /// Encode installation arguments using the consumer's bounded Wire contract.
 pub fn init_bytes(config: &Init) -> Result<Vec<u8>, ic_wire::Error> {
     ic_wire::native::encode_request(Method::Init as u64, config, REQUEST_LIMITS)
+}
+
+/// Standard qualification-consumer installation, with caller-owned label and errors.
+pub fn install_spec(
+    wasm: Vec<u8>,
+    config: &Init,
+    label: impl Into<String>,
+) -> Result<InstallSpec, ic_wire::Error> {
+    Ok(InstallSpec {
+        wasm,
+        init_bytes: init_bytes(config)?,
+        cycles: 10_000_000_000_000,
+        install_sender: None,
+        label: Some(label.into()),
+    })
 }
 
 /// Project one consumer-owned management method into the host transport spec.

@@ -20,12 +20,12 @@ thread_local! {
     static COMPLETED: Cell<u64> = const { Cell::new(0) };
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::StartSchedulerPressure as u64 }>",
-    encode_with = "crate::codec::encode_unit::<{ ic_timers_test_protocol::rpc::Method::StartSchedulerPressure as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::StartSchedulerPressure as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
-fn start_scheduler_pressure(successor: bool) {
+fn start_scheduler_pressure((successor,): (bool,)) {
     let delay = if successor {
         let deadline = ic_timers::timer_snapshot(&super::probe_identity())
             .unwrap()
@@ -70,21 +70,21 @@ fn start_scheduler_pressure(successor: bool) {
     }
 }
 
-#[ic_platform_runtime::cdk::query(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::SchedulerPressureCompleted as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::SchedulerPressureCompleted as u64 }>"
+#[ic_wire_endpoint::query(
+    id = ic_timers_test_protocol::rpc::Method::SchedulerPressureCompleted as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn scheduler_pressure_completed() -> u64 {
     COMPLETED.get()
 }
 
-#[ic_platform_runtime::cdk::update(
-    guard = "crate::codec::admit_request",
-    decode_with = "crate::codec::decode::<_, { ic_timers_test_protocol::rpc::Method::ReconcileSchedulerPressure as u64 }>",
-    encode_with = "crate::codec::encode::<_, { ic_timers_test_protocol::rpc::Method::ReconcileSchedulerPressure as u64 }>"
+#[ic_wire_endpoint::update(
+    id = ic_timers_test_protocol::rpc::Method::ReconcileSchedulerPressure as u64,
+    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
+    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
-fn reconcile_scheduler_pressure(mode: SchedulerReconcileMode, deadline: u64) -> bool {
+fn reconcile_scheduler_pressure((mode, deadline): (SchedulerReconcileMode, u64)) -> bool {
     let desired = match mode {
         SchedulerReconcileMode::Scheduled => WatchdogReconcileState::Scheduled,
         SchedulerReconcileMode::ScheduledImmediately => {

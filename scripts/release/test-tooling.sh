@@ -43,8 +43,9 @@ for arg in "$@"; do
     case "$arg" in
         release-verify)
             printf '%s\n' "${RELEASE_GROUP:?}" >> "$GROUP_TEST_EVENTS"
-            bash scripts/release/metadata.sh validated
+            bash scripts/release/verify.sh
             exit 0 ;;
+        ci|install-testkit-tools|install-consumer-server|test-timer-watchdog|test-timer-cohorts) exit 0 ;;
         install-tools|tools-check|install-release-tools) exit 0 ;;
         release-tools-check) printf '%s\n' "$GROUP_TEST_EDITOR"; exit 0 ;;
         release-push-check)
@@ -72,7 +73,7 @@ export CARGO_NET_OFFLINE=true RUSTUP_AUTO_INSTALL=0
 check_metadata_rollback() (
     local suite="$1" selected="$2" previous="$3" candidate="$4" base="$5"
     local receipts status failure
-    bash scripts/release/metadata.sh validated
+    bash scripts/release/verify.sh > "$suite/$selected-validation.log" 2>&1
     receipts=".git/release-state/$selected-$candidate.receipts"
     cp "$receipts/validated" "$suite/$selected-valid-receipt"
     printf 'tampered\n' >> "$receipts/validated"
@@ -213,11 +214,14 @@ qualify_group() (
     candidate="$(bash scripts/ci/next-release-version.sh "$previous" patch)"
     other_group=timers; [[ "$selected" != timers ]] || other_group='jobs'
     other_version="$(RELEASE_GROUP="$other_group" bash scripts/release/group.sh version)"
-    printf '# Fixture ledger\n\n## [%s] - Unreleased\n\n### 🩹 Fixed\n\n- Fixture group preparation.\n' "$candidate" > "$ledger"
+    printf '# Fixture ledger\n\n## [%s] - 2026-10-30\n\n### 🩹 Fixed\n\n- Qualified fixture baseline.\n' "$previous" > "$ledger"
     git init -q -b main
     git config user.name 'Scheduling fixture'; git config user.email 'fixture@example.invalid'
     git config core.hooksPath /dev/null
     git add -- .; git commit -qm baseline
+    git tag -a "$selected-v$previous" -m 'Qualified fixture release boundary'
+    printf '# Fixture ledger\n\n## [%s] - Unreleased\n\n### 🩹 Fixed\n\n- Fixture group preparation.\n' "$candidate" > "$ledger"
+    git add -- "$ledger"; git commit -qm 'Pending group notes'
     base="$(git rev-parse HEAD)"
     export RELEASE_SOURCE="$base" RELEASE_PREVIOUS="$previous" RELEASE_VERSION="$candidate"
     export RELEASE_DATE=2026-10-31 RELEASE_REMOTE=origin RELEASE_BRANCH=main
@@ -247,6 +251,10 @@ qualify_group() (
             resume_release "$suite" "$selected" "$other_group" "$candidate" "$base"
             check_publication "$suite" "$selected" "$other_group" "$candidate" "$package" ;;
     esac
+    local validation_scope=workspace evidence
+    [[ "$selected" != jobs ]] || validation_scope=group
+    evidence="$(cat ".git/release-state/$selected-$candidate.receipts/validation-evidence")"
+    [[ "$(jq -r .scope ".git/release-state/$selected-$candidate.receipts/$evidence/plan.json")" == "$validation_scope" ]]
     cmp "$other_ledger" "$suite/$selected-other-ledger"
     cmp CHANGELOG.md "$suite/$selected-index"
     cmp releases/history.md "$suite/$selected-history"
@@ -262,7 +270,7 @@ qualify_group() (
         CARGO_TARGET_DIR="$suite/jobs-consumer-target" bash scripts/dev/minimum-rust.sh cargo check \
             -p ic-jobs --example persisted_job --locked --offline
     fi
-    printf '%s group %s passed (real Cargo metadata/editor/Git; substituted full gate, tool setup and upload)\n' "$selected" "$mode"
+    printf '%s group %s passed (scope=%s; real Cargo metadata/editor/Git/plan receipts; product checks, setup and uploads substituted)\n' "$selected" "$mode" "$validation_scope"
 )
 
 check_refusals "$fixture_suite"

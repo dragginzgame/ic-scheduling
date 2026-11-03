@@ -1,5 +1,5 @@
 use super::harness::{INIT_CYCLES, fresh_pocket_ic, install_probe, update_unit, wait_for_probe};
-use super::harness::{query_wire, update_wire};
+use super::harness::{canister_rejection, query_wire, update_wire};
 use ic_platform_pocket_ic::{CanisterSettings, ErrorCode, PocketIc, RejectCode};
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{PocketIcInstance, advance_and_tick};
@@ -20,7 +20,10 @@ fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
     let pic = owned.instance();
     let canister_id = install_probe(pic, probe_wasm());
     let caller = ExternalPrincipal::anonymous();
-    let now = pic.get_time().as_nanos_since_unix_epoch();
+    let now = pic
+        .get_time()
+        .expect("read IC time")
+        .as_nanos_since_unix_epoch();
     let foreign = now + 100_000_000_000;
     let set_foreign = |timestamp| {
         update_wire::<u64, _>(
@@ -33,9 +36,10 @@ fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
         .unwrap()
     };
     let assert_conflict = |method: Method, args: Vec<u8>| {
-        let rejected = pic
-            .update_call(canister_id, caller, method.name(), args)
-            .unwrap_err();
+        let rejected = canister_rejection(
+            pic.update_call(canister_id, caller, method.name(), args)
+                .unwrap_err(),
+        );
         assert!(
             rejected
                 .reject_message
@@ -85,7 +89,8 @@ fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
         (deadline + 1,),
     )
     .unwrap();
-    pic.advance_time(Duration::from_nanos(1_000_000_001));
+    pic.advance_time(Duration::from_nanos(1_000_000_001))
+        .expect("advance IC time");
     let completed = wait_for_probe(
         pic,
         32,
@@ -95,7 +100,7 @@ fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
     assert_eq!(completed.scheduler_started.total, 1);
     update_unit(pic, canister_id, Method::Stop);
     assert_eq!(snapshot(pic, canister_id).next_deadline_ns, None);
-    advance_and_tick(pic, Duration::from_secs(2), 16);
+    advance_and_tick(pic, Duration::from_secs(2), 16).expect("advance and tick PocketIC");
     assert_eq!(snapshot(pic, canister_id).completed_work, 1);
 }
 
@@ -107,18 +112,21 @@ fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate() 
     let relay_id = install_probe(pic, probe_wasm());
     assert!(update_bool(pic, canister_id, Method::Start));
     let before = snapshot(pic, canister_id);
-    let balance = pic.cycle_balance(canister_id);
+    let balance = pic
+        .cycle_balance(canister_id)
+        .expect("read canister cycles");
     // The first pending dispatch ID is valid: admission must not rely on a
     // malformed payload or a nonexistent task to prevent early execution.
     let payload = 1_u64.to_le_bytes().to_vec();
-    let denied = pic
-        .update_call(
+    let denied = canister_rejection(
+        pic.update_call(
             canister_id,
             ExternalPrincipal::anonymous(),
             TIMER_EXECUTOR_METHOD,
             payload.clone(),
         )
-        .unwrap_err();
+        .unwrap_err(),
+    );
     assert_eq!(denied.error_code, ErrorCode::CanisterCalledTrap);
     assert!(
         denied
@@ -126,17 +134,22 @@ fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate() 
             .contains("probe ingress: timer dispatch is internal")
     );
     assert_eq!(snapshot(pic, canister_id), before);
-    assert_eq!(pic.cycle_balance(canister_id), balance);
+    assert_eq!(
+        pic.cycle_balance(canister_id)
+            .expect("read canister cycles"),
+        balance
+    );
 
     // The host's existing payload policy still runs for non-timer methods.
-    let denied = pic
-        .update_call(
+    let denied = canister_rejection(
+        pic.update_call(
             canister_id,
             ExternalPrincipal::anonymous(),
             Method::Start.name(),
             vec![0; ic_timers_test_protocol::rpc::REQUEST_LIMITS.bytes + 1],
         )
-        .unwrap_err();
+        .unwrap_err(),
+    );
     assert_eq!(denied.error_code, ErrorCode::CanisterCalledTrap);
     assert!(
         denied
@@ -145,7 +158,9 @@ fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate() 
     );
     assert_eq!(snapshot(pic, canister_id), before);
 
-    let balance = pic.cycle_balance(canister_id);
+    let balance = pic
+        .cycle_balance(canister_id)
+        .expect("read canister cycles");
     let rejected: String = update_wire(
         pic,
         relay_id,
@@ -156,14 +171,18 @@ fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate() 
     .unwrap();
     assert!(rejected.contains("self-call required"), "{rejected}");
     assert_eq!(snapshot(pic, canister_id), before);
-    let foreign_cost = balance - pic.cycle_balance(canister_id);
+    let foreign_cost = balance
+        - pic
+            .cycle_balance(canister_id)
+            .expect("read canister cycles");
     assert!(
         foreign_cost > 0,
         "endpoint authentication still costs target cycles"
     );
     println!("foreign_dispatch_authentication_cycles={foreign_cost}");
 
-    pic.advance_time(Duration::from_secs(1));
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
     let completed = wait_for_probe(
         pic,
         32,
@@ -206,15 +225,14 @@ fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
         vec![0; REQUEST_LIMITS.bytes + 1],
         truncated,
     ] {
-        assert!(
+        canister_rejection(
             pic.update_call(
                 canister_id,
                 ExternalPrincipal::anonymous(),
                 Method::StartOrdinary.name(),
-                arguments
+                arguments,
             )
-            .is_err(),
-            "invalid Wire arguments must reject before registration"
+            .expect_err("invalid Wire arguments must reject before registration"),
         );
         assert!(!ordinary_observation(pic, canister_id).declared);
         assert_eq!(snapshot(pic, canister_id).scheduler_started.total, 0);
@@ -225,18 +243,19 @@ fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
         encode_request(Method::ScheduleAt as u64, &(0_u64,), REQUEST_LIMITS).unwrap();
     assert_eq!(nonminimal.pop(), Some(0));
     nonminimal.extend_from_slice(&[0x80, 0]);
-    let rejection = pic
-        .update_call(
+    let rejection = canister_rejection(
+        pic.update_call(
             canister_id,
             ExternalPrincipal::anonymous(),
             Method::ScheduleAt.name(),
             nonminimal,
         )
-        .unwrap_err();
+        .unwrap_err(),
+    );
+    assert_eq!(rejection.error_code, ErrorCode::CanisterCalledTrap);
     assert!(
-        rejection
-            .reject_message
-            .contains("probe request: wire Malformed")
+        rejection.reject_message.contains("wire Malformed"),
+        "{rejection:?}"
     );
     assert_eq!(snapshot(pic, canister_id).scheduler_started.total, 0);
     // Exercise our protocol-to-Testkit adapter at its three failure boundaries.
@@ -272,7 +291,7 @@ fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
     assert_eq!(context.method_id, id);
     assert!(matches!(
         source.as_ref(),
-        ic_testkit::pic::PocketIcCallFailure::Rejected(_)
+        ic_platform_pocket_ic::ClientError::Canister(_)
     ));
     let error = query_wire::<bool, _>(pic, canister_id, caller, Method::OrdinaryObservation, ())
         .unwrap_err();
@@ -307,7 +326,7 @@ fn self_call_queue_pressure_defers_timer_submission_without_losing_work() {
     let pic = owned.instance();
     let canister_id = install_probe(pic, probe_wasm());
     update_unit(pic, canister_id, Method::PressureAndStart);
-    advance_and_tick(pic, Duration::ZERO, 8);
+    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
     let (failed, replies): (u64, u64) = query_wire(
         pic,
         canister_id,
@@ -319,17 +338,22 @@ fn self_call_queue_pressure_defers_timer_submission_without_losing_work() {
     println!("ic_timers_queue_pressure failed={failed} replies={replies}");
     assert!(failed > 0);
     assert!(replies >= 500);
-    assert!(pic.cycle_balance(canister_id) > INIT_CYCLES / 2);
+    assert!(
+        pic.cycle_balance(canister_id)
+            .expect("read canister cycles")
+            > INIT_CYCLES / 2
+    );
     assert_eq!(snapshot(pic, canister_id).scheduler_started.total, 0);
     update_unit(pic, canister_id, Method::ReleasePressure);
-    advance_and_tick(pic, Duration::ZERO, 16);
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     assert_eq!(snapshot(pic, canister_id).scheduler_started.total, 0);
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 16);
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let completed = snapshot(pic, canister_id);
     assert_eq!(completed.scheduler_started.total, 1);
     assert_eq!(completed.completed_work, 1);
-    advance_and_tick(pic, Duration::ZERO, 8);
+    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
     assert_eq!(snapshot(pic, canister_id).completed_work, 1);
 }
 
@@ -340,10 +364,14 @@ fn deferred_submission_cancellation_and_replacement_do_not_revive_old_work() {
         let pic = owned.instance();
         let canister_id = install_probe(pic, probe_wasm());
         update_unit(pic, canister_id, Method::PressureAndStart);
-        advance_and_tick(pic, Duration::ZERO, 8);
+        advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
         let original = snapshot(pic, canister_id);
         assert_eq!(original.scheduler_started.total, 0);
-        assert!(pic.cycle_balance(canister_id) > INIT_CYCLES / 2);
+        assert!(
+            pic.cycle_balance(canister_id)
+                .expect("read canister cycles")
+                > INIT_CYCLES / 2
+        );
         update_unit(
             pic,
             canister_id,
@@ -360,7 +388,7 @@ fn deferred_submission_cancellation_and_replacement_do_not_revive_old_work() {
             assert_eq!(changed.next_deadline_ns, None);
         }
         update_unit(pic, canister_id, Method::ReleasePressure);
-        advance_and_tick(pic, Duration::ZERO, 16);
+        advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
         // A fresh canister's first backend identity belongs to the old scheduler.
         // Even an authenticated late delivery must not revive it after removal.
         let stale_delivery: bool = update_wire(
@@ -373,8 +401,9 @@ fn deferred_submission_cancellation_and_replacement_do_not_revive_old_work() {
         .expect("stale self-call result");
         assert!(stale_delivery);
         assert_eq!(snapshot(pic, canister_id).completed_work, 0);
-        pic.advance_time(Duration::from_secs(1));
-        advance_and_tick(pic, Duration::ZERO, 16);
+        pic.advance_time(Duration::from_secs(1))
+            .expect("advance IC time");
+        advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
         let recovered = snapshot(pic, canister_id);
         assert_eq!(recovered.completed_work, u64::from(replace));
         assert_eq!(recovered.scheduler_started.total, u128::from(replace));
@@ -387,10 +416,10 @@ fn deferred_submission_cancellation_and_replacement_do_not_revive_old_work() {
                 (0_u64,),
             )
             .expect("reschedule retained registration");
-            advance_and_tick(pic, Duration::ZERO, 16);
+            advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
             assert_eq!(snapshot(pic, canister_id).completed_work, 1);
         }
-        advance_and_tick(pic, Duration::ZERO, 8);
+        advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
         assert_eq!(snapshot(pic, canister_id).completed_work, 1);
     }
 }
@@ -411,7 +440,7 @@ fn immediate_initial_watchdog_runs_without_advancing_cadence_time() {
     assert_eq!(initial.schedule_requests.total, 1);
     assert_eq!(initial.wakeups_armed.total, 1);
 
-    advance_and_tick(pic, Duration::ZERO, 16);
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let completed = snapshot(pic, canister_id);
     assert_eq!(completed.completed_work, 1);
     assert_eq!(completed.scheduler_started.total, 1);
@@ -428,8 +457,11 @@ fn successful_immediate_continuation_runs_again_without_waiting_for_cadence() {
     assert!(update_bool(pic, canister_id, Method::Start));
     update_unit(pic, canister_id, Method::ContinueImmediatelyOnNextWork);
 
-    let cycles_before_first = pic.cycle_balance(canister_id);
-    pic.advance_time(Duration::from_secs(1));
+    let cycles_before_first = pic
+        .cycle_balance(canister_id)
+        .expect("read canister cycles");
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
     let immediate = wait_for_probe(
         pic,
         16,
@@ -442,10 +474,15 @@ fn successful_immediate_continuation_runs_again_without_waiting_for_cadence() {
     assert_eq!(immediate.schedule_requests.total, 1);
     assert_eq!(immediate.wakeups_armed.total, 3);
     assert_eq!(immediate.work_dispatched.total, 1);
-    let first_dispatch_cycles = cycles_before_first.saturating_sub(pic.cycle_balance(canister_id));
+    let first_dispatch_cycles = cycles_before_first.saturating_sub(
+        pic.cycle_balance(canister_id)
+            .expect("read canister cycles"),
+    );
 
-    let cycles_before_second = pic.cycle_balance(canister_id);
-    advance_and_tick(pic, Duration::ZERO, 16);
+    let cycles_before_second = pic
+        .cycle_balance(canister_id)
+        .expect("read canister cycles");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let continued = snapshot(pic, canister_id);
     assert_eq!(continued.completed_work, 2);
     assert_eq!(continued.scheduler_started.total, 2);
@@ -454,8 +491,10 @@ fn successful_immediate_continuation_runs_again_without_waiting_for_cadence() {
     assert_eq!(continued.wakeups_armed.total, 4);
     assert_eq!(continued.schedule_requests.total, 1);
     assert_eq!(continued.coalesced.total, 0);
-    let second_dispatch_cycles =
-        cycles_before_second.saturating_sub(pic.cycle_balance(canister_id));
+    let second_dispatch_cycles = cycles_before_second.saturating_sub(
+        pic.cycle_balance(canister_id)
+            .expect("read canister cycles"),
+    );
     println!(
         "ic_timers_immediate first_scheduler={} first_work={} first_cycles={} second_scheduler={} second_work={} second_cycles={}",
         immediate.scheduler_instruction_total,
@@ -490,14 +529,18 @@ fn trapped_work_keeps_committed_successor_and_executor_is_private() {
         0_u64.to_be_bytes().to_vec(),
     );
     assert!(
-        external.is_err(),
-        "provider executor must reject external ingress"
+        matches!(
+            external,
+            Err(ic_platform_pocket_ic::ClientError::Canister(_))
+        ),
+        "provider executor must reject external ingress: {external:?}"
     );
     assert_eq!(snapshot(pic, canister_id), before_external);
 
     let trap_at = update_u64(pic, canister_id, Method::ArmTrap);
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 12);
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 12).expect("advance and tick PocketIC");
     let trapped = snapshot(pic, canister_id);
     assert_eq!(trapped.registration_id, before_external.registration_id);
     assert_eq!(trapped.completed_work, 0);
@@ -517,8 +560,9 @@ fn trapped_work_keeps_committed_successor_and_executor_is_private() {
     assert_eq!(trapped.work_memory, None);
     assert_eq!(trapped.next_deadline_ns, Some(trap_at + 1_000_000_000));
 
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 12);
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 12).expect("advance and tick PocketIC");
     let recovered = snapshot(pic, canister_id);
     assert_eq!(recovered.registration_id, trapped.registration_id);
     assert_eq!(recovered.completed_work, 1);
@@ -566,8 +610,9 @@ fn trapped_work_keeps_committed_successor_and_executor_is_private() {
     assert_eq!(upgraded.wakeups_armed.total, 1);
     assert!(upgraded.next_deadline_ns.is_some());
 
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 12);
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 12).expect("advance and tick PocketIC");
     let after_upgrade = snapshot(pic, canister_id);
     assert_eq!(after_upgrade.completed_work, recovered.completed_work + 1);
     assert_eq!(
@@ -609,8 +654,9 @@ fn instruction_exhaustion_leaves_successor_for_later_progress() {
     assert!(update_bool(pic, canister_id, Method::Start));
 
     let exhaust_at = update_u64(pic, canister_id, Method::ArmExhaustion);
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 30);
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 30).expect("advance and tick PocketIC");
     let exhausted = snapshot(pic, canister_id);
     assert_eq!(exhausted.completed_work, 0);
     assert_eq!(exhausted.scheduler_started.total, 1);
@@ -626,8 +672,9 @@ fn instruction_exhaustion_leaves_successor_for_later_progress() {
     assert_eq!(exhausted.work_memory, None);
     assert_eq!(exhausted.next_deadline_ns, Some(exhaust_at + 1_000_000_000));
 
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 16);
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let recovered = snapshot(pic, canister_id);
     assert_eq!(recovered.completed_work, 1);
     assert_eq!(recovered.scheduler_started.total, 2);
@@ -657,7 +704,8 @@ fn scheduler_abandonment_under_round_pressure_recovers_after_stop() {
             let canister_id = install_probe(pic, probe_wasm());
             if successor {
                 assert!(update_bool(pic, canister_id, Method::Start));
-                pic.advance_time(Duration::from_secs(1));
+                pic.advance_time(Duration::from_secs(1))
+                    .expect("advance IC time");
                 wait_for_probe(
                     pic,
                     32,
@@ -677,9 +725,14 @@ fn scheduler_abandonment_under_round_pressure_recovers_after_stop() {
             let deadline = armed.next_deadline_ns.unwrap();
             pic.advance_time(Duration::from_nanos(
                 deadline
-                    .checked_sub(pic.get_time().as_nanos_since_unix_epoch())
+                    .checked_sub(
+                        pic.get_time()
+                            .expect("read IC time")
+                            .as_nanos_since_unix_epoch(),
+                    )
                     .unwrap(),
-            ));
+            ))
+            .expect("advance IC time");
             let pressure: u64 = wait_for_probe(
                 pic,
                 8,
@@ -706,7 +759,7 @@ fn scheduler_abandonment_under_round_pressure_recovers_after_stop() {
             pic.start_canister(canister_id, None)
                 .expect("restart queued scheduler");
             // Time and ticks alone must not be mistaken for explicit owner repair.
-            advance_and_tick(pic, Duration::from_secs(2), 16);
+            advance_and_tick(pic, Duration::from_secs(2), 16).expect("advance and tick PocketIC");
             let stopped = snapshot(pic, canister_id);
             assert_eq!(stopped.registration_id, armed.registration_id);
             assert_eq!(stopped.work_dispatched, armed.work_dispatched);
@@ -748,7 +801,7 @@ fn scheduler_abandonment_under_round_pressure_recovers_after_stop() {
             assert_eq!(recovered.work_started.total, armed.work_started.total + 1);
             assert_eq!(recovered.registration_id, armed.registration_id);
             assert_eq!(recovered.unacknowledged, armed.unacknowledged);
-            advance_and_tick(pic, Duration::ZERO, 16);
+            advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
             assert_eq!(
                 snapshot(pic, canister_id).completed_work,
                 armed.completed_work + 1
@@ -787,11 +840,12 @@ fn commit_window_ensure_stop_resume_and_large_overdue_time_remain_bounded() {
 
     pic.stop_canister(canister_id, None)
         .expect("canister stop should succeed");
-    pic.advance_time(Duration::from_secs(300));
-    advance_and_tick(pic, Duration::ZERO, 4);
+    pic.advance_time(Duration::from_secs(300))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 4).expect("advance and tick PocketIC");
     pic.start_canister(canister_id, None)
         .expect("canister resume should succeed");
-    advance_and_tick(pic, Duration::ZERO, 16);
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let resumed = snapshot(pic, canister_id);
     assert_eq!(resumed.completed_work, 1);
     assert_eq!(resumed.scheduler_started.total, 1);
@@ -801,13 +855,15 @@ fn commit_window_ensure_stop_resume_and_large_overdue_time_remain_bounded() {
     assert!(resumed.next_deadline_ns.is_some());
 
     update_unit(pic, canister_id, Method::StopOnNextWork);
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 16);
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let terminal = snapshot(pic, canister_id);
     assert_eq!(terminal.completed_work, 2);
     assert_eq!(terminal.next_deadline_ns, None);
-    pic.advance_time(Duration::from_secs(2));
-    advance_and_tick(pic, Duration::ZERO, 8);
+    pic.advance_time(Duration::from_secs(2))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
     assert_eq!(snapshot(pic, canister_id).completed_work, 2);
 }
 
@@ -827,17 +883,20 @@ fn insufficient_cycles_defer_due_work_until_top_up() {
     .expect("probe multi-result update succeeds");
     assert!(call_cost > 0);
 
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 8);
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
     let deferred = snapshot(pic, canister_id);
     assert_eq!(deferred.completed_work, 0);
     assert_eq!(deferred.scheduler_started.total, 0);
 
-    pic.add_cycles(canister_id, INIT_CYCLES);
-    advance_and_tick(pic, Duration::ZERO, 4);
+    pic.add_cycles(canister_id, INIT_CYCLES)
+        .expect("fund canister cycles");
+    advance_and_tick(pic, Duration::ZERO, 4).expect("advance and tick PocketIC");
     assert_eq!(snapshot(pic, canister_id).scheduler_started.total, 0);
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 16);
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let progressed = snapshot(pic, canister_id);
     assert_eq!(progressed.completed_work, 1);
     assert_eq!(progressed.scheduler_started.total, 1);
@@ -862,7 +921,9 @@ fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     // storage charge before making work due: management observation must not
     // silently consume the scheduler/work gap being qualified.
     let status = pic.canister_status(canister_id, None).unwrap();
-    let balance = pic.cycle_balance(canister_id);
+    let balance = pic
+        .cycle_balance(canister_id)
+        .expect("read canister cycles");
     let idle_per_day: u128 = status.idle_cycles_burned_per_day.0.try_into().unwrap();
     assert!(idle_per_day > 0);
     let freezing_seconds = u64::try_from((balance * 4 * 86_400).div_ceil(idle_per_day))
@@ -873,7 +934,8 @@ fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     assert_eq!(armed.scheduler_started.total, 0);
     assert_eq!(armed.completed_work, 0);
     let before = if after_scheduler {
-        pic.advance_time(Duration::from_secs(1));
+        pic.advance_time(Duration::from_secs(1))
+            .expect("advance IC time");
         let dispatched = wait_for_probe(
             pic,
             12,
@@ -891,10 +953,16 @@ fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
         .next_deadline_ns
         .expect("committed watchdog deadline");
     freeze_for_five_minutes(pic, canister_id, freezing_seconds, freezing_reserve);
-    assert!(pic.get_time().as_nanos_since_unix_epoch() > deadline);
+    assert!(
+        pic.get_time()
+            .expect("read IC time")
+            .as_nanos_since_unix_epoch()
+            > deadline
+    );
     // No ensure/reconcile call, threshold reset, raw timer write or upgrade can
     // repair the wakeup here. A top-up and replica rounds must suffice.
-    pic.add_cycles(canister_id, balance * 16);
+    pic.add_cycles(canister_id, balance * 16)
+        .expect("fund canister cycles");
     // Read-only observation before another round proves the frozen interval
     // left the overdue registration intact and executed no timer work.
     let thawed = snapshot(pic, canister_id);
@@ -924,7 +992,7 @@ fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     assert_eq!(resumed.work_started.total, 1);
     assert_eq!(resumed.work_completed.total, 1);
     assert!(!resumed.post_upgrade_reconstructed);
-    advance_and_tick(pic, Duration::ZERO, 16);
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let settled = snapshot(pic, canister_id);
     assert!(settled.registered);
     assert_eq!(settled.registration_id, before.registration_id);
@@ -934,12 +1002,14 @@ fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     assert_eq!(settled.work_started.total, u128::from(settled_count));
     assert_eq!(settled.work_completed.total, u128::from(settled_count));
     assert_eq!(settled.unacknowledged.total, 0);
-    assert!(
-        settled
-            .next_deadline_ns
-            .is_some_and(|next| next > pic.get_time().as_nanos_since_unix_epoch())
-    );
-    pic.advance_time(Duration::from_secs(1));
+    assert!(settled.next_deadline_ns.is_some_and(|next| {
+        next > pic
+            .get_time()
+            .expect("read IC time")
+            .as_nanos_since_unix_epoch()
+    }));
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
     let recurring = wait_for_probe(
         pic,
         32,
@@ -977,13 +1047,16 @@ fn freeze_for_five_minutes(
         },
     )
     .expect("raise freezing reserve");
-    pic.advance_time(Duration::from_secs(300));
-    advance_and_tick(pic, Duration::ZERO, 16);
-    let frozen_balance = pic.cycle_balance(canister_id);
+    pic.advance_time(Duration::from_secs(300))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
+    let frozen_balance = pic
+        .cycle_balance(canister_id)
+        .expect("read canister cycles");
     assert!(frozen_balance > 0, "frozen, not uninstalled");
     assert!(frozen_balance < freezing_reserve);
-    let rejected = pic
-        .update_call(
+    let rejected = canister_rejection(
+        pic.update_call(
             canister_id,
             ExternalPrincipal::anonymous(),
             Method::Stop.name(),
@@ -994,7 +1067,8 @@ fn freeze_for_five_minutes(
             )
             .unwrap(),
         )
-        .expect_err("a valid timer control update must reject while frozen");
+        .expect_err("a valid timer control update must reject while frozen"),
+    );
     assert_eq!(rejected.reject_code, RejectCode::SysTransient);
     assert_eq!(rejected.error_code, ErrorCode::CanisterOutOfCycles);
 }
@@ -1029,7 +1103,8 @@ fn cancellation_between_scheduler_and_work_makes_late_provider_delivery_harmless
     let pic = owned.instance();
     let canister_id = install_probe(pic, probe_wasm());
     assert!(update_bool(pic, canister_id, Method::Start));
-    pic.advance_time(Duration::from_secs(1));
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
 
     let dispatched = wait_for_probe(
         pic,
@@ -1041,7 +1116,7 @@ fn cancellation_between_scheduler_and_work_makes_late_provider_delivery_harmless
     assert!(dispatched.next_deadline_ns.is_some());
 
     update_unit(pic, canister_id, Method::Stop);
-    advance_and_tick(pic, Duration::ZERO, 12);
+    advance_and_tick(pic, Duration::ZERO, 12).expect("advance and tick PocketIC");
     let cancelled = snapshot(pic, canister_id);
     assert_eq!(cancelled.completed_work, 0);
     assert_eq!(cancelled.work_started.total, 0);
@@ -1075,14 +1150,16 @@ fn snapshot(pic: &PocketIc, canister_id: ExternalPrincipal) -> ProbeSnapshot {
         (),
     )
     .expect("probe query succeeds");
-    assert!(!observed.schedule_requests.total_overflowed);
-    assert!(!observed.scheduler_started.total_overflowed);
-    assert!(!observed.wakeups_armed.total_overflowed);
-    assert!(!observed.work_dispatched.total_overflowed);
-    assert!(!observed.work_started.total_overflowed);
-    assert!(!observed.work_completed.total_overflowed);
-    assert!(!observed.coalesced.total_overflowed);
-    assert!(!observed.unacknowledged.total_overflowed);
+    super::harness::assert_exact_counters(&[
+        observed.schedule_requests,
+        observed.scheduler_started,
+        observed.wakeups_armed,
+        observed.work_dispatched,
+        observed.work_started,
+        observed.work_completed,
+        observed.coalesced,
+        observed.unacknowledged,
+    ]);
     observed
 }
 
@@ -1097,8 +1174,9 @@ fn exact_deadline_sleeps_and_registration_replacement_marks_counter_regrowth() {
     let later = first_deadline + 10_000_000_000;
     update_deadline(pic, canister_id, Method::ScheduleAt, later);
     update_deadline(pic, canister_id, Method::ScheduleAt, later);
-    pic.advance_time(Duration::from_secs(2));
-    advance_and_tick(pic, Duration::ZERO, 16);
+    pic.advance_time(Duration::from_secs(2))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let sleeping = snapshot(pic, canister_id);
     assert_eq!(sleeping.completed_work, 0);
     assert_eq!(sleeping.scheduler_started.total, 0);
@@ -1113,13 +1191,14 @@ fn exact_deadline_sleeps_and_registration_replacement_marks_counter_regrowth() {
     update_unit(pic, canister_id, Method::ContinueImmediatelyOnNextWork);
     update_deadline(pic, canister_id, Method::ScheduleAtOnNextWork, continuation);
     update_deadline(pic, canister_id, Method::ScheduleAt, first_deadline);
-    advance_and_tick(pic, Duration::ZERO, 16);
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let completed = snapshot(pic, canister_id);
     assert_eq!(completed.completed_work, 1);
     assert_eq!(completed.next_deadline_ns, Some(continuation));
     assert_eq!(completed.registration_id, initial.registration_id);
-    pic.advance_time(Duration::from_secs(2));
-    advance_and_tick(pic, Duration::ZERO, 16);
+    pic.advance_time(Duration::from_secs(2))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     assert_eq!(snapshot(pic, canister_id).completed_work, 1);
 
     update_unit(pic, canister_id, Method::Stop);
@@ -1136,8 +1215,9 @@ fn exact_deadline_sleeps_and_registration_replacement_marks_counter_regrowth() {
     assert_eq!((old_id.0, old_id.1), (new_id.0, new_id.1));
     assert!(new_id.2 > old_id.2);
     for _ in 0..2 {
-        pic.advance_time(Duration::from_secs(1));
-        advance_and_tick(pic, Duration::ZERO, 16);
+        pic.advance_time(Duration::from_secs(1))
+            .expect("advance IC time");
+        advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     }
     let regrown = snapshot(pic, canister_id);
     assert!(regrown.work_completed.total > completed.work_completed.total);
@@ -1186,9 +1266,14 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
     let owned = fresh_pocket_ic();
     let pic = owned.instance();
     let canister_id = install_probe(pic, probe_wasm());
-    let started_at = pic.get_time().as_nanos_since_unix_epoch();
+    let started_at = pic
+        .get_time()
+        .expect("read IC time")
+        .as_nanos_since_unix_epoch();
     let status = pic.canister_status(canister_id, None).unwrap();
-    let balance = pic.cycle_balance(canister_id);
+    let balance = pic
+        .cycle_balance(canister_id)
+        .expect("read canister cycles");
     let idle_per_day: u128 = status.idle_cycles_burned_per_day.0.try_into().unwrap();
     assert!(idle_per_day > 0);
     let freezing_seconds = u64::try_from((balance * 4 * 86_400).div_ceil(idle_per_day)).unwrap();
@@ -1214,7 +1299,8 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
     assert_eq!(suspended.gate_error, None);
 
     freeze_for_five_minutes(pic, canister_id, freezing_seconds, freezing_reserve);
-    pic.add_cycles(canister_id, balance * 16);
+    pic.add_cycles(canister_id, balance * 16)
+        .expect("fund canister cycles");
     // Query before another replica round: funding cannot hide a completion,
     // abandoned attempt or ownership change that already happened while frozen.
     let thawed = ordinary_observation(pic, canister_id);
@@ -1241,8 +1327,9 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
         canister_id,
         Method::ExpiredOrdinaryContextRejected
     ));
-    pic.advance_time(Duration::from_secs(1));
-    advance_and_tick(pic, Duration::ZERO, 16);
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let settled = ordinary_observation(pic, canister_id);
     assert_eq!(settled.registration_id, suspended.registration_id);
     assert!(settled.invariant_failure && !settled.running && !settled.armed);
@@ -1261,7 +1348,9 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
         pic,
         canister_id,
         Method::ReconcileOrdinaryAt,
-        pic.get_time().as_nanos_since_unix_epoch(),
+        pic.get_time()
+            .expect("read IC time")
+            .as_nanos_since_unix_epoch(),
     );
     let completed = wait_for_probe(
         pic,
@@ -1281,7 +1370,7 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
     if policy == OrdinaryPolicy::Once {
         assert!(!completed.armed);
         assert_eq!(completed.next_deadline_ns, None);
-        advance_and_tick(pic, Duration::from_secs(5), 16);
+        advance_and_tick(pic, Duration::from_secs(5), 16).expect("advance and tick PocketIC");
         let settled = ordinary_observation(pic, canister_id);
         assert_eq!(settled.completed, 1);
         assert_eq!(settled.work_started.total, 2);
@@ -1293,9 +1382,10 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
             completed.next_deadline_ns,
             Some(completed_at + 1_000_000_000)
         );
-        advance_and_tick(pic, Duration::ZERO, 16);
+        advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
         assert_eq!(ordinary_observation(pic, canister_id).work_started.total, 2);
-        pic.advance_time(Duration::from_secs(1));
+        pic.advance_time(Duration::from_secs(1))
+            .expect("advance IC time");
         let recurring = wait_for_probe(
             pic,
             32,
@@ -1368,7 +1458,9 @@ fn absent_ordinary_demand_is_idle_and_explicit_cancellation_stays_distinct() {
             pic,
             canister_id,
             Method::ReconcileOrdinaryAt,
-            pic.get_time().as_nanos_since_unix_epoch(),
+            pic.get_time()
+                .expect("read IC time")
+                .as_nanos_since_unix_epoch(),
         );
         let rearmed = wait_for_probe(
             pic,
@@ -1388,7 +1480,11 @@ fn qualify_scheduled_demand_removal(
     canister_id: ExternalPrincipal,
     identity: Option<(u64, u64, u64)>,
 ) {
-    let deadline = pic.get_time().as_nanos_since_unix_epoch() + 60_000_000_000;
+    let deadline = pic
+        .get_time()
+        .expect("read IC time")
+        .as_nanos_since_unix_epoch()
+        + 60_000_000_000;
     update_deadline(pic, canister_id, Method::ReconcileOrdinaryAt, deadline);
     let armed = ordinary_observation(pic, canister_id);
     assert!(armed.armed);
@@ -1443,8 +1539,9 @@ fn ordinary_await_allows_ingress_and_other_timers_before_completion() {
             );
             assert_eq!(suspended.gate_error, None);
             assert!(update_bool(pic, canister_id, Method::Start));
-            pic.advance_time(Duration::from_secs(2));
-            advance_and_tick(pic, Duration::ZERO, 16);
+            pic.advance_time(Duration::from_secs(2))
+                .expect("advance IC time");
+            advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
             assert_eq!(
                 snapshot(pic, canister_id).completed_work,
                 1,
@@ -1475,7 +1572,7 @@ fn ordinary_await_allows_ingress_and_other_timers_before_completion() {
                 "control does not interrupt consumer work"
             );
             update_unit(pic, canister_id, Method::ReleaseOrdinaryWork);
-            advance_and_tick(pic, Duration::ZERO, 16);
+            advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
             let completed = ordinary_observation(pic, canister_id);
             assert_eq!(completed.completed, 1);
             assert!(!completed.running);
@@ -1574,7 +1671,7 @@ fn dispatch_response_trap_cleanup_preserves_pending_work_for_retry() {
             (policy, ProbeLifetime::RemoveWhenStopped),
         )
         .expect("start transient work");
-        advance_and_tick(pic, Duration::ZERO, 32);
+        advance_and_tick(pic, Duration::ZERO, 32).expect("advance and tick PocketIC");
         let pending = ordinary_observation(pic, canister_id);
         assert!(pending.declared && pending.armed);
         assert!(!pending.running);
@@ -1589,16 +1686,18 @@ fn dispatch_response_trap_cleanup_preserves_pending_work_for_retry() {
             (false,),
         )
         .expect("disable destructor trap");
-        advance_and_tick(pic, Duration::ZERO, 8);
+        advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
         assert!(ordinary_observation(pic, canister_id).declared);
-        pic.advance_time(Duration::from_secs(1));
-        advance_and_tick(pic, Duration::ZERO, 32);
+        pic.advance_time(Duration::from_secs(1))
+            .expect("advance IC time");
+        advance_and_tick(pic, Duration::ZERO, 32).expect("advance and tick PocketIC");
         assert_ordinary_abandonment(&ordinary_observation(pic, canister_id), true);
 
         // Confirm the backend still dispatches independent work after cleanup.
         assert!(update_bool(pic, canister_id, Method::Start));
-        pic.advance_time(Duration::from_secs(2));
-        advance_and_tick(pic, Duration::ZERO, 16);
+        pic.advance_time(Duration::from_secs(2))
+            .expect("advance IC time");
+        advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
         assert_eq!(snapshot(pic, canister_id).completed_work, 1);
     }
 }
@@ -1609,13 +1708,14 @@ fn ordinary_trap_before_await_retires_the_rolled_back_scheduled_delivery() {
         for lifetime in ProbeLifetime::ALL {
             let (owned, canister_id) = trapping_ordinary_probe(policy, lifetime, true);
             let pic = owned.instance();
-            advance_and_tick(pic, Duration::ZERO, 32);
+            advance_and_tick(pic, Duration::ZERO, 32).expect("advance and tick PocketIC");
             let observed = ordinary_observation(pic, canister_id);
             assert_ordinary_abandonment(&observed, lifetime == ProbeLifetime::RemoveWhenStopped);
             assert_eq!(observed.gate_replies, 0);
             assert!(update_bool(pic, canister_id, Method::Start));
-            pic.advance_time(Duration::from_secs(2));
-            advance_and_tick(pic, Duration::ZERO, 16);
+            pic.advance_time(Duration::from_secs(2))
+                .expect("advance IC time");
+            advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
             assert_eq!(snapshot(pic, canister_id).completed_work, 1);
             if lifetime == ProbeLifetime::Retained {
                 update_unit(pic, canister_id, Method::UnregisterOrdinary);
@@ -1648,7 +1748,7 @@ fn ordinary_continuation_trap_retires_running_work_and_releases_expired_authorit
                     _ => unreachable!("fixed command matrix"),
                 }
                 update_unit(pic, canister_id, Method::ReleaseOrdinaryWork);
-                advance_and_tick(pic, Duration::ZERO, 32);
+                advance_and_tick(pic, Duration::ZERO, 32).expect("advance and tick PocketIC");
                 let observed = ordinary_observation(pic, canister_id);
                 let removed =
                     lifetime == ProbeLifetime::RemoveWhenStopped || command == "unregister";
@@ -1676,7 +1776,7 @@ fn ordinary_continuation_trap_retires_running_work_and_releases_expired_authorit
                     // The original retained capability can rearm explicitly.
                     update_deadline(pic, canister_id, Method::ReconcileOrdinaryAt, 0);
                 }
-                advance_and_tick(pic, Duration::ZERO, 16);
+                advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
                 let completed = ordinary_observation(pic, canister_id);
                 assert_eq!(completed.completed, 1);
                 assert_eq!(completed.work_completed.total, 1);
@@ -1688,8 +1788,9 @@ fn ordinary_continuation_trap_retires_running_work_and_releases_expired_authorit
                     if removed { 2 } else { 1 }
                 );
                 assert!(update_bool(pic, canister_id, Method::Start));
-                pic.advance_time(Duration::from_secs(2));
-                advance_and_tick(pic, Duration::ZERO, 16);
+                pic.advance_time(Duration::from_secs(2))
+                    .expect("advance IC time");
+                advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
                 assert_eq!(snapshot(pic, canister_id).completed_work, 1);
             }
         }
@@ -1738,8 +1839,9 @@ fn provider_replacement_churn_preserves_cancellation_and_reports_memory() {
     assert_eq!(immediate.inventory_len, 1);
     assert!(!immediate.armed);
     assert!(immediate.wasm_pages >= replaced.wasm_pages);
-    pic.advance_time(Duration::from_secs(3_601));
-    advance_and_tick(pic, Duration::ZERO, 16);
+    pic.advance_time(Duration::from_secs(3_601))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     let drained = churn_observation(pic, canister_id);
     assert_eq!(
         drained.completed, 64,
@@ -1775,8 +1877,9 @@ fn armed_callback_removal_releases_captures_with_registry_access() {
         assert!(!removed.armed);
         assert_eq!(removed.captures_dropped, 1);
         assert!(removed.capture_registry_accessible);
-        pic.advance_time(Duration::from_secs(2));
-        advance_and_tick(pic, Duration::ZERO, 8);
+        pic.advance_time(Duration::from_secs(2))
+            .expect("advance IC time");
+        advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
         let after_deadline = ordinary_observation(pic, canister_id);
         assert_eq!(after_deadline.completed, 0);
         assert_eq!(after_deadline.captures_dropped, 1);
@@ -1802,8 +1905,9 @@ fn rejected_initial_schedules_preserve_ic_inventory_and_release_captures() {
             assert_eq!(result, (true, 1, true));
         }
     }
-    pic.advance_time(Duration::from_secs(2));
-    advance_and_tick(pic, Duration::ZERO, 8);
+    pic.advance_time(Duration::from_secs(2))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
     let observation = ordinary_observation(pic, canister_id);
     assert_eq!(observation.inventory_len, 0);
     assert_eq!(observation.completed, 0);
@@ -1815,7 +1919,8 @@ fn rejected_initial_reconciliation_preserves_ic_inventory_and_releases_captures(
     let owned = fresh_pocket_ic();
     let pic = owned.instance();
     // A positive time makes now + u64::MAX overflow; never move IC time backwards.
-    pic.advance_time(Duration::from_secs(1));
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
     let canister_id = install_probe(pic, probe_wasm());
     for policy in ProbePolicy::ALL {
         let result: (bool, bool, u64, bool) = update_wire(
@@ -1828,8 +1933,9 @@ fn rejected_initial_reconciliation_preserves_ic_inventory_and_releases_captures(
         .expect("initial reconciliation rejection observation");
         assert_eq!(result, (true, true, 1, true));
     }
-    pic.advance_time(Duration::from_secs(2));
-    advance_and_tick(pic, Duration::ZERO, 8);
+    pic.advance_time(Duration::from_secs(2))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
     let observation = ordinary_observation(pic, canister_id);
     assert_eq!(observation.inventory_len, 0);
     assert_eq!(observation.completed, 0);
@@ -1899,8 +2005,9 @@ fn accepted_ordinary_work_survives_dispatch_timeout_without_replay() {
     )
     .unwrap();
     assert!(accepted);
-    pic.advance_time(Duration::from_secs(301));
-    advance_and_tick(pic, Duration::ZERO, 20);
+    pic.advance_time(Duration::from_secs(301))
+        .expect("advance IC time");
+    advance_and_tick(pic, Duration::ZERO, 20).expect("advance and tick PocketIC");
     let timed_out = ordinary_observation(pic, canister_id);
     assert!(timed_out.running);
     assert_eq!(timed_out.completed, 0);
@@ -1913,7 +2020,7 @@ fn accepted_ordinary_work_survives_dispatch_timeout_without_replay() {
     );
     assert!(!completed.running);
     assert_eq!(completed.gate_error, None);
-    advance_and_tick(pic, Duration::ZERO, 8);
+    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
     assert_eq!(ordinary_observation(pic, canister_id).completed, 1);
 }
 
@@ -1929,7 +2036,7 @@ fn mixed_snapshot(pic: &PocketIc, canister_id: ExternalPrincipal) -> TimerProbeS
 }
 
 fn advance_mixed_round(pic: &PocketIc, duration: Duration) {
-    advance_and_tick(pic, duration, 2);
+    advance_and_tick(pic, duration, 2).expect("advance and tick PocketIC");
 }
 
 #[test]
@@ -1945,7 +2052,7 @@ fn shared_watchdog_survives_instruction_exhaustion() {
     let exhaust_at = update_u64(pic, canister_id, Method::StartupTimerProbeArmExhaustion);
     advance_mixed_round(pic, Duration::from_secs(1));
     // Finish deterministic execution slices without advancing IC time.
-    advance_and_tick(pic, Duration::ZERO, 24);
+    advance_and_tick(pic, Duration::ZERO, 24).expect("advance and tick PocketIC");
     let exhausted = mixed_snapshot(pic, canister_id);
     assert_eq!(exhausted.exhaust_at, Some(exhaust_at));
     assert_eq!(exhausted.watchdog_callbacks, 0);
@@ -1982,8 +2089,11 @@ fn shared_watchdog_survives_trap_and_upgrade() {
         0_u64.to_le_bytes().to_vec(),
     );
     assert!(
-        external.is_err(),
-        "the timer backend must reject external ingress"
+        matches!(
+            external,
+            Err(ic_platform_pocket_ic::ClientError::Canister(_))
+        ),
+        "the timer backend must reject external ingress: {external:?}"
     );
     assert_eq!(mixed_snapshot(pic, canister_id), before_external);
     let trap_at = update_u64(pic, canister_id, Method::StartupTimerProbeArmTrap);
@@ -2072,7 +2182,7 @@ fn maximum_capacity_dispatch_preserves_every_survivor_under_pressure_and_await()
     let pic = owned.instance();
     let canister_id = install_probe(pic, probe_wasm());
     update_unit(pic, canister_id, Method::StartDispatchBatch);
-    advance_and_tick(pic, Duration::ZERO, 8);
+    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
     let (failures, replies): (u64, u64) = query_wire(
         pic,
         canister_id,
@@ -2093,12 +2203,13 @@ fn maximum_capacity_dispatch_preserves_every_survivor_under_pressure_and_await()
     // Both original callbacks are still pending, so neither may run afterward.
     update_unit(pic, canister_id, Method::ChangePendingDispatchBatch);
     update_unit(pic, canister_id, Method::ReleasePressure);
-    advance_and_tick(pic, Duration::ZERO, 16);
+    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
     assert_eq!(
         dispatch_batch_observation(pic, canister_id).starts,
         vec![0; 65]
     );
-    pic.advance_time(Duration::from_secs(1));
+    pic.advance_time(Duration::from_secs(1))
+        .expect("advance IC time");
     let expected: Vec<u64> = (0..65).map(|index| u64::from(index >= 2)).collect();
     let waiting = wait_for_probe(
         pic,
@@ -2110,7 +2221,7 @@ fn maximum_capacity_dispatch_preserves_every_survivor_under_pressure_and_await()
     assert_eq!(waiting.completions, vec![0; 65]);
     assert_eq!(waiting.inventory_len, 64);
     assert_eq!(waiting.peak_active, 63);
-    advance_and_tick(pic, Duration::from_secs(10), 16);
+    advance_and_tick(pic, Duration::from_secs(10), 16).expect("advance and tick PocketIC");
     assert_eq!(dispatch_batch_observation(pic, canister_id), waiting);
 
     // Rearm the retained cancelled claim while every survivor is still awaiting.
@@ -2137,7 +2248,7 @@ fn maximum_capacity_dispatch_preserves_every_survivor_under_pressure_and_await()
     );
     assert_eq!(finished.starts, full_expected);
     assert_eq!(finished.active, 0);
-    advance_and_tick(pic, Duration::from_secs(2), 16);
+    advance_and_tick(pic, Duration::from_secs(2), 16).expect("advance and tick PocketIC");
     assert_eq!(dispatch_batch_observation(pic, canister_id), finished);
 
     // The cancelled retained claim and production dispatch remain usable at capacity.
@@ -2153,7 +2264,7 @@ fn maximum_capacity_dispatch_preserves_every_survivor_under_pressure_and_await()
     assert_eq!(rearmed.starts, rearmed_expected);
     assert_eq!(rearmed.active, 0);
     assert_eq!(rearmed.inventory_len, 64);
-    advance_and_tick(pic, Duration::from_secs(2), 16);
+    advance_and_tick(pic, Duration::from_secs(2), 16).expect("advance and tick PocketIC");
     assert_eq!(dispatch_batch_observation(pic, canister_id), rearmed);
 }
 
@@ -2175,24 +2286,25 @@ fn deadline_trace_covers_nested_registration_and_self_cancellation() {
         let pic = owned.instance();
         let canister_id = install_probe(pic, probe_wasm());
         update_unit(pic, canister_id, Method::StartSchedulingTrace);
-        advance_and_tick(pic, Duration::ZERO, 8);
+        advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
         assert!(scheduling_trace(pic, canister_id).is_empty());
         if overdue {
-            advance_and_tick(pic, Duration::from_secs(4), 16);
+            advance_and_tick(pic, Duration::from_secs(4), 16).expect("advance and tick PocketIC");
             assert_eq!(scheduling_trace(pic, canister_id), [1, 2, 4]);
-            advance_and_tick(pic, Duration::from_secs(1), 8);
+            advance_and_tick(pic, Duration::from_secs(1), 8).expect("advance and tick PocketIC");
             assert_eq!(scheduling_trace(pic, canister_id), [1, 2, 4]);
-            advance_and_tick(pic, Duration::from_secs(1), 8);
+            advance_and_tick(pic, Duration::from_secs(1), 8).expect("advance and tick PocketIC");
             assert_eq!(scheduling_trace(pic, canister_id), [1, 2, 4, 3]);
         } else {
             for end in 1..=4 {
-                advance_and_tick(pic, Duration::from_secs(1), 8);
+                advance_and_tick(pic, Duration::from_secs(1), 8)
+                    .expect("advance and tick PocketIC");
                 assert_eq!(
                     scheduling_trace(pic, canister_id),
                     (1..=end).collect::<Vec<u8>>()
                 );
             }
-            advance_and_tick(pic, Duration::from_secs(2), 8);
+            advance_and_tick(pic, Duration::from_secs(2), 8).expect("advance and tick PocketIC");
             assert_eq!(scheduling_trace(pic, canister_id), [1, 2, 3, 4]);
         }
         let mut expected = if overdue {
@@ -2201,12 +2313,12 @@ fn deadline_trace_covers_nested_registration_and_self_cancellation() {
             vec![1, 2, 3, 4]
         };
         for event in [5, 6] {
-            advance_and_tick(pic, Duration::from_secs(1), 8);
+            advance_and_tick(pic, Duration::from_secs(1), 8).expect("advance and tick PocketIC");
             expected.push(event);
             assert_eq!(scheduling_trace(pic, canister_id), expected);
         }
         // The periodic callback requested recurrence but cancelled itself first.
-        advance_and_tick(pic, Duration::from_secs(20), 32);
+        advance_and_tick(pic, Duration::from_secs(20), 32).expect("advance and tick PocketIC");
         assert_eq!(scheduling_trace(pic, canister_id), expected);
     }
 }

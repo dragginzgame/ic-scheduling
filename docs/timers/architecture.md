@@ -44,7 +44,7 @@ canister graphs must still exclude older providers that lack that key.
 | Controlled probe codecs | Published `ic-wire::native` and Serde; Testkit owns native typed call handling | The unpublished protocol owns method identities/limits; Platform hooks translate canister failures to traps; the native harness selects the protocol and caller |
 | Common tools, fixture dependency closure, evidence transport and release mechanics | Reviewed Shared Tooling snapshot | Local Make selections, product release/source policy and evidence identity; see [adoption boundaries](development.md) |
 
-The [root manifest](../../Cargo.toml) owns all nine maintained packages and every
+The [root manifest](../../Cargo.toml) owns all eight maintained packages and every
 direct dependency, with one lockfile. The four unpublished packages own runtime
 and size probe canisters, the native PocketIC driver, and shared probe wire
 records. The protocol package selects Wire and Serde only: it carries values,

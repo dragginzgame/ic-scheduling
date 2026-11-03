@@ -8,13 +8,11 @@
       "members": [
         "ic-jobs",
         "ic-jobs-test-consumer",
-        "ic-jobs-canister-test-support",
         "ic-jobs-canister-tests"
       ],
       "changelog": "releases/jobs/CHANGELOG.md",
       "dependencies": [
         "ic-jobs",
-        "ic-jobs-canister-test-support",
         "ic-jobs-canister-tests",
         "ic-jobs-test-consumer"
       ]

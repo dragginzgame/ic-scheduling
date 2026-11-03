@@ -1,5 +1,7 @@
 //! Canister-local owner and live timer execution.
 
+use ControlAuthority::{Executing, Registration as Declared};
+
 use crate::{
     callback::{AfterCompletionRunResult, OnceRunResult, OrdinaryRunResult},
     platform::{self, TimerHandle},
@@ -171,7 +173,7 @@ impl OnceContext {
     /// A context retained after completion or delivery abandonment is expired
     /// and returns [`TimerError::RegistrationExpired`].
     pub fn ensure_scheduled(&self, schedule: TimerSchedule) -> Result<(), TimerError> {
-        ensure_once_claim(self.token.claim(), Some(&self.token), schedule)
+        ensure_once_claim(Executing(&self.token), schedule)
     }
 
     /// Reconcile the executing declaration to one exact schedule.
@@ -185,7 +187,7 @@ impl OnceContext {
     /// A stored context cannot mutate the registration after its exact work
     /// attempt ends.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
-        reconcile_ordinary_claim(self.token.claim(), Some(&self.token), schedule)
+        reconcile_ordinary_claim(Executing(&self.token), schedule)
     }
 
     /// Request cancellation while this exact work attempt is active.
@@ -196,7 +198,7 @@ impl OnceContext {
     /// A retained declaration becomes inactive. A remove-on-stop declaration
     /// is removed when cancellation wins arbitration.
     pub fn cancel(&self) -> Result<(), TimerError> {
-        cancel_claim(self.token.claim(), Some(&self.token))
+        cancel_claim(Executing(&self.token))
     }
 }
 
@@ -223,7 +225,7 @@ impl AfterCompletionContext {
 
     /// Request configured recurrence after this exact work attempt.
     pub fn ensure_scheduled(&self) -> Result<(), TimerError> {
-        ensure_recurring_claim(self.token.claim(), Some(&self.token))
+        ensure_recurring_claim(Executing(&self.token))
     }
 
     /// Reconcile the executing declaration to one exact schedule without
@@ -238,7 +240,7 @@ impl AfterCompletionContext {
     /// A stored context cannot mutate the registration after its exact work
     /// attempt ends.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
-        reconcile_ordinary_claim(self.token.claim(), Some(&self.token), schedule)
+        reconcile_ordinary_claim(Executing(&self.token), schedule)
     }
 
     /// Request cancellation while this exact work attempt is active.
@@ -249,7 +251,7 @@ impl AfterCompletionContext {
     /// retained declaration becomes inactive; a remove-on-stop declaration is
     /// removed when cancellation wins arbitration.
     pub fn cancel(&self) -> Result<(), TimerError> {
-        cancel_claim(self.token.claim(), Some(&self.token))
+        cancel_claim(Executing(&self.token))
     }
 }
 
@@ -278,7 +280,7 @@ impl WatchdogContext {
     /// It never arms an additional Watchdog successor and cannot move a
     /// pending immediate successor later.
     pub fn ensure_scheduled(&self) -> Result<(), TimerError> {
-        ensure_recurring_claim(self.token.claim(), Some(&self.token))
+        ensure_recurring_claim(Executing(&self.token))
     }
 
     /// Request that this work attempt's pre-armed successor run immediately.
@@ -288,7 +290,7 @@ impl WatchdogContext {
     /// cadence successor with a zero-delay scheduler callback. Consumer work
     /// still runs only in the scheduler's separately queued later message.
     pub fn ensure_scheduled_immediately(&self) -> Result<(), TimerError> {
-        ensure_watchdog_immediately_claim(self.token.claim(), Some(&self.token))
+        ensure_watchdog_immediately_claim(Executing(&self.token))
     }
 
     /// Replace this attempt's successor with an exact schedule, or cancel it.
@@ -297,7 +299,7 @@ impl WatchdogContext {
     /// successor. The latest reconciliation wins over prior scheduling demand,
     /// but unregistration and invariant failure remain terminal.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
-        reconcile_watchdog_claim(self.token.claim(), Some(&self.token), schedule)
+        reconcile_watchdog_claim(Executing(&self.token), schedule)
     }
 
     /// Request cancellation while this exact work attempt is active.
@@ -308,7 +310,7 @@ impl WatchdogContext {
     /// A retained declaration becomes inactive; a remove-on-stop declaration
     /// is removed.
     pub fn cancel(&self) -> Result<(), TimerError> {
-        cancel_claim(self.token.claim(), Some(&self.token))
+        cancel_claim(Executing(&self.token))
     }
 }
 
@@ -341,7 +343,7 @@ impl OnceRegistration {
 
     /// Ensure one invocation is armed or retained as the running work's successor.
     pub fn ensure_scheduled(&self, schedule: TimerSchedule) -> Result<(), TimerError> {
-        ensure_once_claim(&self.claim, None, schedule)
+        ensure_once_claim(Declared(&self.claim), schedule)
     }
 
     /// Reconcile to one exact desired schedule, replacing a later or earlier
@@ -356,7 +358,7 @@ impl OnceRegistration {
     /// demand is distinct from explicit cancellation; an already inactive
     /// declaration retains its existing reason.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
-        reconcile_ordinary_claim(&self.claim, None, schedule)
+        reconcile_ordinary_claim(Declared(&self.claim), schedule)
     }
 
     /// Cancel the armed callback or the running work's successor.
@@ -366,7 +368,7 @@ impl OnceRegistration {
     /// A retained declaration keeps callback authority. A remove-on-stop
     /// declaration and this claim expire when cancellation finalizes.
     pub fn cancel(&self) -> Result<(), TimerError> {
-        cancel_claim(&self.claim, None)
+        cancel_claim(Declared(&self.claim))
     }
 
     /// Consume the claim and unregister its callback authority.
@@ -451,7 +453,7 @@ impl WatchdogRegistration {
     ///
     /// An existing earlier immediate deadline is retained and never delayed.
     pub fn ensure_scheduled(&self) -> Result<(), TimerError> {
-        ensure_recurring_claim(&self.claim, None)
+        ensure_recurring_claim(Declared(&self.claim))
     }
 
     /// Synchronously ensure one watchdog scheduler wake-up is due now.
@@ -462,7 +464,7 @@ impl WatchdogRegistration {
     /// dispatched, that zero-delay work satisfies the request. If work is
     /// running, the request applies to that attempt's pre-armed successor.
     pub fn ensure_scheduled_immediately(&self) -> Result<(), TimerError> {
-        ensure_watchdog_immediately_claim(&self.claim, None)
+        ensure_watchdog_immediately_claim(Declared(&self.claim))
     }
 
     /// Reconcile to one exact scheduler deadline, or cancel with `None`.
@@ -473,7 +475,7 @@ impl WatchdogRegistration {
     /// cadence successor remains the recovery wake-up. A subsequent recovery
     /// attempt retires the interrupted attempt's pending proposal.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
-        reconcile_watchdog_claim(&self.claim, None, schedule)
+        reconcile_watchdog_claim(Declared(&self.claim), schedule)
     }
 
     /// Cancel the scheduler and any work callback that has not started.
@@ -484,7 +486,7 @@ impl WatchdogRegistration {
     /// A retained declaration keeps callback authority. A remove-on-stop
     /// declaration and this claim expire when cancellation finalizes.
     pub fn cancel(&self) -> Result<(), TimerError> {
-        cancel_claim(&self.claim, None)
+        cancel_claim(Declared(&self.claim))
     }
 
     /// Consume the claim and unregister its callback authority.
@@ -515,7 +517,7 @@ impl AfterCompletionRegistration {
     /// Ensure configured recurrence is armed or retained as the running work's
     /// successor.
     pub fn ensure_scheduled(&self) -> Result<(), TimerError> {
-        ensure_recurring_claim(&self.claim, None)
+        ensure_recurring_claim(Declared(&self.claim))
     }
 
     /// Reconcile to one exact desired schedule without changing the configured
@@ -527,7 +529,7 @@ impl AfterCompletionRegistration {
     /// During running work, a winning exact schedule replaces the callback
     /// scheduling proposal before validation; explicit invariant failure stops.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
-        reconcile_ordinary_claim(&self.claim, None, schedule)
+        reconcile_ordinary_claim(Declared(&self.claim), schedule)
     }
 
     /// Cancel the armed callback or the running work's successor.
@@ -537,7 +539,7 @@ impl AfterCompletionRegistration {
     /// A retained declaration keeps callback authority. A remove-on-stop
     /// declaration and this claim expire when cancellation finalizes.
     pub fn cancel(&self) -> Result<(), TimerError> {
-        cancel_claim(&self.claim, None)
+        cancel_claim(Declared(&self.claim))
     }
 
     /// Consume the claim and unregister its callback authority.
@@ -801,8 +803,8 @@ where
             Ok(OnceRegistration { claim: claim? })
         },
         |registration| {
-            apply_claim_transition(&registration.claim, None, |registry| {
-                reconcile(registry, &registration.claim)
+            apply_claim_transition(Declared(&registration.claim), |registry, claim| {
+                reconcile(registry, claim)
             })
         },
     )
@@ -873,8 +875,8 @@ where
             Ok(AfterCompletionRegistration { claim: claim? })
         },
         |registration| {
-            apply_claim_transition(&registration.claim, None, |registry| {
-                reconcile(registry, &registration.claim)
+            apply_claim_transition(Declared(&registration.claim), |registry, claim| {
+                reconcile(registry, claim)
             })
         },
     )
@@ -942,8 +944,8 @@ where
             Ok(WatchdogRegistration { claim: claim? })
         },
         |registration| {
-            apply_claim_transition(&registration.claim, None, |registry| {
-                reconcile(registry, &registration.claim)
+            apply_claim_transition(Declared(&registration.claim), |registry, claim| {
+                reconcile(registry, claim)
             })
         },
     )
@@ -1015,19 +1017,38 @@ where
     }))
 }
 
+// A callback carries its own claim; callers cannot pair it with unrelated authority.
+#[derive(Clone, Copy)]
+enum ControlAuthority<'a> {
+    Registration(&'a RegistrationClaim),
+    Executing(&'a CallbackToken),
+}
+
+impl<'a> ControlAuthority<'a> {
+    const fn claim(self) -> &'a RegistrationClaim {
+        match self {
+            Self::Registration(claim) => claim,
+            Self::Executing(token) => token.claim(),
+        }
+    }
+}
+
 fn apply_claim_transition(
-    claim: &RegistrationClaim,
-    context: Option<&CallbackToken>,
-    operation: impl FnOnce(&mut TimerRegistry) -> Result<RegistryTransition, RegistryError>,
+    authority: ControlAuthority<'_>,
+    operation: impl FnOnce(
+        &mut TimerRegistry,
+        &RegistrationClaim,
+    ) -> Result<RegistryTransition, RegistryError>,
 ) -> Result<(), TimerError> {
+    let claim = authority.claim();
     let (transition, handles) = with_registry_mut(|registry| {
-        if let Some(token) = context {
+        if let Executing(token) = authority {
             registry
                 .validate_running_context(token)
                 .map_err(TimerError::from)?;
         }
         registry
-            .transition_claim(claim, operation)
+            .transition_claim(claim, |registry| operation(registry, claim))
             .map_err(TimerError::from)
     })?;
     match finish_transition(transition, handles) {
@@ -1037,62 +1058,50 @@ fn apply_claim_transition(
 }
 
 fn ensure_once_claim(
-    claim: &RegistrationClaim,
-    context: Option<&CallbackToken>,
+    authority: ControlAuthority<'_>,
     schedule: TimerSchedule,
 ) -> Result<(), TimerError> {
-    apply_claim_transition(claim, context, |registry| {
+    apply_claim_transition(authority, |registry, claim| {
         registry.ensure_once(claim, platform::time_ns(), schedule)
     })
 }
 
 fn reconcile_ordinary_claim(
-    claim: &RegistrationClaim,
-    context: Option<&CallbackToken>,
+    authority: ControlAuthority<'_>,
     schedule: Option<TimerSchedule>,
 ) -> Result<(), TimerError> {
-    apply_claim_transition(claim, context, |registry| {
+    apply_claim_transition(authority, |registry, claim| {
         registry.reconcile_ordinary(claim, platform::time_ns(), schedule)
     })
 }
 
-fn ensure_recurring_claim(
-    claim: &RegistrationClaim,
-    context: Option<&CallbackToken>,
-) -> Result<(), TimerError> {
-    apply_claim_transition(claim, context, |registry| {
+fn ensure_recurring_claim(authority: ControlAuthority<'_>) -> Result<(), TimerError> {
+    apply_claim_transition(authority, |registry, claim| {
         registry.ensure_recurring(claim, platform::time_ns())
     })
 }
 
-fn ensure_watchdog_immediately_claim(
-    claim: &RegistrationClaim,
-    context: Option<&CallbackToken>,
-) -> Result<(), TimerError> {
-    apply_claim_transition(claim, context, |registry| {
+fn ensure_watchdog_immediately_claim(authority: ControlAuthority<'_>) -> Result<(), TimerError> {
+    apply_claim_transition(authority, |registry, claim| {
         registry.ensure_watchdog_immediately(claim, platform::time_ns())
     })
 }
 
 fn reconcile_watchdog_claim(
-    claim: &RegistrationClaim,
-    context: Option<&CallbackToken>,
+    authority: ControlAuthority<'_>,
     schedule: Option<TimerSchedule>,
 ) -> Result<(), TimerError> {
-    apply_claim_transition(claim, context, |registry| {
+    apply_claim_transition(authority, |registry, claim| {
         registry.reconcile_watchdog_schedule(claim, platform::time_ns(), schedule)
     })
 }
 
-fn cancel_claim(
-    claim: &RegistrationClaim,
-    context: Option<&CallbackToken>,
-) -> Result<(), TimerError> {
-    apply_claim_transition(claim, context, |registry| registry.cancel(claim))
+fn cancel_claim(authority: ControlAuthority<'_>) -> Result<(), TimerError> {
+    apply_claim_transition(authority, TimerRegistry::cancel)
 }
 
 fn unregister_claim(claim: &RegistrationClaim) -> Result<(), TimerError> {
-    apply_claim_transition(claim, None, |registry| registry.unregister(claim))
+    apply_claim_transition(Declared(claim), TimerRegistry::unregister)
 }
 
 fn retire_failed_claim(claim: &RegistrationClaim, error: TimerError) -> Result<(), TimerError> {
@@ -1376,11 +1385,6 @@ fn inject_watchdog_completion_fault() {
 #[cfg(test)]
 fn take_watchdog_completion_fault() -> bool {
     WATCHDOG_COMPLETION_FAULT.with(|fault| fault.replace(false))
-}
-
-#[cfg(test)]
-fn inject_provider_install_fault() {
-    inject_provider_install_fault_after(0);
 }
 
 #[cfg(test)]
