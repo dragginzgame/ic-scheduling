@@ -31,15 +31,14 @@ VALIDATION_INPUTS := --input Cargo.toml --input Cargo.lock --input rust-toolchai
 	--input .shared-tooling.snapshot --input Makefile --input scripts/dev/testkit-tool.sh --input scripts/dev/queue-command.sh --input scripts/dev/minimum-rust.sh --input ci/tool-versions.env \
 	--input ci/ic-tools.tsv --input ci/release-delivery.txt --input ci/cargo-dependency-boundaries.json --input ci/cargo-release-groups.json \
 	--input .github/workflows/ci.yml --input .github/workflows/recovery.yml --input ci/docs-only-paths.txt --input scripts/ci/classify-ci-change.pl \
-	--input ci/release-validation.json --input scripts/release/validation.pl --input scripts/release/verify.sh \
+	--input ci/release-validation.json --input scripts/release/validation.pl --input scripts/release/verify.sh --input scripts/release/ci.sh \
 	$(foreach manifest,$(wildcard crates/*/Cargo.toml apps/*/Cargo.toml),--input $(manifest))
 
-# Exhaustive outer gate; ci retains the complete native/Wasm/integration roster.
-override RELEASE_VALIDATION_STAGES := ci install-testkit-tools install-consumer-server test-timer-watchdog test-timer-cohorts
+# One policy roster feeds normal CI and complete selected release plans.
 
 .PHONY: release-validation-stages test-release-validation
 release-validation-stages:
-	@printf '%s\n' $(RELEASE_VALIDATION_STAGES)
+	@perl scripts/release/validation.pl release-stages
 
 test-release-validation:
 	+bash scripts/release/test-validation.sh
@@ -276,12 +275,8 @@ publish:
 validation-tools-check: tools-check format-tools-check
 
 # Ordered recursive calls preserve admission before dependent work under -j.
-ci: shared-tooling-check
-	+bash scripts/ci/run-validation-targets.sh --fail-fast $(VALIDATION_INPUTS) \
-		validation-tools-check check-release-groups clippy check-timer-provider check-timer-dependencies check-timer-probes check-doc-links check-pins check-dependency-boundaries check-dependency-graphs check-release-commands \
-		test-release-tooling test-release-validation test-formatting-evidence test-consumer-tooling test-ci-change-selection test-recovery-evidence test-release-status test-timers test-timer-dependencies \
-		formatting-hook-check fmt-check check test-jobs test-consumers \
-		check-consumer check-wasm docs-check package-all
+ci:
+	+bash scripts/release/ci.sh $(VALIDATION_INPUTS)
 
 .PHONY: release-version release-preflight release-verify release-prepare-version release-prepared-check release-files release-commit-check release-committed-check release-tagged-check release-push-check
 version:

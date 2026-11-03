@@ -2,16 +2,20 @@
 
 Scheduling adopts the Shared Tooling [group-plan contract](release-group-validation.md).
 The versioned policy is [ci/release-validation.json](../ci/release-validation.json);
-the existing Make gate exposes its complete roster through
-`make release-validation-stages`. The selector refuses disagreement between that
-roster, the policy and the Cargo release groups. Patch, minor and major use the
-same selection rules. No skip flag or stage-proof reuse is available.
+the sole ordered roster contains the 30 common CI obligations and four standalone
+Timers obligations. `make release-validation-stages` and normal `make ci` project
+that declaration through Shared's roster admission, including Cargo group-name
+consistency. Make maintains no second list. Release plans generate a five-stage
+policy containing aggregate `ci` plus the four standalone stages; `ci` consumes
+the same 30 common obligations. This preserves the existing full-source
+checkpoint cadence without maintaining a second roster. Patch, minor and major
+use the same selection rules. No skip flag or stage-proof reuse is available.
 
 ## Stage mapping
 
 | Stage | Jobs-only scope | Timers, shared or uncertain scope | Boundary |
 | --- | --- | --- | --- |
-| `ci` | Required | Required | Complete repository native/Wasm checks, dependency policies, both archives and combined Jobs/Timers consumer contracts. |
+| Common policy stages | Required | Required | Complete repository native/Wasm checks, dependency policies, both archives and combined Jobs/Timers consumer contracts. |
 | `install-testkit-tools` | Not applicable | Required | Prepare the lock-selected client/server tooling for standalone Timers qualification. |
 | `install-consumer-server` | Not applicable | Required | Admit the selected installed server before running Timers probes. |
 | `test-timer-watchdog` | Not applicable | Required | Timers provider, executor, traps, cancellation and recovery. |
@@ -39,12 +43,13 @@ dependency; unchanged manifests and lock keep that closure fixed. Complete CI
 still qualifies the changed combined consumer. Any manifest, dependency lock,
 compiler, tooling/configuration, generator outside those owned source trees,
 Timers input, shared file or unknown path selects workspace scope. Uncommitted
-inputs also select all stages. Timers always selects all five stages.
+inputs also select all stages. Timers always requires `ci` and all four
+standalone stages.
 
 The first release containing this adoption and the outstanding cross-group
 refactor therefore remains a full-gate release. Narrowing starts with a later
-change that the selector can establish is confined to Jobs. This is not a way
-to ship the current incompatible dependency proposal or bypass its graph checks.
+change that the selector can establish is confined to Jobs. Dependency graph
+admission remains mandatory.
 
 ## Execution and recovery
 
@@ -53,28 +58,46 @@ mode. It retains canonical selection context, plan/policy, complete source input
 inventory, per-stage checkpoints, selection/events, logs and timings. Source and
 input drift stop subsequent work. Missing, failed or interrupted required stages
 cannot be sealed as a successful group execution. Exclusions are explicitly
-`not-applicable`, never synthetic passes. Lint ordering stays inside the existing
-`ci` stage, before installed qualification.
+`not-applicable`, never synthetic passes. The original order is preserved:
+snapshot/tool admission, lint, metadata and fixtures, native/Wasm/package checks,
+then explicitly installed qualification.
+The snapshot check was previously a CI prerequisite; it is now also recorded as
+a stage. Full CI runs its 30 common obligations once, without looping over groups.
 
-After a successful release-runner invocation, the execution evidence is copied
-to a unique directory beside the group's durable receipts under Git-owned release
-state. Its new receipt identity binds every retained file, the source/group,
-baseline tag, plan/policy, host/compiler/build settings and completed obligations.
-Preparation and subsequent checks re-admit it, together with the existing exact
-metadata and unrelated-group preservation receipts. Other source files must still
-match the validation checkpoint; intended version metadata is admitted separately.
-Deleting development `target/` scratch does not remove the durable proof.
-Replacing a validation attempt archives its prior receipt/pointer and preserves
-both old and new evidence directories. Old full-gate attempts retain their old
-source/adapter contract; this format does not upgrade their receipts.
+At seal time Scheduling invokes Shared's
+[`validation-evidence.pl verify`](group-validation-adoption.md) on the original
+plan, generated release policy, context and exact run directory. Shared admits
+selection, ordered events, timings, stage checkpoints and logs. `shared-proof.json` retains that canonical
+result. The local adapter no longer parses runner TSV or interprets event state.
+Shared also owns annotated-baseline observation and bounded JSON/path/hash reads;
+Scheduling retains its closed Jobs ownership mapping, host/compiler/build context
+and complete source inventory.
+
+The version-2 Scheduling receipt binds the shared proof and every retained byte.
+A successful release-runner invocation copies it beside the group's Git-owned
+journal. Recovery checks that immutable evidence, current source/configuration,
+baseline identity and all inherited input hashes. Generated plan/policy/context
+paths are mapped to their retained copies; their bytes and the original proof stay
+unchanged. Only the selected group's metadata files may differ, under the
+existing exact metadata/prepared receipts and original source/index admission.
+The shared verifier does not grant version projection or relocation: those remain
+the existing consumer custody boundary. No stages are replayed or reused during
+receipt admission.
+
+Deleting original `target/` scratch therefore preserves the durable evidence.
+Failed attempts cannot seal, missing or changed evidence refuses, and replacing a
+validation receipt archives its prior pointer and receipt. Historical version-1
+receipts remain with their original source/adapter; they are never converted into
+version-2 proofs or used to authorize the changed plan. No upload or new release
+is performed by this adoption.
 
 ## Focused qualification
 
-`make test-release-validation` uses the real selector, shared plan parser/runner,
+`make test-release-validation` uses the real selector, shared parser/runner/verifier,
 Git baselines, input drift checks and receipt admission. Only build/installed
 recipes and the catalog observation are substituted. It checks same-source
-Jobs versus full Timers command selection, required/excluded failures, shared
-inputs, stale source, missing/unknown groups and baselines, roster drift,
+normal CI versus Jobs/full Timers command selection, required/excluded failures,
+new roster stages, shared inputs, stale source, missing/unknown groups and baselines, roster drift,
 incomplete plans, tampered/missing evidence and recovery after failure. It reports
 command counts and elapsed fixture time; that is not a measured production speed-up.
 

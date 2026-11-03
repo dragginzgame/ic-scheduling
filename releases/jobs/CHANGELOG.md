@@ -32,6 +32,12 @@ and [coordinated history through 0.33.1](../history.md).
 
 ### 🧪 Testing
 
+- Delegate baseline, roster and run-evidence admission to Shared Tooling. Use one
+  ordered policy for full CI and selected releases; preserve complete common CI,
+  standalone Timers gates and exact source/metadata recovery. Keep historical
+  receipts with their original adapters.
+  [#88 — Consolidate Jobs/Timers plan evidence](https://github.com/dragginzgame/ic-scheduling/issues/88).
+
 - Handle native client failures explicitly during clock/cycle observation and
   simulated progression. Preserve typed canister rejection assertions; report
   demo transport errors through its existing error path without automatic retry.

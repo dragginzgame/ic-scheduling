@@ -97,7 +97,7 @@ Both groups use the qualified [release validation plan](release-validation-group
 Jobs-owned changes since its admitted annotated release baseline run complete
 native/Wasm CI without standalone Timers watchdog/cohort installation. Timers,
 shared inputs, changed manifests/locks and uncertain scope retain the complete
-five-stage gate. Repository CI and its three native hosts remain unchanged;
+five-stage gate, generated from the same complete roster as normal CI. Repository CI and its three native hosts remain unchanged;
 CI packages both public crates with `package-all`.
 Independent core qualification stays explicit; the Jobs model remains Serde-only.
 The real Jobs consumer still composes Jobs, Timers, Storage, Wire and Runtime.
@@ -105,7 +105,7 @@ Its commit-before-dispatch, exact attempts/receipts, uncertain effects and
 trap/upgrade obligations remain mandatory. One lockfile continues to resolve all
 eight members; release groups do not isolate incompatible runtime stacks.
 
-New validation receipts additionally bind the canonical group plan/policy,
+Version-2 validation receipts bind Shared's admitted proof plus the canonical group plan/policy,
 input checkpoint, native/compiler/build configuration and successful stage
 evidence. Required stages are executed; excluded stages are not applicable.
 No proof reuse is enabled. Durable evidence stays beside the group's journal;

@@ -12,8 +12,8 @@ unset MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 unset RELEASE_COMMIT RELEASE_VALIDATION_EVIDENCE
 mkdir -p "$fixture/scripts/release" "$fixture/scripts/ci" "$fixture/ci" \
     "$fixture/crates/ic-jobs/src" "$fixture/crates/ic-timers/src" "$fixture/target"
-cp "$root/scripts/release/validation.pl" "$fixture/scripts/release/"
-for name in run-validation-targets.sh check-make-execution.sh verify-file-checksum.sh validation-input-checkpoint.pl release-validation-plan.pl ValidationPlan.pm; do
+cp "$root/scripts/release/"{validation.pl,ci.sh} "$fixture/scripts/release/"
+for name in run-validation-targets.sh check-make-execution.sh verify-file-checksum.sh validation-input-checkpoint.pl release-validation-plan.pl ValidationPlan.pm validation-evidence.pl; do
     cp "$root/scripts/ci/$name" "$fixture/scripts/ci/"
 done
 cp "$root/ci/"{cargo-release-groups.json,release-validation.json} "$fixture/ci/"
@@ -30,20 +30,19 @@ case "${RELEASE_GROUP:-}" in jobs) version=0.34.1 ;; timers) version=0.38.1 ;; *
 # fixtures. This bounded fixture substitutes only that catalog observation.
 printf '{"group":"%s","previous":"%s","files":["Cargo.toml","Cargo.lock"]}\n' "$RELEASE_GROUP" "$version"
 GROUP
-roster="$(make --silent --no-print-directory -C "$root" release-validation-stages | tr '\n' ' ')"
-printf 'override RELEASE_VALIDATION_STAGES := %s\n' "$roster" > "$fixture/Makefile"
+roster="$(perl "$root/scripts/release/validation.pl" roster | tr '\n' ' ')"
+printf '.PHONY: %s\n' "$roster" > "$fixture/Makefile"
+printf '%s:\n' "$roster" >> "$fixture/Makefile"
 cat >> "$fixture/Makefile" <<'MAKE'
-.PHONY: release-validation-stages $(RELEASE_VALIDATION_STAGES) nested-check
-release-validation-stages:
-	@printf '%s\n' $(RELEASE_VALIDATION_STAGES)
-$(RELEASE_VALIDATION_STAGES):
 	@printf '%s\n' '$@' >> target/events
 	@test "$(FAIL_STAGE)" != '$@'
 	@if test "$(INTERRUPT_STAGE)" = '$@'; then exit 130; fi
 	@if test "$(DRIFT_STAGE)" = '$@'; then printf 'drift\n' >> crates/ic-jobs/src/lib.rs; fi
-	@if test '$@' = ci; then bash scripts/ci/run-validation-targets.sh --fail-fast nested-check; fi
-nested-check:
-	@true
+.PHONY: release-validation-stages ci
+release-validation-stages:
+	@perl scripts/release/validation.pl release-stages
+ci:
+	+bash scripts/release/ci.sh
 MAKE
 cd "$fixture"
 git init -q -b main
@@ -83,15 +82,18 @@ refuse() {
     fi
 }
 scope_is() { [[ "$(jq -r .scope "$attempt/plan.json")" == "$1" ]]; }
-full_events() { make --silent release-validation-stages > target/expected; cmp target/events target/expected; }
+full_events() { perl scripts/release/validation.pl roster > target/expected; cmp target/events target/expected; }
 start_case
 started="$SECONDS"
 FAIL_STAGE=test-timer-watchdog run_case
 narrow_seconds="$((SECONDS - started))"
 scope_is group
-[[ "$(cat target/events)" == ci ]]
+perl scripts/release/validation.pl ci-stages > target/expected; cmp target/events target/expected
 perl scripts/release/validation.pl check "$attempt"
 good="$attempt"
+: > target/events
+make --silent ci > target/ci.log 2>&1
+perl scripts/release/validation.pl ci-stages > target/expected; cmp target/events target/expected
 : > target/events
 started="$SECONDS"
 RELEASE_GROUP=timers run_case
@@ -110,20 +112,26 @@ cp "$good/execution.json" target/execution.json
 rm "$good/execution.json"
 refuse perl scripts/release/validation.pl check "$good"
 cp target/execution.json "$good/execution.json"
+# Historical consumer receipts stay with their original adapter, never upgrade.
+jq -cS '.schema = 1' target/execution.json > "$good/execution.json"
+cp "$good/execution.json" target/historical-execution.json
+refuse perl scripts/release/validation.pl check "$good"
+cmp "$good/execution.json" target/historical-execution.json
+cp target/execution.json "$good/execution.json"
 mkdir -p .git/release-state/fixture.receipts
 cp -R "$good" .git/release-state/fixture.receipts/validation.retained
 printf 'validation.retained\n' > .git/release-state/fixture.receipts/validation-evidence
 rm -rf "$good"
 perl scripts/release/validation.pl identity .git/release-state/fixture.receipts > target/identity
-grep -Fx scheduling-group-validation-v1 target/identity > /dev/null
+grep -Fx scheduling-group-validation-v2 target/identity > /dev/null
 RELEASE_GROUP=timers refuse perl scripts/release/validation.pl identity .git/release-state/fixture.receipts
 start_case
-FAIL_STAGE=ci refuse run_case
+FAIL_STAGE=validation-tools-check refuse run_case
 refuse perl scripts/release/validation.pl seal "$attempt"
 [[ ! -e "$attempt/execution.json" ]]
-[[ "$(cat target/events)" == ci ]]
+printf 'shared-tooling-check\nvalidation-tools-check\n' > target/expected; cmp target/events target/expected
 start_case
-INTERRUPT_STAGE=ci refuse run_case
+INTERRUPT_STAGE=validation-tools-check refuse run_case
 refuse perl scripts/release/validation.pl seal "$attempt"
 [[ ! -e "$attempt/execution.json" ]]
 start_case
@@ -168,18 +176,50 @@ git tag -a jobs-v0.34.1 "$foreign" -m unrelated
 select_case; scope_is workspace
 git tag -d jobs-v0.34.1 > /dev/null
 git tag -a jobs-v0.34.1 "$baseline" -m restored
+# Shared admits declared inputs; Scheduling must require the whole source inventory.
+start_case
+select_case
+jq -cS '.inputs -= ["crates/ic-jobs/src/lib.rs"]' "$attempt/plan.json" > target/incomplete
+mv target/incomplete "$attempt/plan.json"
+VALIDATION_LOG_DIR="$attempt/logs" bash scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json" > "$attempt/console.log" 2>&1
+refuse perl scripts/release/validation.pl seal "$attempt"
+grep -F 'missing source inventory input' target/refusal.log > /dev/null
+[[ ! -e "$attempt/execution.json" ]]
+# A self-consistent generated policy cannot omit a declared Timers obligation.
+start_case
+select_case
+jq -cS '.stages -= ["test-timer-watchdog"]' "$attempt/release-policy.json" > target/incomplete
+mv target/incomplete "$attempt/release-policy.json"
+jq -cS 'del(.stages[] | select(.target == "test-timer-watchdog"))' "$attempt/plan.json" > target/incomplete
+mv target/incomplete "$attempt/plan.json"
+VALIDATION_LOG_DIR="$attempt/logs" bash scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json" > "$attempt/console.log" 2>&1
+refuse perl scripts/release/validation.pl seal "$attempt"
+grep -F 'release policy differs' target/refusal.log > /dev/null
+[[ ! -e "$attempt/execution.json" ]]
 start_case
 select_case
 jq -cS 'del(.stages[-1])' "$attempt/plan.json" > target/incomplete
 mv target/incomplete "$attempt/plan.json"
 refuse env VALIDATION_LOG_DIR="$attempt/logs" bash scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json"
 [[ ! -s target/events ]]
+# A new common obligation reaches both normal CI and selected Jobs plans.
 start_case
-printf '\noverride RELEASE_VALIDATION_STAGES += new-check\n' >> Makefile
-git add -- Makefile; git commit -qm 'Unmapped full-gate stage'
+jq -cS '.stages |= (index("install-testkit-tools") as $i | .[:$i] + ["new-check"] + .[$i:])' ci/release-validation.json > target/new-policy
+mv target/new-policy ci/release-validation.json
+printf '\nnew-check:\n\t@printf "new-check\\n" >> target/events\n' >> Makefile
+git add -- ci/release-validation.json Makefile; git commit -qm 'New common obligation'
 RELEASE_SOURCE="$(git rev-parse HEAD)"
 export RELEASE_SOURCE
+run_case; scope_is workspace; full_events
+: > target/events
+make --silent ci > target/ci.log 2>&1
+perl scripts/release/validation.pl ci-stages > target/expected; cmp target/events target/expected
+# Projection cannot silently reorder a new common obligation after installed work.
+start_case
+jq -cS '.stages += ["late-common"]' ci/release-validation.json > target/new-policy
+mv target/new-policy ci/release-validation.json
 refuse select_case
+git checkout -- ci/release-validation.json
 start_case
 jq -cS '.groups += ["unknown"]' ci/release-validation.json > target/new-policy
 mv target/new-policy ci/release-validation.json
@@ -192,13 +232,13 @@ git add -- crates/ic-jobs/src/lib.rs; git commit -qm 'Moved source'
 refuse env VALIDATION_LOG_DIR="$attempt/logs" bash scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json"
 [[ ! -s target/events ]]
 start_case
-DRIFT_STAGE=ci refuse run_case
+DRIFT_STAGE=validation-tools-check refuse run_case
 refuse perl scripts/release/validation.pl seal "$attempt"
 # A new attempt after restoring the input succeeds; failed attempts remain.
 git checkout -- crates/ic-jobs/src/lib.rs
 : > target/events
 run_case
 perl scripts/release/validation.pl check "$attempt"
-printf 'Group plans passed: Jobs-only=1 stage; Timers/shared=5; real runner, checkpoints and evidence; build/installed commands substituted.\n'
+printf 'Group plans passed: same common roster for CI/Jobs, four standalone Timers obligations; shared verifier and durable recovery; product commands substituted.\n'
 printf 'Same-source substituted-command qualification: Jobs %ss; complete Timers gate %ss. No production-time saving is claimed.\n' "$narrow_seconds" "$full_seconds"
 fixture_complete=true

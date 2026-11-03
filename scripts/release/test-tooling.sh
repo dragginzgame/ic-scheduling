@@ -45,12 +45,14 @@ for arg in "$@"; do
             printf '%s\n' "${RELEASE_GROUP:?}" >> "$GROUP_TEST_EVENTS"
             bash scripts/release/verify.sh
             exit 0 ;;
-        ci|install-testkit-tools|install-consumer-server|test-timer-watchdog|test-timer-cohorts) exit 0 ;;
+        ci) exit 0 ;;
         install-tools|tools-check|install-release-tools) exit 0 ;;
         release-tools-check) printf '%s\n' "$GROUP_TEST_EDITOR"; exit 0 ;;
         release-push-check)
             if [[ "${GROUP_TEST_PUSH_FAILURE:-0}" == 1 ]]; then exit 37; fi ;;
     esac
+    # Product obligations come from the same policy as CI and release selection.
+    if jq -e --arg target "$arg" '.stages | index($target) != null' ci/release-validation.json > /dev/null; then exit 0; fi
 done
 exec "$GROUP_TEST_REAL_MAKE" "$@"
 MAKE

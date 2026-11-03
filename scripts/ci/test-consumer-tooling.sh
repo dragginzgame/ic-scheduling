@@ -458,7 +458,8 @@ trap - EXIT
 prepare_phase ci-admission
 # These local release inputs are part of Make's common checkpoint inventory.
 mkdir -p "$fixture/scripts/release"
-cp "$root/scripts/release/"{validation.pl,verify.sh} "$fixture/scripts/release/"
+cp "$root/scripts/release/"{validation.pl,verify.sh,ci.sh} "$fixture/scripts/release/"
+cp "$root/scripts/ci/"{ValidationPlan.pm,validation-evidence.pl} "$fixture/scripts/ci/"
 # Run Jobs' actual CI route only through its first admission stage. Substitute
 # tool effects and mutate a selected input there; the logger must block all
 # subsequent product checks without compilation, installation or server effects.
