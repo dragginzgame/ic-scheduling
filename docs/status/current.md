@@ -1,133 +1,81 @@
 # Current handoff
 
-## Runtime and installed-test cleanup pending — 2026-11-04
+## Timers 0.40.4 delivered — 2026-11-04
 
-Runtime capabilities, registration/reconciliation and callback dispatch now have
-private modules; the parent retains shared authority checks and the registry.
-The 1,364-line runtime parent is 305 lines; the largest new module is 459 lines.
-All 42 public function signatures are preserved. Installed subjects are grouped
-under ingress/lifecycle/ordinary/scheduling/watchdog, preserving all 35 cases and
-updating all 17 required qualification anchors. Fresh setup is shared at 31 sites;
-the overflow case keeps its explicit time advance before installation.
+Timers **0.40.4** is pushed and published from this checkout on `main` to
+`origin/main` (`dragginzgame/ic-scheduling`). Source preparation:
+`e0f642227343b507705f382df9287050f64201aa`. Release commit:
+`30b5b28658612ce00fe793eb0379ba9bb6b5b971`. Annotated `timers-v0.40.4` tag
+object: `49142f5e678cca5a4ae7292cd5a500ce7280c10c`. Both release and separate
+`make RELEASE_GROUP=timers publish` completed successfully; the journal is complete.
+No upload retry or sibling release occurred. Do not republish this version.
 
-89 native runtime tests, three discovery fixtures, eight compile-fail doctests,
-strict owning lint, Rustdoc and probe Wasm checks pass. Both explicitly selected
-live subjects (ordinary await/interleaving and Watchdog trap/upgrade) pass under
-PocketIC 16.1.0/Rust 1.99.1. Evidence: `target/runtime-cleanup/` and
-`target/timer-qualification-1114695-0/runtime.json`. The first live attempt was
-socket-blocked before execution; its separate diagnostics remain retained.
-Current checks resolve Testkit 0.85.1/native Platform 0.22.0; earlier 0.85.0
-proofs below retain their actual graph. No full installed gate, release or push.
+The official registry archive matches the local uploaded archive and clean VCS
+source at the release commit. SHA-256:
+`60f214dcbad01105fcae2f08d5bafd4abd8274d7031dc467e605de6b24da1591`.
+It retains Rust 1.99.1 and only Metrics, Platform Runtime and Thiserror as normal
+dependencies. Jobs remains published at **0.34.3**; its shared tooling/dependency
+notes remain pending under 0.34.4. There is no pending Timers draft for this batch.
 
-## Granular release CI and Testkit refresh pending — 2026-11-04
+## Qualification and selected inputs
 
-The shared feedback is addressed locally: release plans name all 37 obligations
-individually instead of nesting `ci`. Proven Jobs-only scope requires 19 and marks
-18 standalone Timers/unchanged tooling obligations not applicable. Full CI keeps
-all 33 common obligations; Timers/shared/unknown/dirty scope keeps all 37. Mixed
-lint/docs/archive commands reuse explicit Jobs/Timers leaf recipes. Baselines stay
-bound to the admitted source version, and sealing rechecks the exact product
-mapping. Required tests cannot be omitted through an edited but consistent plan.
+The complete 37-stage workspace release plan passed on Linux/Rust 1.99.1 and
+PocketIC 16.1.0: all 33 common CI obligations, CLI/server setup, all **35 installed
+runtime subjects** and the policy cohort. This includes 178 Timers unit tests,
+doctests, Jobs and combined-consumer tests, native/Wasm checks and both normalized
+archives. Publication repeated complete Clippy and compiled the 0.40.4 archive.
+Installed runtime and cohort stages took 44s/47s; source-bound tooling fixtures
+648s and validation-plan fixtures 115s. No fresh macOS or installed Jobs recovery
+qualification is claimed. Hosted CI remains asynchronous.
 
-Mapping/rejection/durable-evidence fixtures, actual Make caller/drift fixtures,
-all six real lint/docs/archive targets, ShellCheck and snapshot integrity passed.
-Product commands in the mapping fixtures are substituted; no new live IC or
-macOS qualification is claimed. Both groups' real metadata-editor/projection and
-recovery fixtures also passed, with product commands/uploads substituted. Evidence
-is in `target/group-ci/`. No full product CI or release was run for this ordinary
-change. Jobs 0.34.4 and Timers 0.40.4 have pending tooling/dependency notes;
-package versions are unchanged and work remains uncommitted.
+Gate source is the preparation commit above. Its pre-bump lock SHA-256 is
+`255ca2482d0f5cfdd1030f63a32bcccaf30158d7dc0c2f10710bc8c5ce5ba029`;
+the admitted metadata transaction changes only the selected group's version rows.
+Testkit **0.85.1**, native Platform **0.22.0**, Types **0.18.1**, Runtime/macros/
+exact guard **0.19.1**, Build/Host **0.74.3**, Wire/Derive **0.16.2**, Metrics
+**0.29.1**, Logging **0.24.6** and Storage **0.66.2** are selected. New supplier
+checksums match official non-yanked registry records. Testkit's compatible root
+minimum is 0.85.0; managed startup supplies the explicit server URL.
+Shared Tooling remains **0.29.4**, revision
+`628ccc75d813bfd9bae777bfbaef55838d25b1b2`; all 146 payload files verify.
 
-The later owner-requested supplier refresh selects **Types 0.18.1** and
-**Testkit 0.85.0**. Official checksums match; neither version is yanked. Testkit
-0.85.1 was unpublished at observation. Its explicit-server-URL change needs no
-Rust caller edits: all three harness/demo constructors already use managed
-`PocketIcStartupConfig::build_instance`. Keep compatible Types minimum 0.18.0;
-Testkit's root requirement is now 0.85.0. Runtime/macros/guard remain 0.19.1,
-native Platform facade 0.21 and server 16.1.0. No unrelated supplier was refreshed.
+## Delivered cleanup and validation policy
 
-On this graph, two native harness/demo cases and four API/Wire cases passed;
-explicit live Jobs/demo cases stayed ignored. Jobs/Timers probe Wasm checks and
-native/Wasm dependency policies passed. Testkit CLI setup/server admission and
-one explicitly selected installed Timers trap/upgrade recovery case passed on
-Linux/Rust 1.99.1. Evidence: `target/adopt-testkit085/` and
-`target/timer-qualification-1035241-0/runtime.json`. This is one live subject, not
-a fresh full watchdog/cohort or installed Jobs recovery pass. Earlier CI-fixture
-evidence above retains its earlier graph; the final 37-check gate remains pending.
+Runtime capabilities, registration/reconciliation and dispatch have private
+modules; shared authority checks and the registry static remain in the parent.
+The parent is 305 lines, down from 1,364; largest new module: 459 lines.
+All 42 public function signatures remain unchanged. All 35 installed cases are
+grouped by behavior, with all 17 required qualification anchors updated. Fresh
+setup is shared at 31 sites; overflow keeps its pre-install time advance.
+Earlier focused evidence stays in `target/runtime-cleanup/`, including the
+socket-blocked attempt and separate successful two-subject host qualification.
+These structural moves do not establish an execution-cost or Wasm-size gain.
 
-The current real Jobs plan correctly selects all 37: outstanding Timers/supplier
-and shared changes since Jobs 0.34.3 prevent Jobs-only scope. The first delivery of
-this policy also requires the complete gate; no baseline is advanced for speed.
-See [the reviewed mapping](../release-validation-groups.md).
+Release plans now name every obligation individually. Proven Jobs-only scope
+selects 19 obligations and marks 18 unchanged Timers/tooling obligations not
+applicable. Timers, shared, dirty and uncertain inputs keep all 37; full repository
+CI keeps all 33 common obligations. No proof reuse or omission through edited
+receipts is permitted. The current Jobs plan still broadens because changes since
+Jobs 0.34.3 include Timers and shared inputs. See [the mapping](../release-validation-groups.md).
 
-## Timers 0.40.3 delivered — 2026-11-04
+## Custody and boundaries
 
-Timers **0.40.3** is pushed and published from this normal checkout on `main` to
-`origin/main` (`dragginzgame/ic-scheduling`). Source preparation is
-`b556199feae4d1ca2235fd20b6fe718a19136a2a`; release commit is
-`670cd0d00cf496e9252fb77a3048ffd151d89eb8`, annotated tag `timers-v0.40.3`
-(object `d1e08087df6390dc74ab98f51d4c3269facf00de`). The canonical journal is
-complete. Separate `make RELEASE_GROUP=timers publish` succeeded from the clean
-matching tag after the owner explicitly authorized crates.io publication.
-Automatic approval initially rejected the upload; that command did not execute.
-The later authorized upload completed. Do not repeat it.
+`.git/release-state/deployment-timers0404.OHlQFZ45/` retains source, graph and
+registry/archive verification, release/publication logs, installed diagnostics
+and completion evidence. Canonical `timers-0.40.4.plan` and its version-2 receipts
+retain exact preparation/gate/source identities; never convert historical proofs.
+Also preserve `deployment-timers0403.XBMtMHVE/`, its completed journal/receipts,
+checksum-matched archive and installed diagnostics. Regenerable scratch stays in
+`target/`; retained-state admission passes without cleanup.
 
-The official registry checksum matches the retained archive and its clean VCS
-source at that release commit: `decfcea289e39056a84a13dc228040553f4be61a6775026db03eeaa4fddc660a`.
-The archive retains Rust 1.99.1 and only Metrics, Platform Runtime and Thiserror
-as normal dependencies. Jobs remains **0.34.3**, without a new publication.
-There is no pending draft for this delivered batch and no sibling was released.
-
-## Selected graph and qualification
-
-This release includes Runtime/macros/exact guard **0.19.1**, IC Build **0.74.3**
-and Wire/Derive **0.16.2**. All six official registry checksums match the selected
-lock, with no yanks. Keep the compatible Runtime 0.19.0 manifest minimum.
-Types 0.18.0, native Platform facade 0.21.0, Endpoint 0.6.1, Testkit 0.84.1,
-Logging 0.24.6, Metrics 0.29.1, Storage 0.66.2 and Host 0.74.3 remain selected.
-Shared Tooling stays **0.29.4** at `628ccc75d813bfd9bae777bfbaef55838d25b1b2`.
-The supplier facade 0.22 draft was not adopted.
-
-The fresh five-stage gate passed on Linux with Rust **1.99.1** and PocketIC
-**16.1.0**: all 30 common CI obligations (655s), CLI/server admission (9s/10s),
-all **35 installed watchdog subjects** (49s) and the policy cohort (46s).
-Common CI includes 178 Timers unit tests, eight doctests, Jobs/combined consumers,
-native/Wasm checks and both normalized archives. Publication passed final Clippy
-and normalized 0.40.3 archive compilation. These qualify the selected graph and
-source; no new installed Jobs recovery or macOS pass is claimed. Hosted
-Linux/macOS CI remains asynchronous. Same-source upgrade tests do not establish
-deployed old-Wasm migration, rollback or destructive data retirement.
-
-## Delivered cleanup and API boundaries
-
-0.40.3 shares ordinary stop/cancel, Watchdog control, callback adaptation and
-result normalization. Its final slice was 10,959→10,947 non-test LOC with 371
-test functions; the rejected capability macro added indirection. Those are
-historical measurements, not totals for the pending module moves above.
-Metrics recording stays in Timers; copied type re-exports create no endpoint.
-Canic owns reporting. Jobs remains Serde-only with validated `Job::restore` and
-explicit uncertain-effect disposition. Timers retains its sole private provider,
-unsafe FFI confinement and exact Runtime guard. Storage retains admitted Cells
-and blocked attempts/receipts; retired Memory images are refused without writes.
+Eight members retain explicit versions across Jobs (three) and Timers (five).
+Root manifests/lock own the cohort. Jobs stays Serde-only, consumer-owned and
+validated through `Job::restore`; uncertain effects need explicit disposition.
+Timers retains its sole private provider, FFI confinement and exact Runtime guard.
+Canic owns reporting and application integration; copied Metrics observations
+create no endpoint. Storage owns admitted Cells; retired Memory images are refused
+without writes. Same-release upgrades do not prove old-Wasm migration or rollback.
 See the [consumer checklist](../timers/adoption/0.40.md).
-
-## Durable custody and release rules
-
-`.git/release-state/deployment-timers0403.XBMtMHVE/` retains incoming source and
-old/selected locks, supplier registry observations, cleanup evidence, release and
-publication logs/statuses, the checksum-matched published archive, VCS inspection
-and installed watchdog/cohort diagnostics. Completed `timers-0.40.3.*` journal and
-version-2 receipts retain their exact source. Default retained-state admission
-passes without cleanup. Regenerable development scratch remains under `target/`.
-
-Eight members retain explicit matching versions in independent Jobs (three) and
-Timers (five) groups; no root workspace version. Root manifests and lock own the
-supplier cohort. `ic-jobs-canister-tests::harness` keeps recovery support explicit
-and default artifact capture lightweight. `ci/release-validation.json` remains the
-sole obligation roster; the pending mapping above replaces the old five-stage
-aggregation without reusing proofs or converting historical receipts. Earlier
-receipts retain their original source/adapter. See
-[the group mapping](../release-validation-groups.md).
 
 ## Earlier deliveries and protected history
 
