@@ -109,6 +109,13 @@ selection and custody behavior, not live IC or macOS product qualification.
 
 ## Delivered qualification
 
+Timers **0.40.3** passed the complete five-stage plan on source `b556199` with
+Runtime/macros/guard 0.19.1, Build 0.74.3 and Wire/Derive 0.16.2. All 30 common
+obligations (655s), CLI/server admission, 35 installed watchdog subjects and the
+policy cohort passed on Linux/Rust 1.99.1. Metadata projection admitted release
+`670cd0d`; Git delivery and explicitly authorized separate crates.io publication
+completed. No fresh installed Jobs recovery or macOS execution is claimed.
+
 Timers **0.40.2** passed the complete five-stage plan on source `0bc7ddf` with
 the selected Logging 0.24.6, Metrics 0.29.1, Storage 0.66.2 and Host 0.74.3 patches.
 All 30 common obligations, CLI/server admission, 35 installed watchdog subjects
