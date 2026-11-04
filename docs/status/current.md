@@ -1,5 +1,32 @@
 # Current handoff
 
+## Timers 0.40.2 deployment in progress — 2026-11-04
+
+The owner authorized commit/push, release and crates.io publication of the cleanup
+from this normal `main` checkout to `origin/main`, including the independent lock
+refresh: Logging 0.24.6, Metrics 0.29.1, Storage 0.66.2 and Host Artifacts/FS/Process
+0.74.3. Jobs source is unchanged and stays 0.34.3. Incoming work and old/new locks
+are preserved at `.git/release-state/deployment-timers0402.G6arr0ab/`. The fresh
+complete five-stage gate and publication are pending; do not claim delivery yet.
+
+Ordinary control now owns one Ensure/Reconcile selection, pending arbitration
+and completion planning. Registry entry/provider mechanics move to a private
+child; counter fields/defaults/getters use one declaration. Public exports,
+scheduling rules, cleanup order and explicit Metrics arithmetic stay unchanged.
+Runtime LOC is 10,968→10,923 (−45); registry main-file physical lines are
+1,858→1,472. The 304 entry/provider and 58 planning source lines are moves.
+All 178 unit cases, Clippy/rustdoc, provider and generated getter checks pass;
+371 test functions remain. These focused checks used the earlier incoming graph,
+with Host 0.74.2; they do not qualify the newly selected complete release graph.
+
+Matched Rust 1.99.1 `timer-probe` builds use thin LTO, opt-level z, panic abort,
+symbol stripping, no post-link optimizer. Raw module/code-section payload bytes:
+Once 120,631/105,445→120,959/105,770; AfterCompletion
+120,644/105,419→120,980/105,744; Watchdog 124,137/108,828→124,465/109,153.
+Code grows 325 bytes per policy; no speed/instruction-cost improvement is claimed.
+The comparison preserves its original lock hash and source at
+`target/timers-simplification/`; it is not relabelled as current supplier evidence.
+
 ## Timers 0.40.1 and Jobs 0.34.3 delivered — 2026-11-04
 
 Both groups are pushed and published from this normal checkout on `main` to
@@ -87,7 +114,7 @@ establish deployed old-Wasm migration, rollback or destructive data retirement.
 Eight members use explicit versions in independent Jobs (three members) and Timers
 (five members) groups; no root version. `ic-jobs-canister-tests::harness` owns recovery
 support behind explicit selection; default artifact capture stays lightweight.
-Current suppliers: Logging 0.24.5, Testkit 0.84.1 and its owned PocketIC client,
+Delivered suppliers: Logging 0.24.5, Testkit 0.84.1 and its owned PocketIC client,
 Metrics 0.29, Runtime/macros/guard 0.19, Types 0.18, Storage 0.66, Wire/Derive 0.16,
 Endpoint 0.6; Rust 1.99.1 remains pinned. No retired Memory, Stable Structures or
 Testkit Native package is selected. Timers 0.40 exposes Metrics 0.29 and Runtime

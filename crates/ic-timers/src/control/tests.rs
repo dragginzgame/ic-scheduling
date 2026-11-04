@@ -1,5 +1,9 @@
 use super::*;
 
+fn schedule(deadline_ns: u64) -> ResolvedSchedule {
+    crate::TimerSchedule::At(deadline_ns).resolve(0).unwrap()
+}
+
 impl TimerControl {
     pub(crate) const fn seed_generation_for_test(&mut self, generation: u64) {
         assert!(matches!(
@@ -11,7 +15,10 @@ impl TimerControl {
 }
 
 fn arm(control: &mut TimerControl, deadline_ns: u64) -> u64 {
-    assert_eq!(control.schedule(deadline_ns), Ok(Some(WakeupArm::Initial)));
+    assert_eq!(
+        control.request(schedule(deadline_ns), OrdinaryRequest::Ensure),
+        Ok(Some(WakeupArm::Initial))
+    );
     control.generation()
 }
 
@@ -19,8 +26,14 @@ fn arm(control: &mut TimerControl, deadline_ns: u64) -> u64 {
 fn duplicate_and_later_schedules_keep_one_earliest_handle() {
     let mut control = TimerControl::default();
     assert_eq!(arm(&mut control, 100), 1);
-    assert_eq!(control.schedule(100), Ok(None));
-    assert_eq!(control.schedule(200), Ok(None));
+    assert_eq!(
+        control.request(schedule(100), OrdinaryRequest::Ensure),
+        Ok(None)
+    );
+    assert_eq!(
+        control.request(schedule(200), OrdinaryRequest::Ensure),
+        Ok(None)
+    );
     assert_eq!(control.generation(), 1);
     assert_eq!(
         control.registration,
@@ -32,7 +45,10 @@ fn duplicate_and_later_schedules_keep_one_earliest_handle() {
 fn earlier_schedule_replaces_and_invalidates_old_generation() {
     let mut control = TimerControl::default();
     let old_generation = arm(&mut control, 100);
-    assert_eq!(control.schedule(50), Ok(Some(WakeupArm::Replacement)));
+    assert_eq!(
+        control.request(schedule(50), OrdinaryRequest::Ensure),
+        Ok(Some(WakeupArm::Replacement))
+    );
     assert_eq!(control.generation(), 2);
     assert_eq!(
         control.registration,
@@ -46,7 +62,10 @@ fn earlier_schedule_replaces_and_invalidates_old_generation() {
 fn authoritative_reconciliation_can_move_scheduled_deadline_later() {
     let mut control = TimerControl::default();
     let old_generation = arm(&mut control, 100);
-    assert_eq!(control.reconcile(200), Ok(Some(WakeupArm::Replacement)));
+    assert_eq!(
+        control.request(schedule(200), OrdinaryRequest::Reconcile),
+        Ok(Some(WakeupArm::Replacement))
+    );
     assert_eq!(control.generation(), 2);
     assert_eq!(
         control.registration,
@@ -57,7 +76,7 @@ fn authoritative_reconciliation_can_move_scheduled_deadline_later() {
 }
 
 #[test]
-fn running_requests_leave_completion_selection_to_the_registry() {
+fn running_requests_preserve_pending_unregistration() {
     let mut control = TimerControl::default();
     let generation = arm(&mut control, 100);
     assert!(control.begin(generation));
@@ -65,8 +84,14 @@ fn running_requests_leave_completion_selection_to_the_registry() {
         panic!("accepted fixture should be running");
     };
     *pending = Some(OrdinaryPending::Unregister);
-    assert_eq!(control.reconcile(300), Ok(None));
-    assert_eq!(control.schedule(90), Ok(None));
+    assert_eq!(
+        control.request(schedule(300), OrdinaryRequest::Reconcile),
+        Ok(None)
+    );
+    assert_eq!(
+        control.request(schedule(90), OrdinaryRequest::Ensure),
+        Ok(None)
+    );
     assert_eq!(
         control.registration,
         TimerRegistration::Running {
@@ -138,7 +163,7 @@ fn exhausted_generation_rejects_successors_without_preventing_stop() {
     assert_eq!(arm(&mut control, 100), u64::MAX);
 
     assert_eq!(
-        control.schedule(50),
+        control.request(schedule(50), OrdinaryRequest::Ensure),
         Err(TimerControlFailure::GenerationExhausted)
     );
     assert_eq!(

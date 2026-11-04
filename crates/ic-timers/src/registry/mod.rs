@@ -5,10 +5,13 @@
 //! authority.
 
 mod effect;
+mod entry;
 mod watchdog;
 
 use effect::WatchdogDispatch;
 pub use effect::{RegistryEffect, WakeupToken};
+pub use entry::ProviderHandles;
+use entry::{Entry, EntryKind, OwnedProviderHandle};
 use watchdog::{
     WatchdogCompletion, WatchdogControl, WatchdogPending, WatchdogScheduleRequest, WatchdogState,
     prepare_watchdog_completion, select_pending_watchdog,
@@ -16,16 +19,17 @@ use watchdog::{
 
 use crate::{
     callback::OrdinaryRunResult,
-    control::{OrdinaryPending, TimerControl, TimerRegistration, WakeupArm},
+    control::{
+        OrdinaryCompletion, OrdinaryPending, OrdinaryRequest, TimerControl, TimerRegistration,
+        WakeupArm, prepare_ordinary_completion,
+    },
     platform::TimerHandle,
-    schedule::{OrdinaryDirective, ResolvedSchedule, ScheduleError, TimerCadence, TimerSchedule},
+    schedule::{ResolvedSchedule, ScheduleError, TimerCadence, TimerSchedule},
     snapshot::{
-        DeclarationLifetime, InactiveReason, MemoryPageExtent, MemoryPageSample,
-        OrdinaryRuntimeStateSnapshot, TimerCompletion, TimerCompletionOutcome, TimerControlFailure,
-        TimerDirectiveSnapshot, TimerEpoch, TimerIdentity, TimerInventorySnapshot,
-        TimerObservabilitySnapshot, TimerPolicy, TimerRegistrationId, TimerRuntimeStateSnapshot,
-        TimerSchedulingMode, TimerSnapshot, WatchdogAttemptStatus, WatchdogRunResult,
-        WatchdogRuntimeStateSnapshot,
+        DeclarationLifetime, InactiveReason, MemoryPageExtent, MemoryPageSample, TimerCompletion,
+        TimerCompletionOutcome, TimerControlFailure, TimerDirectiveSnapshot, TimerEpoch,
+        TimerIdentity, TimerInventorySnapshot, TimerPolicy, TimerSchedulingMode, TimerSnapshot,
+        WatchdogAttemptStatus, WatchdogRunResult,
     },
 };
 use std::{cell::RefCell, collections::BTreeMap, fmt, future::Future, pin::Pin, rc::Rc};
@@ -219,316 +223,6 @@ pub enum RegistryError {
 type OrdinaryFuture = Pin<Box<dyn Future<Output = OrdinaryRunResult>>>;
 pub type OrdinaryCallback = Rc<RefCell<dyn FnMut(CallbackToken) -> OrdinaryFuture>>;
 pub type WatchdogCallback = Rc<RefCell<dyn FnMut(CallbackToken) -> WatchdogRunResult>>;
-
-struct OwnedProviderHandle {
-    callback_generation: u64,
-    handle: TimerHandle,
-}
-
-/// The at-most-two provider capabilities owned by one timer entry.
-#[must_use = "clear every detached provider handle"]
-#[derive(Default)]
-pub struct ProviderHandles {
-    wakeup: Option<TimerHandle>,
-    work: Option<TimerHandle>,
-}
-
-impl ProviderHandles {
-    pub(crate) const fn take_wakeup(&mut self) -> Option<TimerHandle> {
-        self.wakeup.take()
-    }
-
-    pub(crate) const fn take_work(&mut self) -> Option<TimerHandle> {
-        self.work.take()
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum OrdinaryRequest {
-    Ensure,
-    Reconcile,
-}
-
-// One payload owns policy, callback type and control together. An ordinary
-// entry without cadence is Once; one with cadence is AfterCompletion.
-enum EntryKind {
-    Ordinary {
-        cadence: Option<TimerCadence>,
-        callback: OrdinaryCallback,
-        control: TimerControl,
-    },
-    Watchdog {
-        cadence: TimerCadence,
-        callback: WatchdogCallback,
-        control: WatchdogControl,
-    },
-}
-
-impl EntryKind {
-    const fn wakeup_role(&self) -> CallbackRole {
-        match self {
-            Self::Ordinary { .. } => CallbackRole::OrdinaryWork,
-            Self::Watchdog { .. } => CallbackRole::WatchdogScheduler,
-        }
-    }
-
-    fn ordinary(cadence: Option<TimerCadence>, callback: OrdinaryCallback) -> Self {
-        Self::Ordinary {
-            cadence,
-            callback,
-            control: TimerControl::default(),
-        }
-    }
-
-    fn watchdog(cadence: TimerCadence, callback: WatchdogCallback) -> Self {
-        Self::Watchdog {
-            cadence,
-            callback,
-            control: WatchdogControl::default(),
-        }
-    }
-
-    const fn policy(&self) -> TimerPolicy {
-        match self {
-            Self::Ordinary { cadence: None, .. } => TimerPolicy::Once,
-            Self::Ordinary {
-                cadence: Some(cadence),
-                ..
-            } => TimerPolicy::AfterCompletion { cadence: *cadence },
-            Self::Watchdog { cadence, .. } => TimerPolicy::Watchdog { cadence: *cadence },
-        }
-    }
-}
-
-struct Entry {
-    claim_generation: u64,
-    lifetime: DeclarationLifetime,
-    kind: EntryKind,
-    scheduling_mode: TimerSchedulingMode,
-    latest_directive: Option<TimerDirectiveSnapshot>,
-    latest_requested_delay_ns: Option<u64>,
-    latest_armed_delay_ns: Option<u64>,
-    confirmed_wakeup_generation: Option<u64>,
-    wakeup: Option<OwnedProviderHandle>,
-    work: Option<OwnedProviderHandle>,
-    observability: TimerObservabilitySnapshot,
-}
-
-impl Entry {
-    const fn new(claim_generation: u64, kind: EntryKind, lifetime: DeclarationLifetime) -> Self {
-        let scheduling_mode = match kind.policy() {
-            TimerPolicy::Once => TimerSchedulingMode::Once,
-            TimerPolicy::AfterCompletion { .. } => TimerSchedulingMode::AfterCompletion,
-            TimerPolicy::Watchdog { .. } => TimerSchedulingMode::Watchdog,
-        };
-
-        Self {
-            claim_generation,
-            lifetime,
-            kind,
-            scheduling_mode,
-            latest_directive: None,
-            latest_requested_delay_ns: None,
-            latest_armed_delay_ns: None,
-            confirmed_wakeup_generation: None,
-            wakeup: None,
-            work: None,
-            observability: TimerObservabilitySnapshot::EMPTY,
-        }
-    }
-
-    /// Validate the role, live generation and state for each provider binding.
-    const fn provider_handle_slot(
-        &mut self,
-        token: &CallbackToken,
-        binding: ProviderBinding,
-    ) -> Result<&mut Option<OwnedProviderHandle>, RegistryError> {
-        match (&self.kind, token.role) {
-            (EntryKind::Ordinary { control, .. }, CallbackRole::OrdinaryWork)
-                if matches!(
-                    control.registration,
-                    TimerRegistration::Scheduled { .. }
-                        if control.generation() == token.callback_generation
-                ) =>
-            {
-                Ok(&mut self.wakeup)
-            }
-            (EntryKind::Watchdog { control, .. }, CallbackRole::WatchdogScheduler)
-                if matches!(
-                    control.state,
-                    WatchdogState::Scheduled { .. } | WatchdogState::AwaitingWork { .. }
-                        if control.generation == token.callback_generation
-                            && (matches!(binding, ProviderBinding::Stage) || matches!(control.state, WatchdogState::Scheduled { .. })
-                                || control.scheduler_abandoned)
-                ) =>
-            {
-                Ok(&mut self.wakeup)
-            }
-            (EntryKind::Watchdog { control, .. }, CallbackRole::WatchdogWork)
-                if matches!(
-                    control.state,
-                    WatchdogState::AwaitingWork {
-                        attempt_status: WatchdogAttemptStatus::Dispatched,
-                        ..
-                    } if control.generation == token.callback_generation
-                ) =>
-            {
-                Ok(&mut self.work)
-            }
-            _ => Err(RegistryError::StaleCallback),
-        }
-    }
-
-    fn record_arm(&mut self, token: &CallbackToken, delay_ns: u64) {
-        if self.confirmed_wakeup_generation == Some(token.callback_generation) {
-            return;
-        }
-        self.confirmed_wakeup_generation = Some(token.callback_generation);
-        self.latest_armed_delay_ns = Some(delay_ns);
-        let counters = self.observability.counters_mut();
-        counters.record_wakeup_armed();
-        if token.role == CallbackRole::WatchdogWork {
-            counters.record_work_dispatched();
-        }
-    }
-
-    const fn snapshot(&self, identity: TimerIdentity, epoch: TimerEpoch) -> TimerSnapshot {
-        let state = match &self.kind {
-            EntryKind::Ordinary { control, .. } => match control.registration {
-                TimerRegistration::Inactive { reason } => {
-                    TimerRuntimeStateSnapshot::Inactive { reason }
-                }
-                TimerRegistration::Scheduled { deadline_ns } => {
-                    TimerRuntimeStateSnapshot::Ordinary(OrdinaryRuntimeStateSnapshot::Scheduled {
-                        generation: control.generation(),
-                        deadline_ns,
-                    })
-                }
-                TimerRegistration::Running { .. } => {
-                    TimerRuntimeStateSnapshot::Ordinary(OrdinaryRuntimeStateSnapshot::Running {
-                        generation: control.generation(),
-                    })
-                }
-            },
-            EntryKind::Watchdog { control, .. } => match control.state {
-                WatchdogState::Inactive { reason } => {
-                    TimerRuntimeStateSnapshot::Inactive { reason }
-                }
-                WatchdogState::Scheduled { deadline_ns } => {
-                    TimerRuntimeStateSnapshot::Watchdog(WatchdogRuntimeStateSnapshot::Scheduled {
-                        scheduler_generation: control.generation,
-                        deadline_ns,
-                    })
-                }
-                WatchdogState::AwaitingWork {
-                    successor_deadline_ns,
-                    attempt_status,
-                    ..
-                } => TimerRuntimeStateSnapshot::Watchdog(
-                    WatchdogRuntimeStateSnapshot::AwaitingWork {
-                        successor_generation: control.generation,
-                        successor_deadline_ns,
-                        attempt_status,
-                    },
-                ),
-            },
-        };
-
-        TimerSnapshot::new(
-            identity,
-            TimerRegistrationId::new(epoch, self.claim_generation),
-            self.kind.policy(),
-            self.lifetime,
-            state,
-            self.scheduling_mode,
-            self.latest_directive,
-            self.latest_requested_delay_ns,
-            self.latest_armed_delay_ns,
-            &self.observability,
-        )
-    }
-
-    /// Decide terminal removal from the entry already selected and authorized
-    /// by the transition owner. Runtime detaches handles before that transition.
-    const fn remove_on_failure(&self, transition: &RegistryTransition) -> bool {
-        transition.failure().is_some()
-            && matches!(self.lifetime, DeclarationLifetime::RemoveWhenStopped)
-    }
-
-    fn take_wakeup_handle(&mut self) -> Option<TimerHandle> {
-        self.wakeup.take().map(|owned| owned.handle)
-    }
-
-    fn take_work_handle(&mut self) -> Option<TimerHandle> {
-        self.work.take().map(|owned| owned.handle)
-    }
-
-    fn take_provider_handles(&mut self) -> ProviderHandles {
-        ProviderHandles {
-            wakeup: self.take_wakeup_handle(),
-            work: self.take_work_handle(),
-        }
-    }
-
-    // The caller selected this entry by identity. Fired handles are consumed
-    // independently of callback acceptance, but only for the exact claim,
-    // policy role and owned slot generation.
-    fn consume_provider_handle(&mut self, token: &CallbackToken) {
-        if !self.owns_token_claim(token) {
-            return;
-        }
-        let slot = match token.role {
-            CallbackRole::OrdinaryWork | CallbackRole::WatchdogScheduler
-                if token.role == self.kind.wakeup_role() =>
-            {
-                &mut self.wakeup
-            }
-            CallbackRole::WatchdogWork if matches!(self.kind, EntryKind::Watchdog { .. }) => {
-                &mut self.work
-            }
-            _ => return,
-        };
-        if slot
-            .as_ref()
-            .is_some_and(|owned| owned.callback_generation == token.callback_generation)
-        {
-            *slot = None;
-        }
-    }
-
-    const fn owns_token_claim(&self, token: &CallbackToken) -> bool {
-        self.claim_generation == token.claim().claim_generation()
-    }
-
-    // Registry lookups select this entry by token identity first.
-    const fn owns_running_work(&self, token: &CallbackToken) -> bool {
-        if !self.owns_token_claim(token) {
-            return false;
-        }
-        match (&self.kind, token.role) {
-            (EntryKind::Ordinary { control, .. }, CallbackRole::OrdinaryWork) => matches!(
-                control.registration,
-                TimerRegistration::Running { .. }
-                    if control.generation() == token.callback_generation
-            ),
-            (EntryKind::Watchdog { control, .. }, CallbackRole::WatchdogWork) => matches!(
-                control.state,
-                WatchdogState::AwaitingWork {
-                    attempt_status: WatchdogAttemptStatus::Running,
-                    ..
-                } if control.generation == token.callback_generation
-            ),
-            (
-                EntryKind::Ordinary { .. },
-                CallbackRole::WatchdogScheduler | CallbackRole::WatchdogWork,
-            )
-            | (
-                EntryKind::Watchdog { .. },
-                CallbackRole::OrdinaryWork | CallbackRole::WatchdogScheduler,
-            ) => false,
-        }
-    }
-}
 
 /// Pure, fixed-capacity canonical registry.
 pub struct TimerRegistry {
@@ -810,10 +504,7 @@ impl TimerRegistry {
         entry.observability.counters_mut().record_schedule_request();
         entry.latest_requested_delay_ns = requested.requested_delay_ns;
 
-        let arm = match request {
-            OrdinaryRequest::Ensure => control.schedule(requested.deadline_ns),
-            OrdinaryRequest::Reconcile => control.reconcile(requested.deadline_ns),
-        };
+        let arm = control.request(requested, request);
 
         let arm = match arm {
             Ok(arm) => arm,
@@ -830,9 +521,6 @@ impl TimerRegistry {
             }
         };
 
-        if let TimerRegistration::Running { pending } = &mut control.registration {
-            *pending = Some(select_pending_ordinary(*pending, request, requested));
-        }
         if arm.is_some() || matches!(request, OrdinaryRequest::Reconcile) {
             entry.scheduling_mode = requested.mode;
         }
@@ -1766,80 +1454,6 @@ fn stop_ordinary_completion(
     entry.latest_directive = Some(TimerDirectiveSnapshot::Stop);
     entry.observability.record_completion(completion, now_ns);
     transition
-}
-
-// Keep the selected action and its callback observation together. An ensure can
-// select a pending schedule while retaining a callback's Stop observation.
-enum OrdinaryCompletion {
-    Schedule {
-        requested: ResolvedSchedule,
-        directive: TimerDirectiveSnapshot,
-    },
-    Stop,
-    Cancel,
-}
-
-impl OrdinaryCompletion {
-    const fn directive(&self) -> TimerDirectiveSnapshot {
-        match self {
-            Self::Schedule { directive, .. } => *directive,
-            Self::Stop | Self::Cancel => TimerDirectiveSnapshot::Stop,
-        }
-    }
-}
-
-// Select authoritative commands before validating a callback proposal they discard.
-fn prepare_ordinary_completion(
-    pending: Option<OrdinaryPending>,
-    directive: OrdinaryDirective,
-    now_ns: u64,
-    cadence: Option<TimerCadence>,
-) -> Result<OrdinaryCompletion, TimerControlFailure> {
-    match pending {
-        Some(OrdinaryPending::ReconcileInactive) => Ok(OrdinaryCompletion::Stop),
-        Some(OrdinaryPending::Cancel | OrdinaryPending::Unregister) => {
-            Ok(OrdinaryCompletion::Cancel)
-        }
-        Some(OrdinaryPending::Reconcile(requested)) => Ok(OrdinaryCompletion::Schedule {
-            requested,
-            directive: TimerDirectiveSnapshot::ScheduleAt {
-                deadline_ns: requested.deadline_ns,
-            },
-        }),
-        Some(OrdinaryPending::Schedule(_)) | None => {
-            let (callback, directive) = directive.resolve(now_ns, cadence)?;
-            let selected = if let Some(OrdinaryPending::Schedule(pending)) = pending {
-                match callback {
-                    Some(callback) if callback.deadline_ns < pending.deadline_ns => Some(callback),
-                    Some(_) | None => Some(pending),
-                }
-            } else {
-                callback
-            };
-            Ok(selected.map_or(OrdinaryCompletion::Stop, |requested| {
-                OrdinaryCompletion::Schedule {
-                    requested,
-                    directive,
-                }
-            }))
-        }
-    }
-}
-
-const fn select_pending_ordinary(
-    current: Option<OrdinaryPending>,
-    request: OrdinaryRequest,
-    requested: ResolvedSchedule,
-) -> OrdinaryPending {
-    match (current, request) {
-        (Some(OrdinaryPending::Unregister), _) => OrdinaryPending::Unregister,
-        (_, OrdinaryRequest::Reconcile) => OrdinaryPending::Reconcile(requested),
-        (
-            Some(OrdinaryPending::Reconcile(current) | OrdinaryPending::Schedule(current)),
-            OrdinaryRequest::Ensure,
-        ) if current.deadline_ns <= requested.deadline_ns => OrdinaryPending::Schedule(current),
-        (_, OrdinaryRequest::Ensure) => OrdinaryPending::Schedule(requested),
-    }
 }
 
 fn remove_after(

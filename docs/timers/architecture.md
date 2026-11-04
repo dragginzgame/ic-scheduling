@@ -239,7 +239,9 @@ The remaining module hierarchy keeps six responsibilities separate:
    the active callback generation; state variants do not store another copy.
    Its inactive state owns its reason, its running
    state owns its pending command, and scheduled state carries neither. The
-   registry owns exact running-work authorization and command arbitration.
+   registry owns exact running-work authorization. One ordinary request selection
+   owns both deadline replacement and pending-command arbitration in `control`;
+   its completion planner carries the chosen schedule and observation together.
    Completion arms its selected successor through the shared checked arming
    operation or stops with its selected reason, in the same atomic transition.
    Checked arming returns canonical `TimerControlFailure`
@@ -277,10 +279,13 @@ The remaining module hierarchy keeps six responsibilities separate:
    registration-consistency recovery path.
 4. `registry` is the provider-call-free fixed-capacity canonical owner for
    structured identities, callback closures, claim generations,
-   policy-specific state, the sole pending ordinary-command machine, nested
-   arbitration, deterministic snapshots, and provider-neutral effects. It also
+   policy-specific state, authorized application of ordinary/watchdog decisions,
+   deterministic snapshots, and provider-neutral effects. It also
    owns every bound provider handle; only `runtime` invokes `platform` to
-   create or clear those handles. Each entry has one policy-specific payload
+   create or clear those handles. The private `registry/entry` child groups typed
+   entry payloads, provider binding/consumption and observation projection; claim
+   admission, transition ordering and terminal removal stay with the registry.
+   Each entry has one policy-specific payload
    containing its control and correctly typed callback. An ordinary payload
    without cadence is Once; one with cadence is AfterCompletion. Public policy
    observations are derived from that payload rather than stored separately.

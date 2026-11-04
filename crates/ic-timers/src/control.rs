@@ -1,15 +1,15 @@
 //! Pure callback-generation state for one ordinary timer.
 //!
 //! This module owns no task execution, platform timer handles, persistence, or
-//! time source. The canonical registry owns running-work authorization and
-//! pending-command arbitration.
+//! time source. Ordinary request selection, pending-command arbitration and
+//! completion planning live here; the registry owns authorization and effects.
 
 use crate::{
-    schedule::ResolvedSchedule,
-    snapshot::{InactiveReason, TimerControlFailure},
+    schedule::{OrdinaryDirective, ResolvedSchedule, TimerCadence},
+    snapshot::{InactiveReason, TimerControlFailure, TimerDirectiveSnapshot},
 };
 
-/// A command arbitrated by the registry during ordinary work.
+/// A command selected during ordinary work after registry authorization.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum OrdinaryPending {
     Cancel,
@@ -34,7 +34,7 @@ pub enum TimerRegistration {
     },
     /// One generation currently owns logical execution.
     Running {
-        /// Registry-owned command arbitration for this running attempt.
+        /// The selected command for this authorized running attempt.
         pending: Option<OrdinaryPending>,
     },
 }
@@ -70,16 +70,32 @@ pub struct TimerControl {
 }
 
 #[derive(Clone, Copy)]
-enum DeadlineSelection {
-    Earliest,
-    Exact,
+pub enum OrdinaryRequest {
+    Ensure,
+    Reconcile,
 }
 
-impl DeadlineSelection {
+impl OrdinaryRequest {
     const fn replaces(self, current_deadline_ns: u64, requested_deadline_ns: u64) -> bool {
         match self {
-            Self::Earliest => requested_deadline_ns < current_deadline_ns,
-            Self::Exact => requested_deadline_ns != current_deadline_ns,
+            Self::Ensure => requested_deadline_ns < current_deadline_ns,
+            Self::Reconcile => requested_deadline_ns != current_deadline_ns,
+        }
+    }
+
+    const fn select_pending(
+        self,
+        current: Option<OrdinaryPending>,
+        requested: ResolvedSchedule,
+    ) -> OrdinaryPending {
+        match (current, self) {
+            (Some(OrdinaryPending::Unregister), _) => OrdinaryPending::Unregister,
+            (_, Self::Reconcile) => OrdinaryPending::Reconcile(requested),
+            (
+                Some(OrdinaryPending::Reconcile(current) | OrdinaryPending::Schedule(current)),
+                Self::Ensure,
+            ) if current.deadline_ns <= requested.deadline_ns => OrdinaryPending::Schedule(current),
+            (_, Self::Ensure) => OrdinaryPending::Schedule(requested),
         }
     }
 }
@@ -110,40 +126,28 @@ impl TimerControl {
         clear_wakeup
     }
 
-    /// Schedule a deadline, retaining an already scheduled earlier deadline.
-    /// Return the arm kind when scheduled state changes. Success with an arm
-    /// installs the supplied deadline and a newly allocated generation.
-    pub(crate) fn schedule(
+    /// Select one ordinary request, including its pending command during work.
+    /// Return an arm only after installing a newly allocated generation.
+    pub(crate) fn request(
         &mut self,
-        deadline_ns: u64,
+        requested: ResolvedSchedule,
+        request: OrdinaryRequest,
     ) -> Result<Option<WakeupArm>, TimerControlFailure> {
-        self.request_deadline(deadline_ns, DeadlineSelection::Earliest)
-    }
-
-    /// Reconcile this timer to one authoritative deadline.
-    pub(crate) fn reconcile(
-        &mut self,
-        deadline_ns: u64,
-    ) -> Result<Option<WakeupArm>, TimerControlFailure> {
-        self.request_deadline(deadline_ns, DeadlineSelection::Exact)
-    }
-
-    fn request_deadline(
-        &mut self,
-        deadline_ns: u64,
-        selection: DeadlineSelection,
-    ) -> Result<Option<WakeupArm>, TimerControlFailure> {
-        let kind = match self.registration {
+        let kind = match &mut self.registration {
             TimerRegistration::Inactive { .. } => WakeupArm::Initial,
             TimerRegistration::Scheduled {
                 deadline_ns: current_deadline_ns,
-            } if selection.replaces(current_deadline_ns, deadline_ns) => WakeupArm::Replacement,
-            TimerRegistration::Scheduled { .. } | TimerRegistration::Running { .. } => {
+            } if request.replaces(*current_deadline_ns, requested.deadline_ns) => {
+                WakeupArm::Replacement
+            }
+            TimerRegistration::Scheduled { .. } => return Ok(None),
+            TimerRegistration::Running { pending } => {
+                *pending = Some(request.select_pending(*pending, requested));
                 return Ok(None);
             }
         };
 
-        self.arm_deadline(deadline_ns)?;
+        self.arm_deadline(requested.deadline_ns)?;
         Ok(Some(kind))
     }
 
@@ -170,6 +174,64 @@ impl TimerControl {
         self.generation = generation;
         self.registration = TimerRegistration::Scheduled { deadline_ns };
         Ok(())
+    }
+}
+
+// Keep the selected action and its callback observation together. An ensure can
+// select a pending schedule while retaining a callback's Stop observation.
+pub enum OrdinaryCompletion {
+    Schedule {
+        requested: ResolvedSchedule,
+        directive: TimerDirectiveSnapshot,
+    },
+    Stop,
+    Cancel,
+}
+
+impl OrdinaryCompletion {
+    pub(crate) const fn directive(&self) -> TimerDirectiveSnapshot {
+        match self {
+            Self::Schedule { directive, .. } => *directive,
+            Self::Stop | Self::Cancel => TimerDirectiveSnapshot::Stop,
+        }
+    }
+}
+
+// Select authoritative commands before validating a callback proposal they discard.
+pub fn prepare_ordinary_completion(
+    pending: Option<OrdinaryPending>,
+    directive: OrdinaryDirective,
+    now_ns: u64,
+    cadence: Option<TimerCadence>,
+) -> Result<OrdinaryCompletion, TimerControlFailure> {
+    match pending {
+        Some(OrdinaryPending::ReconcileInactive) => Ok(OrdinaryCompletion::Stop),
+        Some(OrdinaryPending::Cancel | OrdinaryPending::Unregister) => {
+            Ok(OrdinaryCompletion::Cancel)
+        }
+        Some(OrdinaryPending::Reconcile(requested)) => Ok(OrdinaryCompletion::Schedule {
+            requested,
+            directive: TimerDirectiveSnapshot::ScheduleAt {
+                deadline_ns: requested.deadline_ns,
+            },
+        }),
+        Some(OrdinaryPending::Schedule(_)) | None => {
+            let (callback, directive) = directive.resolve(now_ns, cadence)?;
+            let selected = if let Some(OrdinaryPending::Schedule(pending)) = pending {
+                match callback {
+                    Some(callback) if callback.deadline_ns < pending.deadline_ns => Some(callback),
+                    Some(_) | None => Some(pending),
+                }
+            } else {
+                callback
+            };
+            Ok(selected.map_or(OrdinaryCompletion::Stop, |requested| {
+                OrdinaryCompletion::Schedule {
+                    requested,
+                    directive,
+                }
+            }))
+        }
     }
 }
 

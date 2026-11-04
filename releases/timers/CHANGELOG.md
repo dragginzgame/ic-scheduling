@@ -7,6 +7,24 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.2] - Unreleased
+
+### 🧹 Cleanup
+
+- Converge ordinary scheduling requests, pending-command arbitration and completion
+  planning in one control owner. Preserve deadline selection, command precedence,
+  failure transitions and callback observations.
+- Group registry entry payloads, provider-handle mechanics and snapshot projection
+  in a private child module while retaining registry admission and effect ordering.
+- Declare named counter storage, zero values and observation getters together;
+  preserve public observations, explicit event classification and Metrics arithmetic.
+
+### 📦 Dependencies
+
+- Qualify the selected patch graph with Logging 0.24.6, Metrics 0.29.1, Storage
+  0.66.2 and Host Artifacts/FS/Process 0.74.3. Preserve the Runtime cohort and
+  consumer-owned reporting, storage and recovery contracts.
+
 ## [0.40.1] - 2026-11-04
 
 ### 🧹 Cleanup
