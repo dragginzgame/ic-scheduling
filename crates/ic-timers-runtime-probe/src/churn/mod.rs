@@ -89,7 +89,7 @@ fn start_immediate_churn() {
 )]
 fn churn_observation() -> ChurnObservation {
     #[cfg(target_arch = "wasm32")]
-    let wasm_pages = core::arch::wasm32::memory_size::<0>() as u64;
+    let wasm_pages = std::arch::wasm32::memory_size::<0>() as u64;
     #[cfg(not(target_arch = "wasm32"))]
     let wasm_pages = 0;
     ChurnObservation {

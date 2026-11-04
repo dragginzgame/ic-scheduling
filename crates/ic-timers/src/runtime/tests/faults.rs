@@ -1,6 +1,6 @@
 //! Native scenario fault selection; the runtime/platform retain injection mechanics.
 
-use super::super::{PROVIDER_INSTALL_FAULT_AFTER, inject_provider_install_fault_after, platform};
+use super::{PROVIDER_INSTALL_FAULT_AFTER, inject_provider_install_fault_after, platform};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum ProviderFault {

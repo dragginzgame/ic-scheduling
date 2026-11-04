@@ -195,7 +195,7 @@ fn measure<T>(operation: impl FnOnce() -> T) -> (T, u64) {
 #[inline(always)]
 fn memory_page_extents() -> (u64, u64) {
     #[cfg(target_arch = "wasm32")]
-    let wasm = core::arch::wasm32::memory_size::<0>() as u64;
+    let wasm = std::arch::wasm32::memory_size::<0>() as u64;
     #[cfg(not(target_arch = "wasm32"))]
     let wasm = 0;
 

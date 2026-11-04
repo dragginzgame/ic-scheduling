@@ -82,11 +82,6 @@ impl CallbackToken {
         &self.claim
     }
 
-    #[cfg(test)]
-    pub(crate) const fn callback_generation(&self) -> u64 {
-        self.callback_generation
-    }
-
     pub(crate) const fn role(&self) -> CallbackRole {
         self.role
     }
@@ -183,11 +178,6 @@ impl RegistryTransition {
 
     pub(crate) const fn failure(&self) -> Option<TimerControlFailure> {
         self.failure
-    }
-
-    #[cfg(test)]
-    pub(crate) fn into_effect(self) -> RegistryEffect {
-        self.effect
     }
 }
 
@@ -1652,24 +1642,6 @@ impl TimerRegistry {
         Ok(())
     }
 
-    #[cfg(test)]
-    pub(crate) fn take_wakeup_handle(
-        &mut self,
-        identity: &TimerIdentity,
-    ) -> Option<(CallbackToken, TimerHandle)> {
-        let entry = self.entries.get_mut(identity)?;
-        let owned = entry.wakeup.take()?;
-        Some((
-            CallbackToken::new(
-                identity.clone(),
-                entry.claim_generation,
-                owned.callback_generation,
-                entry.kind.wakeup_role(),
-            ),
-            owned.handle,
-        ))
-    }
-
     pub(crate) fn take_provider_handles(&mut self, identity: &TimerIdentity) -> ProviderHandles {
         self.entries
             .get_mut(identity)
@@ -1692,28 +1664,6 @@ impl TimerRegistry {
         let mut transition = self.begin_watchdog_scheduler(token, now_ns);
         let handles = self.detach_transition_handles(token.identity(), &mut transition);
         (transition, handles)
-    }
-
-    /// Model successful platform application in provider-neutral transition tests.
-    #[cfg(test)]
-    pub(crate) fn confirm_effect_applied(
-        &mut self,
-        effect: &RegistryEffect,
-    ) -> Result<(), RegistryError> {
-        let (token, delay_ns) = match effect {
-            RegistryEffect::None | RegistryEffect::ClearCallbacks { .. } => return Ok(()),
-            RegistryEffect::ArmWakeup {
-                token, delay_ns, ..
-            } => (token.token().clone(), *delay_ns),
-            RegistryEffect::DispatchWatchdog {
-                dispatch,
-                successor_delay_ns,
-            } => (dispatch.work(), *successor_delay_ns),
-        };
-        let entry = self.entry_by_token_mut(&token)?;
-        entry.provider_handle_slot(&token, ProviderBinding::Commit { delay_ns })?;
-        entry.record_arm(&token, delay_ns);
-        Ok(())
     }
 
     fn entry(&self, claim: &RegistrationClaim) -> Result<&Entry, RegistryError> {

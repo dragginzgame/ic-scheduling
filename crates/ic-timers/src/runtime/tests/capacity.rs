@@ -1,0 +1,164 @@
+use super::*;
+
+fn fill_registry() -> Vec<OnceRegistration> {
+    let existing = timer_inventory().unwrap().len();
+    (existing..crate::MAX_TIMER_REGISTRATIONS)
+        .map(|index| {
+            register_once(
+                identity(&format!("inactive-filler-{index}")),
+                TimerStart::Retained { initial: None },
+                stopping_once(|| panic!("inactive filler must never execute")),
+            )
+            .unwrap()
+        })
+        .collect()
+}
+
+fn assert_same_registrations(before: &TimerInventorySnapshot) {
+    let after = timer_inventory().unwrap();
+    assert_eq!(after.len(), crate::MAX_TIMER_REGISTRATIONS);
+    assert_eq!(
+        after
+            .timers()
+            .iter()
+            .map(TimerSnapshot::registration_id)
+            .collect::<Vec<_>>(),
+        before
+            .timers()
+            .iter()
+            .map(TimerSnapshot::registration_id)
+            .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn retained_once_rearms_at_full_registry_capacity() {
+    let _fixture = setup();
+    let calls = Rc::new(Cell::new(0));
+    let callback_calls = Rc::clone(&calls);
+    let registration = register_once(
+        identity("retained-once"),
+        TimerStart::Retained { initial: None },
+        stopping_once(move || callback_calls.set(callback_calls.get() + 1)),
+    )
+    .unwrap();
+    let _fillers = fill_registry();
+    let before = timer_inventory().unwrap();
+
+    for (round, deadline) in [(1, 20), (2, 30)] {
+        registration
+            .ensure_scheduled(TimerSchedule::At(deadline))
+            .unwrap();
+        registration
+            .ensure_scheduled(TimerSchedule::At(deadline))
+            .unwrap();
+        assert!(registration.has_armed_wakeup().unwrap());
+        assert_eq!(timer_count(), 1, "repeated ensure must coalesce");
+        registration.cancel().unwrap();
+        assert_eq!(timer_count(), 0);
+        assert_eq!(calls.get(), round - 1, "cancelled work must not execute");
+        assert_same_registrations(&before);
+
+        registration
+            .reconcile_schedule(Some(TimerSchedule::At(deadline)))
+            .unwrap();
+        assert_eq!(timer_count(), 1);
+        set_time(deadline);
+        assert!(run_next_due());
+        assert_eq!(
+            calls.get(),
+            round,
+            "the original callback must execute once"
+        );
+        assert_eq!(timer_count(), 0);
+        assert!(!run_next_due());
+        assert_same_registrations(&before);
+    }
+}
+
+#[test]
+fn retained_after_completion_rearms_at_full_registry_capacity() {
+    let _fixture = setup();
+    let calls = Rc::new(Cell::new(0));
+    let callback_calls = Rc::clone(&calls);
+    let registration = register_after_completion(
+        identity("retained-after-completion"),
+        TimerCadence::from_nanos(5).unwrap(),
+        TimerStart::Retained { initial: None },
+        stopping_after_completion(move || callback_calls.set(callback_calls.get() + 1)),
+    )
+    .unwrap();
+    let _fillers = fill_registry();
+    let before = timer_inventory().unwrap();
+
+    for (round, deadline) in [(1, 20), (2, 30)] {
+        registration.ensure_scheduled().unwrap();
+        registration.ensure_scheduled().unwrap();
+        assert!(registration.has_armed_wakeup().unwrap());
+        assert_eq!(timer_count(), 1, "repeated ensure must coalesce");
+        registration.cancel().unwrap();
+        assert_eq!(timer_count(), 0);
+        assert_eq!(calls.get(), round - 1, "cancelled work must not execute");
+        assert_same_registrations(&before);
+
+        registration
+            .reconcile_schedule(Some(TimerSchedule::At(deadline)))
+            .unwrap();
+        assert_eq!(timer_count(), 1);
+        set_time(deadline);
+        assert!(run_next_due());
+        assert_eq!(
+            calls.get(),
+            round,
+            "the original callback must execute once"
+        );
+        assert_eq!(timer_count(), 0);
+        assert!(!run_next_due());
+        assert_same_registrations(&before);
+    }
+}
+
+#[test]
+fn retained_watchdog_rearms_at_full_registry_capacity() {
+    let _fixture = setup();
+    let calls = Rc::new(Cell::new(0));
+    let callback_calls = Rc::clone(&calls);
+    let registration = register_watchdog(
+        identity("retained-watchdog"),
+        TimerCadence::from_nanos(5).unwrap(),
+        TimerStart::Retained { initial: None },
+        stopping_watchdog(move || callback_calls.set(callback_calls.get() + 1)),
+    )
+    .unwrap();
+    let _fillers = fill_registry();
+    let before = timer_inventory().unwrap();
+
+    for (round, deadline) in [(1, 20), (2, 30)] {
+        registration.ensure_scheduled().unwrap();
+        registration.ensure_scheduled().unwrap();
+        assert!(registration.has_armed_wakeup().unwrap());
+        assert_eq!(timer_count(), 1, "repeated ensure must coalesce");
+        registration.cancel().unwrap();
+        assert_eq!(timer_count(), 0);
+        assert_eq!(calls.get(), round - 1, "cancelled work must not execute");
+        assert_same_registrations(&before);
+
+        registration
+            .reconcile_schedule(Some(TimerSchedule::At(deadline)))
+            .unwrap();
+        assert_eq!(timer_count(), 1);
+        set_time(deadline);
+        assert!(run_next_due(), "scheduler must pre-arm the successor");
+        assert_eq!(calls.get(), round - 1, "scheduler must not invoke work");
+        assert_eq!(timer_count(), 2, "successor and queued work stay distinct");
+        assert!(run_next_due(), "queued work must execute");
+        assert_eq!(
+            calls.get(),
+            round,
+            "the original callback must execute once"
+        );
+        assert_eq!(timer_count(), 0, "Stop must clear the successor");
+        assert!(!run_next_due());
+        assert_same_registrations(&before);
+    }
+}

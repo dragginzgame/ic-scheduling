@@ -29,6 +29,9 @@ One cohort catalog owns selection and typed measurement slots. The report keeps
 its existing JSON field names and strict completeness checks. Build identity is
 admitted as a whole from the first successful build; later builds must match it.
 
+For the consumer-facing Metrics cut, graph alignment and fresh native/installed
+acceptance, use the [0.39 → 0.40 adoption checklist](adoption/0.40.md).
+
 For changes to local release-group fixtures, select
 `bash scripts/release/test-tooling.sh metadata` for preparation/rollback or
 `bash scripts/release/test-tooling.sh recovery` for interruption, resume and

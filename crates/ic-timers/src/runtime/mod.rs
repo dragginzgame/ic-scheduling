@@ -16,15 +16,13 @@ use crate::{
         TimerIdentity, TimerInventorySnapshot, TimerPolicy, TimerSnapshot, WatchdogRunResult,
     },
 };
-#[cfg(test)]
-use std::time::Duration;
 use std::{cell::RefCell, future::Future, rc::Rc};
 use thiserror::Error;
 
 mod effects;
-#[cfg(test)]
-use effects::{apply_effect, bind_provider_handle, clear_entry_provider_handles};
 use effects::{clear_provider_handles, finish_transition};
+#[cfg(test)]
+use tests::{take_provider_install_fault, take_watchdog_completion_fault};
 
 thread_local! {
     static RUNTIME: RefCell<Option<TimerRegistry>> = const { RefCell::new(None) };
@@ -1357,53 +1355,6 @@ fn with_registry_mut<T>(
             .map_err(|_| TimerError::RuntimeBusy)?;
         let registry = runtime.as_mut().ok_or(TimerError::NotInitialized)?;
         operation(registry)
-    })
-}
-
-#[cfg(test)]
-fn reset_for_test(now_ns: u64, canister_version: u64) {
-    platform::reset(now_ns, canister_version);
-    platform::ADMISSION_FAULT.set(None);
-    WATCHDOG_COMPLETION_FAULT.with(|fault| fault.set(false));
-    PROVIDER_INSTALL_FAULT_AFTER.with(|fault| fault.set(None));
-    RUNTIME.with(|runtime| {
-        *runtime.borrow_mut() = None;
-    });
-}
-
-#[cfg(test)]
-thread_local! {
-    static WATCHDOG_COMPLETION_FAULT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-    static PROVIDER_INSTALL_FAULT_AFTER: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
-}
-
-#[cfg(test)]
-fn inject_watchdog_completion_fault() {
-    WATCHDOG_COMPLETION_FAULT.with(|fault| fault.set(true));
-}
-
-#[cfg(test)]
-fn take_watchdog_completion_fault() -> bool {
-    WATCHDOG_COMPLETION_FAULT.with(|fault| fault.replace(false))
-}
-
-#[cfg(test)]
-fn inject_provider_install_fault_after(successful_installs: u64) {
-    PROVIDER_INSTALL_FAULT_AFTER.with(|fault| fault.set(Some(successful_installs)));
-}
-
-#[cfg(test)]
-fn take_provider_install_fault() -> bool {
-    PROVIDER_INSTALL_FAULT_AFTER.with(|fault| match fault.get() {
-        Some(0) => {
-            fault.set(None);
-            true
-        }
-        Some(remaining) => {
-            fault.set(Some(remaining - 1));
-            false
-        }
-        None => false,
     })
 }
 

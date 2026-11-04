@@ -7,6 +7,39 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.1] - Unreleased
+
+### 🧹 Cleanup
+
+- Move inline unit tests and native test-provider/fault support into ordinary
+  `tests.rs` modules. Preserve timer authority, test behavior and production
+  visibility; use the standard-library Wasm intrinsics in the existing probes.
+
+### 🛠️ Tooling
+
+- Check retained release state before work and around adapter steps. Refuse
+  oversized or stale bulk evidence and nested build/cache trees while preserving
+  recovery files and the adapter's original failure status.
+
+### 🧪 Testing
+
+- Adopt the reviewed Shared Tooling 0.29.4 snapshot and its test-layout rules,
+  validation evidence fixes and native dependency-owner policy. Preserve the
+  complete release plan and existing installed-runtime gates.
+- Copy the classifier's declared companion closure into CI-selection fixtures,
+  preserving actual workflow routing with the new shared parser dependency.
+- Organize runtime and registry tests into behavior modules for focused Cargo
+  selection, keeping shared fixtures and every existing case.
+- Cover cancel/rearm and callback execution through retained owners at full
+  registration capacity for all three policies, preserving claim identity and
+  watchdog scheduler/work separation.
+
+### 📚 Documentation
+
+- Document all six registration/reconciliation capabilities for consumer custody
+  checks and add a 0.39 → 0.40 adoption checklist covering Metrics types, composed
+  dependency graphs and consumer-owned native/installed qualification.
+
 ## [0.40.0] - 2026-11-04
 
 ### ⚠️ Breaking

@@ -40,10 +40,8 @@ This file is the local overlay. Read [the current handoff](docs/status/current.m
 - Host workflows support Linux and macOS Intel/Apple Silicon. Bind native and
   live IC recovery qualification to their tested source and dependency graph;
   native tests do not establish IC recovery.
-- Use the common contribution and release authority rules. The public remote is
-  `dragginzgame/ic-scheduling`; configuring tooling does not authorize releases or
-  publication. Direct release delivery uses `origin`/`main`; `make publish` is
-  a separate, explicitly authorized crates.io upload.
+- The public remote is `dragginzgame/ic-scheduling`. Direct release delivery uses
+  `origin`/`main`; `make publish` uploads the explicitly selected group to crates.io.
 
 ## Runtime integration
 

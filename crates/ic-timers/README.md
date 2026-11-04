@@ -135,6 +135,12 @@ these limits do not cap future captures, executor memory or total canister memor
 Capture sizes and running async work still require application budgets. See
 [the safety limits](SAFETY.md).
 
+Registry capacity limits new declarations. An existing retained claim can still
+ensure or reconcile a wake-up when all registration slots are occupied; cancel
+and normal Stop keep that declaration available for later work. Keep the claim
+instead of registering another owner on each request. This reserves declaration
+capacity only: delay validation and provider/task admission can still fail.
+
 Ordinary recurrence is cheaper and is the correct default when work must
 finish normally before another invocation is allowed. Use `Watchdog` only
 when committing the next wake-up before fallible synchronous work is the
@@ -286,6 +292,24 @@ Typed starts preserve the atomic construction contract introduced in 0.18.
 The 0.21 line extends creation cleanup to first lifecycle reconciliation;
 existing later control retains its failure semantics. See the
 [typed setup decision and qualification scope](../../docs/timers/design/0.20-typed-registration.md).
+
+## Registration and reconciliation capabilities
+
+The complete public entry-point set is:
+
+| Policy | Direct creation | Retained owner-slot reconciliation |
+| --- | --- | --- |
+| Once | `register_once` | `reconcile_once` |
+| AfterCompletion | `register_after_completion` | `reconcile_after_completion` |
+| Watchdog | `register_watchdog` | `reconcile_watchdog` |
+
+Direct creation takes `TimerStart` and returns one control capability. Retained
+reconciliation fills or reuses the consumer's `Option<Registration>` slot.
+Include all six functions in consumer registration-custody checks, including
+renamed imports, function-value aliases and calls inside macros. In particular,
+`register_watchdog` creates authority just as the other direct constructors do.
+Method calls that control existing claims and observation-only functions have
+their own custody rules. Comments and string literals are not executable calls.
 
 ## Runtime ownership
 
@@ -518,6 +542,9 @@ These are the current integration selections, not additional dependencies of
 the published Timers library. Native and Wasm compilation do not establish
 installed IC recovery qualification; consumers retain their own lifecycle and
 persisted-state recovery obligations.
+
+For the public Metrics cut, dependency alignment and consumer qualification,
+follow the [0.39 → 0.40 adoption checklist](../../docs/timers/adoption/0.40.md).
 
 ## License
 

@@ -1,13 +1,9 @@
 mod snapshot;
 
-#[cfg(test)]
-use crate::api::{DeliveryPayload, Status};
 use snapshot::{
     Entry, MAX_BYTES, MAX_JOBS, Snapshot, check_entry, check_receipts, decode, delivery_valid,
     encode, task_valid,
 };
-#[cfg(test)]
-use snapshot::{FORMAT, LIMITS, MAX_MESSAGE};
 
 use std::num::NonZeroU64;
 
@@ -20,10 +16,6 @@ use ic_storage::{
     MemoryRequest, MemoryRuntime, RuntimeMemory, SealedDeclarationSnapshot, StableKey,
     adapter::{CollectionError, StableCell},
 };
-#[cfg(test)]
-use ic_wire::{Limits, native};
-#[cfg(test)]
-use serde::Deserialize;
 
 use crate::api::{Create, Delivery, Error, Init, Task, Timing, View};
 use crate::observations::{Event, Observations};

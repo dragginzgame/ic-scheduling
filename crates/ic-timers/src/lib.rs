@@ -17,6 +17,12 @@
 //! or observations into scheduling authority.
 //! [`timer_inventory`] returns the epoch together with the complete ordered
 //! timer set, including for an initialized empty registry.
+//!
+//! Direct creation uses [`register_once`], [`register_after_completion`] or
+//! [`register_watchdog`]. Retained lifecycle slots use [`reconcile_once`],
+//! [`reconcile_after_completion`] or [`reconcile_watchdog`]. Consumer custody
+//! checks must account for all six capabilities, including renamed imports,
+//! function values and macro-contained calls.
 
 #![deny(unsafe_code)]
 #![forbid(private_interfaces)]

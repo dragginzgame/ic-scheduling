@@ -60,7 +60,8 @@ jq -e --arg docs "$docs_condition" --arg native "$native_condition" \
 
 mkdir -p "$fixture/repo/ci" "$fixture/repo/scripts/ci" "$fixture/bin"
 cp "$root/ci/docs-only-paths.txt" "$fixture/repo/ci/"
-cp "$root/scripts/ci/classify-ci-change.pl" "$fixture/repo/scripts/ci/"
+bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture/repo" \
+    scripts/ci/classify-ci-change.pl
 while IFS= read -r path; do
     case "$path" in ''|'#'*) continue ;; esac
     # Admission review guard: prose must stay outside executable/packaged inputs

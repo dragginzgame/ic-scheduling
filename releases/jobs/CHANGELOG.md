@@ -16,6 +16,19 @@ and [coordinated history through 0.33.1](../history.md).
   consumer-owned report fields, Wire bytes, reset identity and actual-overflow
   flags without serializing recorder types. The public Jobs API is unchanged.
 
+### 🛠️ Tooling
+
+- Adopt retained-state admission around release adapter steps, preserving
+  recovery evidence and refusing excessive storage or nested build/cache trees.
+
+### 🧪 Testing
+
+- Adopt Shared Tooling 0.29.4 and move private counter, artifact-capture and queue
+  CLI tests/support into ordinary test modules. Keep the lightweight capture
+  graph, explicit recovery harness and existing test behavior.
+- Split queue tests by management, dispatch, recovery, admission, persistence and
+  observability so each behavior can be selected independently.
+
 ## [0.34.2] - 2026-11-03
 
 ### 📦 Dependencies
