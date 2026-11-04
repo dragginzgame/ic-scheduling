@@ -1,41 +1,52 @@
 # Current handoff
 
-## Scheduling deployment in progress — 2026-11-04
+## Timers 0.40.1 and Jobs 0.34.3 delivered — 2026-11-04
 
-The owner authorized deployment of the completed local batch. Delivery scope is
-this normal checkout on `main` to `origin/main` (`dragginzgame/ic-scheduling`),
-Timers **0.40.1** first and Jobs **0.34.3** second, with separate crates.io uploads.
-Both groups require fresh complete five-stage plans because shared tooling and
-Timers inputs changed since their annotated baselines. Do not claim earlier
-focused checks as complete release qualification. No sibling source/release is
-included. Preserve active attempts and reconcile remote/registry state on retry.
+Both groups are pushed and published from this normal checkout on `main` to
+`origin/main` (`dragginzgame/ic-scheduling`). Source preparation is `65b792f`.
 
-Incoming source, untracked files and lock are preserved in
-`.git/release-state/deployment-consumer-support.lHbrHngp/`; canonical journals and
-version-2 receipts will bind each group's actual release source. Source preparation
-and release/publication are in progress; neither new version is delivered yet.
+- Timers **0.40.1**: release commit `f03d4304fa2c48e54919af49417fa1859afdc41e`,
+  annotated tag `timers-v0.40.1`.
+- Jobs **0.34.3**: release commit `0eec50a96fbf0a9133c1737614bbb365b113111a`,
+  annotated tag `jobs-v0.34.3`.
+
+Each canonical journal is complete. Each separate `make publish` succeeded from
+its clean tagged HEAD. Official registry checksums match retained archives and
+VCS release commits. Jobs' archive keeps Serde as its only production dependency.
+Do not replay these completed uploads. Canic and supplier repositories stayed
+read-only; no application deployment or upstream release was included.
+
+Both fresh five-stage gates passed on Linux with Rust 1.99.1: all 30 common CI
+obligations, Testkit CLI/server admission, all 35 installed watchdog subjects and
+the policy cohort. Common CI took 575s for Timers and 595s for Jobs and included
+178 Timers unit cases, native/Wasm checks and both normalized archives. These
+are gate timings, not performance comparisons. Publication passed final Clippy
+and archive compilation at each release version. No new installed Jobs recovery
+or macOS pass is claimed; hosted CI remains asynchronous.
+
+GitHub returned Internal Server Error for the first Jobs atomic push and its
+first resume. Remote reconciliation confirmed the preceding Timers branch and
+absent Jobs tag; a second canonical resume delivered the original Jobs commit/tag.
+The rejected attempts and their logs remain preserved; no history/tag rewrite or
+non-atomic fallback was used.
+
+Custody: `.git/release-state/deployment-consumer-support.lHbrHngp/` retains incoming
+work, successful/failing command statuses, registry observations, checksum-matched
+archives, VCS/dependency inspection and separate installed diagnostics/cohort reports
+for both groups. Completed `timers-0.40.1.*` and `jobs-0.34.3.*` journals/version-2
+receipts retain their exact sources. Default retained-state admission passes.
 
 The batch adopts Shared Tooling **0.29.4** at
-`628ccc75d813bfd9bae777bfbaef55838d25b1b2` (146 canonical payloads), including
-retained-state admission before/around release adapters. Actual retained state
-passes the default limits without cleanup; both substituted-product delivery
-fixtures pass. Fourteen inline test/provider bodies move to ordinary test files;
-167 cases are split into 22 behavior modules with shared fixtures retained.
-Production authority, visibility and scheduling semantics are preserved. The
-classifier fixture now copies its companion closure. Wasm probes use `std::arch`.
-
-Three new native cases protect retained Once/AfterCompletion/Watchdog owners at
-full registry capacity, preserving identity, original callbacks, coalescing and
-separate watchdog messages. Public docs list all six creation/reconciliation
-capabilities. The [0.39 → 0.40 checklist](../timers/adoption/0.40.md) covers Metrics,
-graph alignment and consumer qualification. Canic's guard/funding/retry work stays
-consumer-owned. All three cases, Clippy, rustdoc, formatting, links and package
-roster checks pass; earlier affected tests retained 241 passes/one existing ignored
-live case, and the behavior split passed 176 selected cases. Focused evidence is
-under `target/shared-tooling-adoption/`, `target/test-suite-split/`,
-`target/shared-tooling-0294/` and `target/timers-consumer-support/`. Earlier Wasm,
-policy, selector and plan/evidence fixtures retain their named source scope.
-No new installed IC or macOS pass is claimed before the fresh release gates.
+`628ccc75d813bfd9bae777bfbaef55838d25b1b2` (146 payloads), including release retention
+admission. Inline tests/provider support move to ordinary files; runtime, registry
+and queue suites use behavior modules. Three new native cases protect retained
+owner cancel/rearm and original callbacks at full registry capacity across all
+policies, including separate watchdog scheduler/work messages. Public docs list
+all six creation/reconciliation capabilities; the
+[0.39 → 0.40 checklist](../timers/adoption/0.40.md) covers Metrics, graph alignment
+and consumer qualification. Scheduling authority and production visibility stay
+unchanged. The classifier fixture copies its companion closure; standard-library
+Wasm probes use `std::arch`. No draft remains for this delivered batch.
 
 ## Delivered releases and retained evidence
 

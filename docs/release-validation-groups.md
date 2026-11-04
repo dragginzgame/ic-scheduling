@@ -109,6 +109,16 @@ selection and custody behavior, not live IC or macOS product qualification.
 
 ## Delivered qualification
 
+Timers **0.40.1** and Jobs **0.34.3** each passed a fresh complete five-stage plan
+on Linux with Rust 1.99.1 and Shared Tooling 0.29.4: all 30 common obligations,
+selected CLI/server admission, all 35 installed watchdog subjects and the policy
+cohort. Timers source `65b792f` projected to release `f03d430`; Jobs source
+`f03d430` projected to release `0eec50a`. Jobs retained workspace scope because
+the reviewed inputs included shared and Timers changes. Both journals completed
+and separate publication succeeded. These runs qualify the current retained-state
+guard and actual consumer adapter; they do not establish fresh installed Jobs
+recovery or macOS execution. The handoff links their durable custody.
+
 Timers 0.39.1 exercised the complete five-stage plan against source `720ed0c`
 with Testkit 0.84 and Rust 1.99.1. Full CI, CLI/server admission, all 35 installed
 watchdog subjects and the policy cohort passed on Linux. The adapter admitted
