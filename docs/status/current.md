@@ -1,35 +1,36 @@
 # Current handoff
 
-## Timers 0.40.0 release preparation — 2026-11-04
+## Timers 0.40.0 delivered — 2026-11-04
 
-The root catalog and lock select published Metrics 0.29.0. Timer snapshots expose
-its recording types without restoring removed mean/delta/interval or Serde APIs.
-Boundary tests record their initial counters through the instrumentation API;
-replacement/reset assertions use observed fields, quality and registration
-identity. Jobs keeps its consumer-owned report DTOs and Wire contract.
+Timers **0.40.0** is pushed and published to crates.io. Release commit
+`01fe9f0c71a43137874578b3126d1058f77e1549` and annotated tag `timers-v0.40.0`
+were delivered atomically to `origin/main` from this normal checkout; the journal
+is complete. The separate `make RELEASE_GROUP=timers publish` succeeded from the
+clean tagged HEAD. Official registry checksum, retained archive and clean VCS
+source agree. Do not repeat the completed upload.
 
-The owner authorized qualification and Timers **0.40.0** release/publication from
-this checkout on `main`, through the established `origin/main` destination and
-`timers-v0.40.0` tag. The minor cut follows the public Metrics identity/API change.
-Jobs' private adoption extends its compatible **0.34.3** draft; Jobs stays 0.34.2
-and is not selected for release or publication.
+The public Metrics dependency is now **0.29**: consumers align direct recorder
+types and own report DTOs, codecs, validation and mean/interval arithmetic.
+No removed recorder Serde, reporting or reconstruction API is restored. Timer
+recording, overflow quality and scheduling behavior are unchanged. Jobs retains
+its consumer-owned report/Wire contract and public Serde-only library. Jobs stays
+**0.34.2** with **0.34.3** notes pending; no Jobs release or upload occurred.
 
-Earlier focused Linux qualification passed with Rust 1.99.1: six measurement cases, one
-registration replacement/restart case, five Jobs instrumentation cases and the
-existing metrics Wire-contract case. Native caller and Wasm consumer/probe
-Clippy, Timers rustdoc, dependency graphs/boundaries, pin inheritance, formatting
-and documentation checks. Since that qualification the lock advanced Testkit to
-0.84.1, Platform's native facade to 0.21.0, and TOML tooling to toml 1.2.0,
-toml_edit 0.25.18 and toml_writer 1.2.0. The Testkit root minimum now selects
-0.84.1 explicitly. These native/protocol adapters retain Runtime 0.19, Types
-0.18, the Testkit-owned client and server 16.1.0. Official registry checksums
-match the selected Metrics, Testkit and Platform records.
+Source preparation is `d5cf1fa`. Its fresh full five-stage gate passed on Linux
+with Rust 1.99.1: all 30 common CI obligations, Testkit CLI/server admission,
+all 35 installed watchdog subjects and the policy cohort. This qualifies Metrics
+0.29.0, Testkit 0.84.1, Platform's native facade 0.21.0, toml 1.2.0,
+toml_edit 0.25.18 and toml_writer 1.2.0 together. Runtime/macros/guard 0.19,
+Types 0.18 and server 16.1.0 remain selected. Publication passed final Clippy and
+normalized archive compilation at 0.40.0. Hosted Linux/macOS CI is asynchronous;
+no new macOS or installed Jobs recovery result is claimed here.
 
-The requested release must qualify the entire current graph with a fresh
-standard gate: all common CI obligations, CLI/server admission, installed
-watchdog subjects and policy cohort. Earlier Metrics-only/native or installed
-receipts do not qualify this graph. Preserve incoming source, registry observations
-and release logs at `.git/release-state/deployment-timers0400.IkyEFM1l/`.
+Durable evidence is under
+`.git/release-state/deployment-timers0400.IkyEFM1l/`: incoming source/lock,
+supplier registry records, release/publication logs and successful statuses,
+checksum-matched published archive with VCS/dependency inspection, exact remote
+tag objects, watchdog diagnostics and cohort report. Canonical completed plan
+and version-2 validation receipts remain at `timers-0.40.0.*` beside that custody.
 
 ## Timers 0.39.1 delivered — 2026-11-03
 
@@ -128,8 +129,8 @@ Shared Tooling is 0.28.2 at `5cf67f81c50c56ac17389ae71a3a87d46e86e8a2`
 (145 canonical payloads). Local supplier selections are Logging 0.24.5, Testkit
 0.84 with its owned PocketIC client, Metrics 0.29, Runtime/macros/guard 0.19, Types 0.18,
 Storage 0.66, Wire/Derive 0.16 and Endpoint 0.6. Rust 1.99.1 remains pinned.
-Published Timers 0.39 exposes Metrics 0.28 identities and Runtime 0.19; pending
-0.40 exposes Metrics 0.29. Downstream consumers must align direct Metrics types
+Published Timers 0.40 exposes Metrics 0.29 identities and Runtime 0.19.
+Downstream consumers must align direct Metrics types
 and their Runtime/Endpoint suppliers before adoption.
 No retired Memory, Stable Structures or Testkit Native crate is in the graph.
 

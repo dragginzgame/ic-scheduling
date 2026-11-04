@@ -117,3 +117,10 @@ and the separately authorized publication succeeded. This establishes a real
 installed execution in addition to the substituted-command fixtures above.
 Jobs installed recovery and hosted macOS acceptance retain their separate scopes.
 The [current handoff](status/current.md) records durable release evidence.
+
+Timers 0.40.0 ran a fresh complete plan against source `d5cf1fa`, qualifying
+Metrics 0.29, Testkit 0.84.1, Platform's native facade 0.21 and the selected TOML
+tooling together. All common CI obligations and installed watchdog/cohort stages
+passed on Linux with Rust 1.99.1. Exact metadata projection admitted release
+commit `01fe9f0`; the journal completed and separate publication was verified
+against the official registry/archive checksum. No earlier stage proof was reused.
