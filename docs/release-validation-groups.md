@@ -109,6 +109,14 @@ selection and custody behavior, not live IC or macOS product qualification.
 
 ## Delivered qualification
 
+Timers **0.40.2** passed the complete five-stage plan on source `0bc7ddf` with
+the selected Logging 0.24.6, Metrics 0.29.1, Storage 0.66.2 and Host 0.74.3 patches.
+All 30 common obligations, CLI/server admission, 35 installed watchdog subjects
+and the policy cohort passed on Linux/Rust 1.99.1. Metadata projection admitted
+release `dc0c2cd`; its journal and separate publication completed. This qualifies
+the private control/entry/counter cleanup with that graph, without claiming fresh
+installed Jobs recovery or macOS execution. The handoff owns retained custody.
+
 Timers **0.40.1** and Jobs **0.34.3** each passed a fresh complete five-stage plan
 on Linux with Rust 1.99.1 and Shared Tooling 0.29.4: all 30 common obligations,
 selected CLI/server admission, all 35 installed watchdog subjects and the policy
