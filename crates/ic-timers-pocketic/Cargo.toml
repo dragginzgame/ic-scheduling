@@ -2,7 +2,7 @@
 name = "ic-timers-pocketic"
 rust-version.workspace = true
 edition.workspace = true
-version = "0.40.1"
+version = "0.40.2"
 publish = false
 license.workspace = true
 
