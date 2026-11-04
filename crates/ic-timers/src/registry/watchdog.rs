@@ -3,7 +3,10 @@
 //! The parent registry retains claim admission, entry mutation and provider-handle
 //! ownership. This module owns no provider calls, callbacks or runtime state.
 
-use super::{RegistrationClaim, RegistryEffect, RegistryTransition, WakeupToken, clear_wakeup_if};
+use super::{
+    CallbacksToClear, RegistrationClaim, RegistryEffect, RegistryTransition, WakeupToken,
+    clear_wakeup_if, effect::WatchdogDispatch,
+};
 use crate::{
     control::WakeupArm,
     schedule::{ResolvedSchedule, ScheduleError, TimerCadence},
@@ -32,7 +35,7 @@ pub(super) enum WatchdogScheduleRequest {
 impl WatchdogScheduleRequest {
     // Resolve one requested schedule before mutation. Cadence overflow is checked
     // only for a fresh arm; coalesced and awaiting requests keep their successor.
-    pub(super) fn resolve(
+    fn resolve(
         self,
         state: WatchdogState,
         cadence: TimerCadence,
@@ -104,7 +107,164 @@ impl Default for WatchdogControl {
 }
 
 impl WatchdogControl {
-    pub(super) fn arm_scheduler(
+    pub(super) fn request(
+        &mut self,
+        claim: &RegistrationClaim,
+        now_ns: u64,
+        cadence: TimerCadence,
+        request: WatchdogScheduleRequest,
+    ) -> Result<(ResolvedSchedule, RegistryTransition), ScheduleError> {
+        let requested = request.resolve(self.state, cadence, now_ns)?;
+        let transition = match &mut self.state {
+            WatchdogState::Inactive { .. } => {
+                self.arm_scheduler(claim, now_ns, requested.deadline_ns, WakeupArm::Initial)
+            }
+            WatchdogState::Scheduled { deadline_ns }
+                if self.scheduler_abandoned || *deadline_ns != requested.deadline_ns =>
+            {
+                let arm = if self.scheduler_abandoned {
+                    WakeupArm::Initial
+                } else {
+                    WakeupArm::Replacement
+                };
+                self.arm_scheduler(claim, now_ns, requested.deadline_ns, arm)
+            }
+            WatchdogState::Scheduled { .. } => RegistryTransition::normal(RegistryEffect::None),
+            WatchdogState::AwaitingWork {
+                attempt_status: WatchdogAttemptStatus::Dispatched,
+                pending,
+                ..
+            } => {
+                if let WatchdogScheduleRequest::Reconcile(requested) = request {
+                    *pending = Some(WatchdogPending::Reconcile(requested));
+                }
+                RegistryTransition::normal(RegistryEffect::None)
+            }
+            WatchdogState::AwaitingWork {
+                attempt_status: WatchdogAttemptStatus::Running,
+                pending,
+                ..
+            } => {
+                *pending = Some(select_pending_watchdog(*pending, request, now_ns));
+                RegistryTransition::normal(RegistryEffect::None)
+            }
+        };
+        let transition = if self.scheduler_abandoned
+            && let WatchdogState::AwaitingWork {
+                successor_deadline_ns,
+                ..
+            } = self.state
+        {
+            // Restore only the committed successor; the current work may be queued.
+            RegistryTransition::normal(RegistryEffect::ArmWakeup {
+                token: WakeupToken::scheduler(claim, self.generation),
+                delay_ns: successor_deadline_ns.saturating_sub(now_ns),
+                arm: WakeupArm::Initial,
+            })
+        } else {
+            transition
+        };
+        Ok((requested, transition))
+    }
+
+    pub(super) const fn cancel(&mut self) -> Option<CallbacksToClear> {
+        let handles = match &mut self.state {
+            WatchdogState::Inactive { .. } => None,
+            WatchdogState::Scheduled { .. } => Some(CallbacksToClear::Wakeup),
+            WatchdogState::AwaitingWork {
+                attempt_status: WatchdogAttemptStatus::Dispatched,
+                ..
+            } => Some(CallbacksToClear::WakeupAndWork),
+            WatchdogState::AwaitingWork {
+                attempt_status: WatchdogAttemptStatus::Running,
+                pending,
+                ..
+            } => {
+                if !matches!(*pending, Some(WatchdogPending::Unregister)) {
+                    *pending = Some(WatchdogPending::Cancel);
+                }
+                None
+            }
+        };
+        if handles.is_some() {
+            self.state = WatchdogState::Inactive {
+                reason: InactiveReason::Cancelled,
+            };
+        }
+        handles
+    }
+
+    pub(super) fn dispatch(
+        &mut self,
+        claim: &RegistrationClaim,
+        now_ns: u64,
+        cadence: TimerCadence,
+    ) -> RegistryTransition {
+        let next_dispatch = self
+            .generation
+            .checked_add(1)
+            .ok_or(TimerControlFailure::GenerationExhausted)
+            .and_then(|generation| {
+                cadence
+                    .deadline_after(now_ns)
+                    .map(|deadline_ns| (generation, deadline_ns))
+                    .map_err(|_| TimerControlFailure::DeadlineOverflow)
+            });
+        let (generation, successor_deadline_ns) = match next_dispatch {
+            Ok(next) => next,
+            Err(failure) => {
+                return self.terminate(
+                    RegistryEffect::ClearCallbacks {
+                        handles: CallbacksToClear::Work,
+                    },
+                    failure,
+                );
+            }
+        };
+        self.generation = generation;
+        self.scheduler_abandoned = false;
+        self.state = WatchdogState::AwaitingWork {
+            successor_deadline_ns,
+            attempt_status: WatchdogAttemptStatus::Dispatched,
+            pending: None,
+        };
+        RegistryTransition::normal(RegistryEffect::DispatchWatchdog {
+            dispatch: WatchdogDispatch::new(claim, generation),
+            successor_delay_ns: cadence.as_nanos(),
+        })
+    }
+
+    pub(super) fn complete(
+        &mut self,
+        claim: &RegistrationClaim,
+        now_ns: u64,
+        successor_deadline_ns: u64,
+        completion: &WatchdogCompletion,
+    ) -> RegistryTransition {
+        match completion {
+            WatchdogCompletion::Schedule {
+                requested,
+                retain_successor,
+            } => {
+                if *retain_successor {
+                    self.state = WatchdogState::Scheduled {
+                        deadline_ns: successor_deadline_ns,
+                    };
+                    RegistryTransition::normal(RegistryEffect::None)
+                } else {
+                    self.arm_scheduler(claim, now_ns, requested.deadline_ns, WakeupArm::Replacement)
+                }
+            }
+            WatchdogCompletion::Stop(reason) => {
+                self.state = WatchdogState::Inactive { reason: *reason };
+                RegistryTransition::normal(RegistryEffect::ClearCallbacks {
+                    handles: CallbacksToClear::Wakeup,
+                })
+            }
+        }
+    }
+
+    fn arm_scheduler(
         &mut self,
         claim: &RegistrationClaim,
         now_ns: u64,
@@ -125,7 +285,7 @@ impl WatchdogControl {
         })
     }
 
-    pub(super) const fn terminate(
+    const fn terminate(
         &mut self,
         effect: RegistryEffect,
         failure: TimerControlFailure,
@@ -207,7 +367,7 @@ pub(super) fn prepare_watchdog_completion(
     }
 }
 
-pub(super) const fn select_pending_watchdog(
+const fn select_pending_watchdog(
     pending: Option<WatchdogPending>,
     request: WatchdogScheduleRequest,
     now_ns: u64,

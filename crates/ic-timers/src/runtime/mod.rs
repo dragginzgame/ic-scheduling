@@ -650,10 +650,7 @@ pub fn register_watchdog<F>(
 where
     F: FnMut(WatchdogContext) -> WatchdogRunResult + 'static,
 {
-    let mut callback = callback;
-    let callback: WatchdogCallback = Rc::new(RefCell::new(move |token| {
-        callback(WatchdogContext::new(token))
-    }));
+    let callback = erase_watchdog_callback(callback);
     let claim = register_initial(start, |registry, lifetime| {
         registry.register_watchdog_with_callback(identity, cadence, lifetime, Rc::clone(&callback))
     });
@@ -923,10 +920,7 @@ where
         TimerPolicy::Watchdog { cadence },
         |current: &WatchdogRegistration| &current.claim,
         || {
-            let mut callback = callback;
-            let callback: WatchdogCallback = Rc::new(RefCell::new(move |token| {
-                callback(WatchdogContext::new(token))
-            }));
+            let callback = erase_watchdog_callback(callback);
             let claim = register_reconciled(
                 |registry| {
                     registry.register_watchdog_with_callback(
@@ -998,6 +992,14 @@ pub fn consecutive_expected_failures(identity: &TimerIdentity) -> Result<Option<
 
 fn has_armed_wakeup_claim(claim: &RegistrationClaim) -> Result<bool, TimerError> {
     with_registry(|registry| registry.has_armed_wakeup(claim).map_err(TimerError::from))
+}
+
+fn erase_watchdog_callback(
+    mut callback: impl FnMut(WatchdogContext) -> WatchdogRunResult + 'static,
+) -> WatchdogCallback {
+    Rc::new(RefCell::new(move |token| {
+        callback(WatchdogContext::new(token))
+    }))
 }
 
 fn erase_ordinary_callback<Context: 'static, Output: 'static, F, Fut>(

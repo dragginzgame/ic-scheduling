@@ -1,5 +1,44 @@
 # Current handoff
 
+## Timers 0.40.3 delivery in progress — 2026-11-04
+
+The requested Platform refresh selects Runtime/macros/exact guard **0.19.1** in
+the root lock. Official registry metadata confirms all three checksums and no
+yanks. Keep the compatible Runtime 0.19.0 manifest minimum: this supplier patch
+moves tests without changing execution behavior. Types remains 0.18.0 and the
+native facade remains 0.21.0; the supplier's facade 0.22 draft is not adopted.
+Shared Tooling remains unchanged. Timers **0.40.3** has pending dependency/cleanup
+notes; package versions remain the delivered versions below.
+
+Focused Linux Rust 1.99.1 checks passed: 178 Timers library tests, Wasm checks for
+the Jobs consumer and Timers runtime probe, and the Timers host/Wasm dependency
+policy (one matching registry Runtime/guard cohort). Scratch evidence is in
+`target/platform0191/`. Ordinary stop/cancel handling now shares one control
+transition. Watchdog requests, cancellation, dispatch and completion effects live
+with Watchdog control; registry claim/lifetime admission, observation ordering and
+provider cleanup stay intact. The 178 Timers tests and strict package Clippy pass
+for the cleanup (`target/cleanup0403/`); final Clippy also admits the narrowed
+private helper visibility. Registry main shrank 1,472→1,326 physical lines, mostly
+by moving transitions; no total-code or performance reduction is claimed.
+
+The follow-on four-candidate review retained three changes: shared policy-result
+construction/normalization, one Watchdog callback adapter and ordinary-probe enum
+ownership/reconciliation helpers. The capability-method macro was evaluated and
+discarded: it added nine code lines and indirection, so those forwarders remain
+explicit. This slice reduces non-test LOC 10,959→10,947, preserving all 371 source
+test functions. All 178 Timers unit tests, eight doctests, strict library/probe
+Clippy and the runtime-probe Wasm check pass. Generated Rustdoc preserves all 27
+reviewed public method signatures/documentation blocks. Focused evidence and the
+comparison are in `target/cleanup-four/`; no new installed IC claim is made.
+
+The owner requested deployment after cleanup. The selected Timers patch includes
+the current IC Build 0.74.3 and Wire/Derive 0.16.2 lock refreshes alongside Platform
+and cleanup. The complete five-stage gate must qualify this exact graph before
+release/push and separate crates.io publication. Jobs stays 0.34.3; siblings remain
+read-only. No fresh installed or release pass is claimed yet. Compact custody:
+`.git/release-state/deployment-timers0403.XBMtMHVE/`. The preceding 0.40.2 handoff
+commit `af1ff7d` reached `origin/main` after a transient GitHub rejection.
+
 ## Timers 0.40.2 delivered — 2026-11-04
 
 Timers **0.40.2** is pushed and published from the normal checkout on `main` to
@@ -35,21 +74,10 @@ declaration; event classification and Metrics arithmetic stay explicit. Public
 exports, scheduling rules, callback capture cleanup and provider authority are
 preserved. No draft remains for this delivered batch.
 
-Historical matched cleanup measurements use the earlier incoming graph with Host
-0.74.2, not the subsequently selected release graph: runtime LOC 10,968→10,923;
-registry main-file physical lines 1,858→1,472. The 304 entry/provider and 58 planning
-source lines are moves. All 371 source test functions remain. Rust 1.99.1
-`timer-probe` used thin LTO, opt-level z, panic abort, symbol stripping and no
-post-link optimizer. Raw module/code-section payload bytes were:
-
-| Policy | Module before → after | Code before → after |
-| --- | ---: | ---: |
-| Once | 120,631 → 120,959 | 105,445 → 105,770 |
-| AfterCompletion | 120,644 → 120,980 | 105,419 → 105,744 |
-| Watchdog | 124,137 → 124,465 | 108,828 → 109,153 |
-
-Code grew 325 bytes per policy. No speed or instruction-cost improvement is
-claimed; those measurements are not relabelled as current-graph qualification.
+The [delivered cleanup handoff](https://github.com/dragginzgame/ic-scheduling/blob/af1ff7db20125e29edc82ad9323c317b6cd1de6e/docs/status/current.md)
+retains the matched measurements on the earlier Host 0.74.2 graph: runtime LOC
+10,968→10,923, with 325 more code-section bytes per policy. These are historical
+measurements, not qualification of the pending graph or a performance gain.
 
 ## Durable custody and current boundaries
 

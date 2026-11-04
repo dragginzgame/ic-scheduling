@@ -460,32 +460,14 @@ impl WatchdogRunResult {
         };
         Self::new(completion, decision)
     }
-
-    /// Construct a result, forcing invariant failures to stop.
-    #[must_use]
-    pub const fn new(completion: TimerCompletion, decision: WatchdogDecision) -> Self {
-        Self {
-            decision: if matches!(completion.outcome, TimerCompletionOutcome::InvariantFailure) {
-                WatchdogDecision::Stop
-            } else {
-                decision
-            },
-            completion,
-        }
-    }
-
-    /// Return the completion classification and work count.
-    #[must_use]
-    pub const fn completion(self) -> TimerCompletion {
-        self.completion
-    }
-
-    /// Return how the committed successor should be retained or cleared.
-    #[must_use]
-    pub const fn decision(self) -> WatchdogDecision {
-        self.decision
-    }
 }
+
+crate::callback::run_result_methods!(
+    WatchdogRunResult,
+    WatchdogDecision,
+    "Return the completion classification and work count.",
+    "Return how the committed successor should be retained or cleared."
+);
 
 // One event owns both its completion classification and reported work count.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

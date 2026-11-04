@@ -7,6 +7,25 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.3] - Unreleased
+
+### 🧹 Cleanup
+
+- Share ordinary stop/cancel state handling and centralize Watchdog scheduling,
+  cancellation, dispatch and completion transitions in its control owner.
+  Preserve unregister precedence, observation timing and recovery effects.
+- Share policy-result construction and Watchdog callback adaptation, and
+  consolidate ordinary probe ownership checks. Preserve distinct public policy
+  types, method documentation and callback capture cleanup.
+
+### 📦 Dependencies
+
+- Select Platform Runtime, macros and the exact runtime guard at 0.19.1 in the
+  workspace lock. Preserve the compatible Runtime 0.19 minimum, Types 0.18
+  identity and existing scheduling and provider contracts.
+- Adopt IC Build 0.74.3 and Wire/Derive 0.16.2 for workspace artifact tooling and
+  qualification codecs, preserving consumer-owned build recipes and RPC budgets.
+
 ## [0.40.2] - 2026-11-04
 
 ### 🧹 Cleanup

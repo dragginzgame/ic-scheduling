@@ -24,6 +24,23 @@ enum Registration {
     AfterCompletion(AfterCompletionRegistration),
 }
 
+impl Registration {
+    fn has_armed_wakeup(&self) -> Result<bool, TimerError> {
+        match self {
+            Self::Once(timer) => timer.has_armed_wakeup(),
+            Self::AfterCompletion(timer) => timer.has_armed_wakeup(),
+        }
+    }
+
+    fn reconcile(&self, desired: Option<TimerSchedule>) {
+        let result = match self {
+            Self::Once(timer) => timer.reconcile_schedule(desired),
+            Self::AfterCompletion(timer) => timer.reconcile_schedule(desired),
+        };
+        result.expect("ordinary reconciliation");
+    }
+}
+
 enum WorkContext {
     Once(OnceContext),
     AfterCompletion(AfterCompletionContext),
@@ -273,21 +290,13 @@ fn expired_ordinary_context_rejected() -> bool {
 )]
 fn discard_expired_ordinary_claim() {
     REGISTRATION.with_borrow_mut(|slot| {
-        let result = match slot.as_ref().expect("expired registration") {
-            Registration::Once(timer) => timer.has_armed_wakeup(),
-            Registration::AfterCompletion(timer) => timer.has_armed_wakeup(),
-        };
+        let result = slot
+            .as_ref()
+            .expect("expired registration")
+            .has_armed_wakeup();
         assert!(matches!(result, Err(TimerError::RegistrationExpired)));
         *slot = None;
     });
-}
-
-fn reconcile(registration: &Registration, desired: Option<TimerSchedule>) {
-    let result = match registration {
-        Registration::Once(timer) => timer.reconcile_schedule(desired),
-        Registration::AfterCompletion(timer) => timer.reconcile_schedule(desired),
-    };
-    result.expect("ordinary reconciliation");
 }
 
 #[ic_wire_endpoint::update(
@@ -297,10 +306,9 @@ fn reconcile(registration: &Registration, desired: Option<TimerSchedule>) {
 )]
 fn reconcile_ordinary_at((deadline_ns,): (u64,)) {
     REGISTRATION.with_borrow(|slot| {
-        reconcile(
-            slot.as_ref().expect("registered"),
-            Some(TimerSchedule::At(deadline_ns)),
-        )
+        slot.as_ref()
+            .expect("registered")
+            .reconcile(Some(TimerSchedule::At(deadline_ns)))
     });
 }
 
@@ -324,7 +332,7 @@ fn cancel_ordinary() {
     response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn reconcile_ordinary_inactive() {
-    REGISTRATION.with_borrow(|slot| reconcile(slot.as_ref().expect("registered"), None));
+    REGISTRATION.with_borrow(|slot| slot.as_ref().expect("registered").reconcile(None));
 }
 
 #[ic_wire_endpoint::update(
@@ -351,12 +359,10 @@ fn unregister_ordinary() {
 fn ordinary_observation() -> OrdinaryObservation {
     let snapshot = timer_snapshot(&identity()).expect("ordinary snapshot");
     let armed = REGISTRATION.with_borrow(|slot| {
-        let result = match slot.as_ref() {
-            Some(Registration::Once(timer)) => timer.has_armed_wakeup(),
-            Some(Registration::AfterCompletion(timer)) => timer.has_armed_wakeup(),
-            None => return false,
+        let Some(registration) = slot.as_ref() else {
+            return false;
         };
-        match result {
+        match registration.has_armed_wakeup() {
             Ok(armed) => armed,
             Err(TimerError::RegistrationExpired) => false,
             Err(error) => panic!("ordinary ownership observation failed: {error}"),

@@ -75,6 +75,13 @@ pub enum OrdinaryRequest {
     Reconcile,
 }
 
+/// An authorized request to leave ordinary work inactive.
+#[derive(Clone, Copy)]
+pub enum OrdinaryStop {
+    Cancel,
+    ReconcileInactive,
+}
+
 impl OrdinaryRequest {
     const fn replaces(self, current_deadline_ns: u64, requested_deadline_ns: u64) -> bool {
         match self {
@@ -124,6 +131,27 @@ impl TimerControl {
         let clear_wakeup = matches!(self.registration, TimerRegistration::Scheduled { .. });
         self.registration = TimerRegistration::Inactive { reason };
         clear_wakeup
+    }
+
+    /// Stop scheduled work or defer the stop until running work completes.
+    /// Unregister retains precedence; inactive declarations keep their reason.
+    pub(crate) const fn stop(&mut self, request: OrdinaryStop) -> bool {
+        let (reason, command) = match request {
+            OrdinaryStop::Cancel => (InactiveReason::Cancelled, OrdinaryPending::Cancel),
+            OrdinaryStop::ReconcileInactive => {
+                (InactiveReason::Stopped, OrdinaryPending::ReconcileInactive)
+            }
+        };
+        match &mut self.registration {
+            TimerRegistration::Inactive { .. } => false,
+            TimerRegistration::Scheduled { .. } => self.terminate(reason),
+            TimerRegistration::Running { pending } => {
+                if !matches!(*pending, Some(OrdinaryPending::Unregister)) {
+                    *pending = Some(command);
+                }
+                false
+            }
+        }
     }
 
     /// Select one ordinary request, including its pending command during work.

@@ -33,7 +33,7 @@ canister graphs must still exclude older providers that lack that key.
 | Capability | Canonical owner | Local integration |
 | --- | --- | --- |
 | Volatile scheduling, claim/generation authority, policy arbitration and timer observations | `crates/ic-timers/src/{runtime,registry,control,schedule,snapshot}` | Public crate facade |
-| Watchdog control state and pure scheduling/completion decisions | Private `crates/ic-timers/src/registry/watchdog.rs` | Parent registry retains claim admission, entry mutation and provider-handle ownership |
+| Watchdog control state and request/cancel/dispatch/completion transitions | Private `crates/ic-timers/src/registry/watchdog.rs` | Parent registry retains claim admission, declaration lifetime, observations and provider-handle ownership |
 | One-shot dispatch, pending queue and authenticated IC callbacks | Private `crates/ic-timers/src/platform`; `ic-platform-runtime` owns the shared executor for future polling and call-context cleanup | Only `platform/ffi.rs` owns unsafe exports/callback registration |
 | Measurement arithmetic | `ic-metrics` | Timer-specific event names, recording/sample boundaries and memory extents in `snapshot/metrics.rs` |
 | Durable jobs, readiness, lifecycle order and operator-health labels | Consuming application/framework | Registration claims and snapshots; no durable task database or application lifecycle exports here |

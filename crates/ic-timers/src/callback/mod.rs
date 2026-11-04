@@ -9,6 +9,42 @@ use crate::{
 };
 use std::time::Duration;
 
+// Policy-specific result types share storage access and terminal normalization.
+macro_rules! run_result_methods {
+    ($result:ident, $decision:ident, $completion_doc:literal, $decision_doc:literal) => {
+        impl $result {
+            /// Construct a result, forcing invariant failures to stop.
+            #[must_use]
+            pub const fn new(completion: TimerCompletion, decision: $decision) -> Self {
+                Self {
+                    decision: if matches!(
+                        completion.outcome(),
+                        TimerCompletionOutcome::InvariantFailure
+                    ) {
+                        $decision::Stop
+                    } else {
+                        decision
+                    },
+                    completion,
+                }
+            }
+
+            #[doc = $completion_doc]
+            #[must_use]
+            pub const fn completion(self) -> TimerCompletion {
+                self.completion
+            }
+
+            #[doc = $decision_doc]
+            #[must_use]
+            pub const fn decision(self) -> $decision {
+                self.decision
+            }
+        }
+    };
+}
+pub(super) use run_result_methods;
+
 /// Scheduling proposal after a normally returned `Once` invocation.
 ///
 /// Once permits explicit rescheduling, but has no configured recurrence:
@@ -107,35 +143,12 @@ pub struct OnceRunResult {
     decision: OnceDecision,
 }
 
-impl OnceRunResult {
-    /// Construct a result, forcing invariant failures to stop.
-    #[must_use]
-    pub const fn new(completion: TimerCompletion, decision: OnceDecision) -> Self {
-        Self {
-            decision: if matches!(
-                completion.outcome(),
-                TimerCompletionOutcome::InvariantFailure
-            ) {
-                OnceDecision::Stop
-            } else {
-                decision
-            },
-            completion,
-        }
-    }
-
-    /// Return the completion classification and reported work count.
-    #[must_use]
-    pub const fn completion(self) -> TimerCompletion {
-        self.completion
-    }
-
-    /// Return the post-run scheduling proposal.
-    #[must_use]
-    pub const fn decision(self) -> OnceDecision {
-        self.decision
-    }
-}
+run_result_methods!(
+    OnceRunResult,
+    OnceDecision,
+    "Return the completion classification and reported work count.",
+    "Return the post-run scheduling proposal."
+);
 
 /// A classified after-completion result with one policy-valid proposal.
 ///
@@ -162,35 +175,12 @@ pub struct AfterCompletionRunResult {
     decision: AfterCompletionDecision,
 }
 
-impl AfterCompletionRunResult {
-    /// Construct a result, forcing invariant failures to stop.
-    #[must_use]
-    pub const fn new(completion: TimerCompletion, decision: AfterCompletionDecision) -> Self {
-        Self {
-            decision: if matches!(
-                completion.outcome(),
-                TimerCompletionOutcome::InvariantFailure
-            ) {
-                AfterCompletionDecision::Stop
-            } else {
-                decision
-            },
-            completion,
-        }
-    }
-
-    /// Return the completion classification and reported work count.
-    #[must_use]
-    pub const fn completion(self) -> TimerCompletion {
-        self.completion
-    }
-
-    /// Return the post-run scheduling proposal.
-    #[must_use]
-    pub const fn decision(self) -> AfterCompletionDecision {
-        self.decision
-    }
-}
+run_result_methods!(
+    AfterCompletionRunResult,
+    AfterCompletionDecision,
+    "Return the completion classification and reported work count.",
+    "Return the post-run scheduling proposal."
+);
 
 /// Erased result consumed only by the canonical ordinary completion owner.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
