@@ -4,11 +4,11 @@ set -euo pipefail
 # only their affected caller phases, without replaying installer/hosted suites.
 phases=("$@")
 if [[ $# == 0 ]]; then
-    phases=(cli-admission server-commands workflow-selection demo-commands input-admission artifact-capture ci-admission rust-policy)
+    phases=(cli-admission server-commands workflow-selection demo-commands input-admission artifact-capture ci-admission rust-policy group-recipes)
 fi
 for phase in "${phases[@]}"; do
     case "$phase" in
-        cli-admission|server-commands|workflow-selection|demo-commands|input-admission|artifact-capture|ci-admission|rust-policy) ;;
+        cli-admission|server-commands|workflow-selection|demo-commands|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
         *) echo "unknown consumer tooling phase: $phase" >&2; exit 2 ;;
     esac
 done
@@ -619,6 +619,59 @@ status=0
 make --no-print-directory -C "$fixture" build-consumer > "$fixture/invalid.log" 2>&1 || status=$?
 [[ "$status" != 0 && ! -s "$fixture/events" ]] || exit 1
 echo 'Unified compiler policy reaches Make/hosted setup once; drift and wrong Cargo/rustc refuse (substitute compiler only)'
+)
+
+phase_group_recipes() (
+local fixture
+trap - EXIT
+prepare_phase group-recipes
+# Exercise actual aggregate and group recipes; only Cargo/compiler effects are
+# replaced. No product sources, package uploads or installed runtime are involved.
+export GROUP_CI_RECIPE_EVENTS="$fixture/events"
+cat > "$fixture/.tools/rust/common/bin/cargo" <<'CARGO'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >> "$GROUP_CI_RECIPE_EVENTS"
+if [[ "${GROUP_CI_RECIPE_FAIL:-}" == timers && "$*" == 'clippy -p ic-timers '* ]]; then exit 31; fi
+CARGO
+chmod +x "$fixture/.tools/rust/common/bin/cargo"
+cat > "$fixture/scripts/dev/minimum-rust.sh" <<'POLICY'
+#!/usr/bin/env bash
+set -euo pipefail
+[[ "$1" != --check ]] || exit 0
+[[ "$1" == cargo ]] || exit 2
+shift
+exec cargo "$@"
+POLICY
+cat > "$fixture/expected-jobs" <<'JOBS'
+clippy -p ic-jobs --all-targets --all-features --locked --offline -- -D warnings
+clippy -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline -- -D warnings
+clippy -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline -- -D warnings
+doc -p ic-jobs --all-features --locked --offline --no-deps
+test -p ic-jobs --doc --all-features --locked --offline
+package -p ic-jobs --all-features --locked --offline --allow-dirty
+JOBS
+make --no-print-directory -C "$fixture" clippy-jobs docs-jobs package-jobs > "$fixture/jobs.log" 2>&1
+cmp "$fixture/events" "$fixture/expected-jobs"
+cat > "$fixture/expected-full" <<'FULL'
+clippy -p ic-jobs --all-targets --all-features --locked --offline -- -D warnings
+clippy -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline -- -D warnings
+clippy -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline -- -D warnings
+clippy -p ic-timers --all-targets --locked --offline -- -D warnings
+doc -p ic-jobs --all-features --locked --offline --no-deps
+test -p ic-jobs --doc --all-features --locked --offline
+doc -p ic-timers --all-features --locked --offline --no-deps
+package -p ic-jobs --all-features --locked --offline --allow-dirty
+package -p ic-timers --all-features --locked --offline --allow-dirty
+FULL
+: > "$fixture/events"
+make --no-print-directory -C "$fixture" clippy docs-check package-all > "$fixture/full.log" 2>&1
+cmp "$fixture/events" "$fixture/expected-full"
+: > "$fixture/events"
+if GROUP_CI_RECIPE_FAIL=timers make --no-print-directory -C "$fixture" clippy docs-check package-all > "$fixture/failure.log" 2>&1; then exit 1; fi
+head -n 4 "$fixture/expected-full" > "$fixture/expected-failure"
+cmp "$fixture/events" "$fixture/expected-failure"
+echo 'Actual Jobs recipes preserve consumer/Wasm lint, docs and archive checks; full aggregates retain both libraries and stop on lint failure (substitute Cargo/compiler effects)'
 )
 
 for phase in "${phases[@]}"; do

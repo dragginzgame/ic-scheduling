@@ -88,7 +88,47 @@ started="$SECONDS"
 FAIL_STAGE=test-timer-watchdog run_case
 narrow_seconds="$((SECONDS - started))"
 scope_is group
-perl scripts/release/validation.pl ci-stages > target/expected; cmp target/events target/expected
+# Independent product expectation: selected Jobs keeps real consumer/tooling and
+# graph boundaries, without standalone Timers or unchanged release self-tests.
+cat > target/expected <<'JOBS'
+shared-tooling-check
+validation-tools-check
+check-release-groups
+clippy-jobs
+check-doc-links
+check-pins
+check-dependency-boundaries
+check-dependency-graphs
+check-release-commands
+test-consumer-tooling
+test-recovery-evidence
+fmt-check
+check
+test-jobs
+test-consumers
+check-consumer
+check-wasm
+docs-jobs
+package-jobs
+JOBS
+cmp target/events target/expected
+cp target/expected target/jobs-expected
+jq -e 'all(.stages[]; .target != "ci")' "$attempt/plan.json" > /dev/null
+[[ "$(jq '[.stages[] | select(.required == false)] | length' "$attempt/plan.json")" == 18 ]]
+for excluded in test-timers clippy-timers package-timers test-release-tooling test-release-validation; do
+    : > target/events
+    FAIL_STAGE="$excluded" run_case
+    scope_is group
+    cmp target/events target/jobs-expected
+done
+for required in test-jobs test-consumers check-dependency-graphs package-jobs; do
+    : > target/events
+    FAIL_STAGE="$required" refuse run_case
+    refuse perl scripts/release/validation.pl seal "$attempt"
+    [[ ! -e "$attempt/execution.json" ]]
+done
+: > target/events
+run_case
 perl scripts/release/validation.pl check "$attempt"
 good="$attempt"
 : > target/events
@@ -99,6 +139,20 @@ started="$SECONDS"
 RELEASE_GROUP=timers run_case
 full_seconds="$((SECONDS - started))"
 scope_is workspace; full_events
+# Required/excluded decisions are product policy, not authority supplied by a
+# self-consistent editable plan. Shared verifies execution; Scheduling checks mapping.
+start_case
+select_case
+jq -cS '(.stages[] | select(.target == "test-jobs")) |= (.required = false | .reason = "tampered omission")' "$attempt/plan.json" > target/tampered
+mv target/tampered "$attempt/plan.json"
+VALIDATION_LOG_DIR="$attempt/logs" bash scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json" > "$attempt/console.log" 2>&1
+refuse perl scripts/release/validation.pl seal "$attempt"
+grep -F 'validation selection differs' target/refusal.log > /dev/null
+[[ ! -e "$attempt/execution.json" ]]
+# Restore the same source selected by the retained good execution for custody checks.
+RELEASE_SOURCE="$(jq -r .source "$good/context.json")"
+export RELEASE_SOURCE
+git checkout -q --detach "$RELEASE_SOURCE"
 refuse env RUSTFLAGS='--cfg changed' perl scripts/release/validation.pl check "$good"
 refuse env RUSTC_WRAPPER=changed-compiler-wrapper perl scripts/release/validation.pl check "$good"
 log="$(find "$good/logs" -name 0.log | head -n 1)"
@@ -148,7 +202,7 @@ scope_is workspace; full_events
 : > target/events
 RELEASE_GROUP=timers run_case
 scope_is workspace; full_events
-for path in Cargo.toml Cargo.lock Makefile ci/cargo-release-groups.json unknown-input; do
+for path in Cargo.toml Cargo.lock Makefile ci/cargo-release-groups.json scripts/release/ci.sh unknown-input; do
     start_case
     if [[ "$path" == ci/cargo-release-groups.json ]]; then
         printf '\n' >> "$path"
@@ -214,6 +268,19 @@ run_case; scope_is workspace; full_events
 : > target/events
 make --silent ci > target/ci.log 2>&1
 perl scripts/release/validation.pl ci-stages > target/expected; cmp target/events target/expected
+# Even with an admitted baseline containing the new policy, an unclassified
+# obligation is required in a later genuinely Jobs-only plan.
+git tag -d jobs-v0.34.1 > /dev/null
+git tag -a jobs-v0.34.1 "$RELEASE_SOURCE" -m 'New policy qualified baseline'
+printf 'fn another_jobs_change() {}\n' >> crates/ic-jobs/src/lib.rs
+git add -- crates/ic-jobs/src/lib.rs; git commit -qm 'Jobs change after new obligation'
+RELEASE_SOURCE="$(git rev-parse HEAD)"
+export RELEASE_SOURCE
+: > target/events
+run_case; scope_is group
+grep -Fx new-check target/events > /dev/null
+git tag -d jobs-v0.34.1 > /dev/null
+git tag -a jobs-v0.34.1 "$baseline" -m 'Restored original policy baseline'
 # Projection cannot silently reorder a new common obligation after installed work.
 start_case
 jq -cS '.stages += ["late-common"]' ci/release-validation.json > target/new-policy
@@ -239,6 +306,6 @@ git checkout -- crates/ic-jobs/src/lib.rs
 : > target/events
 run_case
 perl scripts/release/validation.pl check "$attempt"
-printf 'Group plans passed: same common roster for CI/Jobs, four standalone Timers obligations; shared verifier and durable recovery; product commands substituted.\n'
+printf 'Group plans passed: 19 Jobs obligations; 37 complete release obligations; unchanged full CI; exact mapping, shared verifier and durable recovery; product commands substituted.\n'
 printf 'Same-source substituted-command qualification: Jobs %ss; complete Timers gate %ss. No production-time saving is claimed.\n' "$narrow_seconds" "$full_seconds"
 fixture_complete=true

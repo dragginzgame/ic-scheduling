@@ -1,5 +1,65 @@
 # Current handoff
 
+## Runtime and installed-test cleanup pending — 2026-11-04
+
+Runtime capabilities, registration/reconciliation and callback dispatch now have
+private modules; the parent retains shared authority checks and the registry.
+The 1,364-line runtime parent is 305 lines; the largest new module is 459 lines.
+All 42 public function signatures are preserved. Installed subjects are grouped
+under ingress/lifecycle/ordinary/scheduling/watchdog, preserving all 35 cases and
+updating all 17 required qualification anchors. Fresh setup is shared at 31 sites;
+the overflow case keeps its explicit time advance before installation.
+
+89 native runtime tests, three discovery fixtures, eight compile-fail doctests,
+strict owning lint, Rustdoc and probe Wasm checks pass. Both explicitly selected
+live subjects (ordinary await/interleaving and Watchdog trap/upgrade) pass under
+PocketIC 16.1.0/Rust 1.99.1. Evidence: `target/runtime-cleanup/` and
+`target/timer-qualification-1114695-0/runtime.json`. The first live attempt was
+socket-blocked before execution; its separate diagnostics remain retained.
+Current checks resolve Testkit 0.85.1/native Platform 0.22.0; earlier 0.85.0
+proofs below retain their actual graph. No full installed gate, release or push.
+
+## Granular release CI and Testkit refresh pending — 2026-11-04
+
+The shared feedback is addressed locally: release plans name all 37 obligations
+individually instead of nesting `ci`. Proven Jobs-only scope requires 19 and marks
+18 standalone Timers/unchanged tooling obligations not applicable. Full CI keeps
+all 33 common obligations; Timers/shared/unknown/dirty scope keeps all 37. Mixed
+lint/docs/archive commands reuse explicit Jobs/Timers leaf recipes. Baselines stay
+bound to the admitted source version, and sealing rechecks the exact product
+mapping. Required tests cannot be omitted through an edited but consistent plan.
+
+Mapping/rejection/durable-evidence fixtures, actual Make caller/drift fixtures,
+all six real lint/docs/archive targets, ShellCheck and snapshot integrity passed.
+Product commands in the mapping fixtures are substituted; no new live IC or
+macOS qualification is claimed. Both groups' real metadata-editor/projection and
+recovery fixtures also passed, with product commands/uploads substituted. Evidence
+is in `target/group-ci/`. No full product CI or release was run for this ordinary
+change. Jobs 0.34.4 and Timers 0.40.4 have pending tooling/dependency notes;
+package versions are unchanged and work remains uncommitted.
+
+The later owner-requested supplier refresh selects **Types 0.18.1** and
+**Testkit 0.85.0**. Official checksums match; neither version is yanked. Testkit
+0.85.1 was unpublished at observation. Its explicit-server-URL change needs no
+Rust caller edits: all three harness/demo constructors already use managed
+`PocketIcStartupConfig::build_instance`. Keep compatible Types minimum 0.18.0;
+Testkit's root requirement is now 0.85.0. Runtime/macros/guard remain 0.19.1,
+native Platform facade 0.21 and server 16.1.0. No unrelated supplier was refreshed.
+
+On this graph, two native harness/demo cases and four API/Wire cases passed;
+explicit live Jobs/demo cases stayed ignored. Jobs/Timers probe Wasm checks and
+native/Wasm dependency policies passed. Testkit CLI setup/server admission and
+one explicitly selected installed Timers trap/upgrade recovery case passed on
+Linux/Rust 1.99.1. Evidence: `target/adopt-testkit085/` and
+`target/timer-qualification-1035241-0/runtime.json`. This is one live subject, not
+a fresh full watchdog/cohort or installed Jobs recovery pass. Earlier CI-fixture
+evidence above retains its earlier graph; the final 37-check gate remains pending.
+
+The current real Jobs plan correctly selects all 37: outstanding Timers/supplier
+and shared changes since Jobs 0.34.3 prevent Jobs-only scope. The first delivery of
+this policy also requires the complete gate; no baseline is advanced for speed.
+See [the reviewed mapping](../release-validation-groups.md).
+
 ## Timers 0.40.3 delivered — 2026-11-04
 
 Timers **0.40.3** is pushed and published from this normal checkout on `main` to
@@ -38,32 +98,18 @@ source; no new installed Jobs recovery or macOS pass is claimed. Hosted
 Linux/macOS CI remains asynchronous. Same-source upgrade tests do not establish
 deployed old-Wasm migration, rollback or destructive data retirement.
 
-## Cleanup and API boundaries
+## Delivered cleanup and API boundaries
 
-Ordinary stop/cancel requests share control-state handling. Watchdog requests,
-cancellation, dispatch and completion transitions live with Watchdog control;
-registry claim/lifetime admission, observation ordering and provider cleanup stay
-intact. Policy-result construction/terminal normalization and Watchdog callback
-adaptation have one implementation. Ordinary probe ownership/reconciliation uses
-its existing private registration enum. Public policy types remain distinct.
-
-The capability-method macro was evaluated and discarded: it added nine code lines
-and indirection, so those forwarders remain explicit. The final cleanup slice
-reduces non-test LOC **10,959→10,947**, retaining all **371** source test functions;
-this is not the net measurement of the earlier control-module moves. Generated
-Rustdoc preserves all 27 reviewed public signatures/documentation blocks. No
-execution-cost or Wasm-size improvement is claimed for this batch.
-
-Metrics recording stays in Timers, with copied observations exposed through the
-existing two Metrics type re-exports. Canic's adapter owns reporting DTOs and the
-reporting endpoint. Those Rust re-exports create no endpoint or runtime mutation
-capability. Jobs stays Serde-only with consumer-owned metadata/storage/lifecycle;
-every restore uses `Job::restore` and uncertain effects require disposition.
-Timers owns the sole private provider, unsafe FFI confinement and exact Runtime
-guard. Storage retains admitted Cells and blocked attempts/receipts; retired
-Memory images are refused without writes/reset. No Memory, Stable Structures or
-Testkit Native package is selected. Canic integration remains Canic-owned; see
-the [0.39 → 0.40 checklist](../timers/adoption/0.40.md).
+0.40.3 shares ordinary stop/cancel, Watchdog control, callback adaptation and
+result normalization. Its final slice was 10,959→10,947 non-test LOC with 371
+test functions; the rejected capability macro added indirection. Those are
+historical measurements, not totals for the pending module moves above.
+Metrics recording stays in Timers; copied type re-exports create no endpoint.
+Canic owns reporting. Jobs remains Serde-only with validated `Job::restore` and
+explicit uncertain-effect disposition. Timers retains its sole private provider,
+unsafe FFI confinement and exact Runtime guard. Storage retains admitted Cells
+and blocked attempts/receipts; retired Memory images are refused without writes.
+See the [consumer checklist](../timers/adoption/0.40.md).
 
 ## Durable custody and release rules
 
@@ -77,11 +123,11 @@ passes without cleanup. Regenerable development scratch remains under `target/`.
 Eight members retain explicit matching versions in independent Jobs (three) and
 Timers (five) groups; no root workspace version. Root manifests and lock own the
 supplier cohort. `ic-jobs-canister-tests::harness` keeps recovery support explicit
-and default artifact capture lightweight. The complete 30-obligation roster and
-four standalone Timers stages remain owned by `ci/release-validation.json`.
-Shared/unknown/dirty scope and Timers retain all five stages; qualified Jobs-only
-scope may omit standalone Timers work. No stage-proof reuse or conversion of old
-receipts is enabled. See [the group mapping](../release-validation-groups.md).
+and default artifact capture lightweight. `ci/release-validation.json` remains the
+sole obligation roster; the pending mapping above replaces the old five-stage
+aggregation without reusing proofs or converting historical receipts. Earlier
+receipts retain their original source/adapter. See
+[the group mapping](../release-validation-groups.md).
 
 ## Earlier deliveries and protected history
 

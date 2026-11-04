@@ -94,11 +94,14 @@ evidence. Source admission and exact staging remain consumer/runner boundaries.
 Abrupt interruption still requires inspecting the retained attempt before resume.
 
 Both groups use the qualified [release validation plan](release-validation-groups.md).
-Jobs-owned changes since its admitted annotated release baseline run complete
-native/Wasm CI without standalone Timers watchdog/cohort installation. Timers,
-shared inputs, changed manifests/locks and uncertain scope retain the complete
-five-stage gate, generated from the same complete roster as normal CI. Repository CI and its three native hosts remain unchanged;
-CI packages both public crates with `package-all`.
+Jobs-owned changes since its admitted annotated release baseline select the Jobs
+and combined-consumer native/Wasm, lint, docs, graph and archive obligations.
+Unchanged standalone Timers checks and release-tooling self-tests are explicitly
+not applicable. Timers, shared inputs, changed manifests/locks and uncertain scope
+retain the complete 37-stage release roster. All plans name individual checks;
+none hides work inside `ci`. Repository CI retains all 33 common obligations on
+its three native hosts, including both public crate archives. The `clippy`,
+`docs-check` and `package-all` commands remain complete aggregates.
 Independent core qualification stays explicit; the Jobs model remains Serde-only.
 The real Jobs consumer still composes Jobs, Timers, Storage, Wire and Runtime.
 Its commit-before-dispatch, exact attempts/receipts, uncertain effects and

@@ -25,6 +25,16 @@ my $decoder = JSON::PP->new->utf8;
 # These four standalone Timers obligations are release-only. Every other policy
 # stage belongs to full CI, including newly declared stages. No core CI is skipped.
 my %installed = map { $_ => 1 } qw(install-testkit-tools install-consumer-server test-timer-watchdog test-timer-cohorts);
+# Closed omissions, not a second stage roster. A new obligation is required by
+# default. Tooling/configuration changes cannot enter Jobs-only scope below.
+my %jobs_omissions = (
+    (map { $_ => 'Standalone Timers sources, probes and supplier graph are unchanged; Jobs/Timers consumer checks remain required' }
+        qw(clippy-timers check-timer-provider check-timer-dependencies check-timer-probes test-timers test-timer-dependencies docs-timers package-timers)),
+    (map { $_ => 'Release/CI/formatting tooling and its configuration are unchanged since the admitted Jobs baseline' }
+        qw(test-release-tooling test-release-validation test-formatting-evidence test-ci-change-selection test-release-status formatting-hook-check)),
+    (map { $_ => 'Installed Timers inputs and supplier graph are unchanged; installed Jobs recovery remains separately selected' }
+        keys %installed),
+);
 sub observe {
     open my $in, '-|', @_ or die "execute $_[0]: $!\n";
     my $raw = '';
@@ -71,8 +81,7 @@ sub roster {
 }
 if ($operation =~ /\A(?:roster|ci-stages|release-stages)\z/) {
     my @roster = roster();
-    print "ci\n" if $operation eq 'release-stages';
-    print "$_\n" for grep { $operation eq 'roster' || ($operation eq 'ci-stages' ? !$installed{$_} : $installed{$_}) } @roster;
+    print "$_\n" for grep { $operation ne 'ci-stages' || !$installed{$_} } @roster;
     exit;
 }
 my $group = $ENV{RELEASE_GROUP} // '';
@@ -94,19 +103,17 @@ sub inventory {
         observe('git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard')];
 }
 sub release_policy {
-    my @roster = roster();
-    my $value = read_json($policy_path);
-    $value->{stages} = ['ci', grep { $installed{$_} } @roster];
-    return $value;
+    roster();
+    return read_json($policy_path);
 }
-sub select_plan {
-    my $release_policy = release_policy();
-    observe('git', 'rev-parse', 'HEAD') eq $source or die "stale validation source\n";
+sub source_catalog {
+    local $ENV{RELEASE_COMMIT} = $source;
     my $catalog = $decoder->decode(observe('bash', 'scripts/release/group.sh', 'plan'));
     $catalog->{group} eq $group or die "wrong Cargo group\n";
-    my $tag = "$group-v$catalog->{previous}";
-    my $baseline = $decoder->decode(shared('baseline', $source, "refs/tags/$tag"));
-    my $dirty = length observe('git', 'status', '--porcelain=v1', '--untracked-files=all');
+    return $catalog;
+}
+sub select_scope {
+    my ($baseline, $dirty) = @_;
     my $scope = 'workspace';
     my $reason = 'Unknown or shared scope retains the complete release gate';
     if ($group eq 'timers') {
@@ -124,26 +131,39 @@ sub select_plan {
         )}x } @{$baseline->{changes}};
         if (!@outside) {
             $scope = 'group';
-            $reason = 'Jobs-owned changes since its annotated release; standalone Timers probe inputs and dependency graph are unchanged';
+            $reason = 'Jobs-owned changes since its annotated release; standalone Timers and tooling inputs are unchanged';
         }
     }
+    return ($scope, $reason);
+}
+sub select_stages {
+    my ($policy, $scope, $reason) = @_;
+    return [map {
+        my $required = $scope eq 'workspace' || !exists $jobs_omissions{$_};
+        {target=>$_, required=>$required ? JSON::PP::true : JSON::PP::false,
+            reason=>$required ? $reason : $jobs_omissions{$_}}
+    } @{$policy->{stages}}];
+}
+sub select_plan {
+    my $release_policy = release_policy();
+    observe('git', 'rev-parse', 'HEAD') eq $source or die "stale validation source\n";
+    my $catalog = source_catalog();
+    my $tag = "$group-v$catalog->{previous}";
+    my $baseline = $decoder->decode(shared('baseline', $source, "refs/tags/$tag"));
+    my $dirty = length observe('git', 'status', '--porcelain=v1', '--untracked-files=all');
+    my ($scope, $reason) = select_scope($baseline, $dirty);
     my $context = {schema=>1, source=>$source, group=>$group, attempt=>relative($directory),
         baseline_tag=>$tag, baseline_object=>$baseline->{object},
         dirty=>$dirty ? JSON::PP::true : JSON::PP::false,
         configuration=>configuration(), inventory=>inventory()};
     write_json("$directory/context.json", $context);
-    # Keep CI aggregated in release receipts: its exact common roster is shared
-    # with normal CI, and the outer checkpoint still binds the complete source.
-    # The policy below is generated, never a second maintained stage list.
+    # CI and release use the same flat roster. Shared checkpoints each selected
+    # obligation; omissions retain their own explicit not-applicable reason.
     write_json("$directory/release-policy.json", $release_policy);
-    my @stages = map {
-        my $required = $scope eq 'workspace' || !$installed{$_};
-        {target=>$_, required=>$required ? JSON::PP::true : JSON::PP::false,
-            reason=>$installed{$_} ? $reason : 'Complete native/Wasm CI retains Jobs, Timers and combined-consumer contracts'}
-    } @{$release_policy->{stages}};
     write_json("$directory/plan.json", {schema=>1, source=>$source, group=>$group,
         scope=>$scope, policy=>relative("$directory/release-policy.json"),
-        inputs=>[@{$context->{inventory}}, relative("$directory/context.json")], stages=>\@stages});
+        inputs=>[@{$context->{inventory}}, relative("$directory/context.json")],
+        stages=>select_stages($release_policy, $scope, $reason)});
 }
 sub admission {
     my ($base, $proof) = @_;
@@ -159,13 +179,22 @@ sub admission {
         or die "validation selection/context changed\n";
     json(read_json("$base/release-policy.json")) eq json(release_policy())
         or die "release policy differs from the declared full roster\n";
+    my $catalog = source_catalog();
+    $context->{baseline_tag} eq "$group-v$catalog->{previous}"
+        or die "validation baseline does not match the admitted source version\n";
+    my $baseline = $decoder->decode(shared('baseline', $source, "refs/tags/$context->{baseline_tag}"));
+    json($context->{baseline_object}) eq json($baseline->{object})
+        or die "validation baseline tag changed\n";
+    my ($scope, $reason) = select_scope($baseline, $context->{dirty});
+    $plan->{scope} eq $scope
+        && json($plan->{stages}) eq json(select_stages(release_policy(), $scope, $reason))
+        or die "validation selection differs from the product mapping\n";
     json($context->{configuration}) eq json(configuration()) or die "validation host/compiler/build configuration changed\n";
     json($context->{inventory}) eq json(inventory()) or die "validation source inventory changed\n";
     if (defined $context->{baseline_object}) {
         observe('git', 'rev-parse', "refs/tags/$context->{baseline_tag}") eq $context->{baseline_object}
             or die "validation baseline tag changed\n";
     }
-    my $catalog = $decoder->decode(observe('bash', 'scripts/release/group.sh', 'plan'));
     my %metadata = map { $_=>1 } @{$catalog->{files}};
     my %generated = map { ("$context->{attempt}/$_", hash_file("$base/$_")) } qw(plan.json context.json release-policy.json);
     # Shared already admitted every runner event, timing, log and checkpoint.

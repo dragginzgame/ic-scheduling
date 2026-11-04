@@ -535,8 +535,9 @@ Consumers exchanging Timers 0.40's public measurement types with a direct
 Metrics dependency select Metrics 0.29. Canister entrypoints select Runtime's `cdk`
 feature; canonical identities come from Types 0.18. The qualification consumer
 selects Storage 0.66, Wire Core 0.16 and Endpoint 0.6. The native harness selects
-Testkit 0.84, which owns the PocketIC client at `ic_testkit::pocket_ic`; no separate
-client dependency is needed. No retired Testkit Native or Memory crate is used.
+Testkit 0.85, which owns the PocketIC client at `ic_testkit::pocket_ic`; no separate
+client dependency is needed. Managed startup supplies the client's explicit server
+endpoint and retains server custody. No retired Testkit Native or Memory crate is used.
 
 These are the current integration selections, not additional dependencies of
 the published Timers library. Native and Wasm compilation do not establish

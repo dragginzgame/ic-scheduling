@@ -62,6 +62,7 @@ help:
 	@echo "Explicit setup: install-tools, tools-check, install-hooks"
 	@echo "Release editor: install-release-tools; release-tools-check (offline-admitted path)"
 	@echo "Complete gate: ci (explicit request or configured CI)"
+	@echo "Group recipe selections: clippy-{jobs,timers}, docs-{jobs,timers}, package-{jobs,timers}"
 	@echo "Authorized release: release-patch, release-minor, release-major (requires a configured remote)"
 	@echo "Authorized publication: publish (clean HEAD, matching pushed annotated tag; crates.io)"
 	@echo "Recovery: release-resume VERSION=X.Y.Z (normal release targets start fresh)"
@@ -138,14 +139,29 @@ check-wasm:
 	+$(MINIMUM_RUST) cargo check -p ic-jobs --lib --target wasm32-unknown-unknown --locked --offline
 	+$(MINIMUM_RUST) cargo check -p ic-jobs-test-consumer --lib --target wasm32-unknown-unknown --locked --offline
 
-clippy: rust-policy-check
+.PHONY: clippy-jobs clippy-timers docs-jobs docs-timers package-jobs package-timers
+clippy:
+	+$(MAKE) --no-print-directory clippy-jobs
+	+$(MAKE) --no-print-directory clippy-timers
+
+clippy-jobs: rust-policy-check
 	+cargo clippy -p ic-jobs --all-targets --all-features --locked --offline -- -D warnings
-	+cargo clippy -p ic-jobs-test-consumer -p ic-jobs-canister-tests -p ic-timers --all-targets --features ic-jobs-canister-tests/harness --locked --offline -- -D warnings
+	+cargo clippy -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline -- -D warnings
 	+cargo clippy -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline -- -D warnings
 
+clippy-timers: rust-policy-check
+	+cargo clippy -p ic-timers --all-targets --locked --offline -- -D warnings
+
 docs-check:
-	+RUSTDOCFLAGS="-D warnings" cargo doc -p ic-jobs -p ic-timers --all-features --locked --offline --no-deps
+	+$(MAKE) --no-print-directory docs-jobs
+	+$(MAKE) --no-print-directory docs-timers
+
+docs-jobs:
+	+RUSTDOCFLAGS="-D warnings" cargo doc -p ic-jobs --all-features --locked --offline --no-deps
 	+cargo test -p ic-jobs --doc --all-features --locked --offline
+
+docs-timers:
+	+RUSTDOCFLAGS="-D warnings" cargo doc -p ic-timers --all-features --locked --offline --no-deps
 
 check-doc-links:
 	perl scripts/ci/check-documentation-links.pl --root . *.md releases/history.md releases/*/CHANGELOG.md docs/*.md docs/changelog/*.md docs/principles/*.md docs/status/*.md rules/*.md audits/*.md tasks/*.md $(shell rg --files docs/timers -g '*.md') crates/ic-timers/SAFETY.md crates/ic-timers/CHANGELOG.md $(wildcard apps/*/README.md apps/*/tests/fixtures/README.md crates/*/README.md crates/*/tests/fixtures/README.md)
@@ -259,7 +275,14 @@ formatting-hook-check: format-tools-check
 	+bash scripts/ci/check-jobs-formatting.sh
 
 package-all:
-	+cargo package -p ic-jobs -p ic-timers --all-features --locked --offline --allow-dirty
+	+$(MAKE) --no-print-directory package-jobs
+	+$(MAKE) --no-print-directory package-timers
+
+package-jobs:
+	+cargo package -p ic-jobs --all-features --locked --offline --allow-dirty
+
+package-timers:
+	+cargo package -p ic-timers --all-features --locked --offline --allow-dirty
 
 package:
 	+@package="$$(bash scripts/release/group.sh package)" && cargo package -p "$$package" --all-features --locked --offline --allow-dirty

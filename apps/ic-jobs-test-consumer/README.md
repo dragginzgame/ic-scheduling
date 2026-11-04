@@ -240,7 +240,9 @@ codecs and bounded decoding for this consumer and its host harness.
 Its transport boundary is separate from Storage's installation cut above.
 Native DTOs select canonical Types 0.18. Native tests explicitly select
 `principal-self-authenticating`; the recovery harness selects Types' explicit
-external conversions and Testkit 0.84's maintained `ic_testkit::pocket_ic` client.
+external conversions and Testkit 0.85's maintained `ic_testkit::pocket_ic` client.
+Managed `PocketIcStartupConfig::build_instance` supplies the required server URL
+and keeps server/instance custody together; clients do not implicitly provision it.
 The application uses its owned Principal;
 PocketIC calls retain the external Principal and convert explicitly when
 constructing application DTOs. Native DTO normal/build graphs exclude external

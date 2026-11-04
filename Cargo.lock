@@ -984,9 +984,9 @@ checksum = "b47d4ea14ea9865bda223dc16a5411d960360ca872dc2829671f50710be0cb08"
 
 [[package]]
 name = "ic-platform"
-version = "0.21.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e87f01cbae3cc6cbd5b0ffc705c9086618817e4f0045ce67821e3fcbbc338670"
+checksum = "19b0b5b5a8399051037aeb0f6d0832b8191eef1f7c9e727a9cf9baed951fc968"
 dependencies = [
  "candid",
  "ic-management-canister-types",
@@ -1029,9 +1029,9 @@ checksum = "386b8aac697acd262c2c7426eb8d1cb2717a3ecba06de9fdedd19573b44d917a"
 
 [[package]]
 name = "ic-platform-types"
-version = "0.18.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f95791d7eff0804a23182f131b976293f0f0184b237a63cfb741c1f63a60fb91"
+checksum = "aa881498e10a94f06602424148b166e685170cd9afe0b0f377fb849b47c7bc6f"
 dependencies = [
  "crc32fast",
  "data-encoding",
@@ -1056,14 +1056,13 @@ dependencies = [
 
 [[package]]
 name = "ic-testkit"
-version = "0.84.1"
+version = "0.85.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42d50a3d60e605a6cc7cb42589c32dc51ff3f4eecd70ed159e46944d86476eda"
+checksum = "cf1947d60280dd91d84083c2cbf5e51ede06c03ce7f744cb58dbbde239c03002"
 dependencies = [
  "backon",
  "base64",
  "candid",
- "flate2",
  "hex",
  "ic-certification",
  "ic-host-artifacts",
@@ -1078,7 +1077,6 @@ dependencies = [
  "libc",
  "reqwest",
  "schemars",
- "semver",
  "serde",
  "serde_cbor",
  "serde_json",

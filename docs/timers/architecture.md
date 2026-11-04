@@ -69,7 +69,7 @@ Runtime owns the maintained IC0 bindings and executor. The root catalog disables
 default Runtime features. The library selects only `executor` and `ic0`; the two
 canister probes select `cdk` for entrypoint contexts,
 protected calls/spawning, traps, cycle burning and stable byte I/O. The native
-harness selects Testkit 0.84's `pocket_ic` module for clients and
+harness selects Testkit 0.85's `pocket_ic` module for clients and
 `ic-platform-types` 0.18 with `principal-external` for canonical identities.
 The protocol package selects Wire and Serde without a direct Runtime dependency.
 
@@ -135,8 +135,9 @@ The driver selects PocketIC, Types, Testkit, Wire and the probe protocol only fo
 test binary. Its normal build coordinator uses Build and Host for artifacts and
 process custody, plus Clap/Serde/JSON for commands and receipts. It does not link
 the simulator or codecs. Build, Host and Testkit share the published family
-selected by the root lockfile. The harness uses Wire 0.16 and Testkit 0.84, with
+selected by the root lockfile. The harness uses Wire 0.16 and Testkit 0.85, with
 canonical Types 0.18 identities. The independent Platform PocketIC client is absent.
+Managed startup supplies Testkit's required server URL and retains server custody.
 Timers passes external client types across the test boundary, not owned
 Principal values.
 Testkit also selects Candid/management support for native provider
@@ -369,7 +370,10 @@ The remaining module hierarchy keeps six responsibilities separate:
 6. `runtime` owns the one canister-local registry static, erases consumer
    callbacks for registry storage, exposes registration claims, applies
    provider effects, and drives live `Once`/`AfterCompletion` dispatch and the
-   two-role watchdog protocol. Initial and successor scheduler futures share the
+   two-role watchdog protocol. Private `capability`, `registration`, `dispatch`
+   and `effects` modules separate the public handles, creation/reconciliation,
+   callback delivery and provider binding; the parent retains shared authority
+   checks and the registry static. Initial and successor scheduler futures share the
    ordinary pre-poll delivery guard. Confirmed destruction records a lost
    scheduler in canonical control; owner reconciliation rearms it without
    replacing still-queued work. Maintained PocketIC round-pressure stop/restart
@@ -508,7 +512,7 @@ An after-completion interval is not a watchdog: if its callback traps or runs
 out of instructions, code after the callback cannot arm a successor. A
 watchdog policy commits the successor before invoking fallible work while
 preventing concurrent logical execution. Maintained
-[PocketIC subjects](../../crates/ic-timers-pocketic/tests/runtime/tests.rs) exercise
+[PocketIC subjects](../../crates/ic-timers-pocketic/tests/runtime/tests/mod.rs) exercise
 trap, actual instruction exhaustion, upgrade reconstruction, external-ingress
 rejection, independent timers, insufficient cycles followed by top-up,
 an armed Watchdog and its committed scheduler/work gap surviving a genuine freeze

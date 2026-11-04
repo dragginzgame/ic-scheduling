@@ -4,6 +4,21 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.4] - Unreleased
+
+### 📦 Dependencies
+
+- Adopt Testkit 0.85 and Platform Types 0.18.1 for native qualification. Keep
+  explicit managed server startup and the shared Principal identity; the public
+  Serde-only Jobs API and persisted/RPC bytes remain unchanged.
+
+### 🛠️ Tooling
+
+- Select Jobs and combined-consumer release checks individually for proven
+  Jobs-only changes. Omit unchanged standalone Timers and release-tooling
+  self-tests while retaining full repository CI and conservative shared-input
+  qualification. Refuse evidence whose omissions differ from the product mapping.
+
 ## [0.34.3] - 2026-11-04
 
 ### 📦 Dependencies

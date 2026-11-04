@@ -12,6 +12,7 @@ fn subject_discovery_rejects_empty_unrelated_and_failed_producers() {
         .map(|name| format!("{name}: test\n"))
         .collect::<String>();
     let missing = watchdog.lines().skip(1).collect::<Vec<_>>().join("\n");
+    let legacy = watchdog.replace("tests::watchdog::", "tests::");
     let mixed = format!("{watchdog}report::tests::host_only: test\n");
     let cohort = format!("{COHORT_SUBJECT}: test\n");
     let watchdog_selection = Qualification::Watchdog;
@@ -30,6 +31,7 @@ fn subject_discovery_rejects_empty_unrelated_and_failed_producers() {
         (&watchdog_selection, watchdog.as_str(), true),
         (&watchdog_selection, mixed.as_str(), false),
         (&watchdog_selection, missing.as_str(), false),
+        (&watchdog_selection, legacy.as_str(), false),
         (&cohort_selection, "", false),
         (&cohort_selection, "cohorts::renamed_subject: test\n", false),
         (&cohort_selection, cohort.as_str(), true),
@@ -74,15 +76,21 @@ fn focused_discovery_requires_every_exact_nonignored_runtime_subject() {
     )
     .unwrap();
     let selection = Qualification::Focused {
-        subjects: vec!["tests::one".into(), "tests::two".into()],
+        subjects: vec!["tests::ordinary::one".into(), "tests::watchdog::two".into()],
     };
     for (listing, admitted) in [
-        ("tests::two: test\ntests::one: test\n", true),
-        ("", false),
-        ("tests::one: test\n", false),
-        ("tests::one: test\ntests::two_extra: test\n", false),
         (
-            "tests::one: test\ntests::two: test\ntests::extra: test\n",
+            "tests::watchdog::two: test\ntests::ordinary::one: test\n",
+            true,
+        ),
+        ("", false),
+        ("tests::ordinary::one: test\n", false),
+        (
+            "tests::ordinary::one: test\ntests::watchdog::two_extra: test\n",
+            false,
+        ),
+        (
+            "tests::ordinary::one: test\ntests::watchdog::two: test\ntests::extra: test\n",
             false,
         ),
     ] {
@@ -98,9 +106,13 @@ fn focused_discovery_requires_every_exact_nonignored_runtime_subject() {
             admitted
         );
     }
-    for subjects in [vec![], vec!["tests::one", "tests::one"], vec!["build::one"]] {
+    for subjects in [
+        vec![],
+        vec!["tests::ordinary::one", "tests::ordinary::one"],
+        vec!["build::one"],
+    ] {
         let mut producer = Command::new("sh");
-        producer.args(["-c", "printf 'tests::one: test\\n'"]);
+        producer.args(["-c", "printf 'tests::ordinary::one: test\\n'"]);
         assert!(
             discover_subjects(
                 &mut producer,
@@ -113,7 +125,10 @@ fn focused_discovery_requires_every_exact_nonignored_runtime_subject() {
         );
     }
     let mut ignored = Command::new("sh");
-    ignored.args(["-c", "printf 'tests::one: test\\ntests::two: test\\n'"]);
+    ignored.args([
+        "-c",
+        "printf 'tests::ordinary::one: test\\ntests::watchdog::two: test\\n'",
+    ]);
     assert!(
         discover_subjects(&mut ignored, &selection, fixture.path())
             .unwrap_err()

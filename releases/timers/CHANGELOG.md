@@ -7,6 +7,28 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.4] - Unreleased
+
+### 🧹 Cleanup
+
+- Separate runtime capabilities, registration/reconciliation and callback dispatch
+  into private modules while preserving the public API and cleanup ordering.
+- Reuse fresh installed-probe setup and group all 35 installed runtime subjects
+  by behavior. Update exact qualification selections for their new module paths;
+  retain independent server ownership and the explicit pre-install overflow setup.
+
+### 📦 Dependencies
+
+- Select Testkit 0.85.1, native Platform 0.22.0 and Platform Types 0.18.1 for
+  the qualification harness. Managed startup supplies the required server endpoint;
+  public Timers dependencies, scheduling and probe protocol bytes are unchanged.
+
+### 🛠️ Tooling
+
+- Record each release check independently, with shared lint, documentation and
+  archive recipes split by library. Timers and shared-input releases retain the
+  complete gate; full repository CI retains both libraries and all tooling tests.
+
 ## [0.40.3] - 2026-11-04
 
 ### 🧹 Cleanup
