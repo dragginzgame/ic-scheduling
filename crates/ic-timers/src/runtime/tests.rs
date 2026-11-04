@@ -3940,10 +3940,13 @@ fn registration_identity_survives_control_but_changes_on_replacement_and_restart
     let completed = snapshot().observability().performance();
     assert_eq!(completed.work_instructions().aggregate().samples(), 2);
     assert_eq!(completed.work_instructions().aggregate().total(), 14);
-    assert_eq!(
-        completed.work_instructions().aggregate().mean(),
-        Ok(Some(7))
+    assert!(
+        !completed
+            .work_instructions()
+            .aggregate()
+            .samples_overflowed()
     );
+    assert!(!completed.work_instructions().aggregate().total_overflowed());
     assert_eq!(completed.work_instructions().latest(), Some(7));
     assert_eq!(completed.work_instructions().aggregate().maximum(), Some(7));
     assert_eq!(
@@ -3987,15 +3990,10 @@ fn registration_identity_survives_control_but_changes_on_replacement_and_restart
     let regrown_work = regrown.observability().performance().work_instructions();
     assert_eq!(regrown_work.aggregate().samples(), 3);
     assert_eq!(regrown_work.aggregate().total(), 21);
-    assert_eq!(regrown_work.aggregate().mean(), Ok(Some(7)));
-    // Arithmetic alone accepts a reset followed by larger measurements.
-    // Different registration identities forbid treating this as one interval.
-    let misleading_interval = regrown_work
-        .aggregate()
-        .interval_since(completed.work_instructions().aggregate())
-        .unwrap();
-    assert_eq!(misleading_interval.samples(), 1);
-    assert_eq!(misleading_interval.total(), 7);
+    assert!(!regrown_work.aggregate().samples_overflowed());
+    assert!(!regrown_work.aggregate().total_overflowed());
+    // Counts and totals grow across replacement, but different registration
+    // identities forbid treating those observations as one continuous interval.
     reset_for_test(20, 8);
     initialize_runtime().unwrap();
     let _reconstructed = create();

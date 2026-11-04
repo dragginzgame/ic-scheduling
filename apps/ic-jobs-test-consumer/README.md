@@ -385,7 +385,9 @@ and retained snapshots are unchanged. Reset performs no stable write or timer
 reconciliation and cannot change an attempt, retry budget or blocked effect.
 
 The recorder is a fixed heap-local `MeasurementWindow` of `MeasurementCounter`
-values, with no job-ID/payload labels or dynamic table. It observes admitted Jobs
+values from Metrics 0.29, with no job-ID/payload labels or dynamic table. The
+consumer projects its own report DTOs; recorders implement neither Serde nor Wire.
+It observes admitted Jobs
 operations after the owning queue commit succeeds:
 
 | Counter | Unit and admission |

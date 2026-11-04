@@ -57,7 +57,7 @@ but it does not promise that a task will happen exactly once.
 
 | Field | Value |
 | --- | --- |
-| Released API line | `0.39` |
+| API line | `0.40` |
 
 IC Timers is written in Rust 2024 and supports Rust
 1.99.1 and newer. The private backend owns one-shot dispatch through IC
@@ -205,13 +205,13 @@ does not make inspection an authorization or zero-cost guarantee.
 
 ## Minimal `Once` example
 
-The examples below use published Timers 0.39.0 with Runtime 0.19 and Metrics 0.28.
+The examples require Timers 0.40.0 with Runtime 0.19 and Metrics 0.29.
 Align the complete canister graph with the
 [runtime compatibility requirements](#runtime-compatibility):
 
 ```toml
 [dependencies]
-ic-timers = "0.39.0"
+ic-timers = "0.40.0"
 ```
 
 Every framework and application crate linked into the same canister must resolve
@@ -343,36 +343,30 @@ measurements.
 Every `TimerCounters` getter returns the shared Metrics `MeasurementCounter`:
 `total()` is `u128`, `total_overflowed()` records actual overflow, and
 `exact_total()` rejects an overflowed observation. An exact `u128::MAX` is still
-exact. After establishing registration continuity, use `delta_since(previous)`
-for checked intervals and `merge()` for classified totals. These are inert copies;
+exact. `merge()` combines classified recording totals. These are inert copies;
 changing a returned counter cannot change the runtime. Memory sample counts
 still conservatively treat `u64::MAX` as saturated.
 
 Instruction measurements use the selected Metrics ordered
-`MeasurementSummary` values with `u128` totals and integer means, and `u64`
+`MeasurementSummary` values with `u128` totals and `u64`
 samples and counts. Totals
 above `u64::MAX` remain exact. An exactly reached cap remains exact, while actual
 count/total overflow
 is recorded by `aggregate().samples_overflowed()` and `aggregate().total_overflowed()`.
-Project count, total, maximum and means through `summary.aggregate()`; the
+Observe count, total and maximum through `summary.aggregate()`; the
 ordered latest observation remains `summary.latest()`.
-`aggregate().mean()` returns `Ok(None)` for no completed samples, `Ok(Some(0))` for a completed
-zero measurement, and an error after actual overflow. Latest and maximum samples
-remain available after overflow. Preserve the tracked summary when computing a
-mean or an admitted interval; clipped count/total fields alone lose overflow
-provenance. Numeric interval admission does not establish registration continuity.
+Zero samples means no completed observation; one zero sample is a completed zero
+measurement. Latest and maximum samples remain available after overflow. Preserve
+the overflow flags when projecting reports; clipped count/total fields alone lose
+quality information. Report owners decide mean/rounding, interval admission and
+transport validation after establishing units and registration continuity.
 
-Use the checked `summary.aggregate().scaled_mean(scale)` for
-fractional reports. It computes `floor(total * scale / samples)` from the tracked
-total, preserving fractions lost by scaling an already rounded integer mean.
-It distinguishes empty from measured zero and returns `SampleCountOverflow` on
-actual count overflow even when scale is zero. An exact count bounds the scaled
-result within `u128`; there is no separate projection-error case.
-
-Timers **0.39** uses
-`ic_timers::{MeasurementCounter, MeasurementSummary}` from Metrics **0.28**.
+Timers **0.40** uses
+`ic_timers::{MeasurementCounter, MeasurementSummary}` from Metrics **0.29**.
 Align direct Metrics dependencies when exchanging these values with other
-libraries. Timers 0.38 uses Metrics 0.27.
+libraries. Recorders implement neither Serde nor Wire and expose no means,
+deltas or interval queries. Consumers own their report DTOs and codecs.
+Timers 0.39 uses Metrics 0.28; Timers 0.38 uses Metrics 0.27.
 The [root dependency catalog](../../Cargo.toml) and
 lockfile select that package identity; different Metrics lines have distinct Rust
 types. Preserve wide totals in reports/codecs, or use checked conversions when
@@ -507,14 +501,14 @@ for commands and qualification. The [architecture](../../docs/timers/architectur
 
 ## Runtime compatibility
 
-Timers 0.39 selects Runtime 0.19.0 or a compatible 0.19 patch
+Timers 0.40 selects Runtime 0.19.0 or a compatible 0.19 patch
 for IC0 and execution. Runtime requires its exact matching executor guard.
 Applications retaining Runtime 0.18 must align all executor and Endpoint
 suppliers together before adopting it. Timers 0.38 remains on Runtime 0.18;
 removing or overriding the singleton guard is not a compatibility fix.
 
-Consumers exchanging Timers' public measurement types with a direct Metrics
-dependency select Metrics 0.28. Canister entrypoints select Runtime's `cdk`
+Consumers exchanging Timers 0.40's public measurement types with a direct
+Metrics dependency select Metrics 0.29. Canister entrypoints select Runtime's `cdk`
 feature; canonical identities come from Types 0.18. The qualification consumer
 selects Storage 0.66, Wire Core 0.16 and Endpoint 0.6. The native harness selects
 Testkit 0.84, which owns the PocketIC client at `ic_testkit::pocket_ic`; no separate

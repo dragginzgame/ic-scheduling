@@ -7,6 +7,23 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Adopt Metrics 0.29 for public measurement recorders. Align direct Metrics
+  dependencies; recorder Serde traits, mean/delta/interval queries and public
+  reconstruction constructors are removed. Report owners retain their DTOs,
+  codecs, validation and arithmetic. Timer recording, overflow quality and
+  scheduling behavior are unchanged.
+
+### 📦 Dependencies
+
+- Select Testkit 0.84.1 with Platform 0.21's external-protocol adapters after the
+  separate PocketIC client's retirement. Keep Testkit-owned clients, Runtime
+  0.19, Types 0.18 and server 16.1.0; qualify the selected TOML tooling updates
+  through the metadata, release and archive checks.
+
 ## [0.39.1] - 2026-11-03
 
 ### 📦 Dependencies

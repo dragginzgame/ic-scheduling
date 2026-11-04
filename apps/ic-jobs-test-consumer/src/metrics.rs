@@ -75,9 +75,13 @@ mod tests {
 
     #[test]
     fn reports_preserve_wide_totals_and_actual_overflow_quality() {
+        let mut exact_cap = MeasurementCounter::ZERO;
+        exact_cap.add(u128::MAX);
+        let mut overflowed = exact_cap;
+        overflowed.add(1);
         let counts = Counts {
-            dispatched: MeasurementCounter::from_parts(u128::MAX, false).unwrap(),
-            succeeded: MeasurementCounter::from_parts(u128::MAX, true).unwrap(),
+            dispatched: exact_cap,
+            succeeded: overflowed,
             ..Counts::EMPTY
         };
         let report = counts.snapshot(None, 7);

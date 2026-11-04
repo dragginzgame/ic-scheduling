@@ -8,10 +8,13 @@ and [coordinated history through 0.33.1](../history.md).
 
 ### 📦 Dependencies
 
-- Adopt Testkit 0.84's maintained PocketIC client for the private recovery harness
+- Adopt Testkit 0.84.1's maintained PocketIC client for the private recovery harness
   and queue example, removing the separate Platform client dependency. Preserve
   explicit harness selection, caller identities and uncertain-effect recovery;
   the public Serde-only Jobs contract is unchanged.
+- Adopt Metrics 0.29 for private job-outcome instrumentation. Preserve the
+  consumer-owned report fields, Wire bytes, reset identity and actual-overflow
+  flags without serializing recorder types. The public Jobs API is unchanged.
 
 ## [0.34.2] - 2026-11-03
 

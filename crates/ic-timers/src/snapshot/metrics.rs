@@ -9,9 +9,10 @@ use ic_metrics::{MeasurementCounter, MeasurementSummary};
 /// sole writer of these named events. Completed work merges its four classified
 /// outcomes. Getters return inert copies, not mutation authority.
 ///
-/// Check the parent snapshot's full registration identity before using
-/// [`MeasurementCounter::delta_since`]; epoch equality alone does not prove
-/// continuity. Use checked counter operations rather than inferring overflow
+/// Check the parent snapshot's full registration identity before comparing
+/// observations; epoch equality alone does not prove continuity. Reporting and
+/// interval admission belong to the consumer. Use checked counter observations
+/// rather than inferring overflow
 /// from a numeric cap: an exact `u128::MAX` remains distinguishable from overflow.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct TimerCounters {
@@ -362,11 +363,12 @@ const fn max_u64(left: u64, right: u64) -> u64 {
 /// Start/end page reads bracket the instruction interval from outside.
 ///
 /// Instruction summaries retain observation ordering and track actual overflow.
-/// Totals and integer means are `u128`; individual samples and counts are `u64`.
-/// Totals above `u64::MAX` remain exact. Use the summary's checked `mean()` or
-/// aggregate saturation flags rather than inferring overflow from its numeric
-/// cap. Event counters also track actual overflow through Metrics; page-sample
-/// counts remain conservatively saturated at their numeric cap.
+/// Totals are `u128`; individual samples and counts are `u64`.
+/// Totals above `u64::MAX` remain exact. Read aggregate overflow flags rather
+/// than inferring overflow from the numeric cap. Consumers own report means,
+/// rounding and interval admission. Event counters also track actual overflow
+/// through Metrics; page-sample counts remain conservatively saturated at their
+/// numeric cap.
 ///
 /// A terminal [`DeclarationLifetime::RemoveWhenStopped`](crate::DeclarationLifetime::RemoveWhenStopped)
 /// callback can remove its declaration before this final record is retained;
@@ -499,7 +501,8 @@ mod tests {
 
     #[test]
     fn all_counters_saturate() {
-        let exact_cap = MeasurementCounter::from_parts(u128::MAX, false).unwrap();
+        let mut exact_cap = MeasurementCounter::ZERO;
+        exact_cap.add(u128::MAX);
         let mut counters = TimerCounters {
             schedule_requests: exact_cap,
             wakeups_armed: exact_cap,
@@ -578,8 +581,10 @@ mod tests {
         assert_eq!(counters.invariant_failure().exact_total(), Ok(1));
         assert_eq!(counters.work_started().exact_total(), Ok(0));
 
+        let mut near_cap = MeasurementCounter::ZERO;
+        near_cap.add(u128::MAX - 2);
         let mut counters = TimerCounters {
-            succeeded: MeasurementCounter::from_parts(u128::MAX - 2, false).unwrap(),
+            succeeded: near_cap,
             ..TimerCounters::EMPTY
         };
         counters.record_completion(TimerCompletionOutcome::NoWork);
@@ -589,8 +594,11 @@ mod tests {
         counters.record_completion(TimerCompletionOutcome::InvariantFailure);
         assert!(counters.work_completed().exact_total().is_err());
         // Merge must preserve a source's overflow, even without a new carry.
+        let mut overflowed = MeasurementCounter::ZERO;
+        overflowed.add(u128::MAX);
+        overflowed.add(1);
         counters = TimerCounters {
-            succeeded: MeasurementCounter::from_parts(u128::MAX, true).unwrap(),
+            succeeded: overflowed,
             ..TimerCounters::EMPTY
         };
         assert!(counters.work_completed().total_overflowed());
@@ -598,8 +606,10 @@ mod tests {
 
     #[test]
     fn counter_copies_cross_the_old_cap_without_mutating_registration_state() {
+        let mut old_cap = MeasurementCounter::ZERO;
+        old_cap.add(u128::from(u64::MAX));
         let mut counters = TimerCounters {
-            schedule_requests: MeasurementCounter::from_parts(u128::from(u64::MAX), false).unwrap(),
+            schedule_requests: old_cap,
             ..TimerCounters::EMPTY
         };
         let previous = counters.schedule_requests();
@@ -608,10 +618,12 @@ mod tests {
             counters.schedule_requests().exact_total(),
             Ok(u128::from(u64::MAX) + 1)
         );
-        assert_eq!(counters.schedule_requests().delta_since(previous), Ok(1));
+        assert_eq!(previous.exact_total(), Ok(u128::from(u64::MAX)));
+        let observed = counters.schedule_requests();
         let mut copied = counters.schedule_requests();
         copied.add(10);
-        assert_eq!(counters.schedule_requests().delta_since(previous), Ok(1));
+        assert_eq!(counters.schedule_requests(), observed);
+        assert_ne!(copied, observed);
     }
 
     #[test]

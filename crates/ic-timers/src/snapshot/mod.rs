@@ -37,7 +37,7 @@ impl TimerRegistrationId {
     }
 }
 
-/// Shared, inert measurement arithmetic; registration identity remains timer-owned.
+/// Shared measurement recorders; registration identity remains timer-owned.
 pub use ic_metrics::{MeasurementCounter, MeasurementSummary};
 pub use identity::{
     MAX_TIMER_IDENTITY_COMPONENT_BYTES, TimerIdentity, TimerIdentityError, TimerIdentityField,

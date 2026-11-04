@@ -52,11 +52,13 @@ not scheduling authority. The native platform substitute is test-only; it does
 not replace IC execution or prove recovery. Runtime subjects and policy cohorts
 remain separate evidence selections in the [release guide](development.md).
 
-Timers 0.39 uses Metrics 0.28 for the public `MeasurementCounter` and
+Timers 0.40 uses Metrics 0.29 for the public `MeasurementCounter` and
 `MeasurementSummary` identities, including snapshot getter results. Consumers
 exchanging values with direct Metrics dependencies must select the same identity.
-Serde transport and native Wire metadata belong to Metrics. Timers does not
-depend on a stable metrics adapter or introduce a persisted-format migration.
+Metrics owns recording and overflow quality. Consumers own report DTOs, codecs,
+validation, means and interval admission; recorders implement neither Serde nor
+Wire. Timers 0.39 uses Metrics 0.28. Timers does not depend on a stable
+metrics adapter or introduce a persisted-format migration.
 
 ## Candid and CDK dependency boundary
 
@@ -81,8 +83,8 @@ Runtime executor owner and no standalone
 qualify those IC paths. [The call ownership boundary](../../crates/ic-timers/SAFETY.md#platform-and-application-call-ownership)
 keeps application call builders and Relay above the runtime. The library's Runtime
 selection remains executor/system-only, excluding Principal/Account, SHA-2, text
-encoding and Candid. Metrics 0.28 owns required Serde numeric transport and
-native Wire metadata. The Wasm library excludes Wire, Postcard, JSON parsing and
+encoding and Candid. Metrics 0.29 has no production dependencies.
+The Wasm library excludes Wire, Postcard, JSON parsing and
 host tooling; Timers declares no direct codec dependency. Runtime types do not
 cross the published timer API or probe wire records.
 
@@ -168,9 +170,8 @@ maintained typed error implementations. Reimplementing those capabilities to
 remove their declarations would create competing owners. Runtime supplies
 the lean executor/IC0 feature boundary requested in
 [#40 — Keep executor/IC0-only graphs free of Principal, Serde and crypto dependencies](https://github.com/dragginzgame/ic-platform/issues/40);
-Timers consumes it without bypassing Runtime or copying bindings. Metrics'
-numeric transport is an independent dependency path; its Serde and native Wire
-metadata do not change Runtime's executor/IC0-only feature selection.
+Timers consumes it without bypassing Runtime or copying bindings. Metrics adds
+recording without a transport, Platform or runtime dependency.
 
 The [dependency policy](../../ci/cargo-dependency-boundaries.json) is enforced through
 Shared's canonical checker in `actions-check`, alongside pin/inheritance checks.
