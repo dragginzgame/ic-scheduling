@@ -1,89 +1,75 @@
 # Current handoff
 
-## Three reviewed cleanups pending — 2026-11-05
+## Jobs 0.34.5 and Timers 0.40.6 delivered — 2026-11-05
 
-Implemented locally from `5e9a415`: Watchdog state mutation is private to its
-control owner; registry handle custody and observation ordering stay intact.
-Eight fixture callers share one Scheduling scratch helper, delegating allocation
-and cleanup to the unchanged Shared payload. Focused qualification uses exact
-unique-set comparison and retains Cargo listing order in receipts.
+The reviewed cleanup is committed, tagged, pushed to `origin/main` and published
+for both groups on crates.io. Both release journals are complete; do not replay
+uploads. Source preparation: `88ff77f42fa3d74c5dd0ae18a84af8351dd4bbc2`.
+Jobs release: `e8980445af860c99f817d2db010eeeb73dde7260`;
+annotated `jobs-v0.34.5`: `741835a77d6ea96c54e532dd891b12b73649f48f`.
+Timers release: `c8cced2932f2e2b33e6afbbeff10c2f5f206c294`;
+annotated `timers-v0.40.6`: `871fd2ae77a36d5d9b2f4de211637006758db2f3`.
+Official/local archive SHA-256, Jobs:
+`64869c5933816650d0b1da73b3a77ca2a707d71f96aae5849c1ee38a4fb18dd7`;
+Timers: `3c6bd9f59618daa56f0021a6587827196dad3a9d915d07979722b0fc0fd5dc67`.
+Both downloaded archives match the uploads and their clean VCS release commits.
 
-Passed 44 registry, 43 selected runtime and six driver tests; strict native/Wasm
-Clippy, scratch admission, actual CI-selection/formatting callers, ShellCheck and
-all 147 snapshot payloads. Three explicit installed recovery/cleanup subjects pass:
-`target/tmp/timer-qualification-755099-0/runtime.json`. The initial sandbox attempt
-failed loopback binding; it is retained separately, without a product-failure claim.
-Matched Watchdog module/code payload changed 125,019/109,601 to 124,997/109,578
-bytes. This is a footprint result, not an execution-performance claim.
-Evidence: `target/cleanup-three/`. Pending notes: Jobs 0.34.5 / Timers 0.40.6.
-The maintainer now authorizes direct delivery and crates.io publication of both
-patches. Retain Storage 0.67.1 in the locked graph, with its official checksum
-verified; both complete 37-stage group gates will qualify the combined release
-inputs. The focused cleanup evidence above is not that full release qualification.
-Delivery order: Timers, publication, then Jobs and publication. Siblings stay
-read-only; completed earlier releases below must not be replayed.
+The released graph retains Logging 0.24.7, Metrics 0.29.2, Platform 0.22.1,
+Storage 0.67.1, Testkit 0.86.0, Wire 0.17.1 and Endpoint/macros 0.7.0.
+Types stays 0.18.1; Runtime/macros/exact guard stay 0.19.1; Build/Host stay 0.74.3.
+Root minima and all eight grouped member identities retain their owners.
 
-## Jobs 0.34.4 and Timers 0.40.5 delivered — 2026-11-05
+## Qualification and preserved pending work
 
-The requested supplier adoption and pending Shared Tooling audit are pushed to
-`origin/main`; both selected public crates are published on crates.io. Both
-release journals are complete. Do not replay either upload.
-Source preparation: `df8547b0ca07727270b9513656c17596e9363c68`.
+Both complete 37-stage gates passed independently on Rust 1.99.1: lint, graph,
+provider/pin checks, release/recovery fixtures, native/Wasm consumers, strict docs
+and both archives. Each passed 35 installed runtime subjects and the policy cohort
+with PocketIC 16.1.0. Publication separately repeated lint and archive verification.
+Jobs remains Serde-only; Timers retains its three normal dependencies. No fresh
+macOS execution is claimed locally; hosted CI runs asynchronously.
 
-Jobs release: `e94f9ee1af2cbdf8127d0a6d3b939ed8951e4bbe`;
-annotated `jobs-v0.34.4` object: `0264c7a6fc1e5a1c2c8d97cacb8cc091aa29072a`.
-Timers release: `061de2b6b3035cebeab2642b11d050e502d60d6f`;
-annotated `timers-v0.40.5` object: `fec3d2f1725e9d0065e0fd3d7aea3cb2494adf1c`.
-Official/local Jobs archive SHA-256:
-`59e288773b82eee17264ae82f5b7654613e1a507cc5acddbd08ba0ab2068f46e`.
-Official/local Timers archive SHA-256:
-`a0388684124526f8143314cf8a2ab669aa9335c333cbeeed7a9ac9623ac25fcf`.
-Registry downloads match the uploaded archives and their clean VCS commits.
+Preserve `.git/release-state/deployment-cleanup0406.4fc5n5eC/`, completed
+`timers-0.40.6.plan` / `jobs-0.34.5.plan` and all version-2 receipts. Custody holds
+original inputs, group logs, installed diagnostics, official archives/checksums,
+source/tag identities and completion records. Attempts: `validation.v9g365AV`
+(Timers) and `validation.z7wdeMUo` (Jobs), under `target/release-validation/`.
+Preparation and logs also remain under `target/deployment-cleanup0406/`.
 
-The root graph selects Logging 0.24.7, Metrics 0.29.2, native Platform 0.22.1,
-Storage 0.67.0, Testkit 0.86.0, Wire 0.17.1 and Endpoint/macros 0.7.0.
-Types stays 0.18.1; Runtime/macros/exact guard stay 0.19.1. Build/Host stay at
-latest-published 0.74.3. Storage, Testkit and Endpoint share one Wire identity;
-codec-only callers no longer compile its optional metadata derive. Compatible
-minimums are preserved; changed minor-line minima are root-owned. No public
-Scheduling API or protocol migration is required, and no backing reset is needed.
-Siblings were read-only.
+The first Timers gate correctly refused an in-flight Wire 0.17.1 → 0.17.2 lock
+change. Its failed evidence is retained; it was not counted as qualification.
+After the maintainer paused other writes, both entire gates ran on stable inputs.
+Wire 0.17.2 was kept separate and restored as the sole local `Cargo.lock` diff
+after both uploads, without reverting released package versions. It remains
+unqualified pending work and is absent from the released graph. Preserve stash
+`0f004eda7ab7e02c96edb801416838dff89a4c72` and custody's Wire-only patches; do not pop old stashes or replay tags.
+Other writes may resume after the completed handoff.
 
-## Qualification and custody
+## Delivered cleanup
 
-Each group independently passed its complete 37-stage plan on Rust 1.99.1:
-strict lint, graph/provider/pin checks, release/recovery fixtures, native and
-Wasm consumers, docs and both archives. Each plan passed 35 installed watchdog
-subjects and the policy cohort using the selected Testkit and PocketIC 16.1.0.
-Publication separately repeated lint and verified each release-version archive.
-Jobs' published normal graph remains Serde-only; Timers retains three normal
-dependencies. Native tests do not establish IC recovery; the installed receipts
-supply their separate named proof. No fresh macOS execution is claimed locally.
-Hosted [CI](https://github.com/dragginzgame/ic-scheduling/actions/workflows/ci.yml)
-runs asynchronously; the Jobs release push was queued when inspected.
+Watchdog state mutation belongs to its private control owner. The registry keeps
+claim admission, provider-handle custody, observations and capture cleanup order.
+Eight fixture callers share Scheduling's scratch policy while the unchanged
+Shared allocator owns allocation/cleanup. Focused subject matching uses exact
+unique sets and preserves Cargo listing order in receipts. Public APIs, protocol,
+persistence and scheduling/recovery semantics are unchanged; no new product mode.
 
-Preserve `.git/release-state/deployment-upstreams0405.xgEN56MD/`, both completed
-`jobs-0.34.4.plan` / `timers-0.40.5.plan` journals and their version-2 receipts.
-Custody retains incoming inputs, source identity, original group gate logs,
-installed diagnostics, registry archives/checksums and per-group completion facts.
-Detailed original preparation lives under `target/upstreams-deploy-20261105/`;
-group validation attempts are `validation.tyunozsE` and `validation.VxEZWZ5w`.
-No check was skipped or reused across groups; no artifact cleanup was performed.
+Original focused proof: 93 native cases, three installed subjects, native/Wasm
+Clippy, scratch/companion refusal and actual caller checks under `target/cleanup-three/`.
+Its matched Watchdog probe shrank by 22 module bytes and 23 code-payload bytes;
+that source-bound footprint observation is not an execution-performance claim.
+The initial sandbox loopback refusal is retained separately from the passing
+host run at `target/tmp/timer-qualification-755099-0/runtime.json`.
 
-## Shared Tooling audit included
+## Previous delivery and Shared audit
 
-Adopted reviewed 0.30.0 at `b37a882314d22bf7ab393b3fe561809377ffd22d` through
-its exporter; all 147 payloads verify. Private source roles are explicit; all
-138 audited Rust files are counted, with zero unclassified lines. No singular
-test owner needed renaming. Removed all three Cargo lint allowances, documenting
-39 timer failure contracts; existing scoped expectations remain checked.
-Workspace-owned scratch defaults to `target/tmp`, preserving explicit locations
-and refusing invalid raw/resolved paths. Public library contracts are unchanged.
-See the [rule audit](../reports/audits/2026/11/05/shared-tooling/01/report.md) and
-[source-layout guide](../fleet-tools.md). The audit retains its original 07dce12
-scope; `target/cloc-refresh-b37/` records the later committed renderer change.
-Uncommitted upstream drafts were excluded. The repository description names
-Jobs and Timers; collaborator-only PR admission remains configured.
+Jobs 0.34.4 / Timers 0.40.5 remain published. Their [delivered handoff](https://github.com/dragginzgame/ic-scheduling/blob/5e9a41509d40e4537e49c61b6d1430f84e4f329e/docs/status/current.md)
+retains exact source/tag/checksum, supplier and qualification identities, plus the
+Shared audit. Preserve `deployment-upstreams0405.xgEN56MD/` under
+`.git/release-state/` and its completed journals/receipts.
+Shared 0.30.0 stays at `b37a882314d22bf7ab393b3fe561809377ffd22d`; all 147
+payloads verify. The [rule audit](../reports/audits/2026/11/05/shared-tooling/01/report.md)
+retains its original 07dce12 scope; [source roles](../fleet-tools.md) and the later
+committed cloc renderer remain documented. No sibling source/release was changed.
 
 ## Timers 0.40.4 delivered — 2026-11-04
 
