@@ -150,24 +150,12 @@ impl Entry {
                 Ok(&mut self.wakeup)
             }
             (EntryKind::Watchdog { control, .. }, CallbackRole::WatchdogScheduler)
-                if matches!(
-                    control.state,
-                    WatchdogState::Scheduled { .. } | WatchdogState::AwaitingWork { .. }
-                        if control.generation == token.callback_generation
-                            && (matches!(binding, ProviderBinding::Stage) || matches!(control.state, WatchdogState::Scheduled { .. })
-                                || control.scheduler_abandoned)
-                ) =>
+                if control.can_bind_scheduler(token.callback_generation, binding) =>
             {
                 Ok(&mut self.wakeup)
             }
             (EntryKind::Watchdog { control, .. }, CallbackRole::WatchdogWork)
-                if matches!(
-                    control.state,
-                    WatchdogState::AwaitingWork {
-                        attempt_status: WatchdogAttemptStatus::Dispatched,
-                        ..
-                    } if control.generation == token.callback_generation
-                ) =>
+                if control.can_bind_work(token.callback_generation) =>
             {
                 Ok(&mut self.work)
             }
@@ -210,13 +198,13 @@ impl Entry {
                     })
                 }
             },
-            EntryKind::Watchdog { control, .. } => match control.state {
+            EntryKind::Watchdog { control, .. } => match control.state() {
                 WatchdogState::Inactive { reason } => {
                     TimerRuntimeStateSnapshot::Inactive { reason }
                 }
                 WatchdogState::Scheduled { deadline_ns } => {
                     TimerRuntimeStateSnapshot::Watchdog(WatchdogRuntimeStateSnapshot::Scheduled {
-                        scheduler_generation: control.generation,
+                        scheduler_generation: control.generation(),
                         deadline_ns,
                     })
                 }
@@ -226,7 +214,7 @@ impl Entry {
                     ..
                 } => TimerRuntimeStateSnapshot::Watchdog(
                     WatchdogRuntimeStateSnapshot::AwaitingWork {
-                        successor_generation: control.generation,
+                        successor_generation: control.generation(),
                         successor_deadline_ns,
                         attempt_status,
                     },
@@ -312,11 +300,11 @@ impl Entry {
                     if control.generation() == token.callback_generation
             ),
             (EntryKind::Watchdog { control, .. }, CallbackRole::WatchdogWork) => matches!(
-                control.state,
+                control.state(),
                 WatchdogState::AwaitingWork {
                     attempt_status: WatchdogAttemptStatus::Running,
                     ..
-                } if control.generation == token.callback_generation
+                } if control.generation() == token.callback_generation
             ),
             (
                 EntryKind::Ordinary { .. },

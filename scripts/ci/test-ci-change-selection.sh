@@ -7,12 +7,9 @@ root="${BASH_SOURCE[0]}"
 root="$(cd -P "${root%/*}/../.." && printf '%s/.' "$PWD")"
 root="${root%/.}"
 export PATH="$root/.tools/host/bin:$PATH"
-# shellcheck source=scripts/ci/fixture-lifecycle.sh
-source "$root/scripts/ci/fixture-lifecycle.sh"
-scratch_parent="${TMPDIR:-$root/target/tmp}"
-case "$scratch_parent" in *$'\r'*|*$'\n'*) echo 'scratch directory contains CR/LF' >&2; exit 2 ;; esac
-[[ -n "${TMPDIR:-}" ]] || mkdir -p "$scratch_parent"
-fixture="$(fixture_create "$scratch_parent/scheduling-ci-selection.XXXXXX")"
+# shellcheck source=scripts/ci/fixture-scratch.sh
+source "$root/scripts/ci/fixture-scratch.sh"
+fixture="$(fixture_create_workspace "$root" "scheduling-ci-selection.XXXXXX")"
 fixture_complete=false
 finish() {
     local status=$?

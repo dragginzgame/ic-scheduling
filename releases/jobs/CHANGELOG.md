@@ -4,6 +4,18 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.5] - Unreleased
+
+### 🛠️ Tooling
+
+- Centralize workspace fixture scratch setup while retaining Shared allocation,
+  caller TMPDIR overrides, invalid-path refusal and per-suite failure custody.
+
+### 📦 Dependencies
+
+- Retain the published Storage 0.67.1 patch in the locked combined-consumer graph.
+  The compatible Storage 0.67 minimum and public library contracts are unchanged.
+
 ## [0.34.4] - 2026-11-05
 
 ### 🛠️ Tooling

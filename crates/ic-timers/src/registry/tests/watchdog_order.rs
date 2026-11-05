@@ -199,7 +199,7 @@ fn watchdog_exact_replacement_rejects_stale_delivery_and_generation_exhaustion()
     else {
         panic!("watchdog")
     };
-    control.generation = u64::MAX - 3;
+    control.set_generation_for_test(u64::MAX - 3);
     let (old, _) = arm(registry.ensure_recurring(&claim, 10).unwrap());
     let (new, kind) = arm(registry
         .reconcile_watchdog_schedule(

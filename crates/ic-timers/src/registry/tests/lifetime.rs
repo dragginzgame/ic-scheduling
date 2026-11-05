@@ -107,7 +107,7 @@ fn watchdog_cancellation_at_maximum_generation_clears_the_selected_callbacks() {
                 panic!("fixture must be a watchdog");
             };
             // Establish an exhausted history through real arming/dispatch.
-            control.generation = u64::MAX - if dispatched { 2 } else { 1 };
+            control.set_generation_for_test(u64::MAX - if dispatched { 2 } else { 1 });
             let (scheduler, _) = arm(registry.ensure_recurring(&claim, 0).unwrap());
             let (scheduler, work) = if dispatched {
                 let (successor, work) = dispatch(registry.begin_watchdog_scheduler(&scheduler, 1));
@@ -143,7 +143,7 @@ fn watchdog_cancellation_at_maximum_generation_clears_the_selected_callbacks() {
                 else {
                     panic!("retained fixture must be a watchdog");
                 };
-                assert_eq!(control.generation, u64::MAX);
+                assert_eq!(control.generation(), u64::MAX);
                 assert_eq!(
                     registry.ensure_recurring(&claim, 2).unwrap().failure(),
                     Some(TimerControlFailure::GenerationExhausted)
@@ -308,12 +308,12 @@ fn watchdog_terminal_failures_respect_declaration_lifetime() {
             // Seed allocation history before callbacks exist. The operation
             // under test must encounter exhaustion with its real active token.
             match subject {
-                "initial" => control.generation = u64::MAX,
+                "initial" => control.set_generation_for_test(u64::MAX),
                 "replacement" | "dispatch-generation" => {
-                    control.generation = u64::MAX - 1;
+                    control.set_generation_for_test(u64::MAX - 1);
                 }
                 "completion-immediate" | "completion-deadline" => {
-                    control.generation = u64::MAX - 2;
+                    control.set_generation_for_test(u64::MAX - 2);
                 }
                 "dispatch-deadline" => {}
                 _ => unreachable!("closed fixture subjects"),

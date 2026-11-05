@@ -4,11 +4,11 @@ set -euo pipefail
 # only their affected caller phases, without replaying installer/hosted suites.
 phases=("$@")
 if [[ $# == 0 ]]; then
-    phases=(cli-admission server-commands workflow-selection demo-commands input-admission artifact-capture ci-admission rust-policy group-recipes)
+    phases=(fixture-scratch cli-admission server-commands workflow-selection demo-commands input-admission artifact-capture ci-admission rust-policy group-recipes)
 fi
 for phase in "${phases[@]}"; do
     case "$phase" in
-        cli-admission|server-commands|workflow-selection|demo-commands|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
+        fixture-scratch|cli-admission|server-commands|workflow-selection|demo-commands|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
         *) echo "unknown consumer tooling phase: $phase" >&2; exit 2 ;;
     esac
 done
@@ -21,12 +21,9 @@ root="${root%/.}"
 export PATH="$root/.tools/host/bin:$PATH"
 JOBS_CONSUMER_RUST_VERSION="$(bash "$root/scripts/dev/minimum-rust.sh" --print)"
 export JOBS_CONSUMER_RUST_VERSION
-# shellcheck source=scripts/ci/fixture-lifecycle.sh
-source "$root/scripts/ci/fixture-lifecycle.sh"
-scratch_parent="${TMPDIR:-$root/target/tmp}"
-case "$scratch_parent" in *$'\r'*|*$'\n'*) echo 'scratch directory contains CR/LF' >&2; exit 2 ;; esac
-[[ -n "${TMPDIR:-}" ]] || mkdir -p "$scratch_parent"
-fixture="$(fixture_create "$scratch_parent/jobs-consumer-tooling.XXXXXX")"
+# shellcheck source=scripts/ci/fixture-scratch.sh
+source "$root/scripts/ci/fixture-scratch.sh"
+fixture="$(fixture_create_workspace "$root" "jobs-consumer-tooling.XXXXXX")"
 fixture_complete=false
 trap 'fixture_finish "$?" "$fixture" "Consumer tooling fixture retained"' EXIT
 
@@ -675,6 +672,32 @@ if GROUP_CI_RECIPE_FAIL=timers make --no-print-directory -C "$fixture" clippy do
 head -n 4 "$fixture/expected-full" > "$fixture/expected-failure"
 cmp "$fixture/events" "$fixture/expected-failure"
 echo 'Actual Jobs recipes preserve consumer/Wasm lint, docs and archive checks; full aggregates retain both libraries and stop on lint failure (substitute Cargo/compiler effects)'
+)
+
+phase_fixture_scratch() (
+    fixture="$suite/fixture-scratch"
+    mkdir -p "$fixture/override"
+    # Exercise the real caller's transitive companion closure in a fresh shell.
+    copied="$fixture/copied"
+    mkdir "$copied"
+    bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$copied" scripts/ci/test-timer-dependencies.sh
+    bash -c 'set -e; unset TMPDIR; source "$1/scripts/ci/fixture-scratch.sh"; fixture_create_workspace "$1" copied.XXXXXX' fixture "$copied" > "$fixture/copied.log"
+    workspace="$fixture/workspace with spaces"
+    created="$(unset TMPDIR; fixture_create_workspace "$workspace" 'default.XXXXXX')"
+    [[ "$created" == "$workspace/target/tmp/"* && -d "$created" ]]
+    # Caller-selected relative parents stay authoritative and are not created.
+    unused="$fixture/unused workspace"
+    created="$(cd "$fixture"; TMPDIR=override fixture_create_workspace "$unused" 'override.XXXXXX')"
+    [[ "$created" == "$fixture/override/"* && -d "$created" && ! -e "$unused" ]]
+    missing="$fixture/missing"
+    if TMPDIR="$missing" fixture_create_workspace "$unused" 'missing.XXXXXX' > "$fixture/missing.log" 2>&1; then exit 1; fi
+    [[ ! -e "$missing" && ! -e "$unused" ]]
+    for invalid in "$fixture/invalid"$'\r' "$fixture/invalid"$'\n'; do
+        status=0
+        TMPDIR="$invalid" fixture_create_workspace "$unused" 'invalid.XXXXXX' > "$fixture/invalid.log" 2>&1 || status=$?
+        [[ "$status" == 2 && ! -e "$invalid" && ! -e "$unused" ]]
+    done
+    echo 'Workspace fixture defaults, spaces, caller overrides and pre-allocation CR/LF refusal passed'
 )
 
 for phase in "${phases[@]}"; do

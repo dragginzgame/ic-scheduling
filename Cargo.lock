@@ -1044,9 +1044,9 @@ dependencies = [
 
 [[package]]
 name = "ic-storage"
-version = "0.67.0"
+version = "0.67.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "427bcd5110c380fb2c2c2007fc2e3d05fd4550ebdc74046d65fbaaa52f0727f3"
+checksum = "0621f56cfcc42a109d1d52ac39410c0b7d7c7d3bbb9f46274c2381dced2e9352"
 dependencies = [
  "ic-platform-runtime",
  "ic-wire",

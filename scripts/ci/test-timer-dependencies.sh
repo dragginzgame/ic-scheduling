@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
-# Shared companions: scripts/ci/check-timer-dependencies.sh scripts/ci/fixture-lifecycle.sh scripts/ci/prepare-script-fixture.sh
+# Shared companions: scripts/ci/check-timer-dependencies.sh scripts/ci/fixture-scratch.sh scripts/ci/prepare-script-fixture.sh
 set -euo pipefail
 root="$(git rev-parse --show-toplevel)"
-# shellcheck source=scripts/ci/fixture-lifecycle.sh
-source "$root/scripts/ci/fixture-lifecycle.sh"
-scratch_parent="${TMPDIR:-$root/target/tmp}"
-case "$scratch_parent" in *$'\r'*|*$'\n'*) echo 'scratch directory contains CR/LF' >&2; exit 2 ;; esac
-[[ -n "${TMPDIR:-}" ]] || mkdir -p "$scratch_parent"
-fixture="$(fixture_create "$scratch_parent/timer-library-boundary.XXXXXX")"
+# shellcheck source=scripts/ci/fixture-scratch.sh
+source "$root/scripts/ci/fixture-scratch.sh"
+fixture="$(fixture_create_workspace "$root" "timer-library-boundary.XXXXXX")"
 fixture_complete=false
 trap 'fixture_finish "$?" "$fixture" "Failed library-boundary fixture retained"' EXIT
 

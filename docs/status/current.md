@@ -1,5 +1,28 @@
 # Current handoff
 
+## Three reviewed cleanups pending — 2026-11-05
+
+Implemented locally from `5e9a415`: Watchdog state mutation is private to its
+control owner; registry handle custody and observation ordering stay intact.
+Eight fixture callers share one Scheduling scratch helper, delegating allocation
+and cleanup to the unchanged Shared payload. Focused qualification uses exact
+unique-set comparison and retains Cargo listing order in receipts.
+
+Passed 44 registry, 43 selected runtime and six driver tests; strict native/Wasm
+Clippy, scratch admission, actual CI-selection/formatting callers, ShellCheck and
+all 147 snapshot payloads. Three explicit installed recovery/cleanup subjects pass:
+`target/tmp/timer-qualification-755099-0/runtime.json`. The initial sandbox attempt
+failed loopback binding; it is retained separately, without a product-failure claim.
+Matched Watchdog module/code payload changed 125,019/109,601 to 124,997/109,578
+bytes. This is a footprint result, not an execution-performance claim.
+Evidence: `target/cleanup-three/`. Pending notes: Jobs 0.34.5 / Timers 0.40.6.
+The maintainer now authorizes direct delivery and crates.io publication of both
+patches. Retain Storage 0.67.1 in the locked graph, with its official checksum
+verified; both complete 37-stage group gates will qualify the combined release
+inputs. The focused cleanup evidence above is not that full release qualification.
+Delivery order: Timers, publication, then Jobs and publication. Siblings stay
+read-only; completed earlier releases below must not be replayed.
+
 ## Jobs 0.34.4 and Timers 0.40.5 delivered — 2026-11-05
 
 The requested supplier adoption and pending Shared Tooling audit are pushed to

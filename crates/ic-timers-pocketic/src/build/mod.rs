@@ -11,6 +11,7 @@ use ic_host_process::{
     tool::{OutputLimit, OutputLimits, ToolError, capture_command, run_group_command},
 };
 use std::{
+    collections::BTreeSet,
     path::{Path, PathBuf},
     process::Command,
     time::Duration,
@@ -171,17 +172,15 @@ fn discover_subjects(
         }
         Qualification::Cohorts { .. } => names == [COHORT_SUBJECT],
         Qualification::Focused { subjects } => {
-            !subjects.is_empty()
-                && names.len() == subjects.len()
-                && subjects.iter().all(|subject| {
-                    subject.starts_with("tests::")
-                        && names.iter().filter(|name| **name == subject).count() == 1
-                })
-                && subjects
+            let selected: BTreeSet<_> = subjects.iter().map(String::as_str).collect();
+            let discovered: BTreeSet<_> = names.iter().copied().collect();
+            !selected.is_empty()
+                && selected.len() == subjects.len()
+                && discovered.len() == names.len()
+                && selected
                     .iter()
-                    .collect::<std::collections::BTreeSet<_>>()
-                    .len()
-                    == subjects.len()
+                    .all(|subject| subject.starts_with("tests::"))
+                && selected == discovered
         }
     };
     if !admitted {

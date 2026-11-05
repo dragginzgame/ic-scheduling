@@ -4,12 +4,9 @@ fixture_mode="${1:-all}"
 case "$fixture_mode" in all|retention|metadata|delivery|recovery|publication) ;; *) exit 2 ;; esac
 root="$(cd -P "${BASH_SOURCE[0]%/*}/../.." && pwd -P)"
 export PATH="$root/.tools/host/bin:$PATH"
-# shellcheck source=scripts/ci/fixture-lifecycle.sh
-source "$root/scripts/ci/fixture-lifecycle.sh"
-scratch_parent="${TMPDIR:-$root/target/tmp}"
-case "$scratch_parent" in *$'\r'*|*$'\n'*) echo 'scratch directory contains CR/LF' >&2; exit 2 ;; esac
-[[ -n "${TMPDIR:-}" ]] || mkdir -p "$scratch_parent"
-fixture_suite="$(fixture_create "$scratch_parent/scheduling-release-groups.XXXXXX")"
+# shellcheck source=scripts/ci/fixture-scratch.sh
+source "$root/scripts/ci/fixture-scratch.sh"
+fixture_suite="$(fixture_create_workspace "$root" "scheduling-release-groups.XXXXXX")"
 fixture_complete=false
 trap 'fixture_finish "$?" "$fixture_suite" "Release-group fixture retained"' EXIT
 unset MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES

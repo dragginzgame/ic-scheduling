@@ -88,6 +88,14 @@ fn focused_discovery_requires_every_exact_nonignored_runtime_subject() {
         ("", false),
         ("tests::ordinary::one: test\n", false),
         (
+            "tests::ordinary::one: test\ntests::ordinary::one: test\n",
+            false,
+        ),
+        (
+            "tests::ordinary::one: test\ntests::watchdog::two: test\ntests::watchdog::two: test\n",
+            false,
+        ),
+        (
             "tests::ordinary::one: test\ntests::watchdog::two_extra: test\n",
             false,
         ),
@@ -103,10 +111,11 @@ fn focused_discovery_requires_every_exact_nonignored_runtime_subject() {
             "fixture",
             listing,
         ]);
-        assert_eq!(
-            discover_subjects(&mut producer, &selection, fixture.path()).is_ok(),
-            admitted
-        );
+        let result = discover_subjects(&mut producer, &selection, fixture.path());
+        assert_eq!(result.is_ok(), admitted);
+        if let Ok(subjects) = result {
+            assert_eq!(subjects, ["tests::watchdog::two", "tests::ordinary::one"]);
+        }
     }
     for subjects in [
         vec![],

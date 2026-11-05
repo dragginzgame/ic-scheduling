@@ -4,8 +4,8 @@
 //! ownership. This module owns no provider calls, callbacks or runtime state.
 
 use super::{
-    CallbacksToClear, RegistrationClaim, RegistryEffect, RegistryTransition, WakeupToken,
-    clear_wakeup_if, effect::WatchdogDispatch,
+    CallbacksToClear, ProviderBinding, RegistrationClaim, RegistryEffect, RegistryTransition,
+    WakeupToken, clear_wakeup_if, effect::WatchdogDispatch,
 };
 use crate::{
     control::WakeupArm,
@@ -87,11 +87,11 @@ pub(super) struct WatchdogControl {
     // One allocation history survives inactive state. A dispatch stamps its
     // successor and work with one generation, distinguished by callback role.
     // Requests while awaiting work cannot replace that successor until completion.
-    pub(super) generation: u64,
-    pub(super) state: WatchdogState,
+    generation: u64,
+    state: WatchdogState,
     // Only confirmed destruction of the current bound scheduler sets this.
     // A missing handle alone can also be a synchronous effect's detached state.
-    pub(super) scheduler_abandoned: bool,
+    scheduler_abandoned: bool,
 }
 
 impl Default for WatchdogControl {
@@ -107,6 +107,87 @@ impl Default for WatchdogControl {
 }
 
 impl WatchdogControl {
+    pub(super) const fn generation(&self) -> u64 {
+        self.generation
+    }
+
+    // Read-only state projection for registry lifetime and snapshot observations.
+    pub(super) const fn state(&self) -> WatchdogState {
+        self.state
+    }
+
+    pub(super) const fn can_bind_scheduler(
+        &self,
+        generation: u64,
+        binding: ProviderBinding,
+    ) -> bool {
+        self.generation == generation
+            && !matches!(self.state, WatchdogState::Inactive { .. })
+            && (matches!(binding, ProviderBinding::Stage)
+                || matches!(self.state, WatchdogState::Scheduled { .. })
+                || self.scheduler_abandoned)
+    }
+
+    pub(super) const fn can_bind_work(&self, generation: u64) -> bool {
+        self.generation == generation
+            && matches!(
+                self.state,
+                WatchdogState::AwaitingWork {
+                    attempt_status: WatchdogAttemptStatus::Dispatched,
+                    ..
+                }
+            )
+    }
+
+    pub(super) const fn accepts_scheduler(&self, generation: u64) -> bool {
+        self.generation == generation
+            && matches!(
+                self.state,
+                WatchdogState::Scheduled { .. }
+                    | WatchdogState::AwaitingWork {
+                        attempt_status: WatchdogAttemptStatus::Dispatched,
+                        ..
+                    }
+            )
+    }
+
+    pub(super) const fn begin_work(&mut self, generation: u64) -> bool {
+        if self.can_bind_work(generation)
+            && let WatchdogState::AwaitingWork { attempt_status, .. } = &mut self.state
+        {
+            *attempt_status = WatchdogAttemptStatus::Running;
+            return true;
+        }
+        false
+    }
+
+    pub(super) const fn defer_unregister(&mut self) -> bool {
+        if let WatchdogState::AwaitingWork {
+            attempt_status: WatchdogAttemptStatus::Running,
+            pending,
+            ..
+        } = &mut self.state
+        {
+            *pending = Some(WatchdogPending::Unregister);
+            return true;
+        }
+        false
+    }
+
+    pub(super) const fn abandon_scheduler(&mut self) {
+        self.scheduler_abandoned = true;
+    }
+
+    pub(super) const fn bind_scheduler(&mut self) {
+        self.scheduler_abandoned = false;
+    }
+
+    pub(super) const fn fail(&mut self, failure: TimerControlFailure) {
+        self.state = WatchdogState::Inactive {
+            reason: InactiveReason::ControlFailure(failure),
+        };
+    }
+
     pub(super) fn request(
         &mut self,
         claim: &RegistrationClaim,
@@ -290,12 +371,13 @@ impl WatchdogControl {
         effect: RegistryEffect,
         failure: TimerControlFailure,
     ) -> RegistryTransition {
-        self.state = WatchdogState::Inactive {
-            reason: InactiveReason::ControlFailure(failure),
-        };
+        self.fail(failure);
         RegistryTransition::terminal(effect, failure)
     }
 }
+
+#[cfg(test)]
+mod tests;
 
 // Resolve the winner and its observation metadata together before mutating
 // control. A pending exact schedule keeps its already validated relative origin.

@@ -424,7 +424,7 @@ fn watchdog_checked_generation_exhaustion_is_terminal_and_atomic() {
         let EntryKind::Watchdog { control, .. } = &mut entry.kind else {
             panic!("fixture should be watchdog control");
         };
-        control.generation = u64::MAX;
+        control.set_generation_for_test(u64::MAX);
     }
     let transition = registry
         .ensure_recurring(&claim, 0)
@@ -457,7 +457,7 @@ fn watchdog_checked_generation_exhaustion_is_terminal_and_atomic() {
         else {
             panic!("fixture should be watchdog control");
         };
-        control.generation = u64::MAX - 1;
+        control.set_generation_for_test(u64::MAX - 1);
         let (scheduler, _) = arm(registry.ensure_recurring(&dispatch_claim, 0).unwrap());
         assert_eq!(scheduler.callback_generation(), u64::MAX);
         let transition = registry.begin_watchdog_scheduler(&scheduler, now_ns);
@@ -478,7 +478,7 @@ fn watchdog_checked_generation_exhaustion_is_terminal_and_atomic() {
             panic!("retained fixture should remain watchdog control");
         };
         assert_eq!(
-            control.generation,
+            control.generation(),
             u64::MAX,
             "failed dispatch must not advance its generation"
         );
@@ -559,7 +559,7 @@ fn transient_watchdog_completion_keeps_retained_or_replaced_successors() {
             else {
                 panic!("fixture must be a watchdog");
             };
-            control.generation = u64::MAX - 2;
+            control.set_generation_for_test(u64::MAX - 2);
         }
         let (scheduler, _) = arm(registry.ensure_recurring(&claim, 0).unwrap());
         let (successor, work) = dispatch(registry.begin_watchdog_scheduler(&scheduler, 1));

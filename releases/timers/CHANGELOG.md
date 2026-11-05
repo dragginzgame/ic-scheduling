@@ -7,6 +7,26 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.6] - Unreleased
+
+### 🧹 Cleanup
+
+- Keep Watchdog state mutation in its private control owner. Registry callbacks
+  retain claim admission, provider-handle custody and observation ordering;
+  public APIs, scheduling and recovery semantics are unchanged.
+- Compare focused qualification subjects as exact unique sets while preserving
+  Cargo listing order in receipts and refusing ignored or missing subjects.
+
+### 🛠️ Tooling
+
+- Reuse Scheduling's fixture scratch setup without changing the Shared allocator
+  or per-suite cleanup and evidence policies.
+
+### 📦 Dependencies
+
+- Retain the published Storage 0.67.1 patch in the locked combined-consumer graph.
+  The compatible Storage 0.67 minimum and public library contracts are unchanged.
+
 ## [0.40.5] - 2026-11-05
 
 ### 🛠️ Tooling
