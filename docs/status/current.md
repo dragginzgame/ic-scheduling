@@ -1,69 +1,66 @@
 # Current handoff
 
-## Upstream adoption and delivery in progress — 2026-11-05
+## Jobs 0.34.4 and Timers 0.40.5 delivered — 2026-11-05
 
-The maintainer authorized current supplier adoption and deployment in this repo.
-Registry inventory and resolution-only graph admission are retained under
-`target/upstreams-deploy-20261105/`. The selected graph is Logging 0.24.7, Metrics
-0.29.2, Platform 0.22.1, Storage 0.67.0, Testkit 0.86.0, Wire 0.17.1 and Endpoint
-0.7.0; Types 0.18.1, Runtime/macros/exact guard 0.19.1 and Build/Host 0.74.3 stay.
-The full Clippy gate passes, including the native and Wasm combined consumer.
-This is not yet installed-runtime qualification or publication. Delivery plan:
-Timers 0.40.5, then Jobs 0.34.4, each with the complete group release gate and
-separate crates.io upload. No sibling edits or supplier releases are authorized.
+The requested supplier adoption and pending Shared Tooling audit are pushed to
+`origin/main`; both selected public crates are published on crates.io. Both
+release journals are complete. Do not replay either upload.
+Source preparation: `df8547b0ca07727270b9513656c17596e9363c68`.
 
-## Shared Tooling 0.30.0 standards audit pending — 2026-11-05
+Jobs release: `e94f9ee1af2cbdf8127d0a6d3b939ed8951e4bbe`;
+annotated `jobs-v0.34.4` object: `0264c7a6fc1e5a1c2c8d97cacb8cc091aa29072a`.
+Timers release: `061de2b6b3035cebeab2642b11d050e502d60d6f`;
+annotated `timers-v0.40.5` object: `fec3d2f1725e9d0065e0fd3d7aea3cb2494adf1c`.
+Official/local Jobs archive SHA-256:
+`59e288773b82eee17264ae82f5b7654613e1a507cc5acddbd08ba0ab2068f46e`.
+Official/local Timers archive SHA-256:
+`a0388684124526f8143314cf8a2ab669aa9335c333cbeeed7a9ac9623ac25fcf`.
+Registry downloads match the uploaded archives and their clean VCS commits.
 
-The maintainer requested the new Shared Tooling, cloc/test-directory rules,
-allow/expect review and a repository-wide best-practices audit. Source began clean
-at `0c3f310a17a1a0ea03f9c6e030dbb9559a448332`. The audit source is included in the authorized delivery above; its original
-focused evidence below remains attributable to the audited inputs.
+The root graph selects Logging 0.24.7, Metrics 0.29.2, native Platform 0.22.1,
+Storage 0.67.0, Testkit 0.86.0, Wire 0.17.1 and Endpoint/macros 0.7.0.
+Types stays 0.18.1; Runtime/macros/exact guard stay 0.19.1. Build/Host stay at
+latest-published 0.74.3. Storage, Testkit and Endpoint share one Wire identity;
+codec-only callers no longer compile its optional metadata derive. Compatible
+minimums are preserved; changed minor-line minima are root-owned. No public
+Scheduling API or protocol migration is required, and no backing reset is needed.
+Siblings were read-only.
 
-Adopted reviewed **0.30.0**, revision
-`b37a882314d22bf7ab393b3fe561809377ffd22d`, through the canonical exporter;
-all 147 payloads verify independently. Private fixture/tool package roles are
-explicit in all six manifests. No singular test owner needs renaming. Actual
-cloc accounts for all 138 tracked Rust files, with zero unclassified lines;
-5,473 lines belong to public libraries. This is accounting, not code removal.
+## Qualification and custody
 
-Removed all three Cargo lint allowances: two obsolete choices and the missing-
-errors allowance, replaced by 39 public timer error sections. There were no
-source-level allows. Existing scoped expectations remain; native/test and Wasm
-Clippy enforce them. Native harness errors and artifact-verifier panic docs are
-also explicit. Public scheduling, Wire/storage bytes and dependencies are unchanged.
+Each group independently passed its complete 37-stage plan on Rust 1.99.1:
+strict lint, graph/provider/pin checks, release/recovery fixtures, native and
+Wasm consumers, docs and both archives. Each plan passed 35 installed watchdog
+subjects and the policy cohort using the selected Testkit and PocketIC 16.1.0.
+Publication separately repeated lint and verified each release-version archive.
+Jobs' published normal graph remains Serde-only; Timers retains three normal
+dependencies. Native tests do not establish IC recovery; the installed receipts
+supply their separate named proof. No fresh macOS execution is claimed locally.
+Hosted [CI](https://github.com/dragginzgame/ic-scheduling/actions/workflows/ci.yml)
+runs asynchronously; the Jobs release push was queued when inspected.
 
-Repo-owned fixture/qualification scratch defaults to `target/tmp`; explicit
-TMPDIR/RUNNER_TEMP locations remain caller-owned. Invalid raw/resolved driver
-paths are refused before qualification-run allocation; no global environment is
-changed. Shared allocators/Host FS retain cleanup and failure custody. Preserve
-historical outside-target attempts; no artifact cleanup was authorized.
+Preserve `.git/release-state/deployment-upstreams0405.xgEN56MD/`, both completed
+`jobs-0.34.4.plan` / `timers-0.40.5.plan` journals and their version-2 receipts.
+Custody retains incoming inputs, source identity, original group gate logs,
+installed diagnostics, registry archives/checksums and per-group completion facts.
+Detailed original preparation lives under `target/upstreams-deploy-20261105/`;
+group validation attempts are `validation.tyunozsE` and `validation.VxEZWZ5w`.
+No check was skipped or reused across groups; no artifact cleanup was performed.
 
-See the [rule-by-rule audit](../reports/audits/2026/11/05/shared-tooling/01/report.md)
-and [source-layout guide](../fleet-tools.md). The same repository's GitHub
-description now names Jobs and Timers; collaborator-only PR admission was already set.
+## Shared Tooling audit included
 
-## Focused qualification and limits
-
-Strict Timers native/test/Wasm Clippy, driver Clippy, Rustdoc, 11 driver tests,
-four capture tests, queue-client compilation, actual cloc, provider/dependency
-checks, ShellCheck, formatting/hook fixtures and selected caller/evidence/CI
-fixtures pass. Both groups' real metadata/editor/rollback fixtures pass with
-product checks/uploads substituted. Scratch refusal checks use the actual worker
-without starting PocketIC. Evidence: `target/shared-tooling030/`.
-Initial formatting failures and the invalidated running-driver attempt remain
-retained; the complete affected checks were rerun after freezing source edits.
-The later committed cloc refresh removes duplicate workspace totals and shortens
-labels. Its JSON source hashes/counts/roles and both Make table modes pass unchanged;
-`target/cloc-refresh-b37/` retains that proof. The original audit retains 07dce12.
-Further uncommitted upstream cloc edits are not part of this reproducible snapshot.
-No full CI, installed recovery or fresh macOS qualification is claimed. Hosted
-run 41884732991 at the starting commit selected documentation-only checks.
-
-Pending compatible notes: **Jobs 0.34.4**, **Timers 0.40.5**. Package versions
-remain Jobs 0.34.3/Timers 0.40.4 before release preparation. The audit itself did
-not change Cargo.lock; the subsequent authorized adoption above does. Delivery keeps
-explicit group selection and the complete applicable gate. No new reuse/skip
-policy or public product mode is introduced.
+Adopted reviewed 0.30.0 at `b37a882314d22bf7ab393b3fe561809377ffd22d` through
+its exporter; all 147 payloads verify. Private source roles are explicit; all
+138 audited Rust files are counted, with zero unclassified lines. No singular
+test owner needed renaming. Removed all three Cargo lint allowances, documenting
+39 timer failure contracts; existing scoped expectations remain checked.
+Workspace-owned scratch defaults to `target/tmp`, preserving explicit locations
+and refusing invalid raw/resolved paths. Public library contracts are unchanged.
+See the [rule audit](../reports/audits/2026/11/05/shared-tooling/01/report.md) and
+[source-layout guide](../fleet-tools.md). The audit retains its original 07dce12
+scope; `target/cloc-refresh-b37/` records the later committed renderer change.
+Uncommitted upstream drafts were excluded. The repository description names
+Jobs and Timers; collaborator-only PR admission remains configured.
 
 ## Timers 0.40.4 delivered — 2026-11-04
 
