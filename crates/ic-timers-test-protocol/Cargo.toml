@@ -2,7 +2,7 @@
 name = "ic-timers-test-protocol"
 rust-version.workspace = true
 edition.workspace = true
-version = "0.40.5"
+version = "0.40.6"
 publish = false
 license.workspace = true
 
