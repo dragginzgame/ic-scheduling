@@ -274,6 +274,10 @@ This target exercises Jobs' actual manifests, Make recipes, hook refresh and
 preservation behavior. Shared Tooling owns the general hook/frontend test matrix;
 this repository has no frontend formatter integration.
 
+`make cloc` reports library, test, example and tooling source separately. Private
+qualification packages declare their roles in Cargo metadata; see
+[source layout and LOC reporting](docs/fleet-tools.md).
+
 Standard formatting reports each manifest/Rustfmt pass and its elapsed time.
 Eligible unchanged inputs can reuse a successful result after tool admission;
 `make fmt-check FORMAT_RUST_ARGS=--no-cache` explicitly runs every pass. Shared

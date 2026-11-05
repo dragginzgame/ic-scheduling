@@ -359,7 +359,8 @@ its SHA-256. Testkit captures server stdout/stderr in the same artifact; failed
 setup additionally retains canonical tool evidence. `test-canister` admits the
 prepared server and compiles Wasm and the host harness before starting the
 15-minute server lifetime. Local runs retain the Wasm/hash and server logs in
-the reported `jobs-recovery.*` directory under `RUNNER_TEMP`, `TMPDIR` or `/tmp`.
+the reported `jobs-recovery.*` directory under an explicit `RUNNER_TEMP`/`TMPDIR`
+override, or the workspace's `target/tmp` by default.
 
 The live harness covers management authorization, wakeup changes, real local and
 external timer delivery, upgrade retention, overdue policies, synchronous

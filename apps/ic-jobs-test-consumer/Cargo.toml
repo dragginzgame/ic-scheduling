@@ -19,6 +19,9 @@ ic-storage.workspace = true
 ic-timers.workspace = true
 ic-wire-endpoint.workspace = true
 
+[package.metadata.shared-tooling.loc]
+category = "tests"
+
 [lib]
 crate-type = ["cdylib", "rlib"]
 

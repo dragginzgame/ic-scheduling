@@ -961,9 +961,9 @@ dependencies = [
 
 [[package]]
 name = "ic-logging"
-version = "0.24.6"
+version = "0.24.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42df20b32c64ae2e8ea3544bf26f5f8bc1cfeb9e7d9ebeb16c5ebd611e2a7f69"
+checksum = "853290a163d57a44a8b8d76d6ccdd2fa890f30e6e781baafbb1bdce8a4ce372e"
 
 [[package]]
 name = "ic-management-canister-types"
@@ -978,15 +978,15 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.29.1"
+version = "0.29.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b47d4ea14ea9865bda223dc16a5411d960360ca872dc2829671f50710be0cb08"
+checksum = "d8d9e8ee13b8607c3febfb07002659bdb47c4f490b4ea879ed017d66d4246538"
 
 [[package]]
 name = "ic-platform"
-version = "0.22.0"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19b0b5b5a8399051037aeb0f6d0832b8191eef1f7c9e727a9cf9baed951fc968"
+checksum = "229f2ea285da3b2cfd9b780e50f32c3313be5972c3a5fda70646111dbe794a07"
 dependencies = [
  "candid",
  "ic-management-canister-types",
@@ -1044,9 +1044,9 @@ dependencies = [
 
 [[package]]
 name = "ic-storage"
-version = "0.66.2"
+version = "0.67.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "515db546502c638fb0d94c6d6fdce394e2aad2786df86cda822dcb888209555e"
+checksum = "427bcd5110c380fb2c2c2007fc2e3d05fd4550ebdc74046d65fbaaa52f0727f3"
 dependencies = [
  "ic-platform-runtime",
  "ic-wire",
@@ -1056,9 +1056,9 @@ dependencies = [
 
 [[package]]
 name = "ic-testkit"
-version = "0.85.1"
+version = "0.86.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf1947d60280dd91d84083c2cbf5e51ede06c03ce7f744cb58dbbde239c03002"
+checksum = "7f140a5aef804f8bc9ca838f42992fa6e63c6a76c9bf09ce97b1d1ee670d1288"
 dependencies = [
  "backon",
  "base64",
@@ -1167,38 +1167,37 @@ dependencies = [
 
 [[package]]
 name = "ic-wire"
-version = "0.16.2"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12a4538a2f347ba5b72d02e203544ec208f79df200243920d464c9578ce9b7ad"
+checksum = "5dabcace6920776c0c35464b1eaad1448be0e1930afea1b923322e10a2363309"
 dependencies = [
  "bytemuck",
- "ic-wire-derive",
  "postcard",
  "serde",
  "serde_bytes",
 ]
 
 [[package]]
-name = "ic-wire-derive"
-version = "0.16.2"
+name = "ic-wire-endpoint"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60796e0da1200abcbe657870d590e9d796ed07f1eb72d1f713b37948998824e4"
+checksum = "c63d257ab3444fca089c3fb920cac6bfe36579629c686717963704ea5aed55ea"
+dependencies = [
+ "ic-platform-runtime",
+ "ic-wire",
+ "ic-wire-endpoint-macros",
+ "serde",
+]
+
+[[package]]
+name = "ic-wire-endpoint-macros"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8983c86159560274430898e0cbb7aa6721b89a6585a26079b91a7f1cf482953f"
 dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.9",
-]
-
-[[package]]
-name = "ic-wire-endpoint"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9850a616da62dc225db1c354105e15be87e5763e7c7b8fdf2adfb20d9c40c9b5"
-dependencies = [
- "ic-platform-runtime",
- "ic-wire",
- "ic-wire-derive",
- "serde",
 ]
 
 [[package]]
@@ -3036,9 +3035,9 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
 name = "winnow"
-version = "1.0.4"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23b97319f7b8343df12cc98938e5c3eb436064524c8d2b4e30a1d3a36eecdf81"
+checksum = "8c3b93199df0ab874cdf0c6a94f0a0dc3423fe41f1cafb62b8bd7b1deb277aef"
 dependencies = [
  "memchr",
 ]

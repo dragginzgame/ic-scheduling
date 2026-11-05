@@ -90,6 +90,11 @@ struct IdentityComponents {
 
 impl TimerIdentity {
     /// Validate all three identity components.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerIdentityError`] when any component is empty, exceeds
+    /// the byte limit, has surrounding whitespace, or contains a control character.
     pub fn try_new(
         owner: impl AsRef<str>,
         subsystem: impl AsRef<str>,

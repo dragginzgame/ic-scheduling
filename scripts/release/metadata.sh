@@ -47,7 +47,10 @@ select_release_tools() {
         prepare_tools=0
         source="${RELEASE_PREPARATION_SOURCE:?select the admitted preparation source}"
         [[ "$source" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ && "$(git cat-file -t "$source")" == commit ]] || exit 1
-        selection="$(mktemp -d "${TMPDIR:-/tmp}/jobs-release-selection.XXXXXX")"
+        scratch_parent="${TMPDIR:-$root/target/tmp}"
+        case "$scratch_parent" in *$'\r'*|*$'\n'*) echo 'scratch directory contains CR/LF' >&2; exit 2 ;; esac
+        [[ -n "${TMPDIR:-}" ]] || mkdir -p "$scratch_parent"
+        selection="$(mktemp -d "$scratch_parent/jobs-release-selection.XXXXXX")"
         trap 'rm -rf -- "$selection"' EXIT
         git show "$source:Cargo.lock" > "$selection/Cargo.lock"
         export RELEASE_METADATA_LOCKFILE="$selection/Cargo.lock"

@@ -52,7 +52,23 @@ fn cli_preserves_capture_arguments_and_requires_complete_optimizer_selection() {
 // ordering here and the original-capture command path in consumer tooling.
 #[cfg(unix)]
 fn optimizer_fixture() -> (FixtureDirectory, PathBuf, PathBuf) {
-    let fixture = FixtureDirectory::new(&std::env::temp_dir(), "jobs-capture").unwrap();
+    let configured = std::env::var_os("TMPDIR");
+    let parent = configured.as_ref().map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/tmp"),
+        PathBuf::from,
+    );
+    assert!(
+        !parent
+            .as_os_str()
+            .as_encoded_bytes()
+            .iter()
+            .any(|byte| matches!(byte, b'\r' | b'\n')),
+        "scratch directory contains CR/LF"
+    );
+    if configured.is_none() {
+        fs::create_dir_all(&parent).unwrap();
+    }
+    let fixture = FixtureDirectory::new(&parent, "jobs-capture").unwrap();
     let root = fixture.path();
     let source = root.join("frozen input.wasm");
     fs::write(&source, b"exact frozen bytes\n").unwrap();

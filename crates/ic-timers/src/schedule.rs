@@ -10,12 +10,21 @@ pub struct TimerCadence(u64);
 
 impl TimerCadence {
     /// Validate a recurrence cadence.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ScheduleError::ZeroCadence`] for a zero cadence. A duration
+    /// that cannot fit in `u64` nanoseconds returns [`ScheduleError::DelayOutOfRange`].
     pub fn new(cadence: Duration) -> Result<Self, ScheduleError> {
         let cadence_ns = duration_ns(cadence)?;
         Self::from_nanos(cadence_ns)
     }
 
     /// Validate an already encoded nanosecond cadence.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ScheduleError::ZeroCadence`] for a zero cadence.
     pub const fn from_nanos(cadence_ns: u64) -> Result<Self, ScheduleError> {
         if cadence_ns == 0 {
             Err(ScheduleError::ZeroCadence)

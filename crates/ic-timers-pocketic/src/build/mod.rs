@@ -200,6 +200,38 @@ fn discover_subjects(
     Ok(names.into_iter().map(str::to_owned).collect())
 }
 
+fn validate_scratch_path(path: &Path) -> std::io::Result<()> {
+    if path
+        .as_os_str()
+        .as_encoded_bytes()
+        .iter()
+        .any(|byte| matches!(byte, b'\r' | b'\n'))
+    {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "scratch directory contains CR/LF",
+        ));
+    }
+    Ok(())
+}
+
+// Keep default qualification/test scratch inside this workspace's clean boundary.
+// An explicit caller TMPDIR remains authoritative and is never changed globally.
+pub(crate) fn scratch_parent() -> std::io::Result<PathBuf> {
+    let configured = std::env::var_os("TMPDIR");
+    let parent = configured.as_ref().map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/tmp"),
+        PathBuf::from,
+    );
+    validate_scratch_path(&parent)?;
+    if configured.is_none() {
+        std::fs::create_dir_all(&parent)?;
+    }
+    let parent = parent.canonicalize()?;
+    validate_scratch_path(&parent)?;
+    Ok(parent)
+}
+
 pub fn run(qualification: &Qualification) -> Result<(), Box<dyn std::error::Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -218,7 +250,7 @@ pub fn run(qualification: &Qualification) -> Result<(), Box<dyn std::error::Erro
     // Retain invocation evidence on success and failure without consulting a
     // previous final report. Host owns unique private directory allocation.
     let scratch = ic_host_fs::directory::create_unique_directory(
-        &std::env::temp_dir().canonicalize()?,
+        &scratch_parent()?,
         "timer-qualification",
         0o700,
         std::num::NonZeroUsize::new(128),

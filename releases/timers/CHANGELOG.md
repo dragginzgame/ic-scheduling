@@ -7,6 +7,30 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.5] - Unreleased
+
+### 🛠️ Tooling
+
+- Adopt Shared Tooling 0.30.0 and its source classifier. Declare private probe
+  and tooling roles so qualification code is counted separately from libraries.
+- Keep local qualification and fixture scratch under `target/tmp` by default;
+  preserve explicit caller locations and refuse invalid directory names.
+
+### 📚 Documentation
+
+- Document public timer failure contracts and remove the broad lint allowances
+  they replace; obsolete Markdown and module-name allowances are removed too.
+
+### 📦 Dependencies
+
+- Select Metrics 0.29.2 and retain the exact Runtime 0.19.1 cohort for Timers.
+  Public recorder identities and scheduling behavior are unchanged.
+- Align private qualification on Testkit 0.86.0, Wire 0.17.1, Endpoint 0.7.0 and
+  native Platform 0.22.1. The combined Jobs consumer uses Storage 0.67.0 and
+  Logging 0.24.7. Preserve the probe protocol, stored bytes and explicit server
+  ownership; codec-only builds no longer compile Wire's metadata derive.
+  Build/Host remain at their latest published 0.74.3 selections.
+
 ## [0.40.4] - 2026-11-04
 
 ### 🧹 Cleanup

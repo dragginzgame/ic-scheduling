@@ -60,6 +60,22 @@ fn quit_eof_and_idle_interrupt_release_owned_server() {
     let binary = std::env::var_os("IC_JOBS_QUEUE_BIN").expect("queue binary");
     let server = std::env::var_os("IC_JOBS_QUEUE_SERVER").expect("admitted server binary");
     let wasm = std::env::var_os("IC_JOBS_CONSUMER_WASM").expect("consumer Wasm");
+    let configured = std::env::var_os("TMPDIR");
+    let parent = configured.as_ref().map_or_else(
+        || PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/tmp"),
+        PathBuf::from,
+    );
+    assert!(
+        !parent
+            .as_os_str()
+            .as_encoded_bytes()
+            .iter()
+            .any(|byte| matches!(byte, b'\r' | b'\n')),
+        "scratch directory contains CR/LF"
+    );
+    if configured.is_none() {
+        fs::create_dir_all(&parent).unwrap();
+    }
     for mode in [
         Shutdown::Quit,
         Shutdown::Eof,
@@ -67,8 +83,7 @@ fn quit_eof_and_idle_interrupt_release_owned_server() {
         Shutdown::WatchInterrupt,
     ] {
         let fixture =
-            ic_host_fs::testing::FixtureDirectory::new(&std::env::temp_dir(), "jobs-queue-cli")
-                .unwrap();
+            ic_host_fs::testing::FixtureDirectory::new(&parent, "jobs-queue-cli").unwrap();
         let root = fixture.path();
         let wrapper = root.join("server");
         // exec preserves the PID while leaving all server arguments untouched.

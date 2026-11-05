@@ -148,6 +148,11 @@ impl From<RegistryError> for TimerError {
 ///
 /// Repeated calls are idempotent and return the original epoch. This function
 /// exports no lifecycle hook; the canister's existing lifecycle owner calls it.
+///
+/// # Errors
+///
+/// Returns [`TimerError::RuntimeBusy`] if initialization re-enters an
+/// active registry borrow.
 pub fn initialize_runtime() -> Result<TimerEpoch, TimerError> {
     RUNTIME.with(|runtime| {
         let mut runtime = runtime
@@ -164,6 +169,11 @@ pub fn initialize_runtime() -> Result<TimerEpoch, TimerError> {
 }
 
 /// Return one coherent inert snapshot by identity.
+///
+/// # Errors
+///
+/// Returns [`TimerError::NotInitialized`] before runtime initialization,
+/// or [`TimerError::RuntimeBusy`] during a conflicting registry borrow.
 pub fn timer_snapshot(identity: &TimerIdentity) -> Result<Option<TimerSnapshot>, TimerError> {
     with_registry(|registry| Ok(registry.snapshot(identity)))
 }
@@ -172,11 +182,21 @@ pub fn timer_snapshot(identity: &TimerIdentity) -> Result<Option<TimerSnapshot>,
 ///
 /// Timer snapshots are ordered deterministically by identity. An initialized
 /// empty registry still returns its epoch and an empty timer slice.
+///
+/// # Errors
+///
+/// Returns [`TimerError::NotInitialized`] before runtime initialization,
+/// or [`TimerError::RuntimeBusy`] during a conflicting registry borrow.
 pub fn timer_inventory() -> Result<TimerInventorySnapshot, TimerError> {
     with_registry(|registry| Ok(registry.inventory()))
 }
 
 /// Return functional expected-failure state by identity without a full inventory.
+///
+/// # Errors
+///
+/// Returns [`TimerError::NotInitialized`] before runtime initialization,
+/// or [`TimerError::RuntimeBusy`] during a conflicting registry borrow.
 pub fn consecutive_expected_failures(identity: &TimerIdentity) -> Result<Option<u64>, TimerError> {
     with_registry(|registry| Ok(registry.consecutive_expected_failures(identity)))
 }

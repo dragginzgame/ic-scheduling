@@ -32,6 +32,11 @@ impl OnceContext {
     ///
     /// A context retained after completion or delivery abandonment is expired
     /// and returns [`TimerError::RegistrationExpired`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn ensure_scheduled(&self, schedule: TimerSchedule) -> Result<(), TimerError> {
         ensure_once_claim(Executing(&self.token), schedule)
     }
@@ -46,6 +51,11 @@ impl OnceContext {
     /// remove-on-stop declaration is removed when that request wins arbitration.
     /// A stored context cannot mutate the registration after its exact work
     /// attempt ends.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
         reconcile_ordinary_claim(Executing(&self.token), schedule)
     }
@@ -57,6 +67,11 @@ impl OnceContext {
     /// completion applies it before any callback successor is retained.
     /// A retained declaration becomes inactive. A remove-on-stop declaration
     /// is removed when cancellation wins arbitration.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn cancel(&self) -> Result<(), TimerError> {
         cancel_claim(Executing(&self.token))
     }
@@ -84,6 +99,11 @@ impl AfterCompletionContext {
     }
 
     /// Request configured recurrence after this exact work attempt.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn ensure_scheduled(&self) -> Result<(), TimerError> {
         ensure_recurring_claim(Executing(&self.token))
     }
@@ -99,6 +119,11 @@ impl AfterCompletionContext {
     /// a remove-on-stop declaration is removed when that request wins.
     /// A stored context cannot mutate the registration after its exact work
     /// attempt ends.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
         reconcile_ordinary_claim(Executing(&self.token), schedule)
     }
@@ -110,6 +135,11 @@ impl AfterCompletionContext {
     /// completion applies it before any callback successor is retained. A
     /// retained declaration becomes inactive; a remove-on-stop declaration is
     /// removed when cancellation wins arbitration.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn cancel(&self) -> Result<(), TimerError> {
         cancel_claim(Executing(&self.token))
     }
@@ -139,6 +169,11 @@ impl WatchdogContext {
     /// This is idempotent unless it supersedes a nested cancellation request.
     /// It never arms an additional Watchdog successor and cannot move a
     /// pending immediate successor later.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn ensure_scheduled(&self) -> Result<(), TimerError> {
         ensure_recurring_claim(Executing(&self.token))
     }
@@ -149,6 +184,11 @@ impl WatchdogContext {
     /// pending immediate deadline later. Normal completion replaces the exact
     /// cadence successor with a zero-delay scheduler callback. Consumer work
     /// still runs only in the scheduler's separately queued later message.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn ensure_scheduled_immediately(&self) -> Result<(), TimerError> {
         ensure_watchdog_immediately_claim(Executing(&self.token))
     }
@@ -158,6 +198,11 @@ impl WatchdogContext {
     /// Applied on normal completion; a trap preserves the committed cadence
     /// successor. The latest reconciliation wins over prior scheduling demand,
     /// but unregistration and invariant failure remain terminal.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
         reconcile_watchdog_claim(Executing(&self.token), schedule)
     }
@@ -169,6 +214,11 @@ impl WatchdogContext {
     /// completion clears the already-armed successor when cancellation wins.
     /// A retained declaration becomes inactive; a remove-on-stop declaration
     /// is removed.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn cancel(&self) -> Result<(), TimerError> {
         cancel_claim(Executing(&self.token))
     }
@@ -197,11 +247,21 @@ impl OnceRegistration {
     /// This is a volatile observation, not durable scheduling authority or a
     /// delivery guarantee. Call [`Self::ensure_scheduled`] unconditionally when
     /// a wake-up is required rather than using this value as a scheduling guard.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable or this
+    /// registration no longer owns its declaration.
     pub fn has_armed_wakeup(&self) -> Result<bool, TimerError> {
         has_armed_wakeup_claim(&self.claim)
     }
 
     /// Ensure one invocation is armed or retained as the running work's successor.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn ensure_scheduled(&self, schedule: TimerSchedule) -> Result<(), TimerError> {
         ensure_once_claim(Declared(&self.claim), schedule)
     }
@@ -217,6 +277,11 @@ impl OnceRegistration {
     /// this claim expires when the transition finalizes. Clearing scheduled
     /// demand is distinct from explicit cancellation; an already inactive
     /// declaration retains its existing reason.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
         reconcile_ordinary_claim(Declared(&self.claim), schedule)
     }
@@ -227,6 +292,11 @@ impl OnceRegistration {
     /// Consumer work already running is not interrupted.
     /// A retained declaration keeps callback authority. A remove-on-stop
     /// declaration and this claim expire when cancellation finalizes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn cancel(&self) -> Result<(), TimerError> {
         cancel_claim(Declared(&self.claim))
     }
@@ -235,6 +305,11 @@ impl OnceRegistration {
     ///
     /// When called from running work, removal is deferred until that invocation
     /// completes normally or its confirmed delivery is abandoned.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn unregister(self) -> Result<(), TimerError> {
         unregister_claim(&self.claim)
     }
@@ -305,6 +380,11 @@ impl WatchdogRegistration {
     /// owner can restore the wake-up through ensure or reconciliation, including
     /// an unchanged exact deadline. A stuck delivery that is never destroyed
     /// cannot be inferred from this observation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable or this
+    /// registration no longer owns its declaration.
     pub fn has_armed_wakeup(&self) -> Result<bool, TimerError> {
         has_armed_wakeup_claim(&self.claim)
     }
@@ -312,6 +392,11 @@ impl WatchdogRegistration {
     /// Synchronously ensure one watchdog scheduler wake-up is authoritative.
     ///
     /// An existing earlier immediate deadline is retained and never delayed.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn ensure_scheduled(&self) -> Result<(), TimerError> {
         ensure_recurring_claim(Declared(&self.claim))
     }
@@ -323,6 +408,11 @@ impl WatchdogRegistration {
     /// deadline and repeated immediate requests coalesce. If work is already
     /// dispatched, that zero-delay work satisfies the request. If work is
     /// running, the request applies to that attempt's pre-armed successor.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn ensure_scheduled_immediately(&self) -> Result<(), TimerError> {
         ensure_watchdog_immediately_claim(Declared(&self.claim))
     }
@@ -334,6 +424,11 @@ impl WatchdogRegistration {
     /// selects its successor on normal completion. Until then, the committed
     /// cadence successor remains the recovery wake-up. A subsequent recovery
     /// attempt retires the interrupted attempt's pending proposal.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
         reconcile_watchdog_claim(Declared(&self.claim), schedule)
     }
@@ -345,6 +440,11 @@ impl WatchdogRegistration {
     /// clears its pre-armed successor.
     /// A retained declaration keeps callback authority. A remove-on-stop
     /// declaration and this claim expire when cancellation finalizes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn cancel(&self) -> Result<(), TimerError> {
         cancel_claim(Declared(&self.claim))
     }
@@ -353,6 +453,11 @@ impl WatchdogRegistration {
     ///
     /// When called from running work, removal is deferred until that invocation
     /// completes normally.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn unregister(self) -> Result<(), TimerError> {
         unregister_claim(&self.claim)
     }
@@ -370,12 +475,22 @@ impl AfterCompletionRegistration {
     /// A callback currently running without an installed successor returns
     /// `false`. This is a volatile observation, not durable scheduling authority
     /// or a delivery guarantee.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable or this
+    /// registration no longer owns its declaration.
     pub fn has_armed_wakeup(&self) -> Result<bool, TimerError> {
         has_armed_wakeup_claim(&self.claim)
     }
 
     /// Ensure configured recurrence is armed or retained as the running work's
     /// successor.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn ensure_scheduled(&self) -> Result<(), TimerError> {
         ensure_recurring_claim(Declared(&self.claim))
     }
@@ -388,6 +503,11 @@ impl AfterCompletionRegistration {
     ///
     /// During running work, a winning exact schedule replaces the callback
     /// scheduling proposal before validation; explicit invariant failure stops.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn reconcile_schedule(&self, schedule: Option<TimerSchedule>) -> Result<(), TimerError> {
         reconcile_ordinary_claim(Declared(&self.claim), schedule)
     }
@@ -398,6 +518,11 @@ impl AfterCompletionRegistration {
     /// Consumer work already running is not interrupted.
     /// A retained declaration keeps callback authority. A remove-on-stop
     /// declaration and this claim expire when cancellation finalizes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn cancel(&self) -> Result<(), TimerError> {
         cancel_claim(Declared(&self.claim))
     }
@@ -406,6 +531,11 @@ impl AfterCompletionRegistration {
     ///
     /// When called from running work, removal is deferred until that invocation
     /// completes normally or its confirmed delivery is abandoned.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimerError`] if the runtime is unavailable, this capability
+    /// no longer has authority, or the requested control transition fails.
     pub fn unregister(self) -> Result<(), TimerError> {
         unregister_claim(&self.claim)
     }

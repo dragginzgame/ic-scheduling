@@ -4,9 +4,11 @@ use std::process::Stdio;
 
 #[test]
 fn subject_discovery_rejects_empty_unrelated_and_failed_producers() {
-    let fixture =
-        ic_host_fs::testing::FixtureDirectory::new(&std::env::temp_dir(), "timer-discovery")
-            .unwrap();
+    let fixture = ic_host_fs::testing::FixtureDirectory::new(
+        &crate::build::scratch_parent().unwrap(),
+        "timer-discovery",
+    )
+    .unwrap();
     let watchdog = REQUIRED_WATCHDOG_SUBJECTS
         .iter()
         .map(|name| format!("{name}: test\n"))
@@ -71,7 +73,7 @@ fn subject_discovery_rejects_empty_unrelated_and_failed_producers() {
 #[test]
 fn focused_discovery_requires_every_exact_nonignored_runtime_subject() {
     let fixture = ic_host_fs::testing::FixtureDirectory::new(
-        &std::env::temp_dir(),
+        &crate::build::scratch_parent().unwrap(),
         "timer-focused-discovery",
     )
     .unwrap();
@@ -142,7 +144,7 @@ fn discovery_failures_save_bounded_bytes_and_keep_the_original_error() {
     use std::os::unix::fs::PermissionsExt;
 
     let fixture = ic_host_fs::testing::FixtureDirectory::new(
-        &std::env::temp_dir(),
+        &crate::build::scratch_parent().unwrap(),
         "timer-discovery-evidence",
     )
     .unwrap();
@@ -238,9 +240,11 @@ fn qualification_deadline_covers_descendants_and_preserves_failure() {
 
 #[test]
 fn baseline_output_alias_is_rejected_before_any_build_or_write() {
-    let fixture =
-        ic_host_fs::testing::FixtureDirectory::new(&std::env::temp_dir(), "timer-baseline-alias")
-            .unwrap();
+    let fixture = ic_host_fs::testing::FixtureDirectory::new(
+        &crate::build::scratch_parent().unwrap(),
+        "timer-baseline-alias",
+    )
+    .unwrap();
     let baseline = fixture.path().join("baseline.json");
     let hard_link = fixture.path().join("hard-link.json");
     let symlink = fixture.path().join("symlink.json");
@@ -263,4 +267,15 @@ fn baseline_output_alias_is_rejected_before_any_build_or_write() {
         );
         assert_eq!(std::fs::read(&baseline).unwrap(), before);
     }
+}
+
+#[test]
+fn scratch_path_admission_refuses_line_breaks_and_accepts_spaces() {
+    for path in ["scratch\nchild", "scratch\rchild", "scratch\r\nchild"] {
+        assert_eq!(
+            validate_scratch_path(Path::new(path)).unwrap_err().kind(),
+            std::io::ErrorKind::InvalidInput
+        );
+    }
+    validate_scratch_path(Path::new("scratch with spaces/child")).unwrap();
 }

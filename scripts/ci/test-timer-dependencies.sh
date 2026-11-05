@@ -4,7 +4,10 @@ set -euo pipefail
 root="$(git rev-parse --show-toplevel)"
 # shellcheck source=scripts/ci/fixture-lifecycle.sh
 source "$root/scripts/ci/fixture-lifecycle.sh"
-fixture="$(fixture_create "${TMPDIR:-/tmp}/timer-library-boundary.XXXXXX")"
+scratch_parent="${TMPDIR:-$root/target/tmp}"
+case "$scratch_parent" in *$'\r'*|*$'\n'*) echo 'scratch directory contains CR/LF' >&2; exit 2 ;; esac
+[[ -n "${TMPDIR:-}" ]] || mkdir -p "$scratch_parent"
+fixture="$(fixture_create "$scratch_parent/timer-library-boundary.XXXXXX")"
 fixture_complete=false
 trap 'fixture_finish "$?" "$fixture" "Failed library-boundary fixture retained"' EXIT
 

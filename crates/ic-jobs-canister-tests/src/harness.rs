@@ -23,6 +23,10 @@ pub struct Client<'a> {
 
 impl Client<'_> {
     /// Query using the consumer's method identity and bounded Wire contract.
+    ///
+    /// # Errors
+    /// Returns [`WireCallError`] for transport, canister rejection or Wire admission
+    /// failures; decoded application errors remain part of the caller's response type.
     pub fn query<T: DeserializeOwned>(
         &self,
         method: Method,
@@ -32,6 +36,10 @@ impl Client<'_> {
     }
 
     /// Update using the consumer's method identity and bounded Wire contract.
+    ///
+    /// # Errors
+    /// Returns [`WireCallError`] for transport, canister rejection or Wire admission
+    /// failures; decoded application errors remain part of the caller's response type.
     pub fn update<T: DeserializeOwned>(
         &self,
         method: Method,
@@ -42,11 +50,18 @@ impl Client<'_> {
 }
 
 /// Encode installation arguments using the consumer's bounded Wire contract.
+///
+/// # Errors
+/// Returns [`ic_wire::Error`] if encoding or request resource admission fails.
 pub fn init_bytes(config: &Init) -> Result<Vec<u8>, ic_wire::Error> {
     ic_wire::native::encode_request(Method::Init as u64, config, REQUEST_LIMITS)
 }
 
 /// Standard qualification-consumer installation, with caller-owned label and errors.
+///
+/// # Errors
+/// Returns [`ic_wire::Error`] if the initialization request cannot be encoded
+/// within the consumer's limits. This function does not create a canister.
 pub fn install_spec(
     wasm: Vec<u8>,
     config: &Init,

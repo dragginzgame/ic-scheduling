@@ -6,6 +6,9 @@ version = "0.40.4"
 publish = false
 license.workspace = true
 
+[package.metadata.shared-tooling.loc]
+category = "tests"
+
 [dependencies]
 ic-wire.workspace = true
 serde.workspace = true

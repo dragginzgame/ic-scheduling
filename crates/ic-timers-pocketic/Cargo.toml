@@ -6,6 +6,15 @@ version = "0.40.4"
 publish = false
 license.workspace = true
 
+[package.metadata.shared-tooling.loc]
+category = "build_tooling"
+
+[package.metadata.shared-tooling.loc.paths]
+"src/build/tests.rs" = "tests"
+"src/report/tests.rs" = "tests"
+"src/tests.rs" = "tests"
+"tests" = "tests"
+
 [dependencies]
 clap = { workspace = true, features = ["derive"] }
 ic-build.workspace = true

@@ -7,6 +7,16 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[package.metadata.shared-tooling.loc]
+category = "build_tooling"
+
+[package.metadata.shared-tooling.loc.paths]
+"examples" = "examples"
+"examples/tests" = "tests"
+"src/bin/tests" = "tests"
+"src/harness.rs" = "tests"
+"tests" = "tests"
+
 [features]
 default = []
 # Explicitly enable the native recovery transport and queue example.

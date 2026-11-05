@@ -34,9 +34,11 @@ fn fixture_report() -> Report {
 
 #[test]
 fn runtime_receipt_retains_build_identity_and_refuses_incomplete_or_existing_output() {
-    let fixture =
-        ic_host_fs::testing::FixtureDirectory::new(&std::env::temp_dir(), "timer-runtime-receipt")
-            .unwrap();
+    let fixture = ic_host_fs::testing::FixtureDirectory::new(
+        &crate::build::scratch_parent().unwrap(),
+        "timer-runtime-receipt",
+    )
+    .unwrap();
     let report = fixture_report();
     let mut artifact = report.artifacts["watchdog"].clone();
     artifact.feature = "default".into();
@@ -102,9 +104,11 @@ fn runtime_receipt_retains_build_identity_and_refuses_incomplete_or_existing_out
 
 #[test]
 fn missing_or_incomplete_candidate_never_replaces_a_previous_report() {
-    let fixture =
-        ic_host_fs::testing::FixtureDirectory::new(&std::env::temp_dir(), "timer-report-admission")
-            .unwrap();
+    let fixture = ic_host_fs::testing::FixtureDirectory::new(
+        &crate::build::scratch_parent().unwrap(),
+        "timer-report-admission",
+    )
+    .unwrap();
     let output = fixture.path().join("previous.json");
     let candidate = fixture.path().join("new-invocation.json");
     let complete = fixture_report();
@@ -231,7 +235,7 @@ fn missing_or_incomplete_candidate_never_replaces_a_previous_report() {
 #[test]
 fn report_publication_replaces_the_entry_without_truncating_hard_linked_bytes() {
     let fixture = ic_host_fs::testing::FixtureDirectory::new(
-        &std::env::temp_dir(),
+        &crate::build::scratch_parent().unwrap(),
         "timer-report-publication",
     )
     .unwrap();

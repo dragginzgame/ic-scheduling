@@ -249,6 +249,10 @@ impl BuildContext {
         Ok(())
     }
 
+    /// Check installed bytes against the admitted build identity.
+    ///
+    /// # Panics
+    /// Panics if the cohort is absent or its Wasm digest differs from the receipt.
     pub fn verify_artifact(&self, cohort: &str, wasm: &[u8]) {
         assert_eq!(
             self.artifacts[cohort].wasm_sha256,
@@ -257,6 +261,10 @@ impl BuildContext {
         );
     }
 
+    /// Attach measurements to the complete admitted cohort build.
+    ///
+    /// # Errors
+    /// Returns an error for an incomplete identity, artifact set or cohort selection.
     pub fn complete(self, measurements: Measurements) -> Result<Report> {
         let report = Report {
             schema: self.schema,

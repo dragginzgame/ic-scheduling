@@ -6,18 +6,27 @@ and [coordinated history through 0.33.1](../history.md).
 
 ## [0.34.4] - Unreleased
 
-### 📦 Dependencies
-
-- Adopt Testkit 0.85 and Platform Types 0.18.1 for native qualification. Keep
-  explicit managed server startup and the shared Principal identity; the public
-  Serde-only Jobs API and persisted/RPC bytes remain unchanged.
-
 ### 🛠️ Tooling
 
+- Adopt Shared Tooling 0.30.0 and its source classifier, with explicit roles for
+  private qualification, artifact-capture and example source.
+- Keep local fixture and recovery scratch under `target/tmp` by default while
+  preserving explicit caller and CI evidence locations.
 - Select Jobs and combined-consumer release checks individually for proven
   Jobs-only changes. Omit unchanged standalone Timers and release-tooling
   self-tests while retaining full repository CI and conservative shared-input
   qualification. Refuse evidence whose omissions differ from the product mapping.
+
+### 📦 Dependencies
+
+- Align private qualification on Storage 0.67.0, Testkit 0.86.0, Wire 0.17.1
+  and Endpoint 0.7.0. They share one Wire identity; codec bytes and retained
+  storage layouts are unchanged, so no backing reset is required. Codec-only
+  callers no longer compile Wire's optional metadata derive.
+- Select Logging 0.24.7, Metrics 0.29.2 and native Platform 0.22.1 in the root
+  lock. Keep Types 0.18.1 and the exact Runtime 0.19.1 cohort, explicit managed
+  server startup and the public Serde-only Jobs contract. Build/Host remain
+  at their latest published 0.74.3 selections.
 
 ## [0.34.3] - 2026-11-04
 

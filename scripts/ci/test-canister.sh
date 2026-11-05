@@ -23,7 +23,11 @@ if [[ $# == 1 ]]; then
     bin="$(bash scripts/dev/install-ic-tools.sh --tool wasm-opt --check)"
     variants+=(O3 Os Oz)
 fi
-evidence="$(fixture_create "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/jobs-recovery.XXXXXX")"
+# Explicit CI/operator evidence roots remain overrides; local scratch is cleanable.
+evidence_parent="${RUNNER_TEMP:-${TMPDIR:-$target/tmp}}"
+case "$evidence_parent" in *$'\r'*|*$'\n'*) echo 'evidence directory contains CR/LF' >&2; exit 2 ;; esac
+[[ -n "${RUNNER_TEMP:-${TMPDIR:-}}" ]] || mkdir -p "$evidence_parent"
+evidence="$(fixture_create "$evidence_parent/jobs-recovery.XXXXXX")"
 printf 'Live recovery evidence: %s\n' "$evidence"
 "$capture" "$input" "$evidence/ic_jobs_test_consumer.wasm"
 cp Cargo.lock .shared-tooling.snapshot "$evidence/"

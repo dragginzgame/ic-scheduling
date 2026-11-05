@@ -31,6 +31,11 @@ use std::{cell::RefCell, future::Future, rc::Rc};
 ///     AfterCompletionRunResult::new(TimerCompletion::no_work(), AfterCompletionDecision::Stop)
 /// });
 /// ```
+///
+/// # Errors
+///
+/// Returns [`TimerError`] if declaration admission, schedule validation
+/// or initial provider binding fails. Failed creation is retired before returning.
 pub fn register_once<F, Fut>(
     identity: TimerIdentity,
     start: TimerStart,
@@ -66,6 +71,11 @@ where
 ///     OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop)
 /// });
 /// ```
+///
+/// # Errors
+///
+/// Returns [`TimerError`] if declaration admission, schedule validation
+/// or initial provider binding fails. Failed creation is retired before returning.
 pub fn register_after_completion<F, Fut>(
     identity: TimerIdentity,
     cadence: TimerCadence,
@@ -104,6 +114,11 @@ where
 /// separate scheduler message has armed the next cadence successor. Its
 /// `WatchdogDecision` retains the cadence successor, replaces it with a
 /// deadline of now or an exact timestamp, or clears it.
+///
+/// # Errors
+///
+/// Returns [`TimerError`] if declaration admission, schedule validation
+/// or initial provider binding fails. Failed creation is retired before returning.
 pub fn register_watchdog<F>(
     identity: TimerIdentity,
     cadence: TimerCadence,
@@ -226,6 +241,12 @@ fn cleanup_creation_error(claim: &RegistrationClaim, error: TimerError) -> Timer
 ///     AfterCompletionRunResult::new(TimerCompletion::no_work(), AfterCompletionDecision::Stop)
 /// });
 /// ```
+///
+/// # Errors
+///
+/// Returns [`TimerError`] for a conflicting declaration or a failed
+/// registration/control transition. Fresh failures leave the slot empty; errors
+/// on an existing declaration preserve its registration capability.
 pub fn reconcile_once<F, Fut>(
     registration: &mut Option<OnceRegistration>,
     identity: &TimerIdentity,
@@ -292,6 +313,12 @@ where
 ///         OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop)
 ///     });
 /// ```
+///
+/// # Errors
+///
+/// Returns [`TimerError`] for a conflicting declaration or a failed
+/// registration/control transition. Fresh failures leave the slot empty; errors
+/// on an existing declaration preserve its registration capability.
 pub fn reconcile_after_completion<F, Fut>(
     registration: &mut Option<AfterCompletionRegistration>,
     identity: &TimerIdentity,
@@ -355,6 +382,12 @@ where
 /// An empty owner slot is filled only after its initial state succeeds. A
 /// returned error cleans up the new declaration and captures, leaving the slot
 /// empty. Later errors retain existing authority and its failure observations.
+///
+/// # Errors
+///
+/// Returns [`TimerError`] for a conflicting declaration or a failed
+/// registration/control transition. Fresh failures leave the slot empty; errors
+/// on an existing declaration preserve its registration capability.
 pub fn reconcile_watchdog<F>(
     registration: &mut Option<WatchdogRegistration>,
     identity: &TimerIdentity,
