@@ -235,14 +235,16 @@ The consumer's own Wire dependency supplies its endpoint codecs. Metrics has no
 optional `wire` feature; its optional keyed heap `recording` feature stays disabled.
 Published `ic-jobs` remains independent of Metrics.
 Metrics now lives in the IC Observability repository with the same published
-crate identity and arithmetic. Runtime 0.19 and Wire 0.16 supply explicit endpoint
+crate identity and arithmetic. Runtime 0.19 and Wire 0.17 supply explicit endpoint
 codecs and bounded decoding for this consumer and its host harness.
 Its transport boundary is separate from Storage's installation cut above.
 Native DTOs select canonical Types 0.18. Native tests explicitly select
 `principal-self-authenticating`; the recovery harness selects Types' explicit
-external conversions and Testkit 0.85's maintained `ic_testkit::pocket_ic` client.
+external conversions and Testkit 0.87's async-only `ic_testkit::pocket_ic` client.
 Managed `PocketIcStartupConfig::build_instance` supplies the required server URL
 and keeps server/instance custody together; clients do not implicitly provision it.
+The harness owns its Tokio runtime and awaits instance closure before the server
+stops; updates are not automatically retried or replayed.
 The application uses its owned Principal;
 PocketIC calls retain the external Principal and convert explicitly when
 constructing application DTOs. Native DTO normal/build graphs exclude external
@@ -250,9 +252,9 @@ Principal and hashing dependencies; Wasm excludes the application conversion
 feature and SHA-2. Principal bytes are unchanged.
 Upstream adoption preserves RPC frames and job semantics; the queue retirement
 above separately changes the codec. No timer, task or storage owner is replaced.
-Native Testkit shares Platform 0.8 for external simulator interfaces without
-enabling its Candid adapter. PocketIC retains its required transitive Candid
-dependencies. The [workspace catalog](../../Cargo.toml),
+Native Testkit uses Platform 0.23 for external simulator interfaces and packet
+codecs. PocketIC retains its required transitive Candid dependencies at that
+boundary. The [workspace catalog](../../Cargo.toml),
 [lockfile](../../Cargo.lock) and [handoff](../../docs/status/current.md) own
 selection and source-bound qualification.
 

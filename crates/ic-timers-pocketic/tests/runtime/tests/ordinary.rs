@@ -2,26 +2,28 @@
 
 use super::*;
 
-#[test]
-fn once_frozen_await_failure_retires_without_replay() {
-    assert_frozen_await_failure_retires(OrdinaryPolicy::Once);
+#[tokio::test]
+async fn once_frozen_await_failure_retires_without_replay() {
+    assert_frozen_await_failure_retires(OrdinaryPolicy::Once).await;
 }
 
-#[test]
-fn after_completion_frozen_await_failure_retires_without_replay() {
-    assert_frozen_await_failure_retires(OrdinaryPolicy::AfterCompletion);
+#[tokio::test]
+async fn after_completion_frozen_await_failure_retires_without_replay() {
+    assert_frozen_await_failure_retires(OrdinaryPolicy::AfterCompletion).await;
 }
 
-fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
-    let (owned, canister_id) = installed_probe();
+async fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
     let started_at = pic
         .get_time()
+        .await
         .expect("read IC time")
         .as_nanos_since_unix_epoch();
-    let status = pic.canister_status(canister_id, None).unwrap();
+    let status = pic.canister_status(canister_id, None).await.unwrap();
     let balance = pic
         .cycle_balance(canister_id)
+        .await
         .expect("read canister cycles");
     let idle_per_day: u128 = status.idle_cycles_burned_per_day.0.try_into().unwrap();
     assert!(idle_per_day > 0);
@@ -34,25 +36,28 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
         Method::StartOrdinary,
         (policy, ProbeLifetime::Retained),
     )
+    .await
     .unwrap();
     let suspended = wait_for_probe(
         pic,
         32,
-        |pic| ordinary_observation(pic, canister_id),
+        async |pic| ordinary_observation(pic, canister_id).await,
         |s| s.running && s.waiting && s.gate_replies > 0,
-    );
+    )
+    .await;
     assert!(suspended.registration_id.is_some());
     assert_eq!(suspended.work_started.total, 1);
     assert_eq!(suspended.completed, 0);
     assert_eq!(suspended.next_deadline_ns, None);
     assert_eq!(suspended.gate_error, None);
 
-    freeze_for_five_minutes(pic, canister_id, freezing_seconds, freezing_reserve);
+    freeze_for_five_minutes(pic, canister_id, freezing_seconds, freezing_reserve).await;
     pic.add_cycles(canister_id, balance * 16)
+        .await
         .expect("fund canister cycles");
     // Query before another replica round: funding cannot hide a completion,
     // abandoned attempt or ownership change that already happened while frozen.
-    let thawed = ordinary_observation(pic, canister_id);
+    let thawed = ordinary_observation(pic, canister_id).await;
     assert_eq!(thawed.registration_id, suspended.registration_id);
     assert!(thawed.declared && thawed.invariant_failure, "{thawed:?}");
     assert!(!thawed.running && !thawed.waiting && !thawed.armed && !thawed.abandoned);
@@ -71,15 +76,14 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
         ),
         "{thawed:?}"
     );
-    assert!(update_bool(
-        pic,
-        canister_id,
-        Method::ExpiredOrdinaryContextRejected
-    ));
+    assert!(update_bool(pic, canister_id, Method::ExpiredOrdinaryContextRejected).await);
     pic.advance_time(Duration::from_secs(1))
+        .await
         .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-    let settled = ordinary_observation(pic, canister_id);
+    advance_and_tick(pic, Duration::ZERO, 16)
+        .await
+        .expect("advance and tick PocketIC");
+    let settled = ordinary_observation(pic, canister_id).await;
     assert_eq!(settled.registration_id, suspended.registration_id);
     assert!(settled.invariant_failure && !settled.running && !settled.armed);
     assert_eq!(
@@ -92,21 +96,24 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
 
     // The application explicitly schedules a fresh attempt after funding and
     // permits its awaited operation to succeed. No automatic retry is claimed.
-    update_unit(pic, canister_id, Method::ReleaseOrdinaryWork);
+    update_unit(pic, canister_id, Method::ReleaseOrdinaryWork).await;
     update_deadline(
         pic,
         canister_id,
         Method::ReconcileOrdinaryAt,
         pic.get_time()
+            .await
             .expect("read IC time")
             .as_nanos_since_unix_epoch(),
-    );
+    )
+    .await;
     let completed = wait_for_probe(
         pic,
         32,
-        |pic| ordinary_observation(pic, canister_id),
+        async |pic| ordinary_observation(pic, canister_id).await,
         |s| s.completed == 1,
-    );
+    )
+    .await;
     assert_eq!(completed.registration_id, suspended.registration_id);
     assert!(!completed.running && !completed.waiting);
     assert!(!completed.invariant_failure && !completed.abandoned);
@@ -119,8 +126,10 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
     if policy == OrdinaryPolicy::Once {
         assert!(!completed.armed);
         assert_eq!(completed.next_deadline_ns, None);
-        advance_and_tick(pic, Duration::from_secs(5), 16).expect("advance and tick PocketIC");
-        let settled = ordinary_observation(pic, canister_id);
+        advance_and_tick(pic, Duration::from_secs(5), 16)
+            .await
+            .expect("advance and tick PocketIC");
+        let settled = ordinary_observation(pic, canister_id).await;
         assert_eq!(settled.completed, 1);
         assert_eq!(settled.work_started.total, 2);
         assert_eq!(settled.work_completed.total, 2);
@@ -131,16 +140,26 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
             completed.next_deadline_ns,
             Some(completed_at + 1_000_000_000)
         );
-        advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-        assert_eq!(ordinary_observation(pic, canister_id).work_started.total, 2);
+        advance_and_tick(pic, Duration::ZERO, 16)
+            .await
+            .expect("advance and tick PocketIC");
+        assert_eq!(
+            ordinary_observation(pic, canister_id)
+                .await
+                .work_started
+                .total,
+            2
+        );
         pic.advance_time(Duration::from_secs(1))
+            .await
             .expect("advance IC time");
         let recurring = wait_for_probe(
             pic,
             32,
-            |pic| ordinary_observation(pic, canister_id),
+            async |pic| ordinary_observation(pic, canister_id).await,
             |s| s.completed == 2,
-        );
+        )
+        .await;
         assert_eq!(recurring.registration_id, suspended.registration_id);
         assert_eq!(recurring.work_started.total, 3);
         assert_eq!(recurring.work_completed.total, 3);
@@ -152,16 +171,21 @@ fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
             Some(recurring.completed_at_ns.unwrap() + 1_000_000_000)
         );
     }
-    let after = pic.canister_status(canister_id, None).unwrap();
+    let after = pic.canister_status(canister_id, None).await.unwrap();
     assert_eq!(after.module_hash, status.module_hash);
     assert_eq!(after.settings.freezing_threshold, freezing_seconds);
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
 
 // This checks the real provider and message boundary for the two ordinary policies.
-#[test]
-fn absent_ordinary_demand_is_idle_and_explicit_cancellation_stays_distinct() {
+#[tokio::test]
+async fn absent_ordinary_demand_is_idle_and_explicit_cancellation_stays_distinct() {
     for policy in OrdinaryPolicy::ALL {
-        let (owned, canister_id) = installed_probe();
+        let (owned, canister_id) = installed_probe().await;
         let pic = owned.instance();
         update_wire::<(), _>(
             pic,
@@ -170,25 +194,28 @@ fn absent_ordinary_demand_is_idle_and_explicit_cancellation_stays_distinct() {
             Method::StartOrdinary,
             (policy, ProbeLifetime::Retained),
         )
+        .await
         .expect("register retained ordinary work");
         let running = wait_for_probe(
             pic,
             32,
-            |pic| ordinary_observation(pic, canister_id),
+            async |pic| ordinary_observation(pic, canister_id).await,
             |state| state.running && state.waiting && state.gate_replies > 0,
-        );
-        update_unit(pic, canister_id, Method::ReconcileOrdinaryInactive);
+        )
+        .await;
+        update_unit(pic, canister_id, Method::ReconcileOrdinaryInactive).await;
         assert!(
-            ordinary_observation(pic, canister_id).running,
+            ordinary_observation(pic, canister_id).await.running,
             "demand removal must not interrupt accepted work"
         );
-        update_unit(pic, canister_id, Method::ReleaseOrdinaryWork);
+        update_unit(pic, canister_id, Method::ReleaseOrdinaryWork).await;
         let stopped = wait_for_probe(
             pic,
             32,
-            |pic| ordinary_observation(pic, canister_id),
+            async |pic| ordinary_observation(pic, canister_id).await,
             |state| state.completed == 1 && !state.running,
-        );
+        )
+        .await;
         assert!(
             stopped.declared && stopped.stopped && !stopped.cancelled && !stopped.armed,
             "{stopped:?}"
@@ -196,74 +223,79 @@ fn absent_ordinary_demand_is_idle_and_explicit_cancellation_stays_distinct() {
         assert_eq!(stopped.registration_id, running.registration_id);
         assert_eq!(stopped.cancellations.total, 0);
         assert_eq!(stopped.work_completed.total, 1);
-        assert!(update_bool(
-            pic,
-            canister_id,
-            Method::ExpiredOrdinaryContextRejected
-        ));
-        qualify_scheduled_demand_removal(pic, canister_id, running.registration_id);
+        assert!(update_bool(pic, canister_id, Method::ExpiredOrdinaryContextRejected).await);
+        qualify_scheduled_demand_removal(pic, canister_id, running.registration_id).await;
         update_deadline(
             pic,
             canister_id,
             Method::ReconcileOrdinaryAt,
             pic.get_time()
+                .await
                 .expect("read IC time")
                 .as_nanos_since_unix_epoch(),
-        );
+        )
+        .await;
         let rearmed = wait_for_probe(
             pic,
             32,
-            |pic| ordinary_observation(pic, canister_id),
+            async |pic| ordinary_observation(pic, canister_id).await,
             |state| state.completed == 2,
-        );
+        )
+        .await;
         assert_eq!(rearmed.registration_id, running.registration_id);
         assert_eq!(rearmed.work_started.total, 2);
         assert_eq!(rearmed.work_completed.total, 2);
         assert_eq!(rearmed.cancellations.total, 1);
+
+        owned
+            .close()
+            .await
+            .expect("delete PocketIC instance before stopping its server");
     }
 }
 
-fn qualify_scheduled_demand_removal(
+async fn qualify_scheduled_demand_removal(
     pic: &PocketIc,
     canister_id: ExternalPrincipal,
     identity: Option<(u64, u64, u64)>,
 ) {
     let deadline = pic
         .get_time()
+        .await
         .expect("read IC time")
         .as_nanos_since_unix_epoch()
         + 60_000_000_000;
-    update_deadline(pic, canister_id, Method::ReconcileOrdinaryAt, deadline);
-    let armed = ordinary_observation(pic, canister_id);
+    update_deadline(pic, canister_id, Method::ReconcileOrdinaryAt, deadline).await;
+    let armed = ordinary_observation(pic, canister_id).await;
     assert!(armed.armed);
     assert_eq!(armed.next_deadline_ns, Some(deadline));
-    update_unit(pic, canister_id, Method::ReconcileOrdinaryInactive);
-    let idle = ordinary_observation(pic, canister_id);
+    update_unit(pic, canister_id, Method::ReconcileOrdinaryInactive).await;
+    let idle = ordinary_observation(pic, canister_id).await;
     assert!(idle.stopped && !idle.cancelled && !idle.armed);
     assert_eq!(idle.next_deadline_ns, None);
     assert_eq!(idle.cancellations.total, 0);
     assert_eq!(idle.registration_id, identity);
-    update_deadline(pic, canister_id, Method::ReconcileOrdinaryAt, deadline);
-    update_unit(pic, canister_id, Method::CancelOrdinary);
-    let cancelled = ordinary_observation(pic, canister_id);
+    update_deadline(pic, canister_id, Method::ReconcileOrdinaryAt, deadline).await;
+    update_unit(pic, canister_id, Method::CancelOrdinary).await;
+    let cancelled = ordinary_observation(pic, canister_id).await;
     assert!(cancelled.cancelled && !cancelled.stopped && !cancelled.armed);
     assert_eq!(cancelled.cancellations.total, 1);
-    update_unit(pic, canister_id, Method::ReconcileOrdinaryInactive);
-    let still_cancelled = ordinary_observation(pic, canister_id);
+    update_unit(pic, canister_id, Method::ReconcileOrdinaryInactive).await;
+    let still_cancelled = ordinary_observation(pic, canister_id).await;
     assert!(still_cancelled.cancelled && !still_cancelled.stopped);
     assert_eq!(still_cancelled.cancellations.total, 1);
     assert_eq!(still_cancelled.registration_id, identity);
     assert_eq!(still_cancelled.work_started.total, 1);
 }
 
-#[test]
-fn ordinary_await_allows_ingress_and_other_timers_before_completion() {
+#[tokio::test]
+async fn ordinary_await_allows_ingress_and_other_timers_before_completion() {
     for policy in OrdinaryPolicy::ALL {
         for command in ["cancel", "reconcile", "unregister", "recur"] {
             if command == "recur" && policy == OrdinaryPolicy::Once {
                 continue;
             }
-            let (owned, canister_id) = installed_probe();
+            let (owned, canister_id) = installed_probe().await;
             let pic = owned.instance();
             let lifetime = if command == "cancel" {
                 ProbeLifetime::RemoveWhenStopped
@@ -277,50 +309,60 @@ fn ordinary_await_allows_ingress_and_other_timers_before_completion() {
                 Method::StartOrdinary,
                 (policy, lifetime),
             )
+            .await
             .expect("probe update succeeds");
             let suspended = wait_for_probe(
                 pic,
                 32,
-                |pic| ordinary_observation(pic, canister_id),
+                async |pic| ordinary_observation(pic, canister_id).await,
                 |current| current.running && current.waiting && current.gate_replies > 0,
-            );
+            )
+            .await;
             assert_eq!(suspended.gate_error, None);
-            assert!(update_bool(pic, canister_id, Method::Start));
+            assert!(update_bool(pic, canister_id, Method::Start).await);
             pic.advance_time(Duration::from_secs(2))
+                .await
                 .expect("advance IC time");
-            advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
+            advance_and_tick(pic, Duration::ZERO, 16)
+                .await
+                .expect("advance and tick PocketIC");
             assert_eq!(
-                snapshot(pic, canister_id).completed_work,
+                snapshot(pic, canister_id).await.completed_work,
                 1,
                 "other timer must progress while ordinary work awaits"
             );
-            let waiting = ordinary_observation(pic, canister_id);
+            let waiting = ordinary_observation(pic, canister_id).await;
             assert!(waiting.running);
             assert!(waiting.waiting);
             assert_eq!(waiting.gate_error, None);
             assert_eq!(waiting.completed, 0);
             assert_eq!(waiting.work_completed.total, 0);
             let exact_deadline =
-                snapshot(pic, canister_id).next_deadline_ns.unwrap() + 60_000_000_000;
+                snapshot(pic, canister_id).await.next_deadline_ns.unwrap() + 60_000_000_000;
             match command {
-                "cancel" => update_unit(pic, canister_id, Method::CancelOrdinary),
-                "reconcile" => update_deadline(
-                    pic,
-                    canister_id,
-                    Method::ReconcileOrdinaryAt,
-                    exact_deadline,
-                ),
-                "unregister" => update_unit(pic, canister_id, Method::UnregisterOrdinary),
+                "cancel" => update_unit(pic, canister_id, Method::CancelOrdinary).await,
+                "reconcile" => {
+                    update_deadline(
+                        pic,
+                        canister_id,
+                        Method::ReconcileOrdinaryAt,
+                        exact_deadline,
+                    )
+                    .await
+                }
+                "unregister" => update_unit(pic, canister_id, Method::UnregisterOrdinary).await,
                 "recur" => {}
                 _ => unreachable!("fixed command matrix"),
             }
             assert!(
-                ordinary_observation(pic, canister_id).running,
+                ordinary_observation(pic, canister_id).await.running,
                 "control does not interrupt consumer work"
             );
-            update_unit(pic, canister_id, Method::ReleaseOrdinaryWork);
-            advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-            let completed = ordinary_observation(pic, canister_id);
+            update_unit(pic, canister_id, Method::ReleaseOrdinaryWork).await;
+            advance_and_tick(pic, Duration::ZERO, 16)
+                .await
+                .expect("advance and tick PocketIC");
+            let completed = ordinary_observation(pic, canister_id).await;
             assert_eq!(completed.completed, 1);
             assert!(!completed.running);
             assert!(!completed.waiting);
@@ -339,16 +381,21 @@ fn ordinary_await_allows_ingress_and_other_timers_before_completion() {
                 };
                 assert_eq!(completed.next_deadline_ns, Some(expected));
             }
+
+            owned
+                .close()
+                .await
+                .expect("delete PocketIC instance before stopping its server");
         }
     }
 }
 
-fn trapping_ordinary_probe(
+async fn trapping_ordinary_probe(
     policy: OrdinaryPolicy,
     lifetime: ProbeLifetime,
     before_await: bool,
 ) -> (PocketIcInstance<PocketIc>, ExternalPrincipal) {
-    let (owned, canister_id) = installed_probe();
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
     update_wire::<(), _>(
         pic,
@@ -357,6 +404,7 @@ fn trapping_ordinary_probe(
         Method::TrapOrdinaryWork,
         (before_await,),
     )
+    .await
     .expect("probe update succeeds");
     update_wire::<(), _>(
         pic,
@@ -365,6 +413,7 @@ fn trapping_ordinary_probe(
         Method::StartOrdinary,
         (policy, lifetime),
     )
+    .await
     .expect("probe update succeeds");
     (owned, canister_id)
 }
@@ -387,10 +436,10 @@ fn assert_ordinary_abandonment(observed: &OrdinaryObservation, removed: bool) {
     assert_eq!(observed.inventory_len, u64::from(!removed));
 }
 
-#[test]
-fn dispatch_response_trap_cleanup_preserves_pending_work_for_retry() {
+#[tokio::test]
+async fn dispatch_response_trap_cleanup_preserves_pending_work_for_retry() {
     for policy in OrdinaryPolicy::ALL {
-        let (owned, canister_id) = installed_probe();
+        let (owned, canister_id) = installed_probe().await;
         let pic = owned.instance();
         update_wire::<(), _>(
             pic,
@@ -399,6 +448,7 @@ fn dispatch_response_trap_cleanup_preserves_pending_work_for_retry() {
             Method::TrapOrdinaryCaptureDrop,
             (true,),
         )
+        .await
         .expect("enable destructor trap");
         update_wire::<(), _>(
             pic,
@@ -407,6 +457,7 @@ fn dispatch_response_trap_cleanup_preserves_pending_work_for_retry() {
             Method::TrapOrdinaryWork,
             (true,),
         )
+        .await
         .expect("enable pre-await trap");
         update_wire::<(), _>(
             pic,
@@ -415,9 +466,12 @@ fn dispatch_response_trap_cleanup_preserves_pending_work_for_retry() {
             Method::StartOrdinary,
             (policy, ProbeLifetime::RemoveWhenStopped),
         )
+        .await
         .expect("start transient work");
-        advance_and_tick(pic, Duration::ZERO, 32).expect("advance and tick PocketIC");
-        let pending = ordinary_observation(pic, canister_id);
+        advance_and_tick(pic, Duration::ZERO, 32)
+            .await
+            .expect("advance and tick PocketIC");
+        let pending = ordinary_observation(pic, canister_id).await;
         assert!(pending.declared && pending.armed);
         assert!(!pending.running);
         assert_eq!(pending.captures_dropped, 0);
@@ -430,84 +484,115 @@ fn dispatch_response_trap_cleanup_preserves_pending_work_for_retry() {
             Method::TrapOrdinaryCaptureDrop,
             (false,),
         )
+        .await
         .expect("disable destructor trap");
-        advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
-        assert!(ordinary_observation(pic, canister_id).declared);
+        advance_and_tick(pic, Duration::ZERO, 8)
+            .await
+            .expect("advance and tick PocketIC");
+        assert!(ordinary_observation(pic, canister_id).await.declared);
         pic.advance_time(Duration::from_secs(1))
+            .await
             .expect("advance IC time");
-        advance_and_tick(pic, Duration::ZERO, 32).expect("advance and tick PocketIC");
-        assert_ordinary_abandonment(&ordinary_observation(pic, canister_id), true);
+        advance_and_tick(pic, Duration::ZERO, 32)
+            .await
+            .expect("advance and tick PocketIC");
+        assert_ordinary_abandonment(&ordinary_observation(pic, canister_id).await, true);
 
         // Confirm the backend still dispatches independent work after cleanup.
-        assert!(update_bool(pic, canister_id, Method::Start));
+        assert!(update_bool(pic, canister_id, Method::Start).await);
         pic.advance_time(Duration::from_secs(2))
+            .await
             .expect("advance IC time");
-        advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-        assert_eq!(snapshot(pic, canister_id).completed_work, 1);
+        advance_and_tick(pic, Duration::ZERO, 16)
+            .await
+            .expect("advance and tick PocketIC");
+        assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
+
+        owned
+            .close()
+            .await
+            .expect("delete PocketIC instance before stopping its server");
     }
 }
 
-#[test]
-fn ordinary_trap_before_await_retires_the_rolled_back_scheduled_delivery() {
+#[tokio::test]
+async fn ordinary_trap_before_await_retires_the_rolled_back_scheduled_delivery() {
     for policy in OrdinaryPolicy::ALL {
         for lifetime in ProbeLifetime::ALL {
-            let (owned, canister_id) = trapping_ordinary_probe(policy, lifetime, true);
+            let (owned, canister_id) = trapping_ordinary_probe(policy, lifetime, true).await;
             let pic = owned.instance();
-            advance_and_tick(pic, Duration::ZERO, 32).expect("advance and tick PocketIC");
-            let observed = ordinary_observation(pic, canister_id);
+            advance_and_tick(pic, Duration::ZERO, 32)
+                .await
+                .expect("advance and tick PocketIC");
+            let observed = ordinary_observation(pic, canister_id).await;
             assert_ordinary_abandonment(&observed, lifetime == ProbeLifetime::RemoveWhenStopped);
             assert_eq!(observed.gate_replies, 0);
-            assert!(update_bool(pic, canister_id, Method::Start));
+            assert!(update_bool(pic, canister_id, Method::Start).await);
             pic.advance_time(Duration::from_secs(2))
+                .await
                 .expect("advance IC time");
-            advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-            assert_eq!(snapshot(pic, canister_id).completed_work, 1);
+            advance_and_tick(pic, Duration::ZERO, 16)
+                .await
+                .expect("advance and tick PocketIC");
+            assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
             if lifetime == ProbeLifetime::Retained {
-                update_unit(pic, canister_id, Method::UnregisterOrdinary);
-                assert_eq!(ordinary_observation(pic, canister_id).captures_dropped, 1);
+                update_unit(pic, canister_id, Method::UnregisterOrdinary).await;
+                assert_eq!(
+                    ordinary_observation(pic, canister_id)
+                        .await
+                        .captures_dropped,
+                    1
+                );
             }
+
+            owned
+                .close()
+                .await
+                .expect("delete PocketIC instance before stopping its server");
         }
     }
 }
 
-#[test]
-fn ordinary_continuation_trap_retires_running_work_and_releases_expired_authority() {
+#[tokio::test]
+async fn ordinary_continuation_trap_retires_running_work_and_releases_expired_authority() {
     for policy in OrdinaryPolicy::ALL {
         for lifetime in ProbeLifetime::ALL {
             for command in ["none", "cancel", "reconcile", "unregister"] {
-                let (owned, canister_id) = trapping_ordinary_probe(policy, lifetime, false);
+                let (owned, canister_id) = trapping_ordinary_probe(policy, lifetime, false).await;
                 let pic = owned.instance();
                 wait_for_probe(
                     pic,
                     32,
-                    |pic| ordinary_observation(pic, canister_id),
+                    async |pic| ordinary_observation(pic, canister_id).await,
                     |current| current.running && current.waiting && current.gate_replies > 0,
-                );
+                )
+                .await;
                 match command {
                     "none" => {}
-                    "cancel" => update_unit(pic, canister_id, Method::CancelOrdinary),
+                    "cancel" => update_unit(pic, canister_id, Method::CancelOrdinary).await,
                     "reconcile" => {
                         update_deadline(pic, canister_id, Method::ReconcileOrdinaryAt, u64::MAX)
+                            .await
                     }
-                    "unregister" => update_unit(pic, canister_id, Method::UnregisterOrdinary),
+                    "unregister" => update_unit(pic, canister_id, Method::UnregisterOrdinary).await,
                     _ => unreachable!("fixed command matrix"),
                 }
-                update_unit(pic, canister_id, Method::ReleaseOrdinaryWork);
-                advance_and_tick(pic, Duration::ZERO, 32).expect("advance and tick PocketIC");
-                let observed = ordinary_observation(pic, canister_id);
+                update_unit(pic, canister_id, Method::ReleaseOrdinaryWork).await;
+                advance_and_tick(pic, Duration::ZERO, 32)
+                    .await
+                    .expect("advance and tick PocketIC");
+                let observed = ordinary_observation(pic, canister_id).await;
                 let removed =
                     lifetime == ProbeLifetime::RemoveWhenStopped || command == "unregister";
                 assert_ordinary_abandonment(&observed, removed);
                 assert_eq!(observed.gate_error, None);
-                assert!(update_bool(
-                    pic,
-                    canister_id,
-                    Method::ExpiredOrdinaryContextRejected
-                ));
-                update_unit(pic, canister_id, Method::ClearOrdinaryTrap);
+                assert!(
+                    update_bool(pic, canister_id, Method::ExpiredOrdinaryContextRejected).await
+                );
+                update_unit(pic, canister_id, Method::ClearOrdinaryTrap).await;
                 if removed {
                     if command != "unregister" {
-                        update_unit(pic, canister_id, Method::DiscardExpiredOrdinaryClaim);
+                        update_unit(pic, canister_id, Method::DiscardExpiredOrdinaryClaim).await;
                     }
                     update_wire::<(), _>(
                         pic,
@@ -516,35 +601,48 @@ fn ordinary_continuation_trap_retires_running_work_and_releases_expired_authorit
                         Method::StartOrdinary,
                         (policy, ProbeLifetime::Retained),
                     )
+                    .await
                     .expect("probe update succeeds");
                 } else {
                     // The original retained capability can rearm explicitly.
-                    update_deadline(pic, canister_id, Method::ReconcileOrdinaryAt, 0);
+                    update_deadline(pic, canister_id, Method::ReconcileOrdinaryAt, 0).await;
                 }
-                advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-                let completed = ordinary_observation(pic, canister_id);
+                advance_and_tick(pic, Duration::ZERO, 16)
+                    .await
+                    .expect("advance and tick PocketIC");
+                let completed = ordinary_observation(pic, canister_id).await;
                 assert_eq!(completed.completed, 1);
                 assert_eq!(completed.work_completed.total, 1);
                 assert_eq!(completed.instruction_samples, 1);
                 assert_eq!(completed.unacknowledged.total, u128::from(!removed));
-                update_unit(pic, canister_id, Method::UnregisterOrdinary);
+                update_unit(pic, canister_id, Method::UnregisterOrdinary).await;
                 assert_eq!(
-                    ordinary_observation(pic, canister_id).captures_dropped,
+                    ordinary_observation(pic, canister_id)
+                        .await
+                        .captures_dropped,
                     if removed { 2 } else { 1 }
                 );
-                assert!(update_bool(pic, canister_id, Method::Start));
+                assert!(update_bool(pic, canister_id, Method::Start).await);
                 pic.advance_time(Duration::from_secs(2))
+                    .await
                     .expect("advance IC time");
-                advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-                assert_eq!(snapshot(pic, canister_id).completed_work, 1);
+                advance_and_tick(pic, Duration::ZERO, 16)
+                    .await
+                    .expect("advance and tick PocketIC");
+                assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
+
+                owned
+                    .close()
+                    .await
+                    .expect("delete PocketIC instance before stopping its server");
             }
         }
     }
 }
 
-#[test]
-fn accepted_ordinary_work_survives_dispatch_timeout_without_replay() {
-    let (owned, canister_id) = installed_probe();
+#[tokio::test]
+async fn accepted_ordinary_work_survives_dispatch_timeout_without_replay() {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
     let (): () = update_wire(
         pic,
@@ -553,13 +651,15 @@ fn accepted_ordinary_work_survives_dispatch_timeout_without_replay() {
         Method::StartOrdinary,
         (OrdinaryPolicy::Once, ProbeLifetime::Retained),
     )
+    .await
     .unwrap();
     let waiting = wait_for_probe(
         pic,
         20,
-        |pic| ordinary_observation(pic, canister_id),
+        async |pic| ordinary_observation(pic, canister_id).await,
         |state| state.waiting,
-    );
+    )
+    .await;
     assert!(waiting.running);
     // The first pending task identity is 1 in this fresh canister. Acceptance
     // consumed it before the ordinary callback awaited its application gate.
@@ -570,23 +670,35 @@ fn accepted_ordinary_work_survives_dispatch_timeout_without_replay() {
         Method::FixtureDispatchPayload,
         (1_u64.to_le_bytes().to_vec(),),
     )
+    .await
     .unwrap();
     assert!(accepted);
     pic.advance_time(Duration::from_secs(301))
+        .await
         .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 20).expect("advance and tick PocketIC");
-    let timed_out = ordinary_observation(pic, canister_id);
+    advance_and_tick(pic, Duration::ZERO, 20)
+        .await
+        .expect("advance and tick PocketIC");
+    let timed_out = ordinary_observation(pic, canister_id).await;
     assert!(timed_out.running);
     assert_eq!(timed_out.completed, 0);
-    update_unit(pic, canister_id, Method::ReleaseOrdinaryWork);
+    update_unit(pic, canister_id, Method::ReleaseOrdinaryWork).await;
     let completed = wait_for_probe(
         pic,
         30,
-        |pic| ordinary_observation(pic, canister_id),
+        async |pic| ordinary_observation(pic, canister_id).await,
         |state| state.completed == 1,
-    );
+    )
+    .await;
     assert!(!completed.running);
     assert_eq!(completed.gate_error, None);
-    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
-    assert_eq!(ordinary_observation(pic, canister_id).completed, 1);
+    advance_and_tick(pic, Duration::ZERO, 8)
+        .await
+        .expect("advance and tick PocketIC");
+    assert_eq!(ordinary_observation(pic, canister_id).await.completed, 1);
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }

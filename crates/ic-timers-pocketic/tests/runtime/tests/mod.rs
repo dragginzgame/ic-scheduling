@@ -24,13 +24,13 @@ mod watchdog;
 
 // Each invocation owns a fresh server, IC instance and funded canister.
 // Returning the owner keeps it alive until the caller finishes its assertions.
-fn installed_probe() -> (PocketIcInstance<PocketIc>, ExternalPrincipal) {
-    let owned = fresh_pocket_ic();
-    let canister_id = install_probe(owned.instance(), probe_wasm());
+async fn installed_probe() -> (PocketIcInstance<PocketIc>, ExternalPrincipal) {
+    let owned = fresh_pocket_ic().await;
+    let canister_id = install_probe(owned.instance(), probe_wasm()).await;
     (owned, canister_id)
 }
 
-fn freeze_for_five_minutes(
+async fn freeze_for_five_minutes(
     pic: &PocketIc,
     canister_id: ExternalPrincipal,
     freezing_seconds: u64,
@@ -44,12 +44,17 @@ fn freeze_for_five_minutes(
             ..CanisterSettings::default()
         },
     )
+    .await
     .expect("raise freezing reserve");
     pic.advance_time(Duration::from_secs(300))
+        .await
         .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
+    advance_and_tick(pic, Duration::ZERO, 16)
+        .await
+        .expect("advance and tick PocketIC");
     let frozen_balance = pic
         .cycle_balance(canister_id)
+        .await
         .expect("read canister cycles");
     assert!(frozen_balance > 0, "frozen, not uninstalled");
     assert!(frozen_balance < freezing_reserve);
@@ -65,6 +70,7 @@ fn freeze_for_five_minutes(
             )
             .unwrap(),
         )
+        .await
         .expect_err("a valid timer control update must reject while frozen"),
     );
     assert_eq!(rejected.reject_code, RejectCode::SysTransient);
@@ -78,17 +84,19 @@ fn probe_wasm() -> Vec<u8> {
     fs::read(&path).unwrap_or_else(|error| panic!("read {}: {error}", path.display()))
 }
 
-fn update_bool(pic: &PocketIc, canister_id: ExternalPrincipal, method: Method) -> bool {
+async fn update_bool(pic: &PocketIc, canister_id: ExternalPrincipal, method: Method) -> bool {
     update_wire(pic, canister_id, ExternalPrincipal::anonymous(), method, ())
+        .await
         .expect("probe update succeeds")
 }
 
-fn update_u64(pic: &PocketIc, canister_id: ExternalPrincipal, method: Method) -> u64 {
+async fn update_u64(pic: &PocketIc, canister_id: ExternalPrincipal, method: Method) -> u64 {
     update_wire(pic, canister_id, ExternalPrincipal::anonymous(), method, ())
+        .await
         .expect("probe update succeeds")
 }
 
-fn snapshot(pic: &PocketIc, canister_id: ExternalPrincipal) -> ProbeSnapshot {
+async fn snapshot(pic: &PocketIc, canister_id: ExternalPrincipal) -> ProbeSnapshot {
     let observed: ProbeSnapshot = query_wire(
         pic,
         canister_id,
@@ -96,6 +104,7 @@ fn snapshot(pic: &PocketIc, canister_id: ExternalPrincipal) -> ProbeSnapshot {
         Method::Snapshot,
         (),
     )
+    .await
     .expect("probe query succeeds");
     super::harness::assert_exact_counters(&[
         observed.schedule_requests,
@@ -110,7 +119,12 @@ fn snapshot(pic: &PocketIc, canister_id: ExternalPrincipal) -> ProbeSnapshot {
     observed
 }
 
-fn update_deadline(pic: &PocketIc, canister_id: ExternalPrincipal, method: Method, deadline: u64) {
+async fn update_deadline(
+    pic: &PocketIc,
+    canister_id: ExternalPrincipal,
+    method: Method,
+    deadline: u64,
+) {
     update_wire::<(), _>(
         pic,
         canister_id,
@@ -118,10 +132,14 @@ fn update_deadline(pic: &PocketIc, canister_id: ExternalPrincipal, method: Metho
         method,
         (deadline,),
     )
+    .await
     .expect("probe update succeeds");
 }
 
-fn ordinary_observation(pic: &PocketIc, canister_id: ExternalPrincipal) -> OrdinaryObservation {
+async fn ordinary_observation(
+    pic: &PocketIc,
+    canister_id: ExternalPrincipal,
+) -> OrdinaryObservation {
     let observed: OrdinaryObservation = query_wire(
         pic,
         canister_id,
@@ -129,6 +147,7 @@ fn ordinary_observation(pic: &PocketIc, canister_id: ExternalPrincipal) -> Ordin
         Method::OrdinaryObservation,
         (),
     )
+    .await
     .expect("probe query succeeds");
     assert!(!observed.work_started.total_overflowed);
     assert!(!observed.work_completed.total_overflowed);

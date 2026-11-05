@@ -65,46 +65,51 @@ fn durations_and_commands_reject_invalid_or_unbounded_input() {
     }
 }
 
-#[test]
+#[tokio::test]
 #[ignore = "explicit local canister demo: make test-demo"]
-fn canister_session_queues_seconds_minutes_weeks_and_manages_recurrence() {
+async fn canister_session_queues_seconds_minutes_weeks_and_manages_recurrence() {
     let wasm = std::env::var_os("IC_JOBS_CONSUMER_WASM").expect("make test-demo selects the Wasm");
     let config = PocketIcStartupConfig::from_env(Duration::from_secs(30)).unwrap();
-    let mut demo = Demo::new(Path::new(&wasm), config).unwrap();
-    let run = |demo: &mut Demo, line: &str| {
+    let mut demo = Demo::new(Path::new(&wasm), config).await.unwrap();
+    let run = async |demo: &mut Demo, line: &str| {
         let args = Prompt::try_parse_from(line.split_whitespace()).unwrap();
-        assert!(demo.execute(&args.command).unwrap());
+        assert!(demo.execute(&args.command).await.unwrap());
     };
-    run(&mut demo, "sample");
+    run(&mut demo, "sample").await;
     assert!(
         demo.views()
+            .await
             .unwrap()
             .iter()
             .all(|view| matches!(view.status, Status::Pending { .. }))
     );
     // Two watch steps exercise carrying the previous display's views.
-    run(&mut demo, "watch 2s");
-    run(&mut demo, "advance 3s");
-    assert_eq!(demo.views().unwrap()[0].status, Status::Completed);
+    run(&mut demo, "watch 2s").await;
+    run(&mut demo, "advance 3s").await;
+    assert_eq!(demo.views().await.unwrap()[0].status, Status::Completed);
     assert!(matches!(
-        demo.views().unwrap()[1].status,
+        demo.views().await.unwrap()[1].status,
         Status::Pending { .. }
     ));
-    run(&mut demo, "advance 55s");
-    assert_eq!(demo.views().unwrap()[1].status, Status::Completed);
-    run(&mut demo, "advance 1w");
-    assert_eq!(demo.views().unwrap()[2].sequence, 1);
-    run(&mut demo, "pause 3");
-    run(&mut demo, "advance 2w");
-    assert_eq!(demo.views().unwrap()[2].status, Status::Paused);
-    assert_eq!(demo.views().unwrap()[2].sequence, 1);
-    run(&mut demo, "resume 3");
-    run(&mut demo, "advance 1s");
-    assert_eq!(demo.views().unwrap()[2].sequence, 2);
-    run(&mut demo, "cancel 3");
-    run(&mut demo, "advance 1w");
-    assert_eq!(demo.views().unwrap()[2].status, Status::Cancelled);
-    let summary: Summary = demo.query(Method::Summary, &()).unwrap();
+    run(&mut demo, "advance 55s").await;
+    assert_eq!(demo.views().await.unwrap()[1].status, Status::Completed);
+    run(&mut demo, "advance 1w").await;
+    assert_eq!(demo.views().await.unwrap()[2].sequence, 1);
+    run(&mut demo, "pause 3").await;
+    run(&mut demo, "advance 2w").await;
+    assert_eq!(demo.views().await.unwrap()[2].status, Status::Paused);
+    assert_eq!(demo.views().await.unwrap()[2].sequence, 1);
+    run(&mut demo, "resume 3").await;
+    run(&mut demo, "advance 1s").await;
+    assert_eq!(demo.views().await.unwrap()[2].sequence, 2);
+    run(&mut demo, "cancel 3").await;
+    run(&mut demo, "advance 1w").await;
+    assert_eq!(demo.views().await.unwrap()[2].status, Status::Cancelled);
+    let summary: Summary = demo.query(Method::Summary, &()).await.unwrap();
     assert_eq!(summary.counter, 4);
     assert!(!summary.armed);
+    demo.pic
+        .close()
+        .await
+        .expect("delete demo instance before its borrowed server stops");
 }

@@ -26,6 +26,7 @@ harness = [
     "dep:ic-testkit",
     "dep:ic-wire",
     "dep:serde",
+    "dep:tokio",
 ]
 
 [dependencies]
@@ -38,6 +39,7 @@ ic-platform-types = { workspace = true, optional = true, features = ["principal-
 ic-testkit = { workspace = true, optional = true, features = ["wire"] }
 ic-wire = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, features = ["macros", "rt-multi-thread", "time"] }
 
 [dev-dependencies]
 ctrlc.workspace = true

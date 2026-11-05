@@ -1,7 +1,7 @@
 # Scheduling source layout and LOC reporting
 
 This workspace uses the reviewed Shared Tooling classifier. Its canonical
-[source classification contract](https://github.com/dragginzgame/shared-tooling/blob/b37a882314d22bf7ab393b3fe561809377ffd22d/docs/fleet-tools.md#source-classification)
+[source classification contract](https://github.com/dragginzgame/shared-tooling/blob/2aa41c7394300302fe802b69b31b855bdc89b671/docs/fleet-tools.md#source-classification)
 owns the reporting format and category rules. This page documents Scheduling's
 package roles and commands; it does not define a separate counting policy.
 
@@ -44,3 +44,34 @@ workspace cleanup can remove generated runs. An explicit `TMPDIR`, or
 These overrides are local to the invocation; helpers do not change global
 environment settings. Required release recovery evidence stays under the
 existing bounded Git-side custody policy.
+
+## Documentation and experimental evidence
+
+Follow the [shared retention contract](../rules/engineering-details.md#changelogs-and-artifact-preservation).
+Routine checks use their existing command/CI result and pending notes; they do
+not need a new report directory. For a maintained experiment topic, keep one
+current summary (normally up to 150 lines) plus at most two selected small data
+files, at most 100 KiB per topic and 5 MiB across the repository. Raw experimental
+output belongs in `target/evidence/`, rather than tracked docs or compressed bundles.
+
+The 2026-11-05 pre-refresh inventory found 134 tracked docs files totaling 2,185,215 bytes;
+this includes shared manuals, design contracts and protected history, so it is a
+conservative upper bound rather than an experimental-evidence total. No tracked
+Wasm or compressed archive was present. The six small audit logs/manifests total
+12,575 bytes and retain their original source-bound audit references.
+
+The large `docs/status/history-*` pages and the 586,974-byte pair of
+`docs/timers/evidence/` ledgers are historical compaction candidates. Current
+handoffs link them, so review their provenance/recovery obligations and repair
+references under an authorized cleanup. Their names do not grant a permanent
+retention exception. Active release/recovery records, maintained API/design
+contracts and test vectors retain their separate owners. Do not create another
+permanent archive by default, or claim a summary/hash proves raw artifacts that
+are no longer retained.
+
+## Validation ownership
+
+Scheduling already retains Shared's complete validation proof and adds its own
+source/host/group and metadata-projection custody. Its release adapter does not
+parse runner event/timing files again. Keep that division under the
+[shared adoption guidance](group-validation-adoption.md#replacing-existing-release-evidence-parsers).

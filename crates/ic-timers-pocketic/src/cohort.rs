@@ -13,7 +13,8 @@ macro_rules! cohorts {
         pub enum Cohort { $($variant,)+ }
 
         impl Cohort {
-            pub(crate) const ALL: &'static [Self] = &[$(Self::$variant,)+];
+            /// Canonical execution order shared by the driver and async measurements.
+            pub const ALL: &'static [Self] = &[$(Self::$variant,)+];
 
             pub const fn name(self) -> &'static str {
                 match self { $(Self::$variant => $name,)+ }

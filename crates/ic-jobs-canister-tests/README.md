@@ -65,11 +65,17 @@ This fixture is not a production deployment or a persistent background service.
 
 ## Package boundary
 
-The default package builds `jobs-capture-artifact` without PocketIC, Testkit,
+The default package builds `jobs-capture-artifact` without Tokio, PocketIC, Testkit,
 Wire or the qualification-consumer library. Enable `--features harness` to build
 `ic_jobs_canister_tests::harness`, the recovery test or the queue example. The
 Make demo/recovery targets select this feature explicitly; those targets retain
 their existing separate server admission and live-test selection.
+
+Testkit 0.87 is async-only. The recovery tests and queue example own their Tokio
+runtime, await network operations and explicitly close each instance before its
+server stops. Client Drop performs no network cleanup; the managed server still
+contains failed tests by terminating its process and instances. No automatic
+update retry or replay is added.
 
 ## CLI tests
 
@@ -80,7 +86,7 @@ bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --example 
 # Explicit local canister test, with visible schedules and assertions.
 make test-demo
 
-# Explicit real terminal process tests: quit, EOF and idle/watch Ctrl+C.
+# Explicit real terminal process tests: quit, EOF, command error and idle/watch Ctrl+C.
 make test-demo-cli
 ```
 

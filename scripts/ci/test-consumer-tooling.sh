@@ -4,11 +4,11 @@ set -euo pipefail
 # only their affected caller phases, without replaying installer/hosted suites.
 phases=("$@")
 if [[ $# == 0 ]]; then
-    phases=(fixture-scratch cli-admission server-commands workflow-selection demo-commands input-admission artifact-capture ci-admission rust-policy group-recipes)
+    phases=(candid-boundary fixture-scratch cli-admission server-commands workflow-selection demo-commands input-admission artifact-capture ci-admission rust-policy group-recipes)
 fi
 for phase in "${phases[@]}"; do
     case "$phase" in
-        fixture-scratch|cli-admission|server-commands|workflow-selection|demo-commands|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
+        candid-boundary|fixture-scratch|cli-admission|server-commands|workflow-selection|demo-commands|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
         *) echo "unknown consumer tooling phase: $phase" >&2; exit 2 ;;
     esac
 done
@@ -672,6 +672,29 @@ if GROUP_CI_RECIPE_FAIL=timers make --no-print-directory -C "$fixture" clippy do
 head -n 4 "$fixture/expected-full" > "$fixture/expected-failure"
 cmp "$fixture/events" "$fixture/expected-failure"
 echo 'Actual Jobs recipes preserve consumer/Wasm lint, docs and archive checks; full aggregates retain both libraries and stop on lint failure (substitute Cargo/compiler effects)'
+)
+
+phase_candid_boundary() (
+    prepare_phase candid-boundary
+    bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" scripts/ci/check-candid-boundary.pl
+    mkdir -p "$fixture/crates/gate/src" "$fixture/apps/probe/src"
+    # Parser inputs only: these sample declarations are never compiled/injected.
+    printf 'pub struct Owned;\n' > "$fixture/crates/gate/src/lib.rs"
+    printf 'pub struct Probe;\n' > "$fixture/apps/probe/src/lib.rs"
+    cat > "$fixture/scripts/ci/check-cargo-dependency-boundaries.sh" <<'BOUNDARY'
+#!/usr/bin/env bash
+printf 'dependency admission\n' >> "$JOBS_CONSUMER_TOOLING_EVENTS"
+BOUNDARY
+    make --no-print-directory -C "$fixture" check-dependency-boundaries > "$fixture/valid.log" 2>&1
+    [[ "$(cat "$fixture/events")" == 'dependency admission' ]]
+    for source in apps/probe/src/lib.rs crates/gate/src/lib.rs; do
+        : > "$fixture/events"
+        printf '#[derive(CandidType)] pub struct Owned;\n' > "$fixture/$source"
+        if make --no-print-directory -C "$fixture" check-dependency-boundaries > "$fixture/rejected.log" 2>&1; then exit 1; fi
+        [[ ! -s "$fixture/events" ]]
+        printf 'pub struct Owned;\n' > "$fixture/$source"
+    done
+    echo 'Actual common boundary target covers crates/apps and stops before Cargo admission on owned Candid (dependency admission substituted)'
 )
 
 phase_fixture_scratch() (

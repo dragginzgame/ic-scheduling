@@ -14,17 +14,17 @@ const STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
 pub const INIT_CYCLES: u128 = 2_000_000_000_000;
 
 /// Preserve tick-before-observation boundaries while Testkit owns bounded progress.
-pub fn wait_for_probe<T: Debug>(
+pub async fn wait_for_probe<T: Debug>(
     pic: &PocketIc,
     rounds: u32,
-    mut observe: impl FnMut(&PocketIc) -> T,
+    mut observe: impl AsyncFnMut(&PocketIc) -> T,
     ready: impl Fn(&T) -> bool,
 ) -> T {
     let remaining = rounds.checked_sub(1).expect("positive probe round budget");
     let mut last = None;
-    pic.tick().expect("tick PocketIC");
-    tick_until(pic, remaining, Duration::ZERO, |pic| {
-        let observation = observe(pic);
+    pic.tick().await.expect("tick PocketIC");
+    tick_until(pic, remaining, Duration::ZERO, async |pic| {
+        let observation = observe(pic).await;
         if ready(&observation) {
             Poll::Ready(Ok::<_, Infallible>(observation))
         } else {
@@ -32,11 +32,12 @@ pub fn wait_for_probe<T: Debug>(
             Poll::Pending
         }
     })
+    .await
     .unwrap_or_else(|error| panic!("{error}; last probe observation: {last:?}"))
 }
 
 /// Install one probe with the fixtures' explicit funding and empty init payload.
-pub fn install_probe(pic: &PocketIc, wasm: Vec<u8>) -> ExternalPrincipal {
+pub async fn install_probe(pic: &PocketIc, wasm: Vec<u8>) -> ExternalPrincipal {
     pic.try_create_and_install(InstallSpec {
         wasm,
         init_bytes: Vec::new(),
@@ -44,13 +45,14 @@ pub fn install_probe(pic: &PocketIc, wasm: Vec<u8>) -> ExternalPrincipal {
         install_sender: None,
         label: Some("ic-timers probe".to_owned()),
     })
+    .await
     .expect("install funded timer probe")
 }
 
-/// Testkit retains the server and drops the instance before stopping it.
+/// The caller awaits explicit instance deletion before the managed server stops.
 /// Startup has its own deadline. A five-minute hard TTL also covers each server
-/// while the driver bounds the worker, including synchronous instance deletion.
-pub fn fresh_pocket_ic() -> PocketIcInstance<PocketIc> {
+/// while the driver bounds the worker, including asynchronous instance deletion.
+pub async fn fresh_pocket_ic() -> PocketIcInstance<PocketIc> {
     let binary = env::var_os("POCKET_IC_BIN")
         .filter(|path| !path.is_empty())
         .map(PathBuf::from)
@@ -73,12 +75,14 @@ pub fn fresh_pocket_ic() -> PocketIcInstance<PocketIc> {
         server_output_files: Some((logs.join("stdout.log"), logs.join("stderr.log"))),
     }
     .build_instance(PocketIcBuilder::new().with_application_subnet())
+    .await
     .expect("construct a fresh owned PocketIC instance through ic-testkit")
 }
 
 /// Invoke an anonymous update with no arguments or return values.
-pub fn update_unit(pic: &PocketIc, canister_id: ExternalPrincipal, method: Method) {
+pub async fn update_unit(pic: &PocketIc, canister_id: ExternalPrincipal, method: Method) {
     update_wire::<(), _>(pic, canister_id, ExternalPrincipal::anonymous(), method, ())
+        .await
         .expect("probe update succeeds");
 }
 
@@ -93,25 +97,25 @@ fn wire_call(method: Method) -> WireCallSpec {
 }
 
 /// Send one method-bound Wire update without retrying consumer work.
-pub fn update_wire<T: DeserializeOwned, A: Serialize>(
+pub async fn update_wire<T: DeserializeOwned, A: Serialize>(
     pic: &PocketIc,
     canister_id: ExternalPrincipal,
     caller: ExternalPrincipal,
     method: Method,
     args: A,
 ) -> Result<T, WireCallError> {
-    ic_testkit::pic::update_wire(pic, canister_id, caller, wire_call(method), &args)
+    ic_testkit::pic::update_wire(pic, canister_id, caller, wire_call(method), &args).await
 }
 
 /// Decode a bounded Wire query reply without changing its caller or timing.
-pub fn query_wire<T: DeserializeOwned, A: Serialize>(
+pub async fn query_wire<T: DeserializeOwned, A: Serialize>(
     pic: &PocketIc,
     canister_id: ExternalPrincipal,
     caller: ExternalPrincipal,
     method: Method,
     args: A,
 ) -> Result<T, WireCallError> {
-    ic_testkit::pic::query_wire(pic, canister_id, caller, wire_call(method), &args)
+    ic_testkit::pic::query_wire(pic, canister_id, caller, wire_call(method), &args).await
 }
 
 /// Exact measurements must not silently include overflowed counters.

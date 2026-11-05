@@ -113,16 +113,17 @@ consumer builds select canonical Types directly for Serde DTOs
 and Wire contracts. Jobs, Storage and Timers remain Wasm/test dependencies; JSON
 is limited to native fixtures and tooling. Parser, Agent,
 certification and crypto features are not selected. Runtime 0.19 owns the
-deployed executor, IC0 adapters and generator shared with Timers, Storage 0.66
-and Wire Endpoint 0.6. The qualification Wasm
+deployed executor, IC0 adapters and generator shared with Timers, Storage 0.67
+and Wire Endpoint 0.7. The qualification Wasm
 selects neither Candid nor full `ic-cdk`.
 Owned native DTO principals exclude external Principal and SHA-2 dependencies.
 The Wasm application selects neither principal conversion nor SHA-2 hashing.
 Storage supplies native IO metering under its test-support feature.
 Native tests select `principal-self-authenticating` explicitly;
-the native harness selects `principal-external` and Testkit 0.85's maintained
-`ic_testkit::pocket_ic` client. Managed `PocketIcStartupConfig::build_instance`
-supplies its explicit server endpoint and retains server custody. The deployed
+the native harness selects `principal-external` and Testkit 0.87's async-only
+`ic_testkit::pocket_ic` client. Callers own their Tokio runtime and await explicit
+instance closure. Managed `PocketIcStartupConfig::build_instance` supplies its
+explicit server endpoint and retains server custody. The deployed
 graph has one Runtime 0.19 owner and exact matching executor guard.
 
 Installation, management, fixture controls and delivery use IC Wire native Serde
@@ -153,6 +154,13 @@ every tests/tooling-only catalog dependency (apart from the selected root itself
 The qualification Wasm intentionally includes its test integrations above; those
 cannot be prohibited there using the production library's exclusion list.
 
+`make check-candid-boundary` scans first-party Rust under `crates/` and `apps/`
+with the [shared lexical boundary check](docs/candid-boundary.md) and
+[empty declaration allowance policy](ci/candid-boundary.json). Owned application
+DTOs use Wire; external types stay with Platform. This runs once as a prerequisite
+of the common dependency-boundary stage, including CI and selected release plans.
+It does not replace review of generated code or cross-module aliases.
+
 `make check-dependency-boundaries` runs the reviewed shared checker and is part of
 CI/release validation. It composes the [shared IC inventory](ci/external-ic-dependencies.txt)
 with [local bans](ci/cargo-dependency-boundaries.json) on direct generator and
@@ -173,9 +181,9 @@ The graph excludes application principal conversion and SHA-2.
 A fourth context excludes Jobs, Memory, Storage, Timers, JSON and the IC runtime from
 ordinary native consumer builds, including the
 Platform `cdk` feature.
-The fifth context keeps Candid, PocketIC and Testkit out of the native capture
-binary's normal/build graph. Native Testkit and Platform's independent PocketIC
-client retain the Candid boundary; PocketIC itself uses Candid
+The fifth context keeps Candid, PocketIC, Tokio and Testkit out of the native capture
+binary's normal/build graph. Native Testkit uses Platform's external-protocol
+adapters at the Candid boundary; PocketIC itself uses Candid
 management and transport DTOs. Testkit owns no Candid codec adapter. Disabling
 dependency defaults
 cannot remove those required edges. Jobs-owned RPCs continue to use Wire.

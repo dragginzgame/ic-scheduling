@@ -7,6 +7,31 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.7] - Unreleased
+
+### 📦 Dependencies
+
+- Adopt Testkit 0.87 and native Platform 0.23 with the deployed Runtime/macros/exact
+  guard 0.19.2 cohort. Preserve Types 0.18.1, compatible Runtime minima, public
+  library APIs and timer ABI.
+- Retain Metrics 0.29.3 and the private qualification selections Logging 0.24.8,
+  Wire 0.17.2, Endpoint 0.7.1 and Build/Host 0.74.4 in the locked graph.
+
+### 🧪 Testing
+
+- Migrate installed runtime and policy-cohort qualification to caller-owned async
+  runtimes, awaited progress callbacks and explicit instance closure. Scheduling,
+  recovery assertions and the Wasm dependency boundary remain unchanged.
+
+### 🛠️ Tooling
+
+- Adopt reviewed Shared Tooling 0.30.4, including workspace scratch defaults,
+  portable classified LOC output and numbered-draft changelog admission.
+- Run the shared Candid source-boundary check once in common boundary admission,
+  with no declaration allowances; owned application DTOs remain Wire-only.
+- Apply compact experimental-evidence guidance to future documentation and raw
+  output, preserving existing provenance and active recovery records.
+
 ## [0.40.6] - 2026-11-05
 
 ### 🧹 Cleanup

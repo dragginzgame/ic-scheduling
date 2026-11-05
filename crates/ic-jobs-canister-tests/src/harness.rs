@@ -1,4 +1,7 @@
 //! Native projection of the consumer-owned management contract.
+//!
+//! Callers provide the Tokio runtime, await transport calls and explicitly close
+//! their PocketIC instance while its server remains available.
 
 use ic_jobs_test_consumer::{
     api::Init,
@@ -27,12 +30,12 @@ impl Client<'_> {
     /// # Errors
     /// Returns [`WireCallError`] for transport, canister rejection or Wire admission
     /// failures; decoded application errors remain part of the caller's response type.
-    pub fn query<T: DeserializeOwned>(
+    pub async fn query<T: DeserializeOwned>(
         &self,
         method: Method,
         args: &impl Serialize,
     ) -> Result<T, WireCallError> {
-        query_wire(self.pic, self.canister, self.caller, control(method), args)
+        query_wire(self.pic, self.canister, self.caller, control(method), args).await
     }
 
     /// Update using the consumer's method identity and bounded Wire contract.
@@ -40,12 +43,12 @@ impl Client<'_> {
     /// # Errors
     /// Returns [`WireCallError`] for transport, canister rejection or Wire admission
     /// failures; decoded application errors remain part of the caller's response type.
-    pub fn update<T: DeserializeOwned>(
+    pub async fn update<T: DeserializeOwned>(
         &self,
         method: Method,
         args: &impl Serialize,
     ) -> Result<T, WireCallError> {
-        update_wire(self.pic, self.canister, self.caller, control(method), args)
+        update_wire(self.pic, self.canister, self.caller, control(method), args).await
     }
 }
 

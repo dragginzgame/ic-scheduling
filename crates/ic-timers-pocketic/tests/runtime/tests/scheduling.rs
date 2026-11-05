@@ -2,12 +2,14 @@
 
 use super::*;
 
-#[test]
-fn self_call_queue_pressure_defers_timer_submission_without_losing_work() {
-    let (owned, canister_id) = installed_probe();
+#[tokio::test]
+async fn self_call_queue_pressure_defers_timer_submission_without_losing_work() {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    update_unit(pic, canister_id, Method::PressureAndStart);
-    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
+    update_unit(pic, canister_id, Method::PressureAndStart).await;
+    advance_and_tick(pic, Duration::ZERO, 8)
+        .await
+        .expect("advance and tick PocketIC");
     let (failed, replies): (u64, u64) = query_wire(
         pic,
         canister_id,
@@ -15,40 +17,57 @@ fn self_call_queue_pressure_defers_timer_submission_without_losing_work() {
         Method::PressureObservation,
         (),
     )
+    .await
     .expect("pressure counters");
     println!("ic_timers_queue_pressure failed={failed} replies={replies}");
     assert!(failed > 0);
     assert!(replies >= 500);
     assert!(
         pic.cycle_balance(canister_id)
+            .await
             .expect("read canister cycles")
             > INIT_CYCLES / 2
     );
-    assert_eq!(snapshot(pic, canister_id).scheduler_started.total, 0);
-    update_unit(pic, canister_id, Method::ReleasePressure);
-    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-    assert_eq!(snapshot(pic, canister_id).scheduler_started.total, 0);
+    assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
+    update_unit(pic, canister_id, Method::ReleasePressure).await;
+    advance_and_tick(pic, Duration::ZERO, 16)
+        .await
+        .expect("advance and tick PocketIC");
+    assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
     pic.advance_time(Duration::from_secs(1))
+        .await
         .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-    let completed = snapshot(pic, canister_id);
+    advance_and_tick(pic, Duration::ZERO, 16)
+        .await
+        .expect("advance and tick PocketIC");
+    let completed = snapshot(pic, canister_id).await;
     assert_eq!(completed.scheduler_started.total, 1);
     assert_eq!(completed.completed_work, 1);
-    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
-    assert_eq!(snapshot(pic, canister_id).completed_work, 1);
+    advance_and_tick(pic, Duration::ZERO, 8)
+        .await
+        .expect("advance and tick PocketIC");
+    assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
 
-#[test]
-fn deferred_submission_cancellation_and_replacement_do_not_revive_old_work() {
+#[tokio::test]
+async fn deferred_submission_cancellation_and_replacement_do_not_revive_old_work() {
     for replace in [false, true] {
-        let (owned, canister_id) = installed_probe();
+        let (owned, canister_id) = installed_probe().await;
         let pic = owned.instance();
-        update_unit(pic, canister_id, Method::PressureAndStart);
-        advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
-        let original = snapshot(pic, canister_id);
+        update_unit(pic, canister_id, Method::PressureAndStart).await;
+        advance_and_tick(pic, Duration::ZERO, 8)
+            .await
+            .expect("advance and tick PocketIC");
+        let original = snapshot(pic, canister_id).await;
         assert_eq!(original.scheduler_started.total, 0);
         assert!(
             pic.cycle_balance(canister_id)
+                .await
                 .expect("read canister cycles")
                 > INIT_CYCLES / 2
         );
@@ -60,15 +79,18 @@ fn deferred_submission_cancellation_and_replacement_do_not_revive_old_work() {
             } else {
                 Method::Stop
             },
-        );
-        let changed = snapshot(pic, canister_id);
+        )
+        .await;
+        let changed = snapshot(pic, canister_id).await;
         if replace {
             assert_ne!(changed.registration_id, original.registration_id);
         } else {
             assert_eq!(changed.next_deadline_ns, None);
         }
-        update_unit(pic, canister_id, Method::ReleasePressure);
-        advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
+        update_unit(pic, canister_id, Method::ReleasePressure).await;
+        advance_and_tick(pic, Duration::ZERO, 16)
+            .await
+            .expect("advance and tick PocketIC");
         // A fresh canister's first backend identity belongs to the old scheduler.
         // Even an authenticated late delivery must not revive it after removal.
         let stale_delivery: bool = update_wire(
@@ -78,13 +100,17 @@ fn deferred_submission_cancellation_and_replacement_do_not_revive_old_work() {
             Method::FixtureDispatchPayload,
             (1_u64.to_le_bytes().to_vec(),),
         )
+        .await
         .expect("stale self-call result");
         assert!(stale_delivery);
-        assert_eq!(snapshot(pic, canister_id).completed_work, 0);
+        assert_eq!(snapshot(pic, canister_id).await.completed_work, 0);
         pic.advance_time(Duration::from_secs(1))
+            .await
             .expect("advance IC time");
-        advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-        let recovered = snapshot(pic, canister_id);
+        advance_and_tick(pic, Duration::ZERO, 16)
+            .await
+            .expect("advance and tick PocketIC");
+        let recovered = snapshot(pic, canister_id).await;
         assert_eq!(recovered.completed_work, u64::from(replace));
         assert_eq!(recovered.scheduler_started.total, u128::from(replace));
         if !replace {
@@ -95,22 +121,32 @@ fn deferred_submission_cancellation_and_replacement_do_not_revive_old_work() {
                 Method::ScheduleAt,
                 (0_u64,),
             )
+            .await
             .expect("reschedule retained registration");
-            advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-            assert_eq!(snapshot(pic, canister_id).completed_work, 1);
+            advance_and_tick(pic, Duration::ZERO, 16)
+                .await
+                .expect("advance and tick PocketIC");
+            assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
         }
-        advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
-        assert_eq!(snapshot(pic, canister_id).completed_work, 1);
+        advance_and_tick(pic, Duration::ZERO, 8)
+            .await
+            .expect("advance and tick PocketIC");
+        assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
+
+        owned
+            .close()
+            .await
+            .expect("delete PocketIC instance before stopping its server");
     }
 }
 
-#[test]
-fn immediate_initial_watchdog_runs_without_advancing_cadence_time() {
-    let (owned, canister_id) = installed_probe();
+#[tokio::test]
+async fn immediate_initial_watchdog_runs_without_advancing_cadence_time() {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
 
-    assert!(update_bool(pic, canister_id, Method::StartImmediately));
-    let initial = snapshot(pic, canister_id);
+    assert!(update_bool(pic, canister_id, Method::StartImmediately).await);
+    let initial = snapshot(pic, canister_id).await;
     assert_eq!(initial.completed_work, 0);
     // Initial After(0) is an explicit request, not a callback continuation.
     assert!(!initial.immediate_scheduling);
@@ -119,33 +155,43 @@ fn immediate_initial_watchdog_runs_without_advancing_cadence_time() {
     assert_eq!(initial.schedule_requests.total, 1);
     assert_eq!(initial.wakeups_armed.total, 1);
 
-    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-    let completed = snapshot(pic, canister_id);
+    advance_and_tick(pic, Duration::ZERO, 16)
+        .await
+        .expect("advance and tick PocketIC");
+    let completed = snapshot(pic, canister_id).await;
     assert_eq!(completed.completed_work, 1);
     assert_eq!(completed.scheduler_started.total, 1);
     assert_eq!(completed.work_dispatched.total, 1);
     assert_eq!(completed.work_completed.total, 1);
     assert!(completed.next_deadline_ns.is_some());
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
 
-#[test]
-fn successful_immediate_continuation_runs_again_without_waiting_for_cadence() {
-    let (owned, canister_id) = installed_probe();
+#[tokio::test]
+async fn successful_immediate_continuation_runs_again_without_waiting_for_cadence() {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    assert!(update_bool(pic, canister_id, Method::Start));
-    update_unit(pic, canister_id, Method::ContinueImmediatelyOnNextWork);
+    assert!(update_bool(pic, canister_id, Method::Start).await);
+    update_unit(pic, canister_id, Method::ContinueImmediatelyOnNextWork).await;
 
     let cycles_before_first = pic
         .cycle_balance(canister_id)
+        .await
         .expect("read canister cycles");
     pic.advance_time(Duration::from_secs(1))
+        .await
         .expect("advance IC time");
     let immediate = wait_for_probe(
         pic,
         16,
-        |pic| snapshot(pic, canister_id),
+        async |pic| snapshot(pic, canister_id).await,
         |current| current.completed_work == 1,
-    );
+    )
+    .await;
     assert!(immediate.immediate_scheduling);
     assert_eq!(immediate.latest_requested_delay_ns, Some(0));
     assert_eq!(immediate.latest_armed_delay_ns, Some(0));
@@ -154,14 +200,18 @@ fn successful_immediate_continuation_runs_again_without_waiting_for_cadence() {
     assert_eq!(immediate.work_dispatched.total, 1);
     let first_dispatch_cycles = cycles_before_first.saturating_sub(
         pic.cycle_balance(canister_id)
+            .await
             .expect("read canister cycles"),
     );
 
     let cycles_before_second = pic
         .cycle_balance(canister_id)
+        .await
         .expect("read canister cycles");
-    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-    let continued = snapshot(pic, canister_id);
+    advance_and_tick(pic, Duration::ZERO, 16)
+        .await
+        .expect("advance and tick PocketIC");
+    let continued = snapshot(pic, canister_id).await;
     assert_eq!(continued.completed_work, 2);
     assert_eq!(continued.scheduler_started.total, 2);
     assert_eq!(continued.work_dispatched.total, 2);
@@ -171,6 +221,7 @@ fn successful_immediate_continuation_runs_again_without_waiting_for_cadence() {
     assert_eq!(continued.coalesced.total, 0);
     let second_dispatch_cycles = cycles_before_second.saturating_sub(
         pic.cycle_balance(canister_id)
+            .await
             .expect("read canister cycles"),
     );
     println!(
@@ -186,44 +237,48 @@ fn successful_immediate_continuation_runs_again_without_waiting_for_cadence() {
             .saturating_sub(immediate.work_instruction_total),
         second_dispatch_cycles,
     );
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
 
-#[test]
-fn commit_window_ensure_stop_resume_and_large_overdue_time_remain_bounded() {
-    let (owned, canister_id) = installed_probe();
+#[tokio::test]
+async fn commit_window_ensure_stop_resume_and_large_overdue_time_remain_bounded() {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    assert!(update_bool(pic, canister_id, Method::Start));
+    assert!(update_bool(pic, canister_id, Method::Start).await);
 
-    update_unit(pic, canister_id, Method::Stop);
-    let inactive = snapshot(pic, canister_id);
+    update_unit(pic, canister_id, Method::Stop).await;
+    let inactive = snapshot(pic, canister_id).await;
     assert_eq!(inactive.next_deadline_ns, None);
-    assert!(!update_bool(
-        pic,
-        canister_id,
-        Method::EnsureFromReturnedError
-    ));
-    let ensured = snapshot(pic, canister_id);
+    assert!(!update_bool(pic, canister_id, Method::EnsureFromReturnedError).await);
+    let ensured = snapshot(pic, canister_id).await;
     assert!(ensured.next_deadline_ns.is_some());
     let arms_after_ensure = ensured.wakeups_armed.total;
-    assert!(!update_bool(
-        pic,
-        canister_id,
-        Method::EnsureFromReturnedError
-    ));
+    assert!(!update_bool(pic, canister_id, Method::EnsureFromReturnedError).await);
     assert_eq!(
-        snapshot(pic, canister_id).wakeups_armed.total,
+        snapshot(pic, canister_id).await.wakeups_armed.total,
         arms_after_ensure
     );
 
     pic.stop_canister(canister_id, None)
+        .await
         .expect("canister stop should succeed");
     pic.advance_time(Duration::from_secs(300))
+        .await
         .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 4).expect("advance and tick PocketIC");
+    advance_and_tick(pic, Duration::ZERO, 4)
+        .await
+        .expect("advance and tick PocketIC");
     pic.start_canister(canister_id, None)
+        .await
         .expect("canister resume should succeed");
-    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-    let resumed = snapshot(pic, canister_id);
+    advance_and_tick(pic, Duration::ZERO, 16)
+        .await
+        .expect("advance and tick PocketIC");
+    let resumed = snapshot(pic, canister_id).await;
     assert_eq!(resumed.completed_work, 1);
     assert_eq!(resumed.scheduler_started.total, 1);
     assert_eq!(resumed.work_dispatched.total, 1);
@@ -231,27 +286,44 @@ fn commit_window_ensure_stop_resume_and_large_overdue_time_remain_bounded() {
     assert_eq!(resumed.work_completed.total, 1);
     assert!(resumed.next_deadline_ns.is_some());
 
-    update_unit(pic, canister_id, Method::StopOnNextWork);
+    update_unit(pic, canister_id, Method::StopOnNextWork).await;
     pic.advance_time(Duration::from_secs(1))
+        .await
         .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-    let terminal = snapshot(pic, canister_id);
+    advance_and_tick(pic, Duration::ZERO, 16)
+        .await
+        .expect("advance and tick PocketIC");
+    let terminal = snapshot(pic, canister_id).await;
     assert_eq!(terminal.completed_work, 2);
     assert_eq!(terminal.next_deadline_ns, None);
     pic.advance_time(Duration::from_secs(2))
+        .await
         .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
-    assert_eq!(snapshot(pic, canister_id).completed_work, 2);
+    advance_and_tick(pic, Duration::ZERO, 8)
+        .await
+        .expect("advance and tick PocketIC");
+    assert_eq!(snapshot(pic, canister_id).await.completed_work, 2);
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
 
-#[test]
-fn full_inventory_is_bounded_deterministic_and_measured() {
-    let (owned, canister_id) = installed_probe();
+#[tokio::test]
+async fn full_inventory_is_bounded_deterministic_and_measured() {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    assert!(update_bool(pic, canister_id, Method::Start));
-    update_unit(pic, canister_id, Method::Stop);
-    assert_eq!(update_u64(pic, canister_id, Method::FillInventory), 64);
-    assert_eq!(update_u64(pic, canister_id, Method::FillInventory), 64);
+    assert!(update_bool(pic, canister_id, Method::Start).await);
+    update_unit(pic, canister_id, Method::Stop).await;
+    assert_eq!(
+        update_u64(pic, canister_id, Method::FillInventory).await,
+        64
+    );
+    assert_eq!(
+        update_u64(pic, canister_id, Method::FillInventory).await,
+        64
+    );
 
     let (len, instructions, ordered): (u64, u64, bool) = query_wire(
         pic,
@@ -260,53 +332,71 @@ fn full_inventory_is_bounded_deterministic_and_measured() {
         Method::InventoryMeasurement,
         (),
     )
+    .await
     .expect("probe inventory query succeeds");
     assert_eq!(len, 64);
     assert!(instructions > 0);
     assert!(ordered);
     println!("ic_timers_inventory entries={len} instructions={instructions}");
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
 
-#[test]
-fn cancellation_between_scheduler_and_work_makes_late_provider_delivery_harmless() {
-    let (owned, canister_id) = installed_probe();
+#[tokio::test]
+async fn cancellation_between_scheduler_and_work_makes_late_provider_delivery_harmless() {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    assert!(update_bool(pic, canister_id, Method::Start));
+    assert!(update_bool(pic, canister_id, Method::Start).await);
     pic.advance_time(Duration::from_secs(1))
+        .await
         .expect("advance IC time");
 
     let dispatched = wait_for_probe(
         pic,
         12,
-        |pic| snapshot(pic, canister_id),
+        async |pic| snapshot(pic, canister_id).await,
         |current| current.work_dispatched.total == 1 && current.work_started.total == 0,
-    );
+    )
+    .await;
     assert_eq!(dispatched.completed_work, 0);
     assert!(dispatched.next_deadline_ns.is_some());
 
-    update_unit(pic, canister_id, Method::Stop);
-    advance_and_tick(pic, Duration::ZERO, 12).expect("advance and tick PocketIC");
-    let cancelled = snapshot(pic, canister_id);
+    update_unit(pic, canister_id, Method::Stop).await;
+    advance_and_tick(pic, Duration::ZERO, 12)
+        .await
+        .expect("advance and tick PocketIC");
+    let cancelled = snapshot(pic, canister_id).await;
     assert_eq!(cancelled.completed_work, 0);
     assert_eq!(cancelled.work_started.total, 0);
     assert_eq!(cancelled.work_completed.total, 0);
     assert_eq!(cancelled.next_deadline_ns, None);
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
 
-#[test]
-fn exact_deadline_sleeps_and_registration_replacement_marks_counter_regrowth() {
-    let (owned, canister_id) = installed_probe();
+#[tokio::test]
+async fn exact_deadline_sleeps_and_registration_replacement_marks_counter_regrowth() {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    assert!(update_bool(pic, canister_id, Method::Start));
-    let initial = snapshot(pic, canister_id);
+    assert!(update_bool(pic, canister_id, Method::Start).await);
+    let initial = snapshot(pic, canister_id).await;
     let first_deadline = initial.next_deadline_ns.expect("scheduled");
     let later = first_deadline + 10_000_000_000;
-    update_deadline(pic, canister_id, Method::ScheduleAt, later);
-    update_deadline(pic, canister_id, Method::ScheduleAt, later);
+    update_deadline(pic, canister_id, Method::ScheduleAt, later).await;
+    update_deadline(pic, canister_id, Method::ScheduleAt, later).await;
     pic.advance_time(Duration::from_secs(2))
+        .await
         .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-    let sleeping = snapshot(pic, canister_id);
+    advance_and_tick(pic, Duration::ZERO, 16)
+        .await
+        .expect("advance and tick PocketIC");
+    let sleeping = snapshot(pic, canister_id).await;
     assert_eq!(sleeping.completed_work, 0);
     assert_eq!(sleeping.scheduler_started.total, 0);
     assert_eq!(sleeping.next_deadline_ns, Some(later));
@@ -316,27 +406,32 @@ fn exact_deadline_sleeps_and_registration_replacement_marks_counter_regrowth() {
     let continuation = later + 10_000_000_000;
     // Last request wins; superseded stop/immediate requests cannot leak into
     // this callback or a later one.
-    update_unit(pic, canister_id, Method::StopOnNextWork);
-    update_unit(pic, canister_id, Method::ContinueImmediatelyOnNextWork);
-    update_deadline(pic, canister_id, Method::ScheduleAtOnNextWork, continuation);
-    update_deadline(pic, canister_id, Method::ScheduleAt, first_deadline);
-    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-    let completed = snapshot(pic, canister_id);
+    update_unit(pic, canister_id, Method::StopOnNextWork).await;
+    update_unit(pic, canister_id, Method::ContinueImmediatelyOnNextWork).await;
+    update_deadline(pic, canister_id, Method::ScheduleAtOnNextWork, continuation).await;
+    update_deadline(pic, canister_id, Method::ScheduleAt, first_deadline).await;
+    advance_and_tick(pic, Duration::ZERO, 16)
+        .await
+        .expect("advance and tick PocketIC");
+    let completed = snapshot(pic, canister_id).await;
     assert_eq!(completed.completed_work, 1);
     assert_eq!(completed.next_deadline_ns, Some(continuation));
     assert_eq!(completed.registration_id, initial.registration_id);
     pic.advance_time(Duration::from_secs(2))
+        .await
         .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
-    assert_eq!(snapshot(pic, canister_id).completed_work, 1);
+    advance_and_tick(pic, Duration::ZERO, 16)
+        .await
+        .expect("advance and tick PocketIC");
+    assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
 
-    update_unit(pic, canister_id, Method::Stop);
+    update_unit(pic, canister_id, Method::Stop).await;
     assert_eq!(
-        snapshot(pic, canister_id).registration_id,
+        snapshot(pic, canister_id).await.registration_id,
         completed.registration_id
     );
-    update_unit(pic, canister_id, Method::ReplaceRegistration);
-    let replaced = snapshot(pic, canister_id);
+    update_unit(pic, canister_id, Method::ReplaceRegistration).await;
+    let replaced = snapshot(pic, canister_id).await;
     assert_eq!(replaced.work_completed.total, 0);
     assert_ne!(replaced.registration_id, completed.registration_id);
     let old_id = completed.registration_id.expect("old id");
@@ -345,16 +440,24 @@ fn exact_deadline_sleeps_and_registration_replacement_marks_counter_regrowth() {
     assert!(new_id.2 > old_id.2);
     for _ in 0..2 {
         pic.advance_time(Duration::from_secs(1))
+            .await
             .expect("advance IC time");
-        advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
+        advance_and_tick(pic, Duration::ZERO, 16)
+            .await
+            .expect("advance and tick PocketIC");
     }
-    let regrown = snapshot(pic, canister_id);
+    let regrown = snapshot(pic, canister_id).await;
     assert!(regrown.work_completed.total > completed.work_completed.total);
     assert!(regrown.scheduler_instruction_total > completed.scheduler_instruction_total);
     assert_eq!(regrown.registration_id, replaced.registration_id);
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
 
-fn dispatch_batch_observation(
+async fn dispatch_batch_observation(
     pic: &PocketIc,
     canister_id: ExternalPrincipal,
 ) -> DispatchBatchObservation {
@@ -365,15 +468,18 @@ fn dispatch_batch_observation(
         Method::DispatchBatchObservation,
         (),
     )
+    .await
     .expect("batch observation")
 }
 
-#[test]
-fn maximum_capacity_dispatch_preserves_every_survivor_under_pressure_and_await() {
-    let (owned, canister_id) = installed_probe();
+#[tokio::test]
+async fn maximum_capacity_dispatch_preserves_every_survivor_under_pressure_and_await() {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    update_unit(pic, canister_id, Method::StartDispatchBatch);
-    advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
+    update_unit(pic, canister_id, Method::StartDispatchBatch).await;
+    advance_and_tick(pic, Duration::ZERO, 8)
+        .await
+        .expect("advance and tick PocketIC");
     let (failures, replies): (u64, u64) = query_wire(
         pic,
         canister_id,
@@ -381,85 +487,104 @@ fn maximum_capacity_dispatch_preserves_every_survivor_under_pressure_and_await()
         Method::PressureObservation,
         (),
     )
+    .await
     .expect("batch pressure observation");
     assert!(
         failures > 0 && replies >= 500,
         "real queue pressure must be established"
     );
-    let blocked = dispatch_batch_observation(pic, canister_id);
+    let blocked = dispatch_batch_observation(pic, canister_id).await;
     assert_eq!(blocked.inventory_len, 64);
     assert_eq!(blocked.starts, vec![0; 65]);
     assert_eq!(blocked.completions, vec![0; 65]);
 
     // Both original callbacks are still pending, so neither may run afterward.
-    update_unit(pic, canister_id, Method::ChangePendingDispatchBatch);
-    update_unit(pic, canister_id, Method::ReleasePressure);
-    advance_and_tick(pic, Duration::ZERO, 16).expect("advance and tick PocketIC");
+    update_unit(pic, canister_id, Method::ChangePendingDispatchBatch).await;
+    update_unit(pic, canister_id, Method::ReleasePressure).await;
+    advance_and_tick(pic, Duration::ZERO, 16)
+        .await
+        .expect("advance and tick PocketIC");
     assert_eq!(
-        dispatch_batch_observation(pic, canister_id).starts,
+        dispatch_batch_observation(pic, canister_id).await.starts,
         vec![0; 65]
     );
     pic.advance_time(Duration::from_secs(1))
+        .await
         .expect("advance IC time");
     let expected: Vec<u64> = (0..65).map(|index| u64::from(index >= 2)).collect();
     let waiting = wait_for_probe(
         pic,
         64,
-        |pic| dispatch_batch_observation(pic, canister_id),
+        async |pic| dispatch_batch_observation(pic, canister_id).await,
         |state| state.active == 63,
-    );
+    )
+    .await;
     assert_eq!(waiting.starts, expected);
     assert_eq!(waiting.completions, vec![0; 65]);
     assert_eq!(waiting.inventory_len, 64);
     assert_eq!(waiting.peak_active, 63);
-    advance_and_tick(pic, Duration::from_secs(10), 16).expect("advance and tick PocketIC");
-    assert_eq!(dispatch_batch_observation(pic, canister_id), waiting);
+    advance_and_tick(pic, Duration::from_secs(10), 16)
+        .await
+        .expect("advance and tick PocketIC");
+    assert_eq!(dispatch_batch_observation(pic, canister_id).await, waiting);
 
     // Rearm the retained cancelled claim while every survivor is still awaiting.
-    update_unit(pic, canister_id, Method::RearmCancelledDispatchBatchTimer);
+    update_unit(pic, canister_id, Method::RearmCancelledDispatchBatchTimer).await;
     let mut full_expected = expected;
     full_expected[0] = 1;
     let full = wait_for_probe(
         pic,
         64,
-        |pic| dispatch_batch_observation(pic, canister_id),
+        async |pic| dispatch_batch_observation(pic, canister_id).await,
         |state| state.active == 64,
-    );
+    )
+    .await;
     assert_eq!(full.starts, full_expected);
     assert_eq!(full.completions, vec![0; 65]);
     assert_eq!(full.inventory_len, 64);
     assert_eq!(full.peak_active, 64);
 
-    update_unit(pic, canister_id, Method::ReleaseDispatchBatch);
+    update_unit(pic, canister_id, Method::ReleaseDispatchBatch).await;
     let finished = wait_for_probe(
         pic,
         64,
-        |pic| dispatch_batch_observation(pic, canister_id),
+        async |pic| dispatch_batch_observation(pic, canister_id).await,
         |state| state.completions == full_expected,
-    );
+    )
+    .await;
     assert_eq!(finished.starts, full_expected);
     assert_eq!(finished.active, 0);
-    advance_and_tick(pic, Duration::from_secs(2), 16).expect("advance and tick PocketIC");
-    assert_eq!(dispatch_batch_observation(pic, canister_id), finished);
+    advance_and_tick(pic, Duration::from_secs(2), 16)
+        .await
+        .expect("advance and tick PocketIC");
+    assert_eq!(dispatch_batch_observation(pic, canister_id).await, finished);
 
     // The cancelled retained claim and production dispatch remain usable at capacity.
-    update_unit(pic, canister_id, Method::RearmCancelledDispatchBatchTimer);
+    update_unit(pic, canister_id, Method::RearmCancelledDispatchBatchTimer).await;
     let mut rearmed_expected = full_expected;
     rearmed_expected[0] = 2;
     let rearmed = wait_for_probe(
         pic,
         64,
-        |pic| dispatch_batch_observation(pic, canister_id),
+        async |pic| dispatch_batch_observation(pic, canister_id).await,
         |state| state.completions == rearmed_expected,
-    );
+    )
+    .await;
     assert_eq!(rearmed.starts, rearmed_expected);
     assert_eq!(rearmed.active, 0);
     assert_eq!(rearmed.inventory_len, 64);
-    advance_and_tick(pic, Duration::from_secs(2), 16).expect("advance and tick PocketIC");
-    assert_eq!(dispatch_batch_observation(pic, canister_id), rearmed);
+    advance_and_tick(pic, Duration::from_secs(2), 16)
+        .await
+        .expect("advance and tick PocketIC");
+    assert_eq!(dispatch_batch_observation(pic, canister_id).await, rearmed);
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
 
-fn scheduling_trace(pic: &PocketIc, canister_id: ExternalPrincipal) -> Vec<u8> {
+async fn scheduling_trace(pic: &PocketIc, canister_id: ExternalPrincipal) -> Vec<u8> {
     query_wire(
         pic,
         canister_id,
@@ -467,35 +592,47 @@ fn scheduling_trace(pic: &PocketIc, canister_id: ExternalPrincipal) -> Vec<u8> {
         Method::SchedulingTrace,
         (),
     )
+    .await
     .expect("scheduling trace")
 }
 
-#[test]
-fn deadline_trace_covers_nested_registration_and_self_cancellation() {
+#[tokio::test]
+async fn deadline_trace_covers_nested_registration_and_self_cancellation() {
     for overdue in [false, true] {
-        let (owned, canister_id) = installed_probe();
+        let (owned, canister_id) = installed_probe().await;
         let pic = owned.instance();
-        update_unit(pic, canister_id, Method::StartSchedulingTrace);
-        advance_and_tick(pic, Duration::ZERO, 8).expect("advance and tick PocketIC");
-        assert!(scheduling_trace(pic, canister_id).is_empty());
+        update_unit(pic, canister_id, Method::StartSchedulingTrace).await;
+        advance_and_tick(pic, Duration::ZERO, 8)
+            .await
+            .expect("advance and tick PocketIC");
+        assert!(scheduling_trace(pic, canister_id).await.is_empty());
         if overdue {
-            advance_and_tick(pic, Duration::from_secs(4), 16).expect("advance and tick PocketIC");
-            assert_eq!(scheduling_trace(pic, canister_id), [1, 2, 4]);
-            advance_and_tick(pic, Duration::from_secs(1), 8).expect("advance and tick PocketIC");
-            assert_eq!(scheduling_trace(pic, canister_id), [1, 2, 4]);
-            advance_and_tick(pic, Duration::from_secs(1), 8).expect("advance and tick PocketIC");
-            assert_eq!(scheduling_trace(pic, canister_id), [1, 2, 4, 3]);
+            advance_and_tick(pic, Duration::from_secs(4), 16)
+                .await
+                .expect("advance and tick PocketIC");
+            assert_eq!(scheduling_trace(pic, canister_id).await, [1, 2, 4]);
+            advance_and_tick(pic, Duration::from_secs(1), 8)
+                .await
+                .expect("advance and tick PocketIC");
+            assert_eq!(scheduling_trace(pic, canister_id).await, [1, 2, 4]);
+            advance_and_tick(pic, Duration::from_secs(1), 8)
+                .await
+                .expect("advance and tick PocketIC");
+            assert_eq!(scheduling_trace(pic, canister_id).await, [1, 2, 4, 3]);
         } else {
             for end in 1..=4 {
                 advance_and_tick(pic, Duration::from_secs(1), 8)
+                    .await
                     .expect("advance and tick PocketIC");
                 assert_eq!(
-                    scheduling_trace(pic, canister_id),
+                    scheduling_trace(pic, canister_id).await,
                     (1..=end).collect::<Vec<u8>>()
                 );
             }
-            advance_and_tick(pic, Duration::from_secs(2), 8).expect("advance and tick PocketIC");
-            assert_eq!(scheduling_trace(pic, canister_id), [1, 2, 3, 4]);
+            advance_and_tick(pic, Duration::from_secs(2), 8)
+                .await
+                .expect("advance and tick PocketIC");
+            assert_eq!(scheduling_trace(pic, canister_id).await, [1, 2, 3, 4]);
         }
         let mut expected = if overdue {
             vec![1, 2, 4, 3]
@@ -503,12 +640,21 @@ fn deadline_trace_covers_nested_registration_and_self_cancellation() {
             vec![1, 2, 3, 4]
         };
         for event in [5, 6] {
-            advance_and_tick(pic, Duration::from_secs(1), 8).expect("advance and tick PocketIC");
+            advance_and_tick(pic, Duration::from_secs(1), 8)
+                .await
+                .expect("advance and tick PocketIC");
             expected.push(event);
-            assert_eq!(scheduling_trace(pic, canister_id), expected);
+            assert_eq!(scheduling_trace(pic, canister_id).await, expected);
         }
         // The periodic callback requested recurrence but cancelled itself first.
-        advance_and_tick(pic, Duration::from_secs(20), 32).expect("advance and tick PocketIC");
-        assert_eq!(scheduling_trace(pic, canister_id), expected);
+        advance_and_tick(pic, Duration::from_secs(20), 32)
+            .await
+            .expect("advance and tick PocketIC");
+        assert_eq!(scheduling_trace(pic, canister_id).await, expected);
+
+        owned
+            .close()
+            .await
+            .expect("delete PocketIC instance before stopping its server");
     }
 }

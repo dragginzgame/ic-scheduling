@@ -16,6 +16,7 @@ use ic_host_process::testing::write_executable_script;
 enum Shutdown {
     Quit,
     Eof,
+    InvalidCommand,
     Interrupt,
     WatchInterrupt,
 }
@@ -56,7 +57,7 @@ fn until(mut condition: impl FnMut() -> bool, description: &str) {
 
 #[test]
 #[ignore = "explicit real CLI/server shutdown: make test-demo-cli"]
-fn quit_eof_and_idle_interrupt_release_owned_server() {
+fn quit_eof_errors_and_interrupts_release_owned_server() {
     let binary = std::env::var_os("IC_JOBS_QUEUE_BIN").expect("queue binary");
     let server = std::env::var_os("IC_JOBS_QUEUE_SERVER").expect("admitted server binary");
     let wasm = std::env::var_os("IC_JOBS_CONSUMER_WASM").expect("consumer Wasm");
@@ -79,6 +80,7 @@ fn quit_eof_and_idle_interrupt_release_owned_server() {
     for mode in [
         Shutdown::Quit,
         Shutdown::Eof,
+        Shutdown::InvalidCommand,
         Shutdown::Interrupt,
         Shutdown::WatchInterrupt,
     ] {
@@ -122,6 +124,7 @@ fn quit_eof_and_idle_interrupt_release_owned_server() {
         match mode {
             Shutdown::Quit => writeln!(stdin, "quit").unwrap(),
             Shutdown::Eof => drop(stdin),
+            Shutdown::InvalidCommand => writeln!(stdin, "unknown-command").unwrap(),
             Shutdown::Interrupt => assert!(signal(&session.child.id().to_string(), "-INT")),
             Shutdown::WatchInterrupt => {
                 writeln!(stdin, "add after-stop --after 1s\nwatch 1w").unwrap();
@@ -137,7 +140,7 @@ fn quit_eof_and_idle_interrupt_release_owned_server() {
             "terminal exit",
         );
         assert!(
-            session.child.wait().unwrap().success(),
+            session.child.wait().unwrap().success() == !matches!(mode, Shutdown::InvalidCommand),
             "{mode:?}: {}",
             fs::read_to_string(&log_path).unwrap()
         );

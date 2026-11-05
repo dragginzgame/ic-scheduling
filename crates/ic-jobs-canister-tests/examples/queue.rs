@@ -137,6 +137,18 @@ fn failure(error: impl std::fmt::Debug) -> io::Error {
     io::Error::other(format!("{error:?}"))
 }
 
+// Preserve the operation failure while observing a separate, non-retried close.
+fn finish<T>(result: io::Result<T>, close: io::Result<()>) -> io::Result<T> {
+    match (result, close) {
+        (Ok(value), Ok(())) => Ok(value),
+        (Err(error), Ok(())) | (Ok(_), Err(error)) => Err(error),
+        (Err(error), Err(close)) => Err(io::Error::new(
+            error.kind(),
+            format!("{error}; PocketIC instance deletion also failed: {close}"),
+        )),
+    }
+}
+
 fn span(nanos: u64) -> String {
     let mut seconds = nanos.div_ceil(1_000_000_000);
     let mut parts = vec![];
@@ -172,30 +184,40 @@ struct Demo {
 }
 
 impl Demo {
-    fn new(wasm: &Path, config: PocketIcStartupConfig) -> io::Result<Self> {
+    async fn new(wasm: &Path, config: PocketIcStartupConfig) -> io::Result<Self> {
+        let manager = ExternalPrincipal::self_authenticating(b"jobs-queue-demo-manager");
+        let spec = harness::install_spec(
+            std::fs::read(wasm)?,
+            &Init {
+                manager: manager.into(),
+                delivery_sender: None,
+            },
+            "jobs-queue-demo",
+        )
+        .map_err(failure)?;
         let pic = config
             .build_instance(PocketIcBuilder::new().with_application_subnet())
+            .await
             .map_err(failure)?;
-        let manager = ExternalPrincipal::self_authenticating(b"jobs-queue-demo-manager");
-        let canister = pic
-            .instance()
-            .try_create_and_install(
-                harness::install_spec(
-                    std::fs::read(wasm)?,
-                    &Init {
-                        manager: manager.into(),
-                        delivery_sender: None,
-                    },
-                    "jobs-queue-demo",
-                )
-                .map_err(failure)?,
-            )
-            .map_err(failure)?;
-        let origin_ns = pic
-            .instance()
-            .get_time()
-            .map_err(failure)?
-            .as_nanos_since_unix_epoch();
+        let installed = async {
+            let canister = pic
+                .instance()
+                .try_create_and_install(spec)
+                .await
+                .map_err(failure)?;
+            let origin_ns = pic
+                .instance()
+                .get_time()
+                .await
+                .map_err(failure)?
+                .as_nanos_since_unix_epoch();
+            Ok((canister, origin_ns))
+        }
+        .await;
+        let (canister, origin_ns) = match installed {
+            Ok(installed) => installed,
+            Err(error) => return finish(Err(error), pic.close().await.map_err(failure)),
+        };
         println!(
             "Connected to local canister {canister} (PocketIC).\n\
             Each job increments the canister counter. This session starts fresh.\n\
@@ -210,25 +232,36 @@ impl Demo {
         })
     }
 
-    fn now(&self) -> io::Result<u64> {
+    async fn now(&self) -> io::Result<u64> {
         Ok(self
             .pic
             .instance()
             .get_time()
+            .await
             .map_err(failure)?
             .as_nanos_since_unix_epoch())
     }
 
-    fn query<T: DeserializeOwned>(&self, method: Method, args: &impl Serialize) -> io::Result<T> {
+    async fn query<T: DeserializeOwned>(
+        &self,
+        method: Method,
+        args: &impl Serialize,
+    ) -> io::Result<T> {
         self.client()
             .query::<Result<T, ApiError>>(method, args)
+            .await
             .map_err(failure)?
             .map_err(failure)
     }
 
-    fn update<T: DeserializeOwned>(&self, method: Method, args: &impl Serialize) -> io::Result<T> {
+    async fn update<T: DeserializeOwned>(
+        &self,
+        method: Method,
+        args: &impl Serialize,
+    ) -> io::Result<T> {
         self.client()
             .update::<Result<T, ApiError>>(method, args)
+            .await
             .map_err(failure)?
             .map_err(failure)
     }
@@ -241,12 +274,12 @@ impl Demo {
         }
     }
 
-    fn views(&self) -> io::Result<Vec<View>> {
+    async fn views(&self) -> io::Result<Vec<View>> {
         const PAGE_LIMIT: u8 = 8;
         let mut views = vec![];
         let mut after = None;
         loop {
-            let page: Vec<View> = self.query(Method::List, &(after, PAGE_LIMIT))?;
+            let page: Vec<View> = self.query(Method::List, &(after, PAGE_LIMIT)).await?;
             let complete = page.len() < usize::from(PAGE_LIMIT);
             after = page.last().map(|view| view.id);
             views.extend(page);
@@ -256,7 +289,7 @@ impl Demo {
         }
     }
 
-    fn add(
+    async fn add(
         &mut self,
         name: &str,
         after: Duration,
@@ -264,7 +297,8 @@ impl Demo {
         catch_up: bool,
     ) -> io::Result<()> {
         let first_ns = self
-            .now()?
+            .now()
+            .await?
             .checked_add(u64::try_from(after.as_nanos()).map_err(failure)?)
             .ok_or_else(|| io::Error::other("deadline exceeds the canister timestamp range"))?;
         let (timing, schedule) = if let Some(interval) = every {
@@ -284,13 +318,15 @@ impl Demo {
         } else {
             (Timing::Once(first_ns), "once".into())
         };
-        let id: u64 = self.update(
-            Method::Create,
-            &(Create {
-                timing,
-                task: Task::Increment(1),
-            },),
-        )?;
+        let id: u64 = self
+            .update(
+                Method::Create,
+                &(Create {
+                    timing,
+                    task: Task::Increment(1),
+                },),
+            )
+            .await?;
         self.labels.insert(id, (name.into(), schedule));
         println!(
             "QUEUED #{id} {name}: first run in {}",
@@ -299,13 +335,13 @@ impl Demo {
         Ok(())
     }
 
-    fn show(&self) -> io::Result<()> {
-        self.show_views(&mut self.views()?)
+    async fn show(&self) -> io::Result<()> {
+        self.show_views(&mut self.views().await?).await
     }
 
-    fn show_views(&self, views: &mut [View]) -> io::Result<()> {
-        let summary: Summary = self.query(Method::Summary, &())?;
-        let now = self.now()?;
+    async fn show_views(&self, views: &mut [View]) -> io::Result<()> {
+        let summary: Summary = self.query(Method::Summary, &()).await?;
+        let now = self.now().await?;
         println!(
             "\nIC clock +{} | counter={} | watchdog={}",
             span(now.saturating_sub(self.origin_ns) / 1_000_000_000 * 1_000_000_000),
@@ -355,20 +391,23 @@ impl Demo {
         Ok(())
     }
 
-    fn advance(&self, advance: Duration, before: Option<Vec<View>>) -> io::Result<Vec<View>> {
-        self.now()?
+    async fn advance(&self, advance: Duration, before: Option<Vec<View>>) -> io::Result<Vec<View>> {
+        self.now()
+            .await?
             .checked_add(u64::try_from(advance.as_nanos()).map_err(failure)?)
             .ok_or_else(|| io::Error::other("clock exceeds the canister timestamp range"))?;
         // Watch carries only the previous step's result; other commands start
         // with a fresh read. Clock admission still precedes any RPC.
         let before = match before {
             Some(views) => views,
-            None => self.views()?,
+            None => self.views().await?,
         };
         // Drive real timer callbacks; never invoke dispatch_due from the host.
         // Fixed rounds keep a large CatchUp backlog from blocking the terminal.
-        advance_and_tick(self.pic.instance(), advance, 32).map_err(failure)?;
-        let mut after = self.views()?;
+        advance_and_tick(self.pic.instance(), advance, 32)
+            .await
+            .map_err(failure)?;
+        let mut after = self.views().await?;
         for view in &after {
             let previous = before
                 .iter()
@@ -384,28 +423,31 @@ impl Demo {
                 );
             }
         }
-        self.show_views(&mut after)?;
+        self.show_views(&mut after).await?;
         Ok(after)
     }
 
-    fn manage(&self, method: Method, id: u64) -> io::Result<()> {
-        self.update::<()>(method, &(id,))?;
-        self.show()
+    async fn manage(&self, method: Method, id: u64) -> io::Result<()> {
+        self.update::<()>(method, &(id,)).await?;
+        self.show().await
     }
 
-    fn execute(&mut self, command: &QueueCommand) -> io::Result<bool> {
+    async fn execute(&mut self, command: &QueueCommand) -> io::Result<bool> {
         match command {
             QueueCommand::Quit => return Ok(false),
             QueueCommand::Sample => {
-                self.add("seconds", Duration::from_secs(5), None, false)?;
-                self.add("minutes", Duration::from_secs(60), None, false)?;
+                self.add("seconds", Duration::from_secs(5), None, false)
+                    .await?;
+                self.add("minutes", Duration::from_secs(60), None, false)
+                    .await?;
                 self.add(
                     "weekly",
                     Duration::from_secs(604800),
                     Some(Duration::from_secs(604800)),
                     false,
-                )?;
-                self.show()?;
+                )
+                .await?;
+                self.show().await?;
             }
             QueueCommand::Add {
                 name,
@@ -413,33 +455,35 @@ impl Demo {
                 every,
                 catch_up,
             } => {
-                self.add(name, *after, *every, *catch_up)?;
-                self.show()?;
+                self.add(name, *after, *every, *catch_up).await?;
+                self.show().await?;
             }
-            QueueCommand::List => self.show()?,
+            QueueCommand::List => self.show().await?,
             QueueCommand::Metrics => {
                 let metrics: ic_jobs_test_consumer::api::JobMetrics =
-                    self.query(Method::JobMetrics, &())?;
+                    self.query(Method::JobMetrics, &()).await?;
                 println!("{metrics:#?}");
             }
             QueueCommand::Logs { before } => {
-                let page: ic_jobs_test_consumer::api::JobLogPage = self.query(
-                    Method::JobLogs,
-                    &ic_jobs_test_consumer::api::JobLogRequest {
-                        before: *before,
-                        min_level: None,
-                        limit: 8,
-                    },
-                )?;
+                let page: ic_jobs_test_consumer::api::JobLogPage = self
+                    .query(
+                        Method::JobLogs,
+                        &ic_jobs_test_consumer::api::JobLogRequest {
+                            before: *before,
+                            min_level: None,
+                            limit: 8,
+                        },
+                    )
+                    .await?;
                 println!("{page:#?}");
             }
             QueueCommand::ResetMetrics => {
                 let metrics: ic_jobs_test_consumer::api::JobMetrics =
-                    self.update(Method::ResetJobMetrics, &())?;
+                    self.update(Method::ResetJobMetrics, &()).await?;
                 println!("{metrics:#?}");
             }
             QueueCommand::Advance { duration } => {
-                self.advance(*duration, None)?;
+                self.advance(*duration, None).await?;
             }
             QueueCommand::Watch { duration } => {
                 let mut remaining = *duration;
@@ -447,23 +491,24 @@ impl Demo {
                 println!("Watching; press Ctrl+C to stop.");
                 while !remaining.is_zero() && !INTERRUPTED.load(Ordering::Relaxed) {
                     let step = remaining.min(Duration::from_secs(1));
-                    std::thread::sleep(step);
+                    tokio::time::sleep(step).await;
                     if INTERRUPTED.load(Ordering::Relaxed) {
                         break;
                     }
-                    before = Some(self.advance(step, before)?);
+                    before = Some(self.advance(step, before).await?);
                     remaining -= step;
                 }
             }
-            QueueCommand::Pause { id } => self.manage(Method::Pause, *id)?,
-            QueueCommand::Resume { id } => self.manage(Method::Resume, *id)?,
-            QueueCommand::Cancel { id } => self.manage(Method::Cancel, *id)?,
+            QueueCommand::Pause { id } => self.manage(Method::Pause, *id).await?,
+            QueueCommand::Resume { id } => self.manage(Method::Resume, *id).await?,
+            QueueCommand::Cancel { id } => self.manage(Method::Cancel, *id).await?,
         }
         Ok(true)
     }
 }
 
-fn main() -> io::Result<()> {
+#[tokio::main]
+async fn main() -> io::Result<()> {
     let args = Options::parse();
     ctrlc::set_handler(|| INTERRUPTED.store(true, Ordering::Relaxed)).map_err(failure)?;
     let config = PocketIcStartupConfig::Spawn {
@@ -473,7 +518,12 @@ fn main() -> io::Result<()> {
         server_idle_ttl: Some(Duration::from_secs(3600)),
         server_output_files: None,
     };
-    let mut demo = Demo::new(&args.wasm, config)?;
+    let mut demo = Demo::new(&args.wasm, config).await?;
+    let result = run(&mut demo).await;
+    finish(result, demo.pic.close().await.map_err(failure))
+}
+
+async fn run(demo: &mut Demo) -> io::Result<()> {
     Prompt::command().print_help()?;
     println!();
     let stdin = io::stdin();
@@ -520,7 +570,7 @@ fn main() -> io::Result<()> {
             }
             Err(error) => return Err(failure(error)),
         };
-        match demo.execute(&command.command) {
+        match demo.execute(&command.command).await {
             Ok(false) => break,
             Ok(true) => {}
             Err(error) if interactive => eprintln!("{error}"),

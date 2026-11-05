@@ -29,7 +29,7 @@ RELEASE_METADATA_LOCKFILE ?= $(CURDIR)/Cargo.lock
 RELEASE_METADATA_TOOL = bash scripts/dev/install-rust-tools.sh --package ic-build --lockfile "$(RELEASE_METADATA_LOCKFILE)" --bin ic-build-release-metadata --profile debug --features cli
 VALIDATION_INPUTS := --input Cargo.toml --input Cargo.lock --input rust-toolchain.toml \
 	--input .shared-tooling.snapshot --input Makefile --input scripts/dev/testkit-tool.sh --input scripts/dev/queue-command.sh --input scripts/dev/minimum-rust.sh --input ci/tool-versions.env \
-	--input ci/ic-tools.tsv --input ci/release-delivery.txt --input ci/cargo-dependency-boundaries.json --input ci/cargo-release-groups.json \
+	--input ci/ic-tools.tsv --input ci/release-delivery.txt --input ci/cargo-dependency-boundaries.json --input ci/candid-boundary.json --input ci/cargo-release-groups.json \
 	--input .github/workflows/ci.yml --input .github/workflows/recovery.yml --input ci/docs-only-paths.txt --input scripts/ci/classify-ci-change.pl \
 	--input ci/release-validation.json --input scripts/release/validation.pl --input scripts/release/verify.sh --input scripts/release/ci.sh \
 	$(foreach manifest,$(wildcard crates/*/Cargo.toml apps/*/Cargo.toml),--input $(manifest))
@@ -53,7 +53,7 @@ help:
 	@echo "Consumer: check-consumer (native, Wasm, harness compilation); build-consumer (Wasm artifact)"
 	@echo "Explicit IC qualification: install-testkit-tools; install-consumer-server; test-canister[-optimized]"
 	@echo "Local canister queue: demo (interactive); test-demo (live scenario); test-demo-cli (process shutdown)"
-	@echo "Metadata: shared-tooling-check, check-doc-links, check-pins, check-dependency-boundaries, check-dependency-graphs, check-release-commands"
+	@echo "Metadata: shared-tooling-check, check-doc-links, check-pins, check-candid-boundary, check-dependency-boundaries, check-dependency-graphs, check-release-commands"
 	@echo "Read-only readiness: release-status (STATUS_OFFLINE=1, STATUS_JSON=1; optional RELEASE_GROUP)"
 	@echo "Tooling fixtures: version, test-release-tooling, test-formatting-evidence, test-consumer-tooling"
 	@echo "Release fixture groups: test-release-tooling-{retention,delivery,recovery,metadata,publication}"
@@ -169,7 +169,7 @@ check-doc-links:
 check-pins:
 	+bash scripts/ci/check-dependency-pins.sh --cargo-inheritance
 
-.PHONY: check-dependency-boundaries check-release-groups package-all
+.PHONY: check-candid-boundary check-dependency-boundaries check-release-groups package-all
 check-release-groups:
 	+@set -e; metadata="$$(mktemp)"; trap 'rm -f "$$metadata"' EXIT; \
 		yq -p toml -o json '.' Cargo.toml > "$$metadata"; \
@@ -177,7 +177,11 @@ check-release-groups:
 	+bash scripts/ci/cargo-release-group.sh plan jobs > /dev/null
 	+bash scripts/ci/cargo-release-group.sh plan timers > /dev/null
 
-check-dependency-boundaries:
+check-candid-boundary:
+	+perl scripts/ci/check-candid-boundary.pl "$(CURDIR)" ci/candid-boundary.json crates apps
+
+# One common source inventory per plan, before direct-dependency admission.
+check-dependency-boundaries: check-candid-boundary
 	+bash scripts/ci/check-cargo-dependency-boundaries.sh --consumer "$(CURDIR)" --external-ic
 
 # Jobs owns these concrete exclusions; Shared owns observation and matching.
@@ -219,7 +223,7 @@ check-dependency-graphs:
 	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)" --package ic-jobs-canister-tests \
 		--target "$$(rustc -vV | sed -n 's/^host: //p')" \
 		--forbid candid --forbid candid_derive --forbid candid_parser \
-		--forbid pocket-ic --forbid ic-platform-pocket-ic --forbid ic-testkit --forbid ic-jobs-test-consumer --forbid ic-wire --forbid ctrlc --forbid-feature ic-platform/candid \
+		--forbid pocket-ic --forbid ic-platform-pocket-ic --forbid ic-testkit --forbid ic-jobs-test-consumer --forbid ic-wire --forbid ctrlc --forbid tokio --forbid-feature ic-platform/candid \
 		--forbid-feature ic-platform/pocket-ic
 	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)" --package ic-jobs-canister-tests \
 		--target "$$(rustc -vV | sed -n 's/^host: //p')" --features harness --edges normal \

@@ -2,17 +2,18 @@
 
 use super::*;
 
-#[test]
-fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
-    let (owned, canister_id) = installed_probe();
+#[tokio::test]
+async fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
     let caller = ExternalPrincipal::anonymous();
     let now = pic
         .get_time()
+        .await
         .expect("read IC time")
         .as_nanos_since_unix_epoch();
     let foreign = now + 100_000_000_000;
-    let set_foreign = |timestamp| {
+    let set_foreign = async |timestamp| {
         update_wire::<u64, _>(
             pic,
             canister_id,
@@ -20,11 +21,13 @@ fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
             Method::FixtureGlobalTimerSet,
             (timestamp,),
         )
+        .await
         .unwrap()
     };
-    let assert_conflict = |method: Method, args: Vec<u8>| {
+    let assert_conflict = async |method: Method, args: Vec<u8>| {
         let rejected = canister_rejection(
             pic.update_call(canister_id, caller, method.name(), args)
+                .await
                 .unwrap_err(),
         );
         assert!(
@@ -39,32 +42,35 @@ fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
 
     // First acquisition refuses an already occupied global timer. Trapping
     // rolls back registration, queue publication and the system timer write.
-    assert_eq!(set_foreign(foreign), 0);
+    assert_eq!(set_foreign(foreign).await, 0);
     assert_conflict(
         Method::Start,
         encode_request(Method::Start as u64, &(), REQUEST_LIMITS).unwrap(),
-    );
-    assert!(!snapshot(pic, canister_id).registered);
-    assert_eq!(set_foreign(0), foreign);
-    assert!(update_bool(pic, canister_id, Method::Start));
-    let armed = snapshot(pic, canister_id);
+    )
+    .await;
+    assert!(!snapshot(pic, canister_id).await.registered);
+    assert_eq!(set_foreign(0).await, foreign);
+    assert!(update_bool(pic, canister_id, Method::Start).await);
+    let armed = snapshot(pic, canister_id).await;
     let deadline = armed.next_deadline_ns.unwrap();
 
-    assert_eq!(set_foreign(foreign), deadline);
+    assert_eq!(set_foreign(foreign).await, deadline);
     assert_conflict(
         Method::ScheduleAt,
         encode_request(Method::ScheduleAt as u64, &(deadline + 1,), REQUEST_LIMITS).unwrap(),
-    );
-    assert_eq!(snapshot(pic, canister_id), armed);
-    assert_eq!(set_foreign(deadline), foreign);
+    )
+    .await;
+    assert_eq!(snapshot(pic, canister_id).await, armed);
+    assert_eq!(set_foreign(deadline).await, foreign);
 
-    assert_eq!(set_foreign(0), deadline);
+    assert_eq!(set_foreign(0).await, deadline);
     assert_conflict(
         Method::Stop,
         encode_request(Method::Stop as u64, &(), REQUEST_LIMITS).unwrap(),
-    );
-    assert_eq!(snapshot(pic, canister_id), armed);
-    assert_eq!(set_foreign(deadline), 0);
+    )
+    .await;
+    assert_eq!(snapshot(pic, canister_id).await, armed);
+    assert_eq!(set_foreign(deadline).await, 0);
 
     // Restore the legitimate state solely within this adversarial fixture.
     // Normal rearm, actual firing (prior timestamp zero) and cancellation work.
@@ -75,31 +81,42 @@ fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
         Method::ScheduleAt,
         (deadline + 1,),
     )
+    .await
     .unwrap();
     pic.advance_time(Duration::from_nanos(1_000_000_001))
+        .await
         .expect("advance IC time");
     let completed = wait_for_probe(
         pic,
         32,
-        |pic| snapshot(pic, canister_id),
+        async |pic| snapshot(pic, canister_id).await,
         |s| s.completed_work == 1,
-    );
+    )
+    .await;
     assert_eq!(completed.scheduler_started.total, 1);
-    update_unit(pic, canister_id, Method::Stop);
-    assert_eq!(snapshot(pic, canister_id).next_deadline_ns, None);
-    advance_and_tick(pic, Duration::from_secs(2), 16).expect("advance and tick PocketIC");
-    assert_eq!(snapshot(pic, canister_id).completed_work, 1);
+    update_unit(pic, canister_id, Method::Stop).await;
+    assert_eq!(snapshot(pic, canister_id).await.next_deadline_ns, None);
+    advance_and_tick(pic, Duration::from_secs(2), 16)
+        .await
+        .expect("advance and tick PocketIC");
+    assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
 
-#[test]
-fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate() {
-    let (owned, canister_id) = installed_probe();
+#[tokio::test]
+async fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate() {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    let relay_id = install_probe(pic, probe_wasm());
-    assert!(update_bool(pic, canister_id, Method::Start));
-    let before = snapshot(pic, canister_id);
+    let relay_id = install_probe(pic, probe_wasm()).await;
+    assert!(update_bool(pic, canister_id, Method::Start).await);
+    let before = snapshot(pic, canister_id).await;
     let balance = pic
         .cycle_balance(canister_id)
+        .await
         .expect("read canister cycles");
     // The first pending dispatch ID is valid: admission must not rely on a
     // malformed payload or a nonexistent task to prevent early execution.
@@ -111,6 +128,7 @@ fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate() 
             TIMER_EXECUTOR_METHOD,
             payload.clone(),
         )
+        .await
         .unwrap_err(),
     );
     assert_eq!(denied.error_code, ErrorCode::CanisterCalledTrap);
@@ -119,9 +137,10 @@ fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate() 
             .reject_message
             .contains("probe ingress: timer dispatch is internal")
     );
-    assert_eq!(snapshot(pic, canister_id), before);
+    assert_eq!(snapshot(pic, canister_id).await, before);
     assert_eq!(
         pic.cycle_balance(canister_id)
+            .await
             .expect("read canister cycles"),
         balance
     );
@@ -134,6 +153,7 @@ fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate() 
             Method::Start.name(),
             vec![0; ic_timers_test_protocol::rpc::REQUEST_LIMITS.bytes + 1],
         )
+        .await
         .unwrap_err(),
     );
     assert_eq!(denied.error_code, ErrorCode::CanisterCalledTrap);
@@ -142,10 +162,11 @@ fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate() 
             .reject_message
             .contains("probe ingress: host payload limit")
     );
-    assert_eq!(snapshot(pic, canister_id), before);
+    assert_eq!(snapshot(pic, canister_id).await, before);
 
     let balance = pic
         .cycle_balance(canister_id)
+        .await
         .expect("read canister cycles");
     let rejected: String = update_wire(
         pic,
@@ -154,12 +175,14 @@ fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate() 
         Method::FixtureForeignDispatch,
         (canister_id.as_slice().to_vec(), payload),
     )
+    .await
     .unwrap();
     assert!(rejected.contains("self-call required"), "{rejected}");
-    assert_eq!(snapshot(pic, canister_id), before);
+    assert_eq!(snapshot(pic, canister_id).await, before);
     let foreign_cost = balance
         - pic
             .cycle_balance(canister_id)
+            .await
             .expect("read canister cycles");
     assert!(
         foreign_cost > 0,
@@ -168,22 +191,29 @@ fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate() 
     println!("foreign_dispatch_authentication_cycles={foreign_cost}");
 
     pic.advance_time(Duration::from_secs(1))
+        .await
         .expect("advance IC time");
     let completed = wait_for_probe(
         pic,
         32,
-        |pic| snapshot(pic, canister_id),
+        async |pic| snapshot(pic, canister_id).await,
         |s| s.completed_work == 1,
-    );
+    )
+    .await;
     assert_eq!(completed.scheduler_started.total, 1);
     assert_eq!(completed.work_started.total, 1);
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
 
-#[test]
-fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
+#[tokio::test]
+async fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
     use ic_timers_test_protocol::rpc::{REQUEST_LIMITS, RESPONSE_LIMITS};
     use ic_wire::native::{decode_response, encode_request, encode_response};
-    let (owned, canister_id) = installed_probe();
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
     let id = Method::StartOrdinary as u64;
     let valid = encode_request(
@@ -217,10 +247,11 @@ fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
                 Method::StartOrdinary.name(),
                 arguments,
             )
+            .await
             .expect_err("invalid Wire arguments must reject before registration"),
         );
-        assert!(!ordinary_observation(pic, canister_id).declared);
-        assert_eq!(snapshot(pic, canister_id).scheduler_started.total, 0);
+        assert!(!ordinary_observation(pic, canister_id).await.declared);
+        assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
     }
     // Wire 0.7 rejects nonminimal varints during decoding, before the endpoint
     // can reach its missing-registration trap or reconcile a timer deadline.
@@ -235,6 +266,7 @@ fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
             Method::ScheduleAt.name(),
             nonminimal,
         )
+        .await
         .unwrap_err(),
     );
     assert_eq!(rejection.error_code, ErrorCode::CanisterCalledTrap);
@@ -242,7 +274,7 @@ fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
         rejection.reject_message.contains("wire Malformed"),
         "{rejection:?}"
     );
-    assert_eq!(snapshot(pic, canister_id).scheduler_started.total, 0);
+    assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
     // Exercise our protocol-to-Testkit adapter at its three failure boundaries.
     // Raw malformed frames above remain direct calls so no client normalizes them.
     let caller = ExternalPrincipal::anonymous();
@@ -253,6 +285,7 @@ fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
         Method::StartOrdinary,
         vec![0_u8; REQUEST_LIMITS.bytes + 1],
     )
+    .await
     .unwrap_err();
     assert!(matches!(
         error,
@@ -265,6 +298,7 @@ fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
         Method::StartOrdinary,
         (2_u8, false),
     )
+    .await
     .unwrap_err();
     let ic_testkit::pic::WireCallError::Call { context, source } = error else {
         panic!("expected probe rejection, got {error}");
@@ -279,13 +313,14 @@ fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
         ic_testkit::pocket_ic::ClientError::Canister(_)
     ));
     let error = query_wire::<bool, _>(pic, canister_id, caller, Method::OrdinaryObservation, ())
+        .await
         .unwrap_err();
     let ic_testkit::pic::WireCallError::Decode { context, .. } = error else {
         panic!("expected response shape rejection, got {error}");
     };
     assert_eq!(context.operation, "query_call");
     assert_eq!(context.method_id, Method::OrdinaryObservation as u64);
-    assert!(!ordinary_observation(pic, canister_id).declared);
+    assert!(!ordinary_observation(pic, canister_id).await.declared);
     let reply = pic
         .update_call(
             canister_id,
@@ -293,6 +328,7 @@ fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
             Method::StartOrdinary.name(),
             valid,
         )
+        .await
         .expect("valid arguments still work after rejected input");
     decode_response::<()>(id, &reply, RESPONSE_LIMITS).expect("method-bound unit reply");
     // Responses need Deserialize only, including through our native adapter.
@@ -301,16 +337,22 @@ fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
     struct ResponseOnly(OrdinaryObservation);
     let observed =
         query_wire::<ResponseOnly, _>(pic, canister_id, caller, Method::OrdinaryObservation, ())
+            .await
             .unwrap();
     assert!(observed.0.declared);
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
 
-#[test]
-fn backend_rejects_malformed_self_calls_and_ignores_unknown_deliveries() {
-    let (owned, canister_id) = installed_probe();
+#[tokio::test]
+async fn backend_rejects_malformed_self_calls_and_ignores_unknown_deliveries() {
+    let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    assert!(update_bool(pic, canister_id, Method::Start));
-    let before = snapshot(pic, canister_id);
+    assert!(update_bool(pic, canister_id, Method::Start).await);
+    let before = snapshot(pic, canister_id).await;
     for payload in [vec![], vec![0_u8; 7], vec![0_u8; 9]] {
         let accepted: bool = update_wire(
             pic,
@@ -319,6 +361,7 @@ fn backend_rejects_malformed_self_calls_and_ignores_unknown_deliveries() {
             Method::FixtureDispatchPayload,
             (payload,),
         )
+        .await
         .unwrap();
         assert!(!accepted);
     }
@@ -330,8 +373,14 @@ fn backend_rejects_malformed_self_calls_and_ignores_unknown_deliveries() {
             Method::FixtureDispatchPayload,
             (0_u64.to_le_bytes().to_vec(),),
         )
+        .await
         .unwrap();
         assert!(accepted);
     }
-    assert_eq!(snapshot(pic, canister_id), before);
+    assert_eq!(snapshot(pic, canister_id).await, before);
+
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
 }
