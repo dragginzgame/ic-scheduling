@@ -1,5 +1,51 @@
 # Current handoff
 
+## Dependencies and Shared Tooling adopted locally — 2026-11-06
+
+The pending graph selects Wire 0.17.4, Endpoint/macros 0.7.2, Runtime/macros/exact
+guard 0.19.3, Types 0.18.2 and Testkit 0.89.0. Platform 0.23.2 remains its latest
+published version; unpublished 0.23.3 is excluded. Registry checksums match the
+lock. Testkit's compatible requirement is updated at the root; other compatible
+minima are retained. Incoming `flate2` 1.1.11 is preserved in this graph.
+
+Testkit no longer sets up file logging or a global subscriber. These harnesses
+do not rely on that behavior; no subscriber or replacement sink was added.
+Runtime's task-removal optimization preserves cancellation order. Public library
+contracts, timer ABI, Wire bytes and storage layouts remain unchanged.
+
+Focused Linux/Rust 1.99.1 checks passed: affected native and Wasm Clippy,
+seven Wire contract/storage tests, dependency/provider admission, five exact
+installed timer subjects (cancellation, continuation trap, watchdog successor,
+trap/upgrade and malformed ingress), and two combined Jobs recovery subjects
+(management upgrade/delivery and watchdog batch trap rollback). PocketIC 16.1.0
+uses the prepared Testkit 0.89 CLI. The lock stayed unchanged during these checks.
+Inputs, registry metadata, captured Jobs Wasm and logs are at
+`target/evidence/adoption-wire-platform-testkit/`; the focused timer receipt is
+`target/tmp/timer-qualification-2565731-0/runtime.json`. These checks do not
+replace full CI, release gates, macOS or cross-version installed qualification.
+
+Shared Tooling 0.30.7 is reviewed at committed revision
+`22a853e26c05ec323f06c57fa316c08b808f252b`: 152 managed payloads. Dirty supplier
+work is excluded. Common admission enables the shared CBOR source and Cargo
+checks with empty Candid/CBOR source allowances. Platform owns external protocols;
+owned DTOs remain Wire-only. The actual Make caller fixture proves source refusal
+before Cargo and aliased optional target declarations despite local permission.
+The selected CBOR fixture and ShellCheck passed in the 0.30.6 batch; evidence is
+`target/evidence/shared0306/`. Current export evidence is `target/evidence/shared0307/`.
+Frozen releases and stage reuse remain disabled; see the local
+[adoption status](../release-validation-groups.md#shared-tooling-0307-adoption-status).
+The 0.30.7 integrity check, actual Make release routing fixture and edited-document
+links passed. The 37-stage release roster and pending Cargo manifest/lock are
+byte-identical to their pre-refresh copies. No product rerun was needed.
+
+All eight members use this root manifest and lock. No browser roots, independent
+Cargo roots or maintained generated Rust entrypoints were found. Lexical checks
+still require review of macro expansion, generated strings and arbitrary aliases.
+Historical CBOR images remain refusal fixtures; no retained bytes were migrated.
+CI/release rosters are unchanged. Pending notes are Jobs 0.34.8 and Timers 0.40.9;
+package versions remain delivered 0.34.7 / 0.40.8. No commit, push, release or
+publication was performed for these pending batches.
+
 ## Jobs 0.34.7 and Timers 0.40.8 delivered — 2026-11-06
 
 Both groups are committed, tagged, pushed to `origin/main` and published to
@@ -22,7 +68,7 @@ were verified after publication. Journals are complete; do not replay uploads.
 The graph selects Build 0.75.0, Storage 0.68.0, Testkit 0.88.0, Host 0.74.4,
 Platform 0.23.2, Wire 0.17.3, Endpoint/macros 0.7.1, Runtime/macros/exact guard
 0.19.2, Types 0.18.1, Logging 0.24.8 and Metrics 0.29.3. Incoming `cc` 1.11.1
-was retained and qualified in the release graph. Shared Tooling remains reviewed
+was retained and qualified in the release graph. Delivered Shared Tooling was reviewed
 0.30.4 at `2aa41c7394300302fe802b69b31b855bdc89b671`; 149 payloads verify.
 
 Build/Testkit keep the APIs used here. Public Jobs/Timers contracts and timer ABI

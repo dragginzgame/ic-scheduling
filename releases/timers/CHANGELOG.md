@@ -7,6 +7,21 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.9]
+
+### 📦 Dependencies
+
+- Adopt Runtime/macros/exact guard 0.19.3, Wire 0.17.4, Endpoint 0.7.2,
+  Types 0.18.2 and Testkit 0.89 for qualification. Platform remains at its latest
+  published 0.23.2. Harnesses do not rely on the removed automatic client logging;
+  public Timers APIs, timer ABI and Wire bytes are unchanged.
+
+### 🛠️ Tooling
+
+- Adopt reviewed Shared Tooling 0.30.7. Enforce Platform ownership of CBOR codecs
+  in common Rust source and Cargo dependency admission, with no local exceptions.
+  Owned application DTOs remain Wire-only; public library contracts are unchanged.
+
 ## [0.40.8] - 2026-11-06
 
 ### 📦 Dependencies

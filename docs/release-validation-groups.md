@@ -105,6 +105,24 @@ receipts remain with their original source/adapter; they are never converted int
 version-2 proofs or used to authorize the changed plan. No upload or new release
 is performed by this adoption.
 
+## Shared Tooling 0.30.7 adoption status
+
+Normal releases still execute in this checkout. The shared
+[frozen-batch runner](frozen-releases.md) is available in the snapshot but disabled:
+Scheduling has not qualified its actual metadata, tool preparation, archive,
+publication and recovery hooks in a managed delivery checkout. Neither frozen
+group nor publication selection is configured. Snapshot adoption alone does not
+establish that qualification.
+
+Jobs' mapping includes isolated model, consumer and harness implementation paths;
+Timers remains full-gate-only. Archive recipes select their actual package with
+`-p`; shared or uncertain inputs retain both archives and complete obligations.
+Stage reuse remains disabled, so stages execute without claiming cache savings.
+The core `check` and first Jobs Clippy command repeat the same compile selection;
+removing that stage needs separate roster/receipt qualification. Preserve the
+distinct Wasm, default-feature, installed and archive proofs when doing so, and
+measure matching attempt timings before claiming savings.
+
 ## Focused qualification
 
 `make test-release-validation` uses the real selector, shared parser/runner/verifier,

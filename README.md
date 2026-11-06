@@ -120,9 +120,10 @@ Owned native DTO principals exclude external Principal and SHA-2 dependencies.
 The Wasm application selects neither principal conversion nor SHA-2 hashing.
 Storage supplies native IO metering under its test-support feature.
 Native tests select `principal-self-authenticating` explicitly;
-the native harness selects `principal-external` and Testkit 0.88's async-only
+the native harness selects `principal-external` and Testkit 0.89's async-only
 `ic_testkit::pocket_ic` client. Callers own their Tokio runtime and await explicit
-instance closure. Managed `PocketIcStartupConfig::build_instance` supplies its
+instance closure. Testkit does not install a global subscriber or file log sink;
+application logging remains caller-owned. Managed `PocketIcStartupConfig::build_instance` supplies its
 explicit server endpoint and retains server custody. The deployed
 graph has one Runtime 0.19 owner and exact matching executor guard.
 
@@ -156,20 +157,25 @@ The qualification Wasm intentionally includes its test integrations above; those
 cannot be prohibited there using the production library's exclusion list.
 
 `make check-candid-boundary` scans first-party Rust under `crates/` and `apps/`
-with the [shared lexical boundary check](docs/candid-boundary.md) and
-[empty declaration allowance policy](ci/candid-boundary.json). Owned application
-DTOs use Wire; external types stay with Platform. This runs once as a prerequisite
+with the [shared lexical boundary check](docs/candid-boundary.md), its CBOR mode
+and [empty Candid/CBOR allowance policy](ci/candid-boundary.json). Owned application
+DTOs use Wire; external types and CBOR codecs stay with Platform. This runs once as a prerequisite
 of the common dependency-boundary stage, including CI and selected release plans.
 It does not replace review of generated code or cross-module aliases.
 
 `make check-dependency-boundaries` runs the reviewed shared checker and is part of
-CI/release validation. It composes the [shared IC inventory](ci/external-ic-dependencies.txt)
+CI/release validation. It composes the [shared IC inventory](ci/external-ic-dependencies.txt),
+[CBOR package inventory](ci/cbor-dependencies.json)
 with [local bans](ci/cargo-dependency-boundaries.json) on direct generator and
 retired decoder dependencies, including aliases,
 across member normal/build/dev/target declarations. It does not enforce feature
 selection, inspect unused root catalog
 entries or scan independent workspaces; this workspace has no maintained independent
 Cargo roots and its catalog and feature selections are reviewed separately.
+All eight members share the root manifest/lock; there are no browser roots or
+maintained generated Rust entrypoints. Macro expansion, generated strings and
+arbitrary cross-module aliases still need review. Historical CBOR backing images
+remain refusal fixtures; no application encoding or retained bytes change here.
 
 `make check-dependency-graphs` adds locked, offline normal/build graph admission
 in CI/release validation: all-feature native and Wasm core graphs exclude the

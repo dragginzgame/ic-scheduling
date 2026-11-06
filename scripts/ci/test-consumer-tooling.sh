@@ -679,7 +679,7 @@ phase_candid_boundary() (
     bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" scripts/ci/check-candid-boundary.pl
     mkdir -p "$fixture/crates/gate/src" "$fixture/apps/probe/src"
     # Parser inputs only: these sample declarations are never compiled/injected.
-    printf 'pub struct Owned;\n' > "$fixture/crates/gate/src/lib.rs"
+    printf 'pub struct Owned;\nuse ic_platform::certification::cbor;\n' > "$fixture/crates/gate/src/lib.rs"
     printf 'pub struct Probe;\n' > "$fixture/apps/probe/src/lib.rs"
     cat > "$fixture/scripts/ci/check-cargo-dependency-boundaries.sh" <<'BOUNDARY'
 #!/usr/bin/env bash
@@ -688,13 +688,32 @@ BOUNDARY
     make --no-print-directory -C "$fixture" check-dependency-boundaries > "$fixture/valid.log" 2>&1
     [[ "$(cat "$fixture/events")" == 'dependency admission' ]]
     for source in apps/probe/src/lib.rs crates/gate/src/lib.rs; do
-        : > "$fixture/events"
-        printf '#[derive(CandidType)] pub struct Owned;\n' > "$fixture/$source"
-        if make --no-print-directory -C "$fixture" check-dependency-boundaries > "$fixture/rejected.log" 2>&1; then exit 1; fi
-        [[ ! -s "$fixture/events" ]]
+        for input in '#[derive(CandidType)] pub struct Owned;' 'pub use serde_cbor as packet_codec;'; do
+            : > "$fixture/events"
+            printf '%s\n' "$input" > "$fixture/$source"
+            if make --no-print-directory -C "$fixture" check-dependency-boundaries > "$fixture/rejected.log" 2>&1; then exit 1; fi
+            [[ ! -s "$fixture/events" ]]
+        done
         printf 'pub struct Owned;\n' > "$fixture/$source"
     done
-    echo 'Actual common boundary target covers crates/apps and stops before Cargo admission on owned Candid (dependency admission substituted)'
+    # Exercise the actual Cargo checker through Make, including renamed,
+    # optional target-specific declarations and the independent common policy.
+    cp "$root/scripts/ci/check-cargo-dependency-boundaries.sh" "$fixture/scripts/ci/"
+    cat > "$fixture/Cargo.toml" <<'MANIFEST'
+[package]
+name = "boundary-probe"
+version = "0.0.0"
+edition = "2024"
+[workspace]
+[lib]
+path = "crates/gate/src/lib.rs"
+[target.'cfg(target_os = "none")'.dependencies]
+packet = { package = "serde_cbor", version = "0.11", optional = true }
+MANIFEST
+    printf '[{"dependency":"serde_cbor","allowed_packages":["boundary-probe"]}]\n' > "$fixture/ci/cargo-dependency-boundaries.json"
+    if make --no-print-directory -C "$fixture" check-dependency-boundaries > "$fixture/cargo-rejected.log" 2>&1; then exit 1; fi
+    grep -F 'boundary-probe -> serde_cbor' "$fixture/cargo-rejected.log" > /dev/null
+    echo 'Actual common boundary covers crates/apps Candid and CBOR source refusals before Cargo, then rejects a real aliased/optional/target CBOR declaration despite local permission'
 )
 
 phase_fixture_scratch() (

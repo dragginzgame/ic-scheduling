@@ -4,6 +4,21 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.8]
+
+### 📦 Dependencies
+
+- Adopt Testkit 0.89 for private qualification, with Wire 0.17.4, Endpoint 0.7.2,
+  Runtime/macros/exact guard 0.19.3 and Types 0.18.2. Platform remains at its latest
+  published 0.23.2. Harnesses do not rely on the removed automatic client logging;
+  public Jobs APIs, Wire bytes and retained storage layouts are unchanged.
+
+### 🛠️ Tooling
+
+- Adopt reviewed Shared Tooling 0.30.7. Enforce Platform ownership of CBOR codecs
+  in common Rust source and Cargo dependency admission, with no local exceptions.
+  Owned application DTOs remain Wire-only; public library contracts are unchanged.
+
 ## [0.34.7] - 2026-11-06
 
 ### 📦 Dependencies
