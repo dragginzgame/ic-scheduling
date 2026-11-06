@@ -1,8 +1,8 @@
 # Shared Tooling snapshot v1
-# version	0.31.0
+# version	0.31.1
 format	1
 source	https://github.com/dragginzgame/shared-tooling
-revision	74313941af2fce4399bec0e6909ca6229673c3f8
+revision	5efbda2ab81ad84e30f490f3137d8ef083c303d2
 # entrypoint	DRAGGINZGAME.md
 # entrypoint	rules/contributions.md
 # entrypoint	rules/changelogs.md
@@ -147,7 +147,7 @@ file	fc50ceb20ea9720f1ec01fe3ec264fc24090d1fbe0bf88df0cad449bfc5feca3	-	docs/loc
 file	235d355481adf5b15dd118bbd2e83174484af4e463d75714bf70fd7f7352a8fc	-	ci/ic-tools.tsv
 file	0e5b503627e26605327cafb81f2a15287394e10fa8adce24e086b1752745079a	-	ci/tool-versions.env
 file	162617ce20162932ec03c925eebc88d699c147d63d4602bdb957e3df38692d59	-	docs/supported-hosts.md
-file	163ee69a2de9d371432462e47bdf09d9d1655e590567a2ed386ef7ba56d896c0	x	scripts/ci/verify-file-checksum.sh
+file	578a5f7217e378280fe378328d39e4b7dcea653bd868159b57362461bd4e8555	x	scripts/ci/verify-file-checksum.sh
 file	23c23beef41fda5f0acc1a404e40b04e5c362399a415524f16dbc4899120a5dd	x	scripts/ci/verify-shared-tooling-snapshot.sh
 file	1063002468575e2f821cfec71524bde06a64634bf30455d64d2d9fed872969d6	-	docs/tag-maintenance.md
 file	b58c28709ad3d8a8fa950d7a27020fc87f5f10150b5dcb1e9351ca35790e2619	-	scripts/distribution/governance-files.txt

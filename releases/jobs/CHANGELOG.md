@@ -4,6 +4,13 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.10]
+
+### 🛠️ Tooling
+
+- Restore macOS repository host-tool setup with Shared Tooling 0.31.1's
+  Bash 3.2 checksum-parser fix. Library runtime behavior is unchanged.
+
 ## [0.34.9] - 2026-11-06
 
 ### 📦 Dependencies

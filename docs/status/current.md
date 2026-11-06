@@ -22,7 +22,7 @@ Do not replay uploads. No production canister deployment is implied.
 
 ## Delivered source and supplier graph
 
-Reviewed Shared revision `74313941af2fce4399bec0e6909ca6229673c3f8` exports 152
+Released Shared revision `74313941af2fce4399bec0e6909ca6229673c3f8` exports 152
 managed payloads. Local callers use the 0.31 release settings and renamed runner;
 retired settings refuse. Schema-2 intents record publication commits. Shared owns
 batch orchestration and lifecycle; consumer setup admits saved tools offline.
@@ -34,6 +34,18 @@ Testkit 0.89.3, Logging 0.24.10 and Metrics 0.29.5. Build 0.75.0 and Host 0.74.4
 remain selected. Root dependency minima and the single workspace lock retain
 authority. Public library APIs, timer ABI, owned Wire bytes and storage formats
 are unchanged. No supplier repository was edited or released.
+
+## Current checkout: macOS tooling repair
+
+Hosted CI found a Bash 3.2 parse error in Shared 0.31.0's checksum helper before
+host-tool setup on both macOS architectures. The [failed run](https://github.com/dragginzgame/ic-scheduling/actions/runs/42279479219)
+records that failure; its Linux job passed. Adopted committed Shared 0.31.1 at
+`5efbda2ab81ad84e30f490f3137d8ef083c303d2` through the exporter, preserving 152
+managed payloads. The fix extracts the NUL reader outside quoted substitution,
+retaining rejection and backend status. Consumer Linux caller checks pass;
+fresh hosted macOS qualification remains asynchronous. This Git-only tooling
+repair changes no published library archive. Package versions remain delivered;
+pending notes are Jobs 0.34.10 / Timers 0.40.11.
 
 ## Qualification and recovery
 

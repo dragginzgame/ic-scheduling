@@ -110,6 +110,11 @@ is performed by this adoption.
 
 ## Shared Tooling 0.31.0 adoption status
 
+The current snapshot is 0.31.1: its Bash 3.2 checksum-parser repair changes
+repository host-tool setup, with the release interface and stage roster unchanged.
+The published Jobs 0.34.9 / Timers 0.40.10 source used 0.31.0; its Linux proof
+remains source-bound. Current macOS qualification runs through hosted CI.
+
 Shared Tooling 0.31.0 owns the automatic single-group default; the local overlay
 does not duplicate it or permit an empty-roster fallback to live delivery.
 Release starts use the shared [batch runner](release-batches.md), selecting
