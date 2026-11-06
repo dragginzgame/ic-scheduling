@@ -67,10 +67,11 @@ The first Jobs attempt, `validation.oVRZEL5H` on `988c223`, was stopped before
 preparation after another process updated the root lock. Neither attempt was
 reused; original inputs/logs and interruption records remain in custody.
 
-The deferred Metrics 0.29.5 / Platform 0.23.4 refresh is restored as the sole
-pending `Cargo.lock` change, after both publications. It is not part of either
-release or its qualification. Only dependency hunks were reapplied, preserving
-Jobs 0.34.8 / Timers 0.40.9 workspace versions. Preserve stash
+The deferred Metrics 0.29.5 / Platform 0.23.4 refresh was restored as dependency
+hunks after both publications, preserving Jobs 0.34.8 / Timers 0.40.9 workspace
+versions. Further updater changes have since appeared in the working lockfile.
+These pending refreshes are outside both releases and their qualification; the
+tagged locks and verified registry artifacts define the delivered graph. Preserve stash
 `d7d1c504df0be4cba608f68eda56aa4196575df8`, custody's deferred lock snapshots and
 `deferred-final-Cargo.lock.patch`. Do not pop a whole older lock over release
 metadata. Other writers must stay coordinated during future normal releases.
