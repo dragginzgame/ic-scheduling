@@ -1,85 +1,90 @@
 # Current handoff
 
-## Deployment authorized — 2026-11-06
+## Jobs 0.34.7 and Timers 0.40.8 delivered — 2026-11-06
 
-Release and publish Timers 0.40.8 followed by Jobs 0.34.7 from this checkout's
-`main` to `origin/main`. Both require fresh complete 37-stage gates. Incoming
-`cc` 1.11.1 arrived after the focused proof below and is retained for fresh
-qualification. Other selected supplier versions are unchanged. No retained
-installation is reset; siblings remain read-only. Delivery is not yet complete.
+Both groups are committed, tagged, pushed to `origin/main` and published to
+crates.io. Adoption source: `7336b8603a42731b03fcebce5409a82c88dcb283`;
+corrected qualification source: `116026ce14f147ac363c69dc6f771be103db8474`.
 
-The first full gate stopped at an installed assertion coupled to Wire's former
-`wire Malformed` display text. Its inputs/logs/diagnostics are preserved under
-`.git/release-state/deployment-upstreams0408.lbj697GX/`. The corrected subject
-checks typed native malformation, IC trap and unchanged registered-timer state;
-focused Clippy and that installed subject pass. A fresh source/full gate is
-required; the failed gate is not qualification and no version/tag/push occurred.
+- Timers release: `320b179e43961efd989b161e810dd0a58ed3196a`;
+  annotated `timers-v0.40.8`: `c7ecf6b3322751d4387823ecc1a52c21cfbe2bd0`;
+  crate SHA-256: `c31fa2c5bc8ac5dca1b226f0845557dcc1529db6ebacb17e955ebf6922f99514`.
+- Jobs release: `b579300297d0121234857db32df8ac069a4853c0`;
+  annotated `jobs-v0.34.7`: `4098dba41d250bc492cdcc7852e45d67f3f9d69c`;
+  crate SHA-256: `689221dcc5b44df7d1619df64cc16d5c70f846a5a1e1e0c0945d9622714add3e`.
 
-## Build / Storage / Testkit adoption pending — 2026-11-06
+Official metadata and downloaded registry archives match the local publication
+archives and clean release VCS identities. Both remote tag objects and `main`
+were verified after publication. Journals are complete; do not replay uploads.
 
-The requested update selects published Build 0.75.0, Storage 0.68.0 and Testkit
-0.88.0. Cargo registry metadata, exact published sources and targeted resolution
-admit all three. Host stays 0.74.4; the incoming Platform 0.23.2 and Wire 0.17.3
-selections are preserved. Runtime/macros/exact guard remains 0.19.2 and Types
-0.18.1. Shared Tooling remains at reviewed 0.30.4; no unrelated refresh was made.
+## Delivered adoption and installation boundary
 
-Build/Testkit keep every API used here. The new editor renders both group plans
-without changing workspace metadata. Storage 0.68 replaces checksummed
-`ICCELL01` Cells with `SCL1` framing. Use fresh qualification backing: previous
-Cells are refused during recovery/creation with zero writes/growth and identical
-bytes. Frozen metadata retains blocked attempts and exact receipts for explicit
-owner disposition. No legacy reader, converter, reset or replay was added.
-The bounded queue identity/codec and `Job::restore` validation remain unchanged;
-valid-looking byte corruption is no longer covered by a collection checksum.
-Native engine mutation panics require discarding the failed runtime/leases;
-installed IC rollback remains a separate proof.
+The graph selects Build 0.75.0, Storage 0.68.0, Testkit 0.88.0, Host 0.74.4,
+Platform 0.23.2, Wire 0.17.3, Endpoint/macros 0.7.1, Runtime/macros/exact guard
+0.19.2, Types 0.18.1, Logging 0.24.8 and Metrics 0.29.3. Incoming `cc` 1.11.1
+was retained and qualified in the release graph. Shared Tooling remains reviewed
+0.30.4 at `2aa41c7394300302fe802b69b31b855bdc89b671`; 149 payloads verify.
 
-Focused Linux/Rust 1.99.1 evidence passes: native/Wasm strict Clippy, 93 native
-consumer/harness/coordinator cases, supplier/provider/Candid graphs, 11 installed
-Jobs recovery cases, one Timers trap/upgrade subject and policy cohorts. Both
-updated executable selections and PocketIC 16.1.0 are admitted. The real Build
-metadata editor renders the exact Jobs and Timers manifest/lock projections in
-scratch; this is not a release transaction or full gate. Evidence is under
-`target/evidence/adoption-20261106/`; runtime receipt:
-`target/tmp/timer-qualification-3005854-0/runtime.json`; Jobs recovery:
-`target/tmp/jobs-recovery.FRR5xM/`. No full CI or new native macOS execution is
-claimed. Notes are Jobs 0.34.7 / Timers 0.40.8; package versions are unchanged.
-No commit, push, release or publication was performed for this adoption.
+Build/Testkit keep the APIs used here. Public Jobs/Timers contracts and timer ABI
+are unchanged. Storage 0.68 replaces checksummed `ICCELL01` Cells with `SCL1`
+framing: use fresh qualification backing. Previous Cells are refused during
+recovery/creation with zero writes/growth and identical bytes. Preserve old Wasm,
+locks, images, blocked attempts and exact receipts until their owner resolves
+outstanding effects and separately authorizes destructive retirement. No legacy
+reader, converter, reset or replay was added. The queue identity/codec and
+`Job::restore` boundary remain unchanged; valid-looking corruption is no longer
+covered by a collection checksum. Native mutation panics require discarding the
+failed runtime/leases; native execution alone does not prove IC rollback.
 
-## Latest completed delivery — 2026-11-05
+## Qualification and corrected Wire check
 
-Jobs 0.34.6 and Timers 0.40.7 remain committed, tagged, pushed and published.
-The [delivered handoff](https://github.com/dragginzgame/ic-scheduling/blob/d4504c0fa657839c0a4125b61d7a96b6d145a502/docs/status/current.md)
-retains exact source/tag/checksum identities, graph selections and qualification.
-Both independent 37-stage gates passed, each including 35 installed Timers
-subjects and cohorts. Jobs additionally passed 11 installed recovery cases,
-the queue scenario and five terminal shutdown modes. Publication separately
-verified lint and official archive/VCS identity. Do not replay uploads or relabel
-that older graph as the pending adoption above.
+Both fresh complete 37-stage gates passed on Linux/Rust 1.99.1: 1124 stage-seconds
+for Timers and 1160 for Jobs. Each includes native/Wasm, strict lint/docs, supplier/
+provider/Candid checks, release/recovery fixtures, both archives, 35 installed
+Timers subjects and policy cohorts with PocketIC 16.1.0. No failed gate or prior
+stage proof was reused. Publication separately repeated lint and archive checks.
+Final Jobs source also passed 11 installed recovery cases, the queue scenario and
+five terminal shutdown modes. Hosted CI runs asynchronously; no fresh local
+macOS execution or cross-version installed migration/rollback is claimed.
 
-Preserve `.git/release-state/deployment-testkit0407.f2yycLCV/`, complete
-`timers-0.40.7.plan` / `jobs-0.34.6.plan` and their version-2 receipts. Custody
-holds original inputs, publication logs, official archives/metadata and installed
-receipts. Attempts `validation.JsfV9f9Y` / `validation.adU7Qux3` remain under
-`target/release-validation/`; delivery logs under `target/deployment-testkit0407/`.
-The initial uncached-dependency refusal is retained separately from passing proof.
+The first Timers gate stopped before version preparation at a test coupled to
+Wire's former `wire Malformed` display text. Its 34 passing installed subjects do
+not make that failed gate qualification. The repaired test checks native typed
+malformation, IC trap and unchanged registered-timer state, preventing an
+unrelated missing-registration trap from satisfying the assertion. Focused
+Clippy and the exact installed subject passed before fresh full qualification.
+
+## Current delivery custody
+
+Preserve `.git/release-state/deployment-upstreams0408.lbj697GX/`, complete
+`timers-0.40.8.plan` / `jobs-0.34.7.plan` and their version-2 receipts. Custody
+holds original inputs, failed-gate inputs/logs/installed diagnostics, correction
+proof, publication intent/logs, official archives/metadata and completion records.
+The failed attempt `validation.JmvYqRI5` and successful attempts
+`validation.JvobPuIj` / `validation.JN3ac3CS` remain under
+`target/release-validation/`; delivery logs are under
+`target/deployment-upstreams0408/`. Final Jobs recovery is retained at
+`target/tmp/jobs-recovery.wNtNlE/` and copied into custody. Earlier focused proof
+under `target/evidence/adoption-20261106/` retains its original graph, including
+the earlier `cc` selection; it is not relabelled as release qualification.
 
 ## Earlier deliveries and protected custody
 
-The linked delivered handoff retains older release identities, immutable handoff
-links, measurements, audits and qualification limits. Preserve `.git/release-state/`
-custody `deployment-cleanup0406.4fc5n5eC/`,
-`deployment-upstreams0405.xgEN56MD/`, `deployment-timers0404.OHlQFZ45/`,
-`deployment-timers0403.XBMtMHVE/`, `deployment-timers0402.G6arr0ab/`,
-`deployment-consumer-support.lHbrHngp/`, `deployment-timers0400.IkyEFM1l/`,
-`deployment-timers0391.k7IkTIwf/`, `deployment-current.0NCjlIWS/`,
-`deployment-timers0381.jnjcs5qg/`, `deployment-upstreams.UjAXfFHz/`,
-`deployment-msrv-87.uUHPASl6/` and `deployment-wire-tooling.w6Z6gClk/`, including
-journals, receipts and archives. The old Wire-drift failure remains a failure;
-retain stash `0f004eda7ab7e02c96edb801416838dff89a4c72` and custody's Wire-only
-patches without popping them or restoring old versions. Preserve version-1 /
-interrupted proofs with their original source. No implicit artifact cleanup is
-authorized; Shared admission retains byte/file/age budgets.
+Jobs 0.34.6 / Timers 0.40.7 remain published. Their
+[delivered handoff](https://github.com/dragginzgame/ic-scheduling/blob/d4504c0fa657839c0a4125b61d7a96b6d145a502/docs/status/current.md)
+retains exact identities, old qualification and earlier immutable handoff links.
+Preserve `.git/release-state/` custody `deployment-testkit0407.f2yycLCV/`,
+`deployment-cleanup0406.4fc5n5eC/`, `deployment-upstreams0405.xgEN56MD/`,
+`deployment-timers0404.OHlQFZ45/`, `deployment-timers0403.XBMtMHVE/`,
+`deployment-timers0402.G6arr0ab/`, `deployment-consumer-support.lHbrHngp/`,
+`deployment-timers0400.IkyEFM1l/`, `deployment-timers0391.k7IkTIwf/`,
+`deployment-current.0NCjlIWS/`, `deployment-timers0381.jnjcs5qg/`,
+`deployment-upstreams.UjAXfFHz/`, `deployment-msrv-87.uUHPASl6/` and
+`deployment-wire-tooling.w6Z6gClk/`, with journals, receipts and archives. Retain
+stash `0f004eda7ab7e02c96edb801416838dff89a4c72` and custody's Wire-only patches
+without popping them or restoring old versions. Preserve interrupted/version-1
+proofs with their original source. Shared admission retains byte/file/age budgets;
+no implicit artifact cleanup is authorized.
 
 ## Architectural boundaries
 
