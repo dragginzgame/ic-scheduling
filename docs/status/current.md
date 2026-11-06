@@ -1,138 +1,97 @@
 # Current handoff
 
-## Shared Tooling 0.31.0 adopted locally — 2026-11-06
+## Jobs 0.34.9 and Timers 0.40.10 delivered — 2026-11-06
 
-Reviewed/exported upstream `main` revision
-`74313941af2fce4399bec0e6909ca6229673c3f8`; 152 managed payloads verify.
-All local release callers now use the 0.31 settings and renamed shared batch
-runner/guide. New batch intents use schema 2 and record publication commits.
-Retired settings refuse. No active pre-0.31 batch required recovery; older batch
-storage/source pins must stay intact and use their original tooling to finish.
-Shared owns orchestration and status/resume/reconcile/retire. Setup and bounded
-external-Git receipt admission remain consumer-owned; no local runner was added.
+Both groups are tagged, pushed to `origin/main` and published to crates.io through
+Shared Tooling 0.31.0's captured batch flow. Delivery source:
+`6456b5a498933fde3b9e0cad4d3322d08cd0be76`. The normal checkout was explicitly
+reconciled after publication; deferred supplier edits were reapplied as dependency
+hunks, preserving the released workspace versions.
 
-Integrity, actual Make routing/retired-setting refusal, shell and link checks pass.
-Real two-group setup/release/recovery/archive qualification passed, including
-schema-2 publication identity, lock isolation, completed resume and retirement;
-broad product stages and registry effects were substituted. Logs are under
-`target/evidence/shared031/`. Prior 0.30.10 Linux/Rust 1.99.1 native/Wasm,
-archive and selected live evidence remains under `target/evidence/frozen-hooks/`.
-See the [adoption status](../release-validation-groups.md#shared-tooling-0310-adoption-status).
-
-Deployment is authorized: Timers 0.40.10, then Jobs 0.34.9 through one captured
-batch with explicit publication to crates.io and delivery to `origin/main`.
-The source includes Runtime/macros/exact guard 0.19.4, Metrics 0.29.5, Logging
-0.24.10, Platform 0.23.4, Storage 0.68.1, Testkit 0.89.3 and Wire 0.17.5.
-Initial batch `batch-qIKZnu6X`, source `341ac6f`, stopped in consumer-tooling
-before version preparation, tags, pushes or uploads. Preserve its managed Git
-store/candidate and logs under `target/deployment-shared031/`. Fixtures now isolate
-inherited batch selections and copy the new setup inputs; the complete consumer
-fixture passes with the actual release environment. A fresh batch must qualify
-the corrected source against both complete 37-stage gates; no stage reuse.
-Later normal-lock supplier updates remain deferred, preserved separately.
-
-## Jobs 0.34.8 and Timers 0.40.9 delivered — 2026-11-06
-
-Both groups are committed, tagged, pushed to `origin/main` and published to
-crates.io. Initial adoption source: `fff0daeaf2131b1ba4f66922c9128bcfb8669219`;
-corrected release-note source: `16f53e59320165181822c933a54b0c7e25c8d962`.
-
-- Timers release: `988c2238ab4d64e7efcd55eb6ed56d50ec74189d`;
-  annotated `timers-v0.40.9`: `040eb68054f398b3976c8b3bc2accb2f2e80cae8`;
-  crate SHA-256: `741e4de93574f2aa0af7ccad454e782a65e9ad2eea8086fd227ac7ac6ed45951`.
-- Jobs release: `f2403cbc5895288e7f611029401554990e66f8f8`;
-  annotated `jobs-v0.34.8`: `b1c3dfb4d759b11f71b139dfda65d313c76fdade`;
-  crate SHA-256: `67b7920e2e52d0a4df3dfabb70e12c8819ad3a8a512bb27f1d42c72d6c604e60`.
+- Timers commit: `83a1d1940d7f5e51c56f5e45473d33333e6744a8`;
+  annotated `timers-v0.40.10`: `06c20cf79b1366c7fb4f144badb3b37b96ed23b0`;
+  crate SHA-256: `4e8ebf1d7ed1afd69bd328a334a7ba4b901b4d48866ddba07be963de0b368810`.
+- Jobs commit: `6b5bbc5b283f070682677e1fb5ad6d7a37ff395d`;
+  annotated `jobs-v0.34.9`: `971c59431f56d67af7d2ac526af9826b6cc7b803`;
+  crate SHA-256: `139022544a16a839e7b80c7e0416780e8620d392e6159c8a49efbd2b1a7f9cf0`.
 
 Official registry metadata, downloaded archives and local publication archives
-agree, including clean release VCS identities. Both remote annotated tag objects
-and release `main` were verified. Journals are complete; do not replay uploads.
+agree, including clean release VCS identities and remote annotated tag objects.
+Batch `batch-hCRiwOcg` is complete at index 2; both standard journals are complete.
+Do not replay uploads. No production canister deployment is implied.
 
-## Delivered graph and tooling
+## Delivered source and supplier graph
 
-The qualified graph selects Wire 0.17.4, Endpoint/macros 0.7.2, Runtime/macros/exact
-guard 0.19.3, Types 0.18.2, Platform 0.23.3, Testkit 0.89.1, Logging 0.24.9 and
-Metrics 0.29.4. Build 0.75.0, Storage 0.68.0, Host 0.74.4, `cc` 1.11.1 and
-`flate2` 1.1.11 remain selected. Compatible root minima are preserved, with
-Testkit raised to 0.89. No supplier repository was changed or released.
+Reviewed Shared revision `74313941af2fce4399bec0e6909ca6229673c3f8` exports 152
+managed payloads. Local callers use the 0.31 release settings and renamed runner;
+retired settings refuse. Schema-2 intents record publication commits. Shared owns
+batch orchestration and lifecycle; consumer setup admits saved tools offline.
+See the [adoption status](../release-validation-groups.md#shared-tooling-0310-adoption-status).
 
-Delivered Shared Tooling 0.30.7 was reviewed at committed revision
-`22a853e26c05ec323f06c57fa316c08b808f252b`: 152 managed payloads. Common Rust
-source/Cargo admission enforces Platform ownership of CBOR with empty Candid/CBOR
-source allowances. Owned DTOs remain Wire-only. All eight members share the root
-manifest/lock; there are no browser or independent Cargo roots or maintained
-generated Rust entrypoints. Macro expansion, generated strings and arbitrary
-aliases still need review. Historical CBOR images remain refusal fixtures.
+The released lock selects Runtime/macros/exact guard 0.19.4, Types 0.18.2,
+Platform 0.23.4, Wire 0.17.5, Endpoint/macros 0.7.2, Storage 0.68.1,
+Testkit 0.89.3, Logging 0.24.10 and Metrics 0.29.5. Build 0.75.0 and Host 0.74.4
+remain selected. Root dependency minima and the single workspace lock retain
+authority. Public library APIs, timer ABI, owned Wire bytes and storage formats
+are unchanged. No supplier repository was edited or released.
 
-That delivery used the normal checkout before frozen hook qualification. No extra
-release directory was created. Stage reuse remains disabled; current frozen
-behavior is described in the [local adoption status](../release-validation-groups.md#shared-tooling-0310-adoption-status).
-Testkit's removed automatic logging is unused here. Library APIs, timer ABI,
-Wire bytes and stored formats are unchanged by this batch.
+## Qualification and recovery
 
-## Qualification
+Both complete 37-stage gates passed on Linux/Rust 1.99.1. Each includes native
+and Wasm checks, strict lint/docs, dependency/provider/source boundaries, tooling
+fixtures, both archives, all 35 installed Timers subjects and policy cohorts with
+PocketIC 16.1.0. Stage reuse remains disabled. Publication separately admitted
+the final source/tag, repeated Clippy and verified the final-version archive.
 
-Both fresh complete 37-stage gates passed on Linux/Rust 1.99.1: 1125 summed
-stage-seconds for Timers and 1107 for Jobs. Each includes native/Wasm, strict
-lint/docs, dependency/provider/source boundaries, release/recovery fixtures, both
-archives, all 35 installed Timers subjects and policy cohorts with PocketIC 16.1.0.
-Publication separately repeated Clippy and final-version archive verification.
-Final Jobs source also passed all 11 installed recovery cases, the queue scenario
-and five terminal shutdown modes. Hosted CI runs asynchronously; no fresh local
-macOS execution or cross-version installed migration/rollback is claimed.
+Relative to `target/release-frozen/batch-hCRiwOcg/`, successful evidence is:
 
-The successful attempts are `target/release-validation/validation.r4HTtY9O/`
-(Timers, source `16f53e5`, run `validation.W22zPS`) and
-`target/release-validation/validation.VwfMn0aV/` (Jobs, source `988c223`, run
-`validation.DJmxzu`). Installed timer receipts remain in
-`target/tmp/timer-qualification-3596438-0/` and
-`target/tmp/timer-qualification-1674980-0/`. Final Jobs recovery is retained at
-`target/tmp/jobs-recovery.yxnGZS/` and copied into delivery custody.
+- Timers: `target/release-validation/validation.QF2TBmEv/`, run
+  `logs/validation.abDfFY`, source `6456b5a`; runtime receipt
+  `target/tmp/timer-qualification-1914668-0/runtime.json`.
+- Jobs: `target/release-validation/validation.SKSyqJHu/`, run
+  `logs/validation.Uh4mME`, source `83a1d19`; runtime receipt
+  `target/tmp/timer-qualification-1142929-0/runtime.json`.
+- Final Jobs source `6b5bbc5` separately passed all 11 installed recovery cases,
+  the queue scenario and five terminal shutdown modes. Recovery artifacts are
+  `target/tmp/jobs-recovery.RiTgkl/`; the transcript is
+  `target/deployment-shared031/jobs-live-qualification.log` in the normal checkout.
 
-## Interrupted attempts and deferred updates
+An initial batch, `batch-qIKZnu6X` on source `341ac6f`, stopped in consumer-tooling
+before version preparation, tags, pushes or uploads. The corrected source isolates
+fixtures from inherited batch selections and supplies their new CI inputs. That
+attempt's artifacts and failed logs remain preserved; its gate was not reused.
 
-The first Timers attempt, `validation.iYZ0pmJ6` on `fff0dae`, was intentionally
-stopped before preparation to correct stale supplier patch notes. Its passing
-stages and 35 installed subjects do not make it a completed qualification.
-The first Jobs attempt, `validation.oVRZEL5H` on `988c223`, was stopped before
-preparation after another process updated the root lock. Neither attempt was
-reused; original inputs/logs and interruption records remain in custody.
+After Jobs' successful gate, system package updates changed the metadata tool's
+native-input fingerprint. Explicit setup re-admitted IC Build 0.75.0 from the saved
+Jobs source lock. Exact batch recovery completed the saved preparation plan and
+publication without repeating Timers or replacing Jobs' successful evidence.
+Hosted CI runs asynchronously; no fresh local macOS or cross-version installed
+migration/rollback qualification is claimed.
 
-The deferred Metrics 0.29.5 / Platform 0.23.4 refresh was restored as dependency
-hunks after both publications, preserving Jobs 0.34.8 / Timers 0.40.9 workspace
-versions. Further updater changes have since appeared in the working lockfile.
-These pending refreshes are outside both releases and their qualification; the
-tagged locks and verified registry artifacts define the delivered graph. Preserve stash
-`d7d1c504df0be4cba608f68eda56aa4196575df8`, custody's deferred lock snapshots and
-`deferred-final-Cargo.lock.patch`. Do not pop a whole older lock over release
-metadata. Initial capture still needs coordinated clean source; later normal-lock
-updates are isolated by the newly wired frozen workflow.
+## Custody and deferred work
 
-## Delivery custody and earlier releases
+Preserve `.git/release-state/frozen/batch-hCRiwOcg/`, its `repository.git`, complete
+group plans/receipts and `verification/` records. Its managed checkout and outputs
+remain under `target/release-frozen/batch-hCRiwOcg/`; no retirement or cleanup was
+performed. Preserve the failed `batch-qIKZnu6X` store and checkout as well.
+Normal delivery, verification, tool-recovery and reconciliation logs are under
+`target/deployment-shared031/`. Earlier adoption evidence stays under
+`target/evidence/shared031/` and `target/evidence/frozen-hooks/`.
 
-Preserve `.git/release-state/deployment-shared0307.kV0zoH90/`, complete
-`timers-0.40.9.plan` / `jobs-0.34.8.plan` and their version-2 receipts. Custody
-retains inputs, interrupted evidence, deferred refresh/stash identity, publication
-intents/logs, official archives/metadata, completion records and installed recovery
-proof. Delivery logs are under `target/deployment-shared0307/`; earlier adoption
-proof under `target/evidence/shared0306/`, `shared0307/` and
-`adoption-wire-platform-testkit/` keeps its original inputs and meaning.
+The normal lock still has deferred Logging 0.24.11, Metrics 0.29.6, Platform
+0.23.5 and Storage 0.68.2 updates. They are outside both releases and remain
+unqualified. Preserve branch `deferred/shared031-6456b5a`, stash
+`96492f00b7f0e99d13898109e413bd0b6acb412f` and the deployment directory's
+`deferred-final-Cargo.lock.patch`. Do not restore a whole old lock over current
+workspace versions. Optional supplier patches alone do not require republishing.
 
-Jobs 0.34.7 / Timers 0.40.8 remain published. Their
-[delivered handoff](https://github.com/dragginzgame/ic-scheduling/blob/63aec658fc7f2c68a8b83be6e2a8d400971f7547/docs/status/current.md)
-retains exact identities, the corrected Wire check, installation boundaries and
-older immutable handoff links. Preserve `.git/release-state/` custody
-`deployment-upstreams0408.lbj697GX/`, `deployment-testkit0407.f2yycLCV/`,
-`deployment-cleanup0406.4fc5n5eC/`, `deployment-upstreams0405.xgEN56MD/`,
-`deployment-timers0404.OHlQFZ45/`, `deployment-timers0403.XBMtMHVE/`,
-`deployment-timers0402.G6arr0ab/`, `deployment-consumer-support.lHbrHngp/`,
-`deployment-timers0400.IkyEFM1l/`, `deployment-timers0391.k7IkTIwf/`,
-`deployment-current.0NCjlIWS/`, `deployment-timers0381.jnjcs5qg/`,
-`deployment-upstreams.UjAXfFHz/`, `deployment-msrv-87.uUHPASl6/` and
-`deployment-wire-tooling.w6Z6gClk/`, with journals, receipts and archives. Retain
-stash `0f004eda7ab7e02c96edb801416838dff89a4c72` and custody's Wire-only patches.
-Preserve interrupted/version-1 proofs with their original source. Retained-state
-byte/file/age budgets still apply; no implicit artifact cleanup is authorized.
+Earlier Jobs 0.34.8 / Timers 0.40.9 and their custody remain immutable. The
+[previous handoff](https://github.com/dragginzgame/ic-scheduling/blob/6456b5a498933fde3b9e0cad4d3322d08cd0be76/docs/status/current.md)
+retains exact identities, earlier interrupted attempts and older custody links.
+Preserve `.git/release-state/deployment-shared0307.kV0zoH90/`, all earlier custody,
+stash `d7d1c504df0be4cba608f68eda56aa4196575df8` and stash
+`0f004eda7ab7e02c96edb801416838dff89a4c72`. Retained-state byte/file/age limits
+still apply; this delivery grants no implicit artifact deletion.
 
 ## Architectural and retained-data boundaries
 
@@ -143,7 +102,6 @@ owns reporting/application integration; copied Metrics observations add no endpo
 Storage owns checked allocation and Cells; the retired Memory crate stays absent.
 Storage 0.68's prior `ICCELL01` images remain refused without writes or growth:
 preserve old Wasm, locks, images, blocked attempts and receipts until their owner
-resolves effects and authorizes retirement. No legacy reader, conversion, reset
-or replay was added. Native mutation failures require discarding runtime/leases;
-native execution alone does not prove IC rollback. See the
-[consumer checklist](../timers/adoption/0.40.md).
+resolves effects and authorizes retirement. No conversion, reset or replay was added.
+Native mutation failures require discarding runtime/leases; native execution alone
+does not prove IC rollback. See the [consumer checklist](../timers/adoption/0.40.md).
