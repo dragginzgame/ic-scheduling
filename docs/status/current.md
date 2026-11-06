@@ -8,6 +8,13 @@ Release and publish Timers 0.40.8 followed by Jobs 0.34.7 from this checkout's
 qualification. Other selected supplier versions are unchanged. No retained
 installation is reset; siblings remain read-only. Delivery is not yet complete.
 
+The first full gate stopped at an installed assertion coupled to Wire's former
+`wire Malformed` display text. Its inputs/logs/diagnostics are preserved under
+`.git/release-state/deployment-upstreams0408.lbj697GX/`. The corrected subject
+checks typed native malformation, IC trap and unchanged registered-timer state;
+focused Clippy and that installed subject pass. A fresh source/full gate is
+required; the failed gate is not qualification and no version/tag/push occurred.
+
 ## Build / Storage / Testkit adoption pending — 2026-11-06
 
 The requested update selects published Build 0.75.0, Storage 0.68.0 and Testkit

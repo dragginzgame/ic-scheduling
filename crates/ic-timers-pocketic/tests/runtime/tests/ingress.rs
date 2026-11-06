@@ -212,7 +212,7 @@ async fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authentic
 #[tokio::test]
 async fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
     use ic_timers_test_protocol::rpc::{REQUEST_LIMITS, RESPONSE_LIMITS};
-    use ic_wire::native::{decode_response, encode_request, encode_response};
+    use ic_wire::native::{decode_request, decode_response, encode_request, encode_response};
     let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
     let id = Method::StartOrdinary as u64;
@@ -253,12 +253,20 @@ async fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
         assert!(!ordinary_observation(pic, canister_id).await.declared);
         assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
     }
-    // Wire 0.7 rejects nonminimal varints during decoding, before the endpoint
-    // can reach its missing-registration trap or reconcile a timer deadline.
+    // Register first so reaching the endpoint body would reconcile a real
+    // deadline instead of failing at an unrelated missing-registration trap.
+    assert!(update_bool(pic, canister_id, Method::Start).await);
+    let scheduled = snapshot(pic, canister_id).await;
+    // Nonminimal varints must fail decoding. Observe the typed native error and
+    // IC rejection/state, without coupling this boundary to rendered trap text.
     let mut nonminimal =
         encode_request(Method::ScheduleAt as u64, &(0_u64,), REQUEST_LIMITS).unwrap();
     assert_eq!(nonminimal.pop(), Some(0));
     nonminimal.extend_from_slice(&[0x80, 0]);
+    assert_eq!(
+        decode_request::<(u64,)>(Method::ScheduleAt as u64, &nonminimal, REQUEST_LIMITS),
+        Err(ic_wire::Error::Malformed)
+    );
     let rejection = canister_rejection(
         pic.update_call(
             canister_id,
@@ -270,11 +278,9 @@ async fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
         .unwrap_err(),
     );
     assert_eq!(rejection.error_code, ErrorCode::CanisterCalledTrap);
-    assert!(
-        rejection.reject_message.contains("wire Malformed"),
-        "{rejection:?}"
-    );
+    assert_eq!(snapshot(pic, canister_id).await, scheduled);
     assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
+    update_unit(pic, canister_id, Method::Stop).await;
     // Exercise our protocol-to-Testkit adapter at its three failure boundaries.
     // Raw malformed frames above remain direct calls so no client normalizes them.
     let caller = ExternalPrincipal::anonymous();

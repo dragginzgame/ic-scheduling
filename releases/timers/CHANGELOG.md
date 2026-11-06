@@ -18,6 +18,11 @@ entry alone does not establish publication.
   fresh backing for the Cell format cut; preserve existing images and outstanding
   effects as described in the [Jobs ledger](../jobs/CHANGELOG.md).
 
+### 🧪 Testing
+
+- Verify malformed Wire requests through typed codec errors, IC rejection and
+  unchanged timer state, preserving the admission check across diagnostic changes.
+
 ## [0.40.7] - 2026-11-05
 
 ### 📦 Dependencies
