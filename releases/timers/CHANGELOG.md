@@ -807,7 +807,7 @@ All notable changes to this project are recorded here.
   fixture/macOS assertions and product gates. Reset dependency-boundary fixture
   manifests together between independent mutation cases.
 
-## [0.30.10] - 2026-10-24
+## [0.31.0] - 2026-10-24
 
 - **Breaking:** adopt Metrics 0.16.0. `MeasurementCounter` and
   `MeasurementSummary` now have the Metrics 0.16 Rust identity, including values
@@ -857,7 +857,7 @@ All notable changes to this project are recorded here.
 - Consolidate directive conversion coverage through both public callback decision
   types, retaining checked-delay rejection and policy/cadence assertions.
 
-## [0.31.0] - 2026-10-24
+## [0.30.10] - 2026-10-24
 
 - Adopt Shared Tooling 0.26.10 with literal formatter catalog admission, offline
   tool diagnostics and common external-IC dependency guards alongside Timers'
