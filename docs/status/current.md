@@ -14,21 +14,22 @@ external-Git receipt admission remain consumer-owned; no local runner was added.
 Integrity, actual Make routing/retired-setting refusal, shell and link checks pass.
 Real two-group setup/release/recovery/archive qualification passed, including
 schema-2 publication identity, lock isolation, completed resume and retirement;
-broad product stages and registry effects were substituted. Its inputs/logs are under
-`target/evidence/shared031/`. The prior 0.30.10 Linux/Rust 1.99.1 proof includes
-native/Wasm lint, archives, two live Timers subjects and one Jobs recovery subject;
-that source-bound evidence stays under `target/evidence/frozen-hooks/`, with
-passing group-plan/receipt regression fixtures. Live subjects are not rerun for
-the setting rename. See the [adoption status](../release-validation-groups.md#shared-tooling-0310-adoption-status).
+broad product stages and registry effects were substituted. Logs are under
+`target/evidence/shared031/`. Prior 0.30.10 Linux/Rust 1.99.1 native/Wasm,
+archive and selected live evidence remains under `target/evidence/frozen-hooks/`.
+See the [adoption status](../release-validation-groups.md#shared-tooling-0310-adoption-status).
 
 Deployment is authorized: Timers 0.40.10, then Jobs 0.34.9 through one captured
 batch with explicit publication to crates.io and delivery to `origin/main`.
 The source includes Runtime/macros/exact guard 0.19.4, Metrics 0.29.5, Logging
 0.24.10, Platform 0.23.4, Storage 0.68.1, Testkit 0.89.3 and Wire 0.17.5.
-This graph still needs both complete release gates; no new release is claimed yet.
-Inputs and delivery logs are under `target/deployment-shared031/`; preserve the
-managed batch Git store and candidate outputs when created. Later normal lock
-updates stay deferred. Stage reuse stays disabled; the 37-stage roster is intact.
+Initial batch `batch-qIKZnu6X`, source `341ac6f`, stopped in consumer-tooling
+before version preparation, tags, pushes or uploads. Preserve its managed Git
+store/candidate and logs under `target/deployment-shared031/`. Fixtures now isolate
+inherited batch selections and copy the new setup inputs; the complete consumer
+fixture passes with the actual release environment. A fresh batch must qualify
+the corrected source against both complete 37-stage gates; no stage reuse.
+Later normal-lock supplier updates remain deferred, preserved separately.
 
 ## Jobs 0.34.8 and Timers 0.40.9 delivered — 2026-11-06
 

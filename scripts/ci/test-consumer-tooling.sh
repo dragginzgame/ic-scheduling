@@ -458,7 +458,7 @@ trap - EXIT
 prepare_phase ci-admission
 # These local release inputs are part of Make's common checkpoint inventory.
 mkdir -p "$fixture/scripts/release"
-cp "$root/scripts/release/"{validation.pl,verify.sh,ci.sh} "$fixture/scripts/release/"
+cp "$root/scripts/release/"{validation.pl,verify.sh,ci.sh,candidate-setup.sh,source-lock.sh} "$fixture/scripts/release/"
 cp "$root/scripts/ci/"{ValidationPlan.pm,validation-evidence.pl} "$fixture/scripts/ci/"
 # Run Jobs' actual CI route only through its first admission stage. Substitute
 # tool effects and mutate a selected input there; the logger must block all
@@ -678,7 +678,9 @@ phase_batch_commands() (
     local fixture operation setting
     trap - EXIT
     prepare_phase batch-commands
-    unset RELEASE_GROUP RELEASE_BATCH_ACTIVE
+    # The fixture selects its own groups/publication, including when CI itself
+    # runs inside a multi-group publication batch.
+    unset RELEASE_GROUP RELEASE_BATCH_ACTIVE RELEASE_GROUPS RELEASE_PUBLISH_TARGET
     # Exercise the actual consumer Make includes; lifecycle effects stay with
     # Shared's producer suite. This is routing proof, not frozen-hook qualification.
     cat > "$fixture/scripts/ci/run-release-batch.pl" <<'RUNNER'

@@ -21,6 +21,8 @@ and [coordinated history through 0.33.1](../history.md).
 - Use the 0.31 release settings and schema-2 batch journals with recorded
   publication commits. Finish older batches with their original tooling before
   upgrading; retired settings are rejected.
+- Isolate nested consumer-tooling fixtures from the surrounding release batch
+  selection and include candidate setup inputs in CI drift admission.
 
 ## [0.34.8] - 2026-11-06
 
