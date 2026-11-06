@@ -35,8 +35,8 @@ The Jobs library depends only on Serde and requires Rust 1.99.1.
 Adopting it does not require Canic to select this repository's Storage,
 Platform, Timers or Wire versions. Canic's composed graph must retain its own
 single runtime identities and qualified installation format. This repository's
-Storage 0.64 physical-format cut applies to its qualification fixtures; it is not a Jobs
-library installation prerequisite. Canic's own release/reset rules remain its
+Storage 0.64 and 0.68 physical-format cuts apply to its qualification fixtures;
+they are not Jobs library installation prerequisites. Canic's own release/reset rules remain its
 authority and never follow implicitly from this document.
 
 ## Persist and dispatch

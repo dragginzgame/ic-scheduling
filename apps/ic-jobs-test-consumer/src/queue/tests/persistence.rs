@@ -281,7 +281,7 @@ fn storage_064_refuses_the_previous_wire_installation_without_releasing_effects(
 }
 
 #[test]
-fn storage_065_reopens_064_cells_without_releasing_effects_or_writing() {
+fn storage_068_refuses_previous_cells_without_releasing_effects_or_writing() {
     let frozen: FrozenMemory =
         serde_json::from_str(include_str!("../fixtures/stable-image-storage064.json")).unwrap();
     assert!(
@@ -300,22 +300,19 @@ fn storage_065_reopens_064_cells_without_releasing_effects_or_writing() {
         JobState::Uncertain { started_ns: 100 }
     );
     assert_eq!(expected.jobs[1].job.record().state, JobState::Running);
+    assert_eq!(expected.next_due_ns(), None);
+    for entry in &expected.jobs {
+        let delivery = entry.delivery().unwrap();
+        assert!(expected.receipts.contains(&delivery));
+    }
+    // The frozen metadata retains the outstanding obligations. Storage 0.68
+    // refuses this prior Cell framing; no production reader or reset is added.
     let backing = frozen_backing(&frozen, 4);
     let before = backing.borrow().clone();
     let memory = MeteredMemory::new(backing.clone());
-    for _ in 0..2 {
-        let (mut queue, due) = Queue::open(memory.clone(), None).unwrap();
-        assert_eq!(due, None);
-        queue.authorize(manager()).unwrap();
-        for entry in &expected.jobs {
-            let delivery = entry.delivery().unwrap();
-            assert_eq!(queue.outstanding(delivery.job).unwrap(), delivery);
-            assert_eq!(queue.receipt(manager(), &delivery).unwrap(), Some(delivery));
-        }
-        assert!(queue.dispatch(200).unwrap().value.deliveries.is_empty());
-        drop(queue);
+    for initial in [None, Some(config())] {
         assert!(matches!(
-            Queue::open(memory.clone(), Some(config())),
+            Queue::open(memory.clone(), initial),
             Err(Error::InvalidStorage)
         ));
         assert_eq!(memory.counts().writes, 0);

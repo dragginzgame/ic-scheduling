@@ -69,7 +69,7 @@ Runtime owns the maintained IC0 bindings and executor. The root catalog disables
 default Runtime features. The library selects only `executor` and `ic0`; the two
 canister probes select `cdk` for entrypoint contexts,
 protected calls/spawning, traps, cycle burning and stable byte I/O. The native
-harness selects Testkit 0.87's async-only `pocket_ic` module for clients and
+harness selects Testkit 0.88's async-only `pocket_ic` module for clients and
 `ic-platform-types` 0.18 with `principal-external` for canonical identities.
 The protocol package selects Wire and Serde without a direct Runtime dependency.
 
@@ -137,7 +137,7 @@ The driver selects PocketIC, Types, Testkit, Wire and the probe protocol only fo
 test binary. Its normal build coordinator uses Build and Host for artifacts and
 process custody, plus Clap/Serde/JSON for commands and receipts. It does not link
 the simulator or codecs. Build, Host and Testkit share the published family
-selected by the root lockfile. The harness uses Wire 0.17 and Testkit 0.87, with
+selected by the root lockfile. The harness uses Wire 0.17 and Testkit 0.88, with
 canonical Types 0.18 identities. The independent Platform PocketIC client is absent.
 Managed startup supplies Testkit's required server URL and retains server custody.
 Timers passes external client types across the test boundary, not owned

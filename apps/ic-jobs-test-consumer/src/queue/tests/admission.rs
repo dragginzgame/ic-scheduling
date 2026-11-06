@@ -373,11 +373,12 @@ fn oversized_retained_cell_is_refused_without_replacing_its_payload() {
 }
 
 #[test]
-fn checksummed_cell_corruption_is_refused_without_writes_or_reset() {
+fn retained_queue_identity_corruption_is_refused_without_writes_or_reset() {
     let backing = VectorMemory::default();
     drop(Queue::open(backing.clone(), Some(config())).unwrap());
     // Infrastructure fault injection uses an exclusive checked lease after
-    // dropping the cell. The payload changes while its checksum stays intact.
+    // dropping the cell. Storage has no checksum; corrupt the queue-owned
+    // identity so the consumer must refuse before restoring any authority.
     let memory = queue_memory(backing.clone()).unwrap();
     let offset = ic_storage::STABLE_CELL_HEADER_SIZE as u64;
     let mut byte = [0];

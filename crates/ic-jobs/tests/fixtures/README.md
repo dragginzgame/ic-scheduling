@@ -68,9 +68,11 @@ The consumer retains two additional complete physical images:
   the unchanged application payload still enters through Job::restore blocked.
 - [Storage 0.64 Cell image](../../../../apps/ic-jobs-test-consumer/src/queue/fixtures/stable-image-storage064.json):
   captured with the previous reader before the Storage 0.65, Runtime 0.18 and
-  Wire 0.15 update. Cold reopen preserves both blocked states, authority and exact
-  receipts. Idle dispatch and refused fresh creation leave all bytes intact,
-  with zero writes or growth. The consumer uses Cells, not the changed map format.
+  Wire 0.15 update. Historical 0.65–0.67 readers preserved both blocked states,
+  authority and exact receipts without writes or growth. Storage 0.68 refuses
+  this previous Cell framing during both recovery and fresh creation with zero
+  writes/growth and identical bytes. Frozen metadata still establishes the
+  blocked attempts and receipts; it does not authorize replay or reset.
 
 Each image records its producer, old dependency-lock digest, bounded physical
 pages, sparse runs and snapshot metadata; the Wire images retain exact payload

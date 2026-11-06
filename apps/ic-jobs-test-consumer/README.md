@@ -64,7 +64,9 @@ The consumer host supplies Storage with the `test-jobs` authority and `test.jobs
 namespace grant, then opens the permanent `test.jobs.consumer.management.v1` key.
 Storage assigns the opaque allocation identity and supplies the exclusive lease.
 Installation selects `StableCell::create`; recovery selects `StableCell::load`
-with a 24 KiB ceiling, validating the header, length and checksum before decoding. One stable cell retains a
+with a 24 KiB ceiling, validating the header and length before decoding. Cells
+have no checksum; the consumer validates the queue identity and records. This
+does not detect every valid-looking byte change. One stable cell retains a
 native Wire snapshot prefixed with the queue-owned identity `JQW\x01`:
 manager/receiver configuration, ID authority, JobRecords, immutable payloads,
 counter and receipts. The queue holds at most 32 jobs and 32 receipts, each
@@ -81,8 +83,11 @@ for the complete synchronous operation. Each in-memory entry keeps its job and
 payload together; the scheduler borrows only the jobs through an iterator. Commit
 serializes validated jobs directly and checks collection metadata by borrowing
 entries before replacing stable bytes. Encoded capacity still takes precedence
-over collection errors. Storage's fallible `StableCell::set` persists admitted bytes;
-write refusals propagate before a committed reply or deadline is returned.
+over collection errors. Storage's `StableCell::set` persists admitted bytes;
+engine/codec failures trap before a committed reply or deadline is returned.
+IC execution supplies rollback. A native mutation panic may leave partial bytes
+and poison the shared owner; discard its runtime and leases rather than retrying
+through the failed queue.
 Reads restore each record before its entry metadata
 checks, after header admission and before receipt checks. Separate job/payload
 alignment state is unnecessary. Each latest result stores its outcome
@@ -103,8 +108,8 @@ and its trait bridge are removed; deployed Wasm selects no metering helpers or
 stable-structures substrate.
 
 The oversized-payload fixture uses a larger Cell load ceiling and writes a
-checksummed oversized value; normal recovery refuses it without replacing bytes.
-Native tests also damage a checksum and reject empty recovery without creating
+bounded oversized value; normal recovery refuses it without replacing bytes.
+Native tests also damage the queue identity and reject empty recovery without creating
 replacement storage. These checks do not establish IC rollback.
 
 **Storage 0.64 installation boundary:** Storage replaces the separate Memory
@@ -118,12 +123,21 @@ attempts and receipts until their owner resolves the effects and authorizes any
 destructive retirement. The queue's own `JQW\x01` payload remains unchanged.
 Current Storage-format cold reopen still restores Running/Uncertain jobs blocked.
 
-**Storage 0.66 Cell continuity:** this consumer uses Cells, not the changed map
+**Historical Storage 0.66 Cell continuity:** this consumer used Cells, not the changed map
 format. A real 0.64 installation captured before the update reopens under 0.66,
 Wire 0.16 and Types 0.18 with both Running/Uncertain attempts and receipts intact.
 Cold admission, idle dispatch and refused fresh creation perform no writes or
 growth. No reset is required for these qualified Cells. This native evidence
 does not establish installed IC upgrade/rollback or compatibility for old maps.
+
+**Storage 0.68 installation boundary:** the new copied ICSS Cell engine uses
+`SCL1` framing and no checksum. The previous `ICCELL01` images, including the
+frozen 0.64 installation above, are now refused during recovery and creation
+with zero writes/growth and identical backing bytes. Use fresh qualification
+backing. Preserve prior Wasm, locks, backups, blocked attempts and exact receipts;
+their owner must resolve outstanding effects and separately authorize any
+destructive retirement. No legacy reader, conversion or automatic reset is added.
+The queue's `JQW\x01` bytes and validated Job restoration remain unchanged.
 
 **Queue JSON retirement:**
 [#78 — Replace job-consumer JSON queue persistence with bounded IC Wire payloads](https://github.com/dragginzgame/ic-jobs/issues/78).
@@ -240,7 +254,7 @@ codecs and bounded decoding for this consumer and its host harness.
 Its transport boundary is separate from Storage's installation cut above.
 Native DTOs select canonical Types 0.18. Native tests explicitly select
 `principal-self-authenticating`; the recovery harness selects Types' explicit
-external conversions and Testkit 0.87's async-only `ic_testkit::pocket_ic` client.
+external conversions and Testkit 0.88's async-only `ic_testkit::pocket_ic` client.
 Managed `PocketIcStartupConfig::build_instance` supplies the required server URL
 and keeps server/instance custody together; clients do not implicitly provision it.
 The harness owns its Tokio runtime and awaits instance closure before the server
@@ -376,7 +390,7 @@ Their API must never be copied into a production canister. Live execution and
 native macOS acceptance are recorded separately in the
 [handoff](../../docs/status/current.md). It records passing installed recovery on
 earlier source/graphs, including all three hosts for 0.17.46, separately from the
-current Storage 0.66 native/Wasm checks and six selected installed cases. Those
+Storage 0.66 native/Wasm checks and six selected installed cases. Those
 cases use fresh current Wasm and same-source upgrades; they do not establish
 cross-version installed migration, rollback or old-map compatibility. Harness
 compilation alone does not establish installed behavior.

@@ -48,7 +48,7 @@ It supplies no global queue, database, lifecycle exports or exactly-once effects
 | --- | --- |
 | Validated records, attempts, transitions and due-time selection | Published `ic-jobs`: `Job::restore`, `Job` methods, `next_due_ns` and `start_next`; Serde is its only runtime dependency |
 | Payloads, authorization, stable queue and lifecycle endpoints | Consumer applications; the unpublished `apps/ic-jobs-test-consumer` demonstrates this integration |
-| Stable allocation and fixture Cell admission | IC Storage supplies checked allocation leases and checksummed Cells |
+| Stable allocation and fixture Cell admission | IC Storage supplies checked allocation leases and bounded Cell framing; the consumer validates its queue payload |
 | Volatile wakeups and watchdog recovery | IC Timers, called directly by the consumer |
 | Principal and explicit-codec canister runtime | Published IC Platform; Jobs retains endpoints, schemas, limits and error policy |
 | Installation, management and delivery encoding and bounded decoding | Published IC Wire; Jobs retains method identities, limits and receipt policy |
@@ -113,14 +113,14 @@ consumer builds select canonical Types directly for Serde DTOs
 and Wire contracts. Jobs, Storage and Timers remain Wasm/test dependencies; JSON
 is limited to native fixtures and tooling. Parser, Agent,
 certification and crypto features are not selected. Runtime 0.19 owns the
-deployed executor, IC0 adapters and generator shared with Timers, Storage 0.67
+deployed executor, IC0 adapters and generator shared with Timers, Storage 0.68
 and Wire Endpoint 0.7. The qualification Wasm
 selects neither Candid nor full `ic-cdk`.
 Owned native DTO principals exclude external Principal and SHA-2 dependencies.
 The Wasm application selects neither principal conversion nor SHA-2 hashing.
 Storage supplies native IO metering under its test-support feature.
 Native tests select `principal-self-authenticating` explicitly;
-the native harness selects `principal-external` and Testkit 0.87's async-only
+the native harness selects `principal-external` and Testkit 0.88's async-only
 `ic_testkit::pocket_ic` client. Callers own their Tokio runtime and await explicit
 instance closure. Managed `PocketIcStartupConfig::build_instance` supplies its
 explicit server endpoint and retains server custody. The deployed
@@ -140,6 +140,7 @@ This is an unpublished fixture protocol cut. Quiesce management/delivery activit
 dispose of outstanding old management requests and rebuild the fixture and native
 harness together. Delivery identities remain unchanged. The queue now stores
 bounded Wire under `JQW\x01`; retained JSON refuses without conversion or reset.
+Storage 0.68 also refuses previous Cell images; its adoption adds no migration or reset.
 Use fresh qualification state after explicitly retiring the old installation;
 resolve its Running/Uncertain effects with the old binary and exact evidence first.
 The [consumer guide](apps/ic-jobs-test-consumer/README.md) describes the boundaries, and the

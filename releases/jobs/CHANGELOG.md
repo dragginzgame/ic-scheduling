@@ -4,6 +4,22 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.7] - Unreleased
+
+### 📦 Dependencies
+
+- Adopt Build 0.75, Storage 0.68 and Testkit 0.88 for the private qualification
+  consumer and harnesses. Retain Host 0.74.4 and the incoming Platform 0.23.2 /
+  Wire 0.17.3 selections. The public Serde-only Jobs API is unchanged.
+
+### 🧭 Migration Notes
+
+- Use fresh qualification backing for Storage 0.68's new Cell framing. Previous
+  Cell images are refused without writes or growth, retaining their blocked
+  attempts and receipts for explicit owner disposition. No migration, reset or
+  replay is added. Cells no longer have checksums; the consumer still validates
+  its bounded queue identity, records and restoration invariants.
+
 ## [0.34.6] - 2026-11-05
 
 ### 📦 Dependencies

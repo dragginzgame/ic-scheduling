@@ -71,7 +71,7 @@ Wire or the qualification-consumer library. Enable `--features harness` to build
 Make demo/recovery targets select this feature explicitly; those targets retain
 their existing separate server admission and live-test selection.
 
-Testkit 0.87 is async-only. The recovery tests and queue example own their Tokio
+Testkit 0.88 is async-only. The recovery tests and queue example own their Tokio
 runtime, await network operations and explicitly close each instance before its
 server stops. Client Drop performs no network cleanup; the managed server still
 contains failed tests by terminating its process and instances. No automatic

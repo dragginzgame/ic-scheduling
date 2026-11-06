@@ -7,6 +7,17 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.8] - Unreleased
+
+### 📦 Dependencies
+
+- Adopt Build 0.75 and Testkit 0.88 in the native qualification tools, retaining
+  Host 0.74.4 and the incoming Platform 0.23.2 / Wire 0.17.3 selections. Public
+  Timers APIs, runtime guard and timer ABI are unchanged.
+- Update the combined Jobs consumer to Storage 0.68. Its private fixture requires
+  fresh backing for the Cell format cut; preserve existing images and outstanding
+  effects as described in the [Jobs ledger](../jobs/CHANGELOG.md).
+
 ## [0.40.7] - 2026-11-05
 
 ### 📦 Dependencies
