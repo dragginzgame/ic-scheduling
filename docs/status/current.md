@@ -3,9 +3,10 @@
 ## Dependencies and Shared Tooling adopted locally — 2026-11-06
 
 The pending graph selects Wire 0.17.4, Endpoint/macros 0.7.2, Runtime/macros/exact
-guard 0.19.3, Types 0.18.2 and Testkit 0.89.0. Platform 0.23.2 remains its latest
-published version; unpublished 0.23.3 is excluded. Registry checksums match the
-lock. Testkit's compatible requirement is updated at the root; other compatible
+guard 0.19.3 and Types 0.18.2. Incoming Platform 0.23.3, Testkit 0.89.1,
+Logging 0.24.9 and Metrics 0.29.4 patches are retained for release qualification;
+they were present before the release source commit. Testkit's compatible
+requirement is updated at the root; other compatible
 minima are retained. Incoming `flate2` 1.1.11 is preserved in this graph.
 
 Testkit no longer sets up file logging or a global subscriber. These harnesses
@@ -13,7 +14,8 @@ do not rely on that behavior; no subscriber or replacement sink was added.
 Runtime's task-removal optimization preserves cancellation order. Public library
 contracts, timer ABI, Wire bytes and storage layouts remain unchanged.
 
-Focused Linux/Rust 1.99.1 checks passed: affected native and Wasm Clippy,
+Earlier Linux/Rust 1.99.1 checks passed against Platform 0.23.2, Testkit 0.89.0,
+Logging 0.24.8 and Metrics 0.29.3: affected native and Wasm Clippy,
 seven Wire contract/storage tests, dependency/provider admission, five exact
 installed timer subjects (cancellation, continuation trap, watchdog successor,
 trap/upgrade and malformed ingress), and two combined Jobs recovery subjects
@@ -43,8 +45,10 @@ Cargo roots or maintained generated Rust entrypoints were found. Lexical checks
 still require review of macro expansion, generated strings and arbitrary aliases.
 Historical CBOR images remain refusal fixtures; no retained bytes were migrated.
 CI/release rosters are unchanged. Pending notes are Jobs 0.34.8 and Timers 0.40.9;
-package versions remain delivered 0.34.7 / 0.40.8. No commit, push, release or
-publication was performed for these pending batches.
+package versions remain delivered 0.34.7 / 0.40.8. Publication is authorized.
+The first gate on `fff0dae` was intentionally interrupted before preparation to
+correct stale patch notes; it is not a completed qualification. Retain attempt
+`validation.iYZ0pmJ6` and custody `deployment-shared0307.kV0zoH90/`.
 
 ## Jobs 0.34.7 and Timers 0.40.8 delivered — 2026-11-06
 

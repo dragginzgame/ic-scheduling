@@ -12,8 +12,9 @@ entry alone does not establish publication.
 ### 📦 Dependencies
 
 - Adopt Runtime/macros/exact guard 0.19.3, Wire 0.17.4, Endpoint 0.7.2,
-  Types 0.18.2 and Testkit 0.89 for qualification. Platform remains at its latest
-  published 0.23.2. Harnesses do not rely on the removed automatic client logging;
+  Types 0.18.2 and Testkit 0.89 for qualification. Retain the incoming Platform
+  0.23.3, Testkit 0.89.1, Logging 0.24.9 and Metrics 0.29.4 patches in qualification.
+  Harnesses do not rely on the removed automatic client logging;
   public Timers APIs, timer ABI and Wire bytes are unchanged.
 
 ### 🛠️ Tooling

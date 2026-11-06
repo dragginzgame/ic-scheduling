@@ -9,8 +9,9 @@ and [coordinated history through 0.33.1](../history.md).
 ### 📦 Dependencies
 
 - Adopt Testkit 0.89 for private qualification, with Wire 0.17.4, Endpoint 0.7.2,
-  Runtime/macros/exact guard 0.19.3 and Types 0.18.2. Platform remains at its latest
-  published 0.23.2. Harnesses do not rely on the removed automatic client logging;
+  Runtime/macros/exact guard 0.19.3 and Types 0.18.2. Retain the incoming Platform
+  0.23.3, Testkit 0.89.1, Logging 0.24.9 and Metrics 0.29.4 patches in qualification.
+  Harnesses do not rely on the removed automatic client logging;
   public Jobs APIs, Wire bytes and retained storage layouts are unchanged.
 
 ### 🛠️ Tooling
