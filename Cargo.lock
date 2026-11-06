@@ -904,7 +904,7 @@ dependencies = [
 
 [[package]]
 name = "ic-jobs"
-version = "0.34.6"
+version = "0.34.7"
 dependencies = [
  "serde",
  "serde_json",
@@ -913,7 +913,7 @@ dependencies = [
 
 [[package]]
 name = "ic-jobs-canister-tests"
-version = "0.34.6"
+version = "0.34.7"
 dependencies = [
  "clap",
  "ctrlc",
@@ -930,7 +930,7 @@ dependencies = [
 
 [[package]]
 name = "ic-jobs-test-consumer"
-version = "0.34.6"
+version = "0.34.7"
 dependencies = [
  "ic-jobs",
  "ic-logging",
