@@ -24,6 +24,8 @@ read_version() { bash "$root/scripts/release/group.sh" version; }
 # state custody. No receipt is written for ordinary version/plan observations.
 # shellcheck source=scripts/ci/release-receipts.sh
 source "$root/scripts/ci/release-receipts.sh"
+# shellcheck source=scripts/release/source-lock.sh
+source "$root/scripts/release/source-lock.sh"
 validation_identity() {
     release_receipt_identity || return
     perl "$root/scripts/release/validation.pl" identity "$receipt_state"
@@ -46,14 +48,7 @@ select_release_tools() {
     if [[ -e "$plan" || -L "$plan" ]]; then
         prepare_tools=0
         source="${RELEASE_PREPARATION_SOURCE:?select the admitted preparation source}"
-        [[ "$source" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ && "$(git cat-file -t "$source")" == commit ]] || exit 1
-        scratch_parent="${TMPDIR:-$root/target/tmp}"
-        case "$scratch_parent" in *$'\r'*|*$'\n'*) echo 'scratch directory contains CR/LF' >&2; exit 2 ;; esac
-        [[ -n "${TMPDIR:-}" ]] || mkdir -p "$scratch_parent"
-        selection="$(mktemp -d "$scratch_parent/jobs-release-selection.XXXXXX")"
-        trap 'rm -rf -- "$selection"' EXIT
-        git show "$source:Cargo.lock" > "$selection/Cargo.lock"
-        export RELEASE_METADATA_LOCKFILE="$selection/Cargo.lock"
+        select_release_source_lock "$root" "$source"
     fi
 }
 admit_editor() {
@@ -91,7 +86,11 @@ case "$operation" in
         fi
         # Jobs admits source/candidate first; Shared owns locked preparation,
         # selected Make execution and unchanged tool-catalog admission.
-        bash "$root/scripts/ci/cargo-release-preflight.sh" "$root" 1 \
+        cache_prepare=1
+        # Frozen setup already prepared this captured source. Fresh preflight
+        # re-admits it offline; exact-version recovery keeps the saved-lock path.
+        [[ "${RELEASE_BATCH_ACTIVE:-}" != 1 ]] || cache_prepare=0
+        bash "$root/scripts/ci/cargo-release-preflight.sh" "$root" "$cache_prepare" \
             --pin "$root/ci/tool-versions.env" --pin "$root/ci/ic-tools.tsv" \
             --check tools-check --prepare install-tools --prepare tools-check \
             --prepare install-release-tools || {

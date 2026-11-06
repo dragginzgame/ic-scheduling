@@ -314,8 +314,9 @@ parsing and preserves the original/optimized capture invocation forms.
 ## Delivery
 
 The public repository is [dragginzgame/ic-scheduling](https://github.com/dragginzgame/ic-scheduling).
-Select `RELEASE_GROUP=jobs` or `RELEASE_GROUP=timers` explicitly for releases,
-resume and publication. There is no default release group or shared root version.
+Select `RELEASE_GROUP=jobs` or `RELEASE_GROUP=timers`, or an explicit frozen roster
+such as `RELEASE_GROUPS=timers,jobs`. There is no default group or shared
+root version. Batch recovery selects the saved roster with `BATCH`.
 The [group policy](ci/cargo-release-groups.json) covers all eight members.
 See the [Jobs ledger](releases/jobs/CHANGELOG.md), [Timers ledger](releases/timers/CHANGELOG.md)
 and [shared history through 0.33.1](releases/history.md).
@@ -336,7 +337,17 @@ access. Both permit working edits and upload nothing.
 Explicitly authorized `make release-patch`, `make release-minor` and
 `make release-major` commands run the complete gate, prepare metadata, commit,
 tag (`jobs-vX.Y.Z` or `timers-vX.Y.Z`) and atomically push to `origin`/`main`.
-Both groups retain the full combined release gate. Package upload is a separate
-`make publish` operation requiring clean source and the matching pushed annotated
-tag. See [delivery procedure](docs/releasing.md) for prerequisites and interruption
-recovery. Configuring these commands does not authorize a release or upload.
+Releases capture clean committed source in Shared's managed frozen checkout.
+Later normal-checkout lock edits remain pending while the captured graph finishes.
+Include crates.io publication in that same batch when authorized:
+
+```sh
+make RELEASE_GROUPS=timers,jobs RELEASE_PUBLISH_TARGET=publish release-patch
+```
+
+Omitting the publication target delivers Git only. The normal branch is advanced
+explicitly through `release-batch-reconcile BATCH=...` after preserving deferred
+edits; it is never reset or automatically merged. Each group retains its qualified
+validation plan and clean/tag-bound publication checks. See the
+[delivery procedure](docs/releasing.md) for setup, recovery and retirement.
+Configuring these commands does not authorize a release or upload.

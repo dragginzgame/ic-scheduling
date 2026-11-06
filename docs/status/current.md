@@ -1,5 +1,35 @@
 # Current handoff
 
+## Shared Tooling 0.31.0 adopted locally — 2026-11-06
+
+Reviewed/exported upstream `main` revision
+`74313941af2fce4399bec0e6909ca6229673c3f8`; 152 managed payloads verify.
+All local release callers now use the 0.31 settings and renamed shared batch
+runner/guide. New batch intents use schema 2 and record publication commits.
+Retired settings refuse. No active pre-0.31 batch required recovery; older batch
+storage/source pins must stay intact and use their original tooling to finish.
+Shared owns orchestration and status/resume/reconcile/retire. Setup and bounded
+external-Git receipt admission remain consumer-owned; no local runner was added.
+
+Integrity, actual Make routing/retired-setting refusal, shell and link checks pass.
+Real two-group setup/release/recovery/archive qualification passed, including
+schema-2 publication identity, lock isolation, completed resume and retirement;
+broad product stages and registry effects were substituted. Its inputs/logs are under
+`target/evidence/shared031/`. The prior 0.30.10 Linux/Rust 1.99.1 proof includes
+native/Wasm lint, archives, two live Timers subjects and one Jobs recovery subject;
+that source-bound evidence stays under `target/evidence/frozen-hooks/`, with
+passing group-plan/receipt regression fixtures. Live subjects are not rerun for
+the setting rename. See the [adoption status](../release-validation-groups.md#shared-tooling-0310-adoption-status).
+
+Deployment is authorized: Timers 0.40.10, then Jobs 0.34.9 through one captured
+batch with explicit publication to crates.io and delivery to `origin/main`.
+The source includes Runtime/macros/exact guard 0.19.4, Metrics 0.29.5, Logging
+0.24.10, Platform 0.23.4, Storage 0.68.1, Testkit 0.89.3 and Wire 0.17.5.
+This graph still needs both complete release gates; no new release is claimed yet.
+Inputs and delivery logs are under `target/deployment-shared031/`; preserve the
+managed batch Git store and candidate outputs when created. Later normal lock
+updates stay deferred. Stage reuse stays disabled; the 37-stage roster is intact.
+
 ## Jobs 0.34.8 and Timers 0.40.9 delivered — 2026-11-06
 
 Both groups are committed, tagged, pushed to `origin/main` and published to
@@ -25,7 +55,7 @@ Metrics 0.29.4. Build 0.75.0, Storage 0.68.0, Host 0.74.4, `cc` 1.11.1 and
 `flate2` 1.1.11 remain selected. Compatible root minima are preserved, with
 Testkit raised to 0.89. No supplier repository was changed or released.
 
-Shared Tooling 0.30.7 is reviewed at committed revision
+Delivered Shared Tooling 0.30.7 was reviewed at committed revision
 `22a853e26c05ec323f06c57fa316c08b808f252b`: 152 managed payloads. Common Rust
 source/Cargo admission enforces Platform ownership of CBOR with empty Candid/CBOR
 source allowances. Owned DTOs remain Wire-only. All eight members share the root
@@ -33,9 +63,9 @@ manifest/lock; there are no browser or independent Cargo roots or maintained
 generated Rust entrypoints. Macro expansion, generated strings and arbitrary
 aliases still need review. Historical CBOR images remain refusal fixtures.
 
-Frozen releases and stage reuse remain disabled pending their separate consumer
-qualification; see the [local adoption status](../release-validation-groups.md#shared-tooling-0307-adoption-status).
-This delivery used the normal checkout. No extra release directory was created.
+That delivery used the normal checkout before frozen hook qualification. No extra
+release directory was created. Stage reuse remains disabled; current frozen
+behavior is described in the [local adoption status](../release-validation-groups.md#shared-tooling-0310-adoption-status).
 Testkit's removed automatic logging is unused here. Library APIs, timer ABI,
 Wire bytes and stored formats are unchanged by this batch.
 
@@ -74,7 +104,8 @@ These pending refreshes are outside both releases and their qualification; the
 tagged locks and verified registry artifacts define the delivered graph. Preserve stash
 `d7d1c504df0be4cba608f68eda56aa4196575df8`, custody's deferred lock snapshots and
 `deferred-final-Cargo.lock.patch`. Do not pop a whole older lock over release
-metadata. Other writers must stay coordinated during future normal releases.
+metadata. Initial capture still needs coordinated clean source; later normal-lock
+updates are isolated by the newly wired frozen workflow.
 
 ## Delivery custody and earlier releases
 

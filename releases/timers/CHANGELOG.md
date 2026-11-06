@@ -7,6 +7,24 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.10]
+
+### 📦 Dependencies
+
+- Qualify the retained patch graph: Runtime/macros/exact guard 0.19.4,
+  Metrics 0.29.5, Logging 0.24.10, Platform 0.23.4, Storage 0.68.1,
+  Testkit 0.89.3 and Wire 0.17.5. Public timer APIs and storage formats are unchanged.
+
+### 🛠️ Tooling
+
+- Adopt Shared Tooling 0.31.0 and use captured source for selected Timers releases
+  and optional publication. Later normal-checkout lock updates stay pending;
+  saved setup, recovery and archive checks retain the delivered graph. Preserve
+  deferred edits before explicitly reconciling the normal branch.
+- Use the 0.31 release settings and schema-2 batch journals with recorded
+  publication commits. Finish older batches with their original tooling before
+  upgrading; retired settings are rejected.
+
 ## [0.40.9] - 2026-11-06
 
 ### 📦 Dependencies
@@ -789,7 +807,7 @@ All notable changes to this project are recorded here.
   fixture/macOS assertions and product gates. Reset dependency-boundary fixture
   manifests together between independent mutation cases.
 
-## [0.31.0] - 2026-10-24
+## [0.30.10] - 2026-10-24
 
 - **Breaking:** adopt Metrics 0.16.0. `MeasurementCounter` and
   `MeasurementSummary` now have the Metrics 0.16 Rust identity, including values
@@ -839,7 +857,7 @@ All notable changes to this project are recorded here.
 - Consolidate directive conversion coverage through both public callback decision
   types, retaining checked-delay rejection and policy/cadence assertions.
 
-## [0.30.10] - 2026-10-24
+## [0.31.0] - 2026-10-24
 
 - Adopt Shared Tooling 0.26.10 with literal formatter catalog admission, offline
   tool diagnostics and common external-IC dependency guards alongside Timers'

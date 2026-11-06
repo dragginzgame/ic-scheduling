@@ -49,9 +49,29 @@ sub observe {
     $raw =~ s/\n\z//;
     return $raw;
 }
-sub read_json { document($root, relative($_[0])) }
+sub file_location {
+    my ($path) = @_;
+    my $absolute = File::Spec->rel2abs($path, $root);
+    my $name = File::Spec->abs2rel($absolute, $root);
+    return ($root, relative_path($name)) unless $name =~ m{\A\.\.(?:/|\z)};
+    # Frozen worktrees keep durable receipts outside the source root. Admit only
+    # this repository's current group/version receipt directory, never arbitrary
+    # external evidence or another batch's Git store. Shared's bounded reader
+    # still checks every path component, including the Git directory's ancestors.
+    my $git = observe('git', 'rev-parse', '--absolute-git-dir');
+    my $group = $ENV{RELEASE_GROUP} // '';
+    my $version = $ENV{RELEASE_VERSION} // '';
+    $group =~ /\A(?:jobs|timers)\z/ && $version =~ /\A(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\z/
+        or die "external evidence requires admitted group/version\n";
+    my $git_name = relative_path(File::Spec->abs2rel($absolute, $git));
+    index($git_name, "release-state/$group-$version.receipts/") == 0
+        or die "validation evidence is outside the selected Git receipt directory\n";
+    return ('/', relative_path(File::Spec->abs2rel($absolute, '/')));
+}
+sub read_json { document(file_location($_[0])) }
+sub read_bytes { bytes(file_location($_[0])) }
 sub relative { relative_path(File::Spec->abs2rel(File::Spec->rel2abs($_[0]), $root)) }
-sub hash_file { digest($root, relative($_[0])) }
+sub hash_file { digest(file_location($_[0])) }
 sub shared { observe($^X, 'scripts/ci/validation-evidence.pl', $_[0], $root, @_[1..$#_]) }
 sub write_json {
     my ($path, $value) = @_;
@@ -240,7 +260,7 @@ if ($operation eq 'select') {
     write_json("$directory/execution.json", $value);
 } else {
     if ($operation eq 'identity') {
-        my $name = bytes($root, relative("$directory/validation-evidence"));
+        my $name = read_bytes("$directory/validation-evidence");
         $name =~ /\A(validation\.[A-Za-z0-9]+)\n\z/ or die "invalid validation evidence pointer\n";
         $directory .= "/$1";
     }

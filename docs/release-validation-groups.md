@@ -105,14 +105,41 @@ receipts remain with their original source/adapter; they are never converted int
 version-2 proofs or used to authorize the changed plan. No upload or new release
 is performed by this adoption.
 
-## Shared Tooling 0.30.7 adoption status
+<a id="shared-tooling-0307-adoption-status"></a>
+<a id="shared-tooling-0309-adoption-status"></a>
 
-Normal releases still execute in this checkout. The shared
-[frozen-batch runner](frozen-releases.md) is available in the snapshot but disabled:
-Scheduling has not qualified its actual metadata, tool preparation, archive,
-publication and recovery hooks in a managed delivery checkout. Neither frozen
-group nor publication selection is configured. Snapshot adoption alone does not
-establish that qualification.
+## Shared Tooling 0.31.0 adoption status
+
+Shared Tooling 0.31.0 owns the automatic single-group default; the local overlay
+does not duplicate it or permit an empty-roster fallback to live delivery.
+Release starts use the shared [batch runner](release-batches.md), selecting
+the explicit `RELEASE_GROUP` by default or a complete `RELEASE_GROUPS`
+roster. Publication is selected once with `RELEASE_PUBLISH_TARGET=publish`.
+The consumer setup hook prepares only missing captured tools, installs the actual
+format hook, and admits saved tools offline during recovery. Ordinary preflight
+re-admits frozen setup instead of reinstalling it. Receipt reading admits the
+current Git directory's exact group/version receipt subtree even when that Git
+directory is outside the captured worktree; arbitrary external paths and symlinks
+remain refused. Shared owns batch orchestration, saved context and lifecycle
+commands; no local batch orchestration wrappers are added.
+
+The 0.31 hard cut uses `RELEASE_GROUPS`, `RELEASE_PUBLISH_TARGET`,
+`RELEASE_SETUP_TARGET`, `RELEASE_SETUP_MODE` and `RELEASE_BATCH_ACTIVE`; retired
+settings refuse. New batches use schema 2 and save their publication commit.
+Pre-0.31 batches must finish, reconcile and retire with their original tooling;
+their storage paths and source pins are preserved. No active batch needed migration
+at this adoption. This does not change the separate group validation receipt schema.
+
+`make test-release-tooling-frozen` exercises both real group adapters, setup,
+format hooks, metadata/editor, Git journals/local remotes, native/Wasm lint and
+selected archive verification. Broad product stages and registry effects are
+substituted. It covers concurrent normal-lock changes, tagged-release recovery,
+uncertain publication, clean second-group interruption, completed resume without
+republishing, dirty reconciliation refusal and explicit retirement preserving tags.
+`make test-release-tooling-frozen-installed` additionally selects focused live
+Timers ingress/trap/upgrade and Jobs management/recovery from the captured source.
+Ordinary CI runs the native fixture; live execution remains explicitly selected.
+These fixtures do not replace the actual release plan's complete product gates.
 
 Jobs' mapping includes isolated model, consumer and harness implementation paths;
 Timers remains full-gate-only. Archive recipes select their actual package with

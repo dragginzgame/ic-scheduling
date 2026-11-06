@@ -4,6 +4,24 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.9]
+
+### 📦 Dependencies
+
+- Qualify the retained consumer graph with Runtime/macros/exact guard 0.19.4,
+  Metrics 0.29.5, Logging 0.24.10, Platform 0.23.4, Storage 0.68.1,
+  Testkit 0.89.3 and Wire 0.17.5. The public Jobs model remains Serde-only.
+
+### 🛠️ Tooling
+
+- Adopt Shared Tooling 0.31.0 and use captured source for selected Jobs releases
+  and optional publication. Later normal-checkout lock updates stay pending;
+  saved setup, recovery and archive checks retain the delivered graph. Preserve
+  deferred edits before explicitly reconciling the normal branch.
+- Use the 0.31 release settings and schema-2 batch journals with recorded
+  publication commits. Finish older batches with their original tooling before
+  upgrading; retired settings are rejected.
+
 ## [0.34.8] - 2026-11-06
 
 ### 📦 Dependencies

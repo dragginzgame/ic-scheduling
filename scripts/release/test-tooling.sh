@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2030,SC2031 # Each qualification phase owns its subshell environment; only asserted files cross phases.
 set -euo pipefail
 fixture_mode="${1:-all}"
-case "$fixture_mode" in all|retention|metadata|delivery|recovery|publication) ;; *) exit 2 ;; esac
+case "$fixture_mode" in all|retention|metadata|delivery|recovery|publication|frozen) ;; *) exit 2 ;; esac
 root="$(cd -P "${BASH_SOURCE[0]%/*}/../.." && pwd -P)"
 export PATH="$root/.tools/host/bin:$PATH"
 # shellcheck source=scripts/ci/fixture-scratch.sh
@@ -15,12 +16,20 @@ export GROUP_TEST_REAL_MAKE GROUP_TEST_REAL_EDITOR GROUP_TEST_REAL_CARGO
 GROUP_TEST_REAL_MAKE="$(command -v make)"
 GROUP_TEST_REAL_CARGO="$(command -v cargo)"
 GROUP_TEST_REAL_EDITOR="${CARGO_RELEASE_METADATA_EDITOR:-}"
-if [[ -z "$GROUP_TEST_REAL_EDITOR" ]]; then
+if [[ -z "$GROUP_TEST_REAL_EDITOR" && "$fixture_mode" != frozen ]]; then
     GROUP_TEST_REAL_EDITOR="$(make --silent --no-print-directory -C "$root" release-tools-check)"
 fi
 mkdir "$fixture_suite/source" "$fixture_suite/bin"
 cp "$root"/{Cargo.toml,Cargo.lock,CHANGELOG.md,README.md,LICENSE,Makefile,.gitignore,.shared-tooling.snapshot,rust-toolchain.toml} "$fixture_suite/source/"
 cp -R "$root"/{crates,apps,scripts,make,ci,docs,releases} "$fixture_suite/source/"
+cp -R "$root/.githooks" "$fixture_suite/source/"
+if [[ "$fixture_mode" == frozen ]]; then
+    # shellcheck source=scripts/release/test-frozen.sh
+    source "$root/scripts/release/test-frozen.sh"
+    qualify_frozen "$fixture_suite" "$root"
+    fixture_complete=true
+    exit 0
+fi
 cat > "$fixture_suite/bin/editor" <<'EDITOR'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -163,7 +172,6 @@ check_refusals() (
     local suite="$1"
     cp -R "$suite/source" "$suite/refusals"
     cd "$suite/refusals"
-    # shellcheck disable=SC2030 # Each phase deliberately owns its event files.
     export GROUP_TEST_EVENTS="$suite/refusal-events" GROUP_TEST_UPLOADS="$suite/refusal-uploads"
     : > "$GROUP_TEST_EVENTS"; : > "$GROUP_TEST_UPLOADS"
     git init -q -b main
@@ -204,8 +212,9 @@ qualify_group() (
     local base plan requirement
     cp -R "$suite/source" "$repo"
     cd "$repo"
-    export RELEASE_GROUP="$selected" RELEASE_MAKE="$suite/bin/make"
-    # shellcheck disable=SC2031 # This phase establishes fresh event files.
+    # These fixtures exercise the inner standard runner. The frozen fixture
+    # separately qualifies outer batch capture and candidate hooks.
+    export RELEASE_BATCH_ACTIVE=1 RELEASE_GROUP="$selected" RELEASE_MAKE="$suite/bin/make"
     export GROUP_TEST_EVENTS="$suite/$selected-gates" GROUP_TEST_UPLOADS="$suite/$selected-uploads"
     : > "$GROUP_TEST_EVENTS"; : > "$GROUP_TEST_UPLOADS"
     ledger=releases/jobs/CHANGELOG.md; other_ledger=releases/timers/CHANGELOG.md; package=ic-jobs; other=ic-timers
@@ -279,4 +288,9 @@ check_refusals "$fixture_suite"
 for selected in jobs timers; do
     qualify_group "$fixture_suite" "$selected" "$fixture_mode"
 done
+if [[ "$fixture_mode" == all ]]; then
+    # shellcheck source=scripts/release/test-frozen.sh
+    source "$root/scripts/release/test-frozen.sh"
+    qualify_frozen "$fixture_suite" "$root"
+fi
 fixture_complete=true

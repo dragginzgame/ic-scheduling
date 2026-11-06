@@ -22,18 +22,20 @@ once in [shared history](../releases/history.md); its existing
 
 ## Commands and delivery
 
-Every command below accepts `RELEASE_GROUP=jobs` or `RELEASE_GROUP=timers`.
-Release, resume and publication reject missing, empty or unknown selections
-before setup or validation. `PACKAGE` never selects a group; a supplied package
-must belong to the explicit group. Read-only `make version` inventories both
-groups when no selection is supplied. For example:
+Single-group release starts accept `RELEASE_GROUP=jobs` or `RELEASE_GROUP=timers`.
+A frozen batch can instead select its complete roster once through
+`RELEASE_GROUPS=timers,jobs`. Missing/invalid selections and duplicate groups
+refuse before setup. `PACKAGE` cannot override a frozen roster. Standalone archive,
+publication and legacy recovery commands retain explicit single-group selection.
+Read-only `make version` inventories both groups without a selection. For example:
 
 ```sh
 make version
 make RELEASE_GROUP=timers version
 make RELEASE_GROUP=jobs release-patch
-make RELEASE_GROUP=timers release-minor
-make RELEASE_GROUP=timers release-resume VERSION=X.Y.Z
+make RELEASE_GROUPS=timers,jobs RELEASE_PUBLISH_TARGET=publish release-patch
+make release-batch-status BATCH=batch-XXXXXXXX
+make release-batch-resume BATCH=batch-XXXXXXXX
 ```
 
 Release execution remains maintainer-owned. A notes or implementation request
@@ -46,6 +48,34 @@ Unfinished attempts from earlier layouts retain their recorded source, policy,
 adapter and file plan, including earlier grouped attempts. Resume them against
 that recorded layout; adoption does not convert journals or reinterpret tags.
 
+Release starts capture clean committed source through Shared's
+[frozen batch workflow](release-batches.md). Setup runs in the captured checkout
+before version lookup. Later `cargo update` writes in the normal checkout stay
+deferred and do not change the active graph, archives or publication. Initial
+capture still refuses dirty source. Select `RELEASE_PUBLISH_TARGET=publish`
+at batch start to include uploads; the default remains Git-only delivery.
+
+The normal branch stays at its original commit. Preserve deferred work durably,
+then use `make release-batch-reconcile BATCH=...` for a guarded fast-forward and
+reapply the dependency changes without restoring older workspace versions. Resume
+uses the batch's saved group, destination and source; uncertain publication needs
+verified registry reconciliation before `PUBLICATION_RESULT=published` or
+`not-published`. Completed resume never republishes. Retirement is a separate
+explicit deletion command after preserving required evidence. See Shared's guide
+for the full status/resume/reconcile/retire contract.
+
+Shared 0.31 uses schema-2 batch intents with a recorded publication commit.
+Finish, reconcile and retire pre-0.31 batches using their original reviewed
+tooling before adoption. Retired release settings refuse; use the current
+names in [Shared's upgrade instructions](release-batches.md#consumer-adoption).
+Existing batch storage paths and source pins remain unchanged.
+
+For an existing same-checkout journal, retain the legacy command
+`make RELEASE_GROUP=timers release-resume VERSION=X.Y.Z` against its recorded
+source/adapter. Shared Tooling 0.31.0 owns automatic single-group capture;
+clearing `RELEASE_GROUPS` cannot turn a new grouped increment into live
+same-checkout delivery.
+
 `make release-files` emits the selected group's exact NUL-delimited file plan.
 Each group admits the root manifest/lock, its ledger under `releases/` and all
 of its literal-version member manifests. The root index and shared history are
@@ -57,8 +87,9 @@ its own contract requires it. Jobs-only preparation preserves that requirement
 and all Timers versions and notes. Shared admission refuses incomplete group
 membership or unlisted local path/version requirements.
 
-One repository release lock protects the shared Cargo lock. Plans are retained
-at `.git/release-state/jobs-X.Y.Z.plan` or `timers-X.Y.Z.plan`, and bind group,
+One queue serializes frozen batches, and each captured repository's release lock
+protects its Cargo graph. Its Git-owned `release-state/jobs-X.Y.Z.plan` or
+`timers-X.Y.Z.plan` binds group,
 source, destination, phase and exact file custody. Resume selects the same group
 and version and reconciles saved intent before any fresh preparation. Keep
 failed attempts, original metadata, logs and artifacts. Resolve uncertain remote
@@ -82,10 +113,12 @@ and the explicit installed watchdog/cohort gate remain required.
 Prepare selected dependencies with `cargo fetch --locked`. Use
 `make install-tools`, `make tools-check`, `make install-testkit-tools` and
 `make install-release-tools` for explicit setup and offline admission. The
-root lock selects the group-capable IC Build 0.74.0 editor; no alternate editor
-or handwritten metadata renderer is used. Standard fresh release preflight
-admits source and notes, prepares the locked cache and tools, then admits the
-editor. Resume admits the saved source's editor selection without fresh setup.
+root lock selects the group-capable IC Build editor; no alternate editor or
+handwritten metadata renderer is used. Frozen setup prepares missing tools and
+the locked cache before version lookup, and installs the captured format hook.
+Fresh preflight re-admits that cache/tool selection offline. Resume admits the
+saved source's editor selection without fetching or installing against partial
+working metadata. Standard same-checkout preflight retains explicit preparation.
 
 Shared metadata preparation changes only the admitted group's versions,
 declared requirements, local lock rows and selected ledger. It retains originals
@@ -138,12 +171,17 @@ Git repositories and bare remotes. It checks exact plans/commits, unrelated
 versions/requirements/ledgers, manifest/lock rollback, group-tag delivery, retained
 plans, cross-group resume refusal, same-group resume and publication selection.
 Validation-receipt tampering refuses before metadata mutation.
-The full product gate, tool setup and registry/upload effects are substituted;
-Cargo metadata, the selected metadata editor and Git effects are real and local.
+The legacy adapter subfixtures substitute product gates, tool setup and
+registry/upload effects; Cargo metadata, the selected editor and Git effects are
+real and local. The frozen subfixture adds real captured setup, native/Wasm lint
+and archive verification, retaining substituted broad product/registry effects.
 `make test-release-validation` separately exercises the actual selector, shared
 plan runner, input checkpoints and composed receipt checks with substituted
 native/installed commands, including Jobs omission and full-gate fallback.
 Focused subsets are `test-release-tooling-metadata`, `-recovery`, `-delivery`,
-`-publication` and `-retention`. The latter selects failed-candidate custody checks.
+`-publication`, `-retention` and `-frozen`. The latter qualifies the actual frozen
+consumer setup, release/recovery, archive and publication-admission hooks with
+registry effects substituted. `test-release-tooling-frozen-installed` explicitly
+adds focused captured-source IC execution; it is separate from ordinary CI.
 These fixtures do not establish installed recovery or native macOS execution.
 Use the [current handoff](status/current.md) for source-bound qualification limits.

@@ -4,11 +4,11 @@ set -euo pipefail
 # only their affected caller phases, without replaying installer/hosted suites.
 phases=("$@")
 if [[ $# == 0 ]]; then
-    phases=(candid-boundary fixture-scratch cli-admission server-commands workflow-selection demo-commands input-admission artifact-capture ci-admission rust-policy group-recipes)
+    phases=(candid-boundary fixture-scratch batch-commands cli-admission server-commands workflow-selection demo-commands input-admission artifact-capture ci-admission rust-policy group-recipes)
 fi
 for phase in "${phases[@]}"; do
     case "$phase" in
-        candid-boundary|fixture-scratch|cli-admission|server-commands|workflow-selection|demo-commands|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
+        candid-boundary|fixture-scratch|batch-commands|cli-admission|server-commands|workflow-selection|demo-commands|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
         *) echo "unknown consumer tooling phase: $phase" >&2; exit 2 ;;
     esac
 done
@@ -672,6 +672,61 @@ if GROUP_CI_RECIPE_FAIL=timers make --no-print-directory -C "$fixture" clippy do
 head -n 4 "$fixture/expected-full" > "$fixture/expected-failure"
 cmp "$fixture/events" "$fixture/expected-failure"
 echo 'Actual Jobs recipes preserve consumer/Wasm lint, docs and archive checks; full aggregates retain both libraries and stop on lint failure (substitute Cargo/compiler effects)'
+)
+
+phase_batch_commands() (
+    local fixture operation setting
+    trap - EXIT
+    prepare_phase batch-commands
+    unset RELEASE_GROUP RELEASE_BATCH_ACTIVE
+    # Exercise the actual consumer Make includes; lifecycle effects stay with
+    # Shared's producer suite. This is routing proof, not frozen-hook qualification.
+    cat > "$fixture/scripts/ci/run-release-batch.pl" <<'RUNNER'
+use strict;
+use warnings;
+open my $events, '>>', $ENV{JOBS_CONSUMER_TOOLING_EVENTS} or die $!;
+print {$events} join("\0", @ARGV), "\0" or die $!;
+close $events or die $!;
+exit($ENV{BATCH_COMMAND_RESULT} // 0);
+RUNNER
+    for operation in status resume reconcile retire; do
+        : > "$fixture/events"
+        if make --no-print-directory -C "$fixture" "release-batch-$operation" BATCH= > "$fixture/missing-$operation.log" 2>&1; then exit 1; fi
+        [[ ! -s "$fixture/events" ]]
+        make --no-print-directory -C "$fixture" "release-batch-$operation" BATCH=batch-review_42 RELEASE_DELIVERY=direct PUBLICATION_RESULT= > "$fixture/$operation.log" 2>&1
+        printf '%s\0' --root "$fixture" "--$operation" batch-review_42 --delivery direct > "$fixture/expected"
+        cmp "$fixture/events" "$fixture/expected"
+    done
+    : > "$fixture/events"
+    make --no-print-directory -C "$fixture" release-batch-resume BATCH=batch-review_42 PUBLICATION_RESULT=published RELEASE_DELIVERY=direct > "$fixture/publication.log" 2>&1
+    printf '%s\0' --root "$fixture" --resume batch-review_42 --delivery direct --publication-result published > "$fixture/expected"
+    cmp "$fixture/events" "$fixture/expected"
+    : > "$fixture/events"
+    if BATCH_COMMAND_RESULT=37 make --no-print-directory -C "$fixture" release-batch-status BATCH=batch-review_42 RELEASE_DELIVERY=direct PUBLICATION_RESULT= > "$fixture/failure.log" 2>&1; then exit 1; fi
+    printf '%s\0' --root "$fixture" --status batch-review_42 --delivery direct > "$fixture/expected"
+    cmp "$fixture/events" "$fixture/expected"
+    : > "$fixture/events"
+    if make --no-print-directory -C "$fixture" release-patch release-batch-status RELEASE_GROUP=jobs BATCH=batch-review_42 > "$fixture/conflict.log" 2>&1; then exit 1; fi
+    [[ ! -s "$fixture/events" ]]
+    if make --no-print-directory -C "$fixture" release-batch-resume BATCH=batch-review_42 RELEASE_DELIVERY=pr > "$fixture/policy.log" 2>&1; then exit 1; fi
+    [[ ! -s "$fixture/events" ]]
+    make --no-print-directory -C "$fixture" release-patch RELEASE_GROUP=jobs RELEASE_REMOTE=origin RELEASE_BRANCH=main RELEASE_DELIVERY=direct RELEASE_PUBLISH_TARGET= > "$fixture/single-group.log" 2>&1
+    printf '%s\0' --root "$fixture" --groups jobs --kind patch --remote origin --branch main --delivery direct --setup-target release-candidate-setup > "$fixture/expected"
+    cmp "$fixture/events" "$fixture/expected"
+    : > "$fixture/events"
+    make --no-print-directory -C "$fixture" release-patch RELEASE_GROUP=jobs PACKAGE=ic-jobs RELEASE_REMOTE=origin RELEASE_BRANCH=main RELEASE_DELIVERY=direct RELEASE_PUBLISH_TARGET= > "$fixture/single-package.log" 2>&1
+    cmp "$fixture/events" "$fixture/expected"
+    : > "$fixture/events"
+    if make --no-print-directory -C "$fixture" release-patch RELEASE_GROUPS=timers,jobs PACKAGE=ic-jobs > "$fixture/package-subset.log" 2>&1; then exit 1; fi
+    [[ ! -s "$fixture/events" ]]
+    if make --no-print-directory -C "$fixture" release-patch RELEASE_GROUP=jobs RELEASE_GROUPS= > "$fixture/no-live-fallback.log" 2>&1; then exit 1; fi
+    [[ ! -s "$fixture/events" ]]
+    for setting in RELEASE_FROZEN_GROUPS RELEASE_FROZEN_PUBLISH_TARGET RELEASE_FROZEN_SETUP_TARGET RELEASE_FROZEN_SETUP_MODE FROZEN_RELEASE_ACTIVE; do
+        if make --no-print-directory -C "$fixture" release-patch RELEASE_GROUP=jobs "$setting=" > "$fixture/retired-setting.log" 2>&1; then exit 1; fi
+        [[ ! -s "$fixture/events" ]]
+        rg -F 'Retired release settings:' "$fixture/retired-setting.log" > /dev/null
+    done
+    echo 'Actual consumer batch Make commands require selection, preserve saved-batch/publication arguments and failures, and refuse conflicting targets or unsupported delivery before dispatch (substitute runner)'
 )
 
 phase_candid_boundary() (
