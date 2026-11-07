@@ -1,149 +1,112 @@
 # Current handoff
 
-## Local IC Build 0.77 / Testkit 0.90 adoption — 2026-11-07
-
-The root catalog and lock select published Build 0.77.0 and Testkit 0.90.0.
-Build's removed forwarding getters are unused. All three PocketIC constructors
-now select a positive 60-second request budget, separate from startup deadlines;
-instance ownership, explicit teardown and fixture limits remain unchanged.
-Platform was already current: Runtime/macros/exact guard 0.19.5, Types 0.18.2 and
-facade 0.23.5. Root ranges remain compatible; incoming supplier work is preserved.
-
-Strict selected-consumer Clippy, 18 native cases, native/Wasm dependency admission,
-Wasm consumers and Rust 1.99.1 checks pass. All six selected Linux installed cases
-pass: Jobs request refusals, upgrade/watchdog and uncertain-effect recovery; the
-queue workflow; Timers rejected registration and trap/upgrade reconstruction.
-Both groups' Build metadata fixtures pass with product checks/uploads substituted.
-The final lock checksum is unchanged through qualification. Raw logs and input
-snapshots are under `target/evidence/adoption-build077-testkit090/`; the Timers
-runtime receipt is `target/tmp/timer-qualification-3016515-0/runtime.json`.
-No full suite or native macOS run is claimed. #89 is implemented and qualified
-locally; delivered-source acceptance remains pending. No commit, push or release.
-
-The Timers architecture guide now names Testkit 0.90 and Endpoint 0.7 and links
-Canic's current native-timer integration guide. Dated adoption records remain
-historical evidence. Documentation link and diff checks pass. At the user's request,
-the three Canic findings are filed instead of changing sibling source:
-[recovery errors #735](https://github.com/dragginzgame/canic/issues/735),
-[sampling consistency #736](https://github.com/dragginzgame/canic/issues/736) and
-[transient claim cleanup #737](https://github.com/dragginzgame/canic/issues/737).
-Each records committed-source evidence and focused acceptance; no Canic code changed.
-
-## Jobs 0.34.9 and Timers 0.40.10 delivered — 2026-11-06
+## Jobs 0.34.10 and Timers 0.40.11 delivered — 2026-11-07
 
 Both groups are tagged, pushed to `origin/main` and published to crates.io through
-Shared Tooling 0.31.0's captured batch flow. Delivery source:
-`6456b5a498933fde3b9e0cad4d3322d08cd0be76`. The normal checkout was explicitly
-reconciled after publication; deferred supplier edits were reapplied as dependency
-hunks, preserving the released workspace versions.
+Shared Tooling 0.31.1's captured batch flow. Source adoption:
+`c6eb119e89c80e8866768da279e69a0fce499e8c`. Batch `batch-vLPyIAUg` is complete
+at index 2. Both standard release journals are complete; do not replay uploads.
 
-- Timers commit: `83a1d1940d7f5e51c56f5e45473d33333e6744a8`;
-  annotated `timers-v0.40.10`: `06c20cf79b1366c7fb4f144badb3b37b96ed23b0`;
-  crate SHA-256: `4e8ebf1d7ed1afd69bd328a334a7ba4b901b4d48866ddba07be963de0b368810`.
-- Jobs commit: `6b5bbc5b283f070682677e1fb5ad6d7a37ff395d`;
-  annotated `jobs-v0.34.9`: `971c59431f56d67af7d2ac526af9826b6cc7b803`;
-  crate SHA-256: `139022544a16a839e7b80c7e0416780e8620d392e6159c8a49efbd2b1a7f9cf0`.
+- Timers release: `ea121275b86c5dc1bf88f6174118daa5ec214938`;
+  annotated `timers-v0.40.11`: `89e6d1867f47a2753b5e0904a18d3536fd85283c`;
+  archive SHA-256: `2dbebf8c69cb379be40c7783047b107d51e4a8721d736a7ae54a694d914b8c42`.
+- Jobs release: `3b74e30425df968ae524a8b2dbc028199532bd34`;
+  annotated `jobs-v0.34.10`: `820e7697fdd21bafbaee7ac6f4fc932bf7b0d4ba`;
+  archive SHA-256: `dd36beb40f81c744eb16cb85fe2987d3c700d5927e4a7204ef993fa59460c253`.
 
-Official registry metadata, downloaded archives and local publication archives
-agree, including clean release VCS identities and remote annotated tag objects.
-Batch `batch-hCRiwOcg` is complete at index 2; both standard journals are complete.
-Do not replay uploads. No production canister deployment is implied.
+Official registry metadata, downloaded archives, both retained Cargo publication
+archives, clean VCS provenance and remote annotated tags agree. Main was reconciled
+through the guarded shared command. This is library delivery, with local PocketIC
+qualification; it does not establish production application deployment.
 
-## Delivered source and supplier graph
+## Released supplier graph and Testkit migration
 
-Released Shared revision `74313941af2fce4399bec0e6909ca6229673c3f8` exports 152
-managed payloads. Local callers use the 0.31 release settings and renamed runner;
-retired settings refuse. Schema-2 intents record publication commits. Shared owns
-batch orchestration and lifecycle; consumer setup admits saved tools offline.
-See the [adoption status](../release-validation-groups.md#shared-tooling-0310-adoption-status).
+The root catalog/lock select Build 0.77.0 and Testkit 0.90.0. Runtime/macros/exact
+guard 0.19.5, Types 0.18.2, Platform 0.23.5, Storage 0.68.3, Wire 0.17.6,
+Endpoint/macros 0.7.2, Logging 0.24.11, Metrics 0.29.6 and Host 0.74.4 are retained.
+Shared's reviewed snapshot is 0.31.1,
+`5efbda2ab81ad84e30f490f3137d8ef083c303d2` (152 managed files).
 
-The released lock selects Runtime/macros/exact guard 0.19.4, Types 0.18.2,
-Platform 0.23.4, Wire 0.17.5, Endpoint/macros 0.7.2, Storage 0.68.1,
-Testkit 0.89.3, Logging 0.24.10 and Metrics 0.29.5. Build 0.75.0 and Host 0.74.4
-remain selected. Root dependency minima and the single workspace lock retain
-authority. Public library APIs, timer ABI, owned Wire bytes and storage formats
-are unchanged. No supplier repository was edited or released.
+All three native PocketIC constructors use explicit positive 60-second request
+budgets. Startup deadlines, server limits and explicit instance teardown remain
+separate. No attachment/listing callers or retired unbounded settings remain in
+maintained callers. Build's removed forwarding getters were unused. Public Jobs
+and Timers APIs, owned Wire bytes and retained formats are unchanged; Jobs stays
+Serde-only and the retired Memory package remains excluded.
 
-## Current checkout: macOS tooling repair
+[#89](https://github.com/dragginzgame/ic-scheduling/issues/89) is closed as completed
+with delivered-source, registry/archive and actual consumer qualification evidence.
+Both finalized group ledgers link the issue. Active README/architecture guidance
+names Testkit 0.90 and Endpoint 0.7; dated adoption records retain their original
+source and dependency scope.
 
-Hosted CI found a Bash 3.2 parse error in Shared 0.31.0's checksum helper before
-host-tool setup on both macOS architectures. The [failed run](https://github.com/dragginzgame/ic-scheduling/actions/runs/42279479219)
-records that failure; its Linux job passed. Adopted committed Shared 0.31.1 at
-`5efbda2ab81ad84e30f490f3137d8ef083c303d2` through the exporter, preserving 152
-managed payloads. The fix extracts the NUL reader outside quoted substitution,
-retaining rejection and backend status. Consumer Linux caller checks pass;
-fresh hosted macOS qualification remains asynchronous. This Git-only tooling
-repair changes no published library archive. Package versions remain delivered;
-pending notes are Jobs 0.34.10 / Timers 0.40.11.
+## Qualification and evidence
 
-## Qualification and recovery
+Both complete 37-stage Linux/Rust 1.99.1 release gates passed. Each includes all
+35 installed Timers runtime cases and policy cohorts. Original focused adoption
+checks passed strict selected-consumer lint, 18 native cases, six installed cases,
+Wasm and dependency/guard admission. Both real metadata fixtures passed, with
+product gates and uploads substituted; those fixture passes are distinct from the
+complete actual release gates.
 
-Both complete 37-stage gates passed on Linux/Rust 1.99.1. Each includes native
-and Wasm checks, strict lint/docs, dependency/provider/source boundaries, tooling
-fixtures, both archives, all 35 installed Timers subjects and policy cohorts with
-PocketIC 16.1.0. Stage reuse remains disabled. Publication separately admitted
-the final source/tag, repeated Clippy and verified the final-version archive.
+Against final Jobs release `3b74e304`, all 11 installed recovery cases, the queue
+workflow and the process-level CLI cleanup test covering five exit/interruption
+modes pass. The final released lock SHA-256 is
+`7f3908c7b0d42332de1feac3cbf86e26dfd90cd5f6f96ea29efa291c4dd92d77`.
 
-Relative to `target/release-frozen/batch-hCRiwOcg/`, successful evidence is:
+Captured validation roots under `target/release-frozen/batch-vLPyIAUg/target/`:
 
-- Timers: `target/release-validation/validation.QF2TBmEv/`, run
-  `logs/validation.abDfFY`, source `6456b5a`; runtime receipt
-  `target/tmp/timer-qualification-1914668-0/runtime.json`.
-- Jobs: `target/release-validation/validation.SKSyqJHu/`, run
-  `logs/validation.Uh4mME`, source `83a1d19`; runtime receipt
-  `target/tmp/timer-qualification-1142929-0/runtime.json`.
-- Final Jobs source `6b5bbc5` separately passed all 11 installed recovery cases,
-  the queue scenario and five terminal shutdown modes. Recovery artifacts are
-  `target/tmp/jobs-recovery.RiTgkl/`; the transcript is
-  `target/deployment-shared031/jobs-live-qualification.log` in the normal checkout.
+- Timers: `release-validation/validation.cSObfZ4p/`, actual run
+  `logs/validation.Llj8g5`; source `c6eb119`;
+  runtime receipt `tmp/timer-qualification-2858500-0/runtime.json`.
+- Jobs: `release-validation/validation.PaFAHov6/`, actual run
+  `logs/validation.OPuQOz`; source `ea12127`;
+  runtime receipt `tmp/timer-qualification-2352605-0/runtime.json`.
+- Final Jobs installed evidence: `tmp/jobs-recovery.F8VTjs/`, also copied into
+  durable verification custody below. Queue and CLI logs share the normal
+  `target/deployment-build077-testkit090/jobs-final-installed.log`.
 
-An initial batch, `batch-qIKZnu6X` on source `341ac6f`, stopped in consumer-tooling
-before version preparation, tags, pushes or uploads. The corrected source isolates
-fixtures from inherited batch selections and supplies their new CI inputs. That
-attempt's artifacts and failed logs remain preserved; its gate was not reused.
+Hosted CI runs asynchronously. At delivery inspection, the Jobs
+[run 42363044232](https://github.com/dragginzgame/ic-scheduling/actions/runs/42363044232)
+was in progress; the preceding Timers run was cancelled by the succeeding push.
+These are not fresh hosted/macOS passes. Preserve actual source-bound results;
+no full hosted matrix or cross-release installed migration is inferred.
 
-After Jobs' successful gate, system package updates changed the metadata tool's
-native-input fingerprint. Explicit setup re-admitted IC Build 0.75.0 from the saved
-Jobs source lock. Exact batch recovery completed the saved preparation plan and
-publication without repeating Timers or replacing Jobs' successful evidence.
-Hosted CI runs asynchronously; no fresh local macOS or cross-version installed
-migration/rollback qualification is claimed.
+## Normal checkout and deferred supplier updates
 
-## Custody and deferred work
+A concurrent updater selected Platform 0.23.6 and Storage 0.68.4 in the normal
+lock during delivery. The captured release graph and publication archives remained
+unchanged. The later refresh was preserved, main was fast-forwarded through
+`make release-batch-reconcile BATCH=batch-vLPyIAUg`, and only those supplier hunks
+were reapplied. Released package versions were retained. The refresh remains
+uncommitted and unqualified for a later batch; it was not uploaded in these releases.
 
-Preserve `.git/release-state/frozen/batch-hCRiwOcg/`, its `repository.git`, complete
-group plans/receipts and `verification/` records. Its managed checkout and outputs
-remain under `target/release-frozen/batch-hCRiwOcg/`; no retirement or cleanup was
-performed. Preserve the failed `batch-qIKZnu6X` store and checkout as well.
-Normal delivery, verification, tool-recovery and reconciliation logs are under
-`target/deployment-shared031/`. Earlier adoption evidence stays under
-`target/evidence/shared031/` and `target/evidence/frozen-hooks/`.
+Preservation: branch `deferred/batch-vLPyIAUg-suppliers`, stash
+`927ee1cd6ee829caeee92e5a0950932d829b2c3d`, and raw patch
+`target/deployment-build077-testkit090/deferred-suppliers.patch`.
+Do not restore a whole old lock over the current group versions.
 
-The normal lock retains Logging 0.24.11, Metrics 0.29.6, Storage 0.68.3,
-Wire 0.17.6 and smallvec 1.16.5 refreshes, alongside the locally qualified graph
-above. All remain outside both published releases; the focused checks above do
-not replace a complete release gate. Preserve branch `deferred/shared031-6456b5a`, stash
-`96492f00b7f0e99d13898109e413bd0b6acb412f` and the deployment directory's
-`deferred-final-Cargo.lock.patch`. Do not restore a whole old lock over current
-workspace versions. Optional supplier patches alone do not require republishing.
+## Recovery custody
 
-Earlier Jobs 0.34.8 / Timers 0.40.9 and their custody remain immutable. The
-[previous handoff](https://github.com/dragginzgame/ic-scheduling/blob/6456b5a498933fde3b9e0cad4d3322d08cd0be76/docs/status/current.md)
-retains exact identities, earlier interrupted attempts and older custody links.
-Preserve `.git/release-state/deployment-shared0307.kV0zoH90/`, all earlier custody,
-stash `d7d1c504df0be4cba608f68eda56aa4196575df8` and stash
-`0f004eda7ab7e02c96edb801416838dff89a4c72`. Retained-state byte/file/age limits
-still apply; this delivery grants no implicit artifact deletion.
+Preserve `.git/release-state/frozen/batch-vLPyIAUg/`: its durable `repository.git`,
+complete intent, group journals and source-bound validation receipts, plus
+`verification/{jobs,timers}/` with official metadata, archives, provenance, remote
+refs, runtime/cohort receipts and final installed Jobs proof. Its managed checkout
+and build artifacts remain at `target/release-frozen/batch-vLPyIAUg/`. No retirement
+or cleanup was performed. Normal raw logs are under
+`target/deployment-build077-testkit090/`; initial adoption logs/input snapshots
+remain under `target/evidence/adoption-build077-testkit090/`.
 
-## Architectural and retained-data boundaries
+Earlier custody is unchanged: completed `batch-hCRiwOcg`, failed `batch-qIKZnu6X`,
+branch `deferred/shared031-6456b5a`, stash
+`96492f00b7f0e99d13898109e413bd0b6acb412f`, and the older release/stash records
+remain preserved. Their exact versions, hashes, recovery paths and limitations
+are in the immutable
+[preceding handoff](https://github.com/dragginzgame/ic-scheduling/blob/c6eb119e89c80e8866768da279e69a0fce499e8c/docs/status/current.md).
+No older upload, release tag or receipt was rewritten.
 
-Jobs stays Serde-only and consumer-owned; every restore uses `Job::restore`.
-Uncertain effects remain blocked until explicit owner disposition. Timers retains
-its sole private provider, unsafe FFI confinement and exact Runtime guard. Canic
-owns reporting/application integration; copied Metrics observations add no endpoint.
-Storage owns checked allocation and Cells; the retired Memory crate stays absent.
-Storage 0.68's prior `ICCELL01` images remain refused without writes or growth:
-preserve old Wasm, locks, images, blocked attempts and receipts until their owner
-resolves effects and authorizes retirement. No conversion, reset or replay was added.
-Native mutation failures require discarding runtime/leases; native execution alone
-does not prove IC rollback. See the [consumer checklist](../timers/adoption/0.40.md).
+Canic owns follow-up issues
+[#735](https://github.com/dragginzgame/canic/issues/735),
+[#736](https://github.com/dragginzgame/canic/issues/736) and
+[#737](https://github.com/dragginzgame/canic/issues/737). Their local fixes and
+retained tests were reviewed read-only; no Canic source was changed here.
