@@ -1,129 +1,99 @@
 # Current handoff
 
-## Runtime 0.20 adoption qualified locally — 2026-11-07
+## Runtime 0.20 adoption delivered — 2026-11-07
 
-Endpoint and Endpoint Macros 0.8.0 are now published and not yanked; official
-metadata is retained below. The root catalog/lock select Runtime/macros/exact
-guard 0.20.0 and Endpoint/macros 0.8.0, preserving incoming Storage 0.68.7 and
-Wire Core 0.17.12. The old execution cohort is gone. Existing ordinary `cdk`
-entrypoint attributes already match Runtime's retained macro family; no Rust
-implementation change was needed. Jobs stays Serde-only. Stored formats,
-owned payloads, explicit request budgets and provider confinement are unchanged.
+Timers 0.41.0 and Jobs 0.34.13 are tagged, pushed to `origin/main` and published
+to crates.io. Their different increments used separate captured batches, in
+supplier-first order: Timers minor `batch-9DHg5ciE`, then Jobs patch
+`batch-XkfdZ7UE`. Both intents are complete at index 1 and both group journals
+are complete. Normal main was reconciled through the guarded shared helper after
+each publication. Do not replay either upload.
 
-Version-specific cohort guards and their negative fixtures now require Runtime
-0.20 while retaining registry identity, exact guard and dependency exclusions.
-Native/Wasm strict lint, graph checks, dependency-refusal fixtures, 178 native
-Timers tests, all 11 installed Jobs recovery cases, all 35 installed Timers runtime
-cases, policy cohorts and current-source Timers archive verification pass on
-Linux/Rust 1.99.1. Logs/metadata/input lock:
-`target/evidence/adoption-runtime020/endpoint-ready/`; lock SHA-256
-`17e7e9c798234552943eddb088c5b1c8b511941a064898ea2fff811bdd40c663`.
-Installed receipts: `target/tmp/jobs-recovery.8iJwvp/`,
-`target/tmp/timer-qualification-257607-0/runtime.json` and
-`target/tmp/timer-qualification-346423-0/cohorts.json`. The lock stayed unchanged.
+- Timers commit: `c798e0db954a364637021891ddc918a690e32339`;
+  annotated `timers-v0.41.0`: `bf34b57d66b33f70a547380f906950e4ab55fcdd`;
+  archive SHA-256: `2bfa9d76bea3111771873ab3df2ed2aca99b9a9d8b0e6182f01d09ea29917d1a`.
+- Jobs commit: `b2b62bd7bc61c1112f3b6b19c86db60680f2f6f9`;
+  annotated `jobs-v0.34.13`: `efed1ad69b9446b14f9323ba60507a8d656166e2`;
+  archive SHA-256: `fbcba1318f763e0ff62c9239d20cdabc2a0c560181b63ac19770b61cad58e579`.
 
-Pending notes: Timers 0.41.0 requires consumers to align Runtime/Endpoint suppliers;
-Jobs 0.34.13 changes private qualification only. Deployment is now authorized:
-release/publish Timers with a minor increment, reconcile it, then capture/release
-Jobs with a patch increment. Both use the standard complete release gates;
-the current shared batch interface applies one increment per batch. Package
-versions remain delivered values until standard preparation. Earlier refusal/404 records under
-`target/evidence/adoption-runtime020/` remain historical, not current blockers.
-Full release gates and fresh macOS qualification are separate from this adoption.
+Official registry metadata, downloaded archives, both retained Cargo upload
+archives, clean VCS provenance and remote annotated tag objects/peeled commits
+agree. This is library publication with local installed qualification.
 
-The first Timers delivery capture `batch-HUM_1Mrp` on source `ee222b5` failed
-`test-release-tooling` before product version preparation or delivery: the captured
-patch fixture inherited the pending product 0.41.0 notes instead of owning patch
-notes. The fixture now generates its own group ledgers without changing product
-selection/admission. Preserve that failed batch, retained fixture and
-`target/evidence/deploy-runtime020/timers-release-batch.log`; the corrected source
-requires a fresh capture of the same planned 0.41.0 release.
+## Consumer migration and supplier graph
 
-## Testkit 0.92 adoption delivered — 2026-11-07
+Timers 0.41 requires Runtime 0.20 and its matching macros/exact executor guard.
+Consumers must align all execution suppliers and Wire Endpoint 0.8; mixing the
+old 0.19 executor cohort remains rejected. Scheduling already used Runtime's
+retained ordinary `cdk` macro family. Jobs remains Serde-only. Timer APIs, stored
+formats, owned Wire payloads, request budgets and private provider confinement
+are unchanged; no client regeneration or data migration is introduced.
 
-Timers 0.40.13 and Jobs 0.34.12 are tagged, pushed to `origin/main` and published
-to crates.io through Shared Tooling 0.31.5's captured batch flow. Source adoption:
-`417e2d502eeaadc020aff76918f9268672c8bbd2`. Batch `batch-IaXAn_cc` is complete
-at index 2. Normal main was fast-forwarded through the guarded shared reconcile
-command. Both group journals are complete; do not replay uploads.
+The released graph selects Runtime/macros/guard 0.20.0, Endpoint/macros 0.8.0,
+Wire Core 0.17.12, Storage 0.68.7, Testkit 0.92.0, Types 0.18.2, native Platform
+0.24.0, Host Artifacts/FS/Process 0.75.0, Build 0.78.0, Logging 0.24.11 and Metrics
+0.29.6. Shared Tooling remains 0.31.5, revision
+`b2026a118e38de4af1555c527af327cb604eacdf` (152 managed files). Memory is excluded.
 
-- Timers release: `479b92a3e17f64930272da673de59a9ae344ad9f`;
-  annotated `timers-v0.40.13`: `ccbe402720ebd786f3136f00db2d2fb0e8da3b84`;
-  archive SHA-256: `413d8928c6de95fe8391b57532299b6e2f24c0383953878b048cbf4141f0957d`.
-- Jobs release: `84f7b287d9f69f80b128851382ba3ff80de072e4`;
-  annotated `jobs-v0.34.12`: `0efedc40c5b083cd1d3da0bdf04764c1583d4b8d`;
-  archive SHA-256: `221c34a77914f73358e40f96d24b0e9d797943ae25ada8eb5b854d592a6c3f7f`.
+## Fixture correction and release qualification
 
-Official registry metadata, downloaded archives, both retained Cargo publication
-archives, clean VCS provenance and remote annotated tags agree. This is library
-publication with local installed qualification, not production canister deployment.
-
-## Released supplier graph
-
-Testkit 0.92.0 brings Platform 0.24.0's native `CborError` identity. Scheduling has
-no direct facade declaration or affected error match to migrate. Native harnesses
-and the matching lock-selected CLI adopt the same Testkit generation. Wire 0.17.10
-absorbs the previously deferred update; its public codec contracts are unchanged.
-
-Retained suppliers: Storage 0.68.5, Host Artifacts/FS/Process 0.75.0, Build 0.78.0,
-Runtime/macros/exact guard 0.19.5, Types 0.18.2, Endpoint/macros 0.7.3, Logging
-0.24.11 and Metrics 0.29.6. Shared Tooling remains 0.31.5, revision
-`b2026a118e38de4af1555c527af327cb604eacdf` (152 managed files). Jobs stays
-Serde-only. Public Jobs/Timers APIs, stored formats, owned Wire payloads, explicit
-request budgets and server cleanup are unchanged. Memory remains excluded.
-
-## Qualification and evidence
+Adoption source: `ee222b54097f677c88906405acb12d5ae19a5673`. The first Timers
+capture, `batch-HUM_1Mrp`, failed `test-release-tooling` before product version
+preparation or delivery: its patch fixture inherited the pending product 0.41.0
+notes and rejected them as a competing version. Fix source
+`9e95ca670d84ef59ae0bc293ba01dacbc2d964cd` gives that fixture its own patch
+ledgers. Product version selection, changelog conflict refusal and all recovery
+assertions remain intact. The corrected source received fresh complete gates;
+the planned release versions were retained. Preserve the failed batch and its
+retained fixture/logs; do not resume its superseded source as another delivery.
 
 Both complete 37-stage Linux/Rust 1.99.1 release gates passed, each including all
 35 installed Timers runtime cases and policy cohorts. Release-tooling fixtures
-passed rollback, captured-source isolation, uncertain-publication recovery,
+passed rollback, captured-source isolation, interrupted/uncertain publication,
 second-group recovery, completed resume and reconciliation. Their substituted
-uploads remain distinct from the actual registry proof above.
+uploads remain distinct from the actual registry verification above.
 
-Captured evidence under `target/release-frozen/batch-IaXAn_cc/target/`:
+Captured gate roots under `target/release-frozen/`:
 
-- Timers gate: `release-validation/validation.uhOiIwT9/`, actual full run
-  `logs/validation.Tj4D1B`; source `417e2d5`; runtime receipt
-  `tmp/timer-qualification-416898-0/runtime.json`, cohorts `497888-0`.
-- Jobs gate: `release-validation/validation.u99Gavfk/`, actual full run
-  `logs/validation.9U7QH6`; source `479b92a`; runtime receipt
-  `tmp/timer-qualification-3659947-0/runtime.json`, cohorts `3703997-0`.
-- Against final Jobs commit `84f7b28`, all 11 installed recovery cases, the queue
-  workflow and CLI cleanup covering five exit/interruption modes pass. Recovery
-  bundle: `tmp/jobs-recovery.T0dP4Z/`; combined log in normal
-  `target/evidence/deploy-testkit092/jobs-final-installed.log`.
+- Timers: `batch-9DHg5ciE/target/release-validation/validation.wADXTW7H/`, full run
+  `logs/validation.grUd7z`; source `9e95ca6`. Runtime/cohort receipts under that
+  batch's `target/tmp/timer-qualification-{2982313,3057304}-0/`.
+- Jobs: `batch-XkfdZ7UE/target/release-validation/validation.RIkeUrim/`, full run
+  `logs/validation.rxNz41`; source `c798e0d`. Runtime/cohort receipts under that
+  batch's `target/tmp/timer-qualification-{2728418,2808265}-0/`.
+- Final Jobs commit `b2b62bd`: all 11 installed recovery cases, queue workflow and
+  CLI cleanup across five exit/interruption modes pass. Recovery bundle:
+  `batch-XkfdZ7UE/target/tmp/jobs-recovery.THwSWC/`; normal combined log:
+  `target/evidence/deploy-runtime020/jobs-final-installed.log`.
 
 Final released lock SHA-256:
-`1f6598129ca0da177ff823ffbe24efe609a79805d8985c2b8e00ae57a001aa67`.
-Pre-release focused checks remain historical at
-`target/evidence/adoption-testkit092-wire01710/` and the earlier Wire 0.17.9 graph
-at `target/evidence/adoption-testkit092/`; neither replaces the full release gates.
+`0a84b6e84261a4c0f0f11e145cb3396dcc747b438a1f9d326ab6d3d9442df1a6`.
+Normal raw release logs: `target/evidence/deploy-runtime020/`. Earlier focused
+adoption evidence remains under `target/evidence/adoption-runtime020/endpoint-ready/`;
+older refusal/404 observations are historical. Hosted Jobs
+[run 42397636843](https://github.com/dragginzgame/ic-scheduling/actions/runs/42397636843)
+was in progress at delivery. No fresh macOS or cross-release installed migration
+result is claimed from the local Linux checks.
 
-Hosted Jobs [run 42384135905](https://github.com/dragginzgame/ic-scheduling/actions/runs/42384135905)
-was in progress at delivery. Local Linux passes establish no fresh hosted/macOS
-result or cross-release installed migration proof.
+## Custody and deferred Storage update
 
-## Recovery custody and normal checkout
-
-Preserve `.git/release-state/frozen/batch-IaXAn_cc/`: durable Git store, complete
-intent, group journals/receipts and `verification/{jobs,timers}/` with official
-registry metadata, all three matching archives, VCS provenance, remote tag refs,
+Preserve `.git/release-state/frozen/{batch-9DHg5ciE,batch-XkfdZ7UE}/`: durable Git
+stores, complete intents, group journals/receipts and `verification/{timers,jobs}/`
+with registry metadata, three matching archives, VCS provenance, remote refs,
 runtime/cohort receipts and final installed Jobs proof. Managed delivery source
-and build artifacts remain under `target/release-frozen/batch-IaXAn_cc/`.
-Normal raw logs and preparation records: `target/evidence/deploy-testkit092/`.
-No batch retirement or deletion was performed.
+and build outputs remain under their `target/release-frozen/` batch paths.
+No retirement or deletion was performed, including failed `batch-HUM_1Mrp`.
 
-At that delivery the normal lock matched the released graph; the pending adoption
-above now changes its suppliers. No deferred changes occurred during that batch.
-The older Wire preservation branch
-`deferred/batch-ArjuBucS-suppliers` and stash
-`6d9e52644b4d90a59c676dfe4dd4608ab02baec3` remain recovery history; do not restore
-their whole older lock over released group versions.
+A concurrent update selected Storage 0.68.8 in the normal lock during Jobs delivery.
+The captured release remained at 0.68.7. The later edit was preserved on branch
+`deferred/batch-XkfdZ7UE-suppliers`, stash
+`c6a9dd954bd2e0aafd1b8e743e7dcec24343eaad`, and raw patch
+`target/evidence/deploy-runtime020/deferred-storage.patch` (also retained in Jobs
+verification custody). After guarded reconciliation only that supplier hunk was
+reapplied, preserving released group versions. It remains uncommitted and
+unqualified for a later batch; it was not published in these releases.
 
-Prior batches `batch-ArjuBucS`, `batch-vLPyIAUg`, `batch-hCRiwOcg` and failed
-`batch-qIKZnu6X`, their journals, evidence, branches and stashes remain preserved.
-Full prior release identities and custody are linked in the immutable
-[preceding handoff](https://github.com/dragginzgame/ic-scheduling/blob/417e2d502eeaadc020aff76918f9268672c8bbd2/docs/status/current.md).
-No older tag, upload or receipt was rewritten. Issue #89 remains closed. Canic
-issues #735–737 and their local fixes were reviewed read-only; no sibling source
-or release was changed here.
+Prior batches, supplier branches/stashes, release identities and issue/Canic
+history remain preserved and linked in the immutable
+[preceding handoff](https://github.com/dragginzgame/ic-scheduling/blob/9e95ca670d84ef59ae0bc293ba01dacbc2d964cd/docs/status/current.md).
+No older tag, upload or receipt was rewritten. No sibling source or release changed.
