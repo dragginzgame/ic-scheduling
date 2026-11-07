@@ -31,6 +31,14 @@ versions remain delivered values until standard preparation. Earlier refusal/404
 `target/evidence/adoption-runtime020/` remain historical, not current blockers.
 Full release gates and fresh macOS qualification are separate from this adoption.
 
+The first Timers delivery capture `batch-HUM_1Mrp` on source `ee222b5` failed
+`test-release-tooling` before product version preparation or delivery: the captured
+patch fixture inherited the pending product 0.41.0 notes instead of owning patch
+notes. The fixture now generates its own group ledgers without changing product
+selection/admission. Preserve that failed batch, retained fixture and
+`target/evidence/deploy-runtime020/timers-release-batch.log`; the corrected source
+requires a fresh capture of the same planned 0.41.0 release.
+
 ## Testkit 0.92 adoption delivered — 2026-11-07
 
 Timers 0.40.13 and Jobs 0.34.12 are tagged, pushed to `origin/main` and published

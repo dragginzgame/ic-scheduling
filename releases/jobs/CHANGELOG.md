@@ -12,6 +12,10 @@ and [coordinated history through 0.33.1](../history.md).
   Endpoint 0.8, retaining the incoming Storage 0.68.7 and Wire Core 0.17.12
   selections. Jobs stays Serde-only; its public API and stored formats are unchanged.
 
+### 🛠️ Tooling
+
+- Keep captured release/recovery fixtures independent of product pending versions.
+
 ## [0.34.12] - 2026-11-07
 
 ### 🧪 Testing

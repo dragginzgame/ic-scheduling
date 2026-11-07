@@ -16,6 +16,11 @@ entry alone does not establish publication.
   mixed runtime generations remain rejected. Runtime entrypoints use the ordinary
   `cdk` macro family. Timer APIs, Wire payloads and stored formats are unchanged.
 
+### 🛠️ Tooling
+
+- Give captured patch-release fixtures their own notes so a pending product
+  minor release does not block release/recovery qualification.
+
 ## [0.40.13] - 2026-11-07
 
 ### 🧪 Testing

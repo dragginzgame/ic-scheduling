@@ -6,7 +6,7 @@
 qualify_frozen() (
     set -euo pipefail
     local suite="$1" root="$2" normal="$1/frozen-normal" bin="$1/frozen-bin"
-    local base state batch work delivered group version commit
+    local base state batch work delivered group version commit ledger candidate
     local original_lock status before installed_proof=''
     unset RELEASE_BATCH_ACTIVE RELEASE_SOURCE RELEASE_VERSION RELEASE_COMMIT
     unset RELEASE_PREPARATION_SOURCE RELEASE_GROUP PACKAGE
@@ -95,6 +95,15 @@ CURL
     # Only the registry observation/upload is simulated. Real source/tag/remote
     # admission, native/Wasm lint and selected archive verification stay active.
     cd "$normal"
+    # This fixture deliberately releases patches. Its ledgers must not inherit
+    # an unrelated product minor/major draft from the source being qualified.
+    for group in timers jobs; do
+        version="$(RELEASE_GROUP="$group" bash scripts/release/group.sh version)"
+        ledger="$(RELEASE_GROUP="$group" bash scripts/release/group.sh plan | jq -er .changelog)"
+        candidate="$(bash scripts/ci/next-release-version.sh "$version" patch)"
+        printf '# Fixture ledger\n\n## [%s] - Unreleased\n\n### 🧪 Testing\n\n- Captured patch delivery.\n\n## [%s] - 2026-10-30\n\n### 🧪 Testing\n\n- Qualified fixture baseline.\n' \
+            "$candidate" "$version" > "$ledger"
+    done
     git init -q -b delivery
     git config user.name 'Scheduling frozen fixture'
     git config user.email 'fixture@example.invalid'
