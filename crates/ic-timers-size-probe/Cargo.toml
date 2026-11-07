@@ -2,7 +2,7 @@
 name = "ic-timers-size-probe"
 rust-version.workspace = true
 edition.workspace = true
-version = "0.40.13"
+version = "0.41.0"
 publish = false
 license.workspace = true
 
