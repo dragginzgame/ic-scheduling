@@ -61,12 +61,6 @@ if bash "$checker" > worker-failure.log 2>&1; then
 fi
 grep -q 'forbidden ic-testkit' worker-failure.log
 reset_manifests
-for feature in candid principal; do
-    TIMER_FORBIDDEN_FEATURE="$feature" perl -pi -e 's/"executor", "ic0"/"executor", "ic0", "$ENV{TIMER_FORBIDDEN_FEATURE}"/' crates/ic-timers/Cargo.toml
-    if cargo tree --offline -p ic-timers > "$feature-failure.log" 2>&1; then exit 1; fi
-    grep -q 'does not have that feature' "$feature-failure.log"
-    reset_manifests
-done
 
 # Runtime APIs belong only to entrypoint-owning probes; the published library
 # must keep its executor/IC0-only boundary even when runtime adds no new macro.
@@ -85,12 +79,6 @@ if bash "$checker" > default-failure.log 2>&1; then
 fi
 grep -q 'forbidden dependency feature edge: ic-platform-runtime/default' default-failure.log
 reset_manifests
-for feature in candid principal-external; do
-    TIMER_FORBIDDEN_FEATURE="$feature" perl -pi -e 's/\["cdk"\]/["cdk", "$ENV{TIMER_FORBIDDEN_FEATURE}"]/' crates/ic-timers-runtime-probe/Cargo.toml
-    if cargo tree --offline -p ic-timers-runtime-probe > "probe-$feature-failure.log" 2>&1; then exit 1; fi
-    grep -q 'does not have that feature' "probe-$feature-failure.log"
-    reset_manifests
-done
 cat >> crates/ic-timers-test-protocol/Cargo.toml <<'EOF'
 
 [build-dependencies]

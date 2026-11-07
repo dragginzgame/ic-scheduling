@@ -120,7 +120,7 @@ fn public_immediate_watchdog_replacement_failure_retires_false_scheduled_state()
         timer.clone(),
         TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
         TimerStart::Retained { initial: None },
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     )
     .expect("watchdog registration should succeed");
     registration
@@ -144,7 +144,7 @@ fn provider_cleanup_borrow_failure_is_returned_instead_of_discarded() {
         timer.clone(),
         TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
         TimerStart::Retained { initial: None },
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     )
     .expect("watchdog registration should succeed");
     registration
@@ -174,7 +174,7 @@ fn rejected_provider_binding_clears_handles_for_unavailable_or_expired_authority
     let registration = register_once(
         timer.clone(),
         TimerStart::Retained { initial: None },
-        |_context| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+        stopping_once(|| {}),
     )
     .expect("registration should succeed");
     registration
@@ -317,9 +317,11 @@ fn terminal_scheduler_failure_clears_queued_work_before_transient_removal() {
                 Err(TimerError::RegistrationExpired)
             ));
             assert!(
-                register_once(timer, TimerStart::Retained { initial: None }, |_| async {
-                    OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop)
-                })
+                register_once(
+                    timer,
+                    TimerStart::Retained { initial: None },
+                    stopping_once(|| {})
+                )
                 .is_ok()
             );
         }
@@ -333,7 +335,7 @@ fn rejected_and_coalesced_requests_preserve_bound_handles_without_reinstallation
     let registration = register_once(
         timer.clone(),
         TimerStart::Retained { initial: None },
-        |_| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+        stopping_once(|| {}),
     )
     .unwrap();
     registration
@@ -385,10 +387,9 @@ fn public_provider_install_failure_retires_false_scheduled_state() {
     let registration = register_once(
         timer.clone(),
         TimerStart::Retained { initial: None },
-        move |_context| {
+        stopping_once(move || {
             callback_calls.set(callback_calls.get() + 1);
-            async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) }
-        },
+        }),
     )
     .expect("registration should succeed");
 
@@ -430,12 +431,7 @@ fn inactive_ordinary_provider_install_failure_retires_false_scheduled_state() {
                 timer.clone(),
                 TimerCadence::from_nanos(5).unwrap(),
                 TimerStart::Retained { initial: None },
-                |_| async {
-                    AfterCompletionRunResult::new(
-                        TimerCompletion::no_work(),
-                        AfterCompletionDecision::Stop,
-                    )
-                },
+                stopping_after_completion(|| {}),
             )
             .unwrap();
             ProviderFault::BINDING.inject();
@@ -444,7 +440,7 @@ fn inactive_ordinary_provider_install_failure_retires_false_scheduled_state() {
             let registration = register_once(
                 timer.clone(),
                 TimerStart::Retained { initial: None },
-                |_| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+                stopping_once(|| {}),
             )
             .unwrap();
             ProviderFault::BINDING.inject();
@@ -515,11 +511,12 @@ fn watchdog_failed_dispatch_clears_handles_without_confirming_work() {
                     registration.has_armed_wakeup(),
                     Err(TimerError::RegistrationExpired)
                 ));
-                let replacement =
-                    register_once(timer, TimerStart::Retained { initial: None }, |_| async {
-                        OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop)
-                    })
-                    .expect("failed transient dispatch should release the identity");
+                let replacement = register_once(
+                    timer,
+                    TimerStart::Retained { initial: None },
+                    stopping_once(|| {}),
+                )
+                .expect("failed transient dispatch should release the identity");
                 replacement.ensure_scheduled(TimerSchedule::At(25)).unwrap();
                 assert!(replacement.has_armed_wakeup().unwrap());
                 assert!(matches!(
@@ -586,7 +583,7 @@ fn remove_on_stop_provider_failure_removes_the_expired_claim() {
         TimerStart::RemoveWhenStopped {
             initial: TimerSchedule::At(20),
         },
-        |_context| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+        stopping_once(|| {}),
     )
     .expect("registration should succeed");
 

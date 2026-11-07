@@ -46,10 +46,7 @@ async fn freeze_for_five_minutes(
     )
     .await
     .expect("raise freezing reserve");
-    pic.advance_time(Duration::from_secs(300))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16)
+    advance_and_tick(pic, Duration::from_secs(300), 16)
         .await
         .expect("advance and tick PocketIC");
     let frozen_balance = pic

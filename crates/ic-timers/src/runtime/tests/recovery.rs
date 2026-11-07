@@ -144,7 +144,7 @@ fn watchdog_successor_retires_an_unacknowledged_dispatched_attempt() {
         timer.clone(),
         TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
         TimerStart::Retained { initial: None },
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     )
     .expect("watchdog registration should succeed");
     registration
@@ -310,7 +310,7 @@ fn reconstruction_and_external_demand_are_synchronous_and_idempotent() {
         &timer,
         cadence,
         WatchdogReconcileState::ScheduledImmediately,
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     )
     .expect("returned-error commit guard should synchronously restore a wake-up");
     assert_eq!(timer_count(), 1);
@@ -355,7 +355,7 @@ fn reconstruction_and_external_demand_are_synchronous_and_idempotent() {
         &timer,
         cadence,
         WatchdogReconcileState::ScheduledImmediately,
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     )
     .expect("retained terminal declaration can be reconstructed from durable demand");
     assert_eq!(timer_count(), 1);
@@ -377,7 +377,7 @@ fn reconstruction_and_external_demand_are_synchronous_and_idempotent() {
         &timer,
         TimerCadence::from_nanos(6).expect("fixture cadence should be valid"),
         WatchdogReconcileState::Inactive,
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     );
     assert!(matches!(mismatch, Err(TimerError::ReconciliationConflict)));
 }

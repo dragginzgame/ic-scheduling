@@ -4,9 +4,7 @@ use ic_jobs::{
     next_due_ns, start_next,
 };
 
-mod support;
-
-use support::{recurring_schedules, roundtrip};
+use super::support::{recurring_schedules, roundtrip};
 
 fn retry() -> RetryPolicy {
     RetryPolicy::new(4, 10, 15).unwrap()

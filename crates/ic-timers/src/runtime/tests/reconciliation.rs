@@ -287,10 +287,9 @@ fn once_reconciliation_owns_one_exact_deadline_and_retains_its_callback() {
         &mut registration,
         &timer,
         Some(TimerSchedule::At(20)),
-        move |_context| {
+        stopping_once(move || {
             callback_calls.set(callback_calls.get().saturating_add(1));
-            async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) }
-        },
+        }),
     )
     .expect("fresh reconstruction should register and arm");
     reconcile_once(

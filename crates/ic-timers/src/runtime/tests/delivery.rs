@@ -183,7 +183,7 @@ fn stale_delivery_drop_cannot_retire_rearmed_or_reused_identity() {
     let registration = register_once(
         timer.clone(),
         TimerStart::Retained { initial: None },
-        |_| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+        stopping_once(|| {}),
     )
     .unwrap();
     registration
@@ -202,9 +202,11 @@ fn stale_delivery_drop_cannot_retire_rearmed_or_reused_identity() {
     drop(old_delivery);
     assert_eq!(timer_inventory().unwrap(), before);
     registration.unregister().unwrap();
-    let replacement = register_once(timer, TimerStart::Retained { initial: None }, |_| async {
-        OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop)
-    })
+    let replacement = register_once(
+        timer,
+        TimerStart::Retained { initial: None },
+        stopping_once(|| {}),
+    )
     .unwrap();
     replacement
         .reconcile_schedule(Some(TimerSchedule::At(40)))
@@ -256,7 +258,7 @@ fn abandoned_transient_releases_capacity_and_drops_captures_outside_registry_bor
             register_once(
                 identity(&format!("capacity-{index}")),
                 TimerStart::Retained { initial: None },
-                |_| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+                stopping_once(|| {}),
             )
             .unwrap(),
         );
@@ -267,9 +269,11 @@ fn abandoned_transient_releases_capacity_and_drops_captures_outside_registry_bor
     );
     assert!(discard_next_due());
     assert!(dropped.get());
-    let replacement = register_once(timer, TimerStart::Retained { initial: None }, |_| async {
-        OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop)
-    })
+    let replacement = register_once(
+        timer,
+        TimerStart::Retained { initial: None },
+        stopping_once(|| {}),
+    )
     .unwrap();
     assert!(matches!(
         registration.has_armed_wakeup(),

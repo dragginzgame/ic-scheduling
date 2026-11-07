@@ -4,6 +4,32 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.11] - Unreleased
+
+### 📦 Dependencies
+
+- Adopt Storage 0.68.5 and Testkit 0.91 for checked consumer storage and native
+  recovery qualification, aligned with Host 0.75's execution/cleanup errors.
+- Qualify Platform 0.23.6, Wire 0.17.8 and Endpoint 0.7.3 in the consumer graph.
+  Jobs remains Serde-only; stored formats and public APIs are unchanged.
+
+### 🧹 Cleanup
+
+- Narrow the native notification fixture to committed intent, receipts and recovery.
+  Management authorization and pagination remain qualified by the actual Queue.
+
+### 🧪 Testing
+
+- Consolidate the public Jobs integration contracts into one test target with
+  shared support and topic modules, retaining all cases and frozen records.
+
+### 🛠️ Tooling
+
+- Adopt Shared Tooling 0.31.5 for fresh scratch-directory handling and isolated
+  release-command checks.
+- Adopt Host FS/Process 0.75 and Build 0.78 for native artifact capture and the
+  selected release metadata editor. Public Jobs dependencies remain unchanged.
+
 ## [0.34.10] - 2026-11-07
 
 ### 📦 Dependencies

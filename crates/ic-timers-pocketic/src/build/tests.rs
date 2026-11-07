@@ -1,14 +1,28 @@
 use super::*;
+use ic_host_fs::testing::FixtureDirectory;
 use ic_host_process::tool::ExecutionFailure;
 use std::process::Stdio;
 
+fn scratch_fixture(label: &str) -> FixtureDirectory {
+    FixtureDirectory::new(&scratch_parent().unwrap(), label).unwrap()
+}
+
+// Model a successful libtest producer with no ignored subjects. Negative tests
+// keep their failing/ignored producers explicit below.
+fn listing_producer(listing: &str) -> Command {
+    let mut command = Command::new("sh");
+    command.args([
+        "-c",
+        "case \"${2:-}\" in --ignored) exit 0;; esac; printf '%s' \"$1\"",
+        "fixture",
+        listing,
+    ]);
+    command
+}
+
 #[test]
 fn subject_discovery_rejects_empty_unrelated_and_failed_producers() {
-    let fixture = ic_host_fs::testing::FixtureDirectory::new(
-        &crate::build::scratch_parent().unwrap(),
-        "timer-discovery",
-    )
-    .unwrap();
+    let fixture = scratch_fixture("timer-discovery");
     let watchdog = REQUIRED_WATCHDOG_SUBJECTS
         .iter()
         .map(|name| format!("{name}: test\n"))
@@ -39,15 +53,13 @@ fn subject_discovery_rejects_empty_unrelated_and_failed_producers() {
         (&cohort_selection, cohort.as_str(), true),
         (&watchdog_selection, "tests::fake: benchmark\n", false),
     ] {
-        let mut command = Command::new("sh");
-        command.args([
-            "-c",
-            "case \"${2:-}\" in --ignored) exit 0;; esac; printf '%s' \"$1\"",
-            "fixture",
-            listing,
-        ]);
         assert_eq!(
-            discover_subjects(&mut command, qualification, fixture.path()).is_ok(),
+            discover_subjects(
+                &mut listing_producer(listing),
+                qualification,
+                fixture.path()
+            )
+            .is_ok(),
             admitted
         );
     }
@@ -72,11 +84,7 @@ fn subject_discovery_rejects_empty_unrelated_and_failed_producers() {
 
 #[test]
 fn focused_discovery_requires_every_exact_nonignored_runtime_subject() {
-    let fixture = ic_host_fs::testing::FixtureDirectory::new(
-        &crate::build::scratch_parent().unwrap(),
-        "timer-focused-discovery",
-    )
-    .unwrap();
+    let fixture = scratch_fixture("timer-focused-discovery");
     let selection = Qualification::Focused {
         subjects: vec!["tests::ordinary::one".into(), "tests::watchdog::two".into()],
     };
@@ -104,14 +112,7 @@ fn focused_discovery_requires_every_exact_nonignored_runtime_subject() {
             false,
         ),
     ] {
-        let mut producer = Command::new("sh");
-        producer.args([
-            "-c",
-            "case \"${2:-}\" in --ignored) exit 0;; esac; printf '%s' \"$1\"",
-            "fixture",
-            listing,
-        ]);
-        let result = discover_subjects(&mut producer, &selection, fixture.path());
+        let result = discover_subjects(&mut listing_producer(listing), &selection, fixture.path());
         assert_eq!(result.is_ok(), admitted);
         if let Ok(subjects) = result {
             assert_eq!(subjects, ["tests::watchdog::two", "tests::ordinary::one"]);
@@ -122,11 +123,9 @@ fn focused_discovery_requires_every_exact_nonignored_runtime_subject() {
         vec!["tests::ordinary::one", "tests::ordinary::one"],
         vec!["build::one"],
     ] {
-        let mut producer = Command::new("sh");
-        producer.args(["-c", "printf 'tests::ordinary::one: test\\n'"]);
         assert!(
             discover_subjects(
-                &mut producer,
+                &mut listing_producer("tests::ordinary::one: test\n"),
                 &Qualification::Focused {
                     subjects: subjects.into_iter().map(str::to_owned).collect(),
                 },
@@ -152,11 +151,7 @@ fn focused_discovery_requires_every_exact_nonignored_runtime_subject() {
 fn discovery_failures_save_bounded_bytes_and_keep_the_original_error() {
     use std::os::unix::fs::PermissionsExt;
 
-    let fixture = ic_host_fs::testing::FixtureDirectory::new(
-        &crate::build::scratch_parent().unwrap(),
-        "timer-discovery-evidence",
-    )
-    .unwrap();
+    let fixture = scratch_fixture("timer-discovery-evidence");
     for stage in ["discovery", "ignored"] {
         let mut producer = Command::new("sh");
         producer.args([
@@ -249,11 +244,7 @@ fn qualification_deadline_covers_descendants_and_preserves_failure() {
 
 #[test]
 fn baseline_output_alias_is_rejected_before_any_build_or_write() {
-    let fixture = ic_host_fs::testing::FixtureDirectory::new(
-        &crate::build::scratch_parent().unwrap(),
-        "timer-baseline-alias",
-    )
-    .unwrap();
+    let fixture = scratch_fixture("timer-baseline-alias");
     let baseline = fixture.path().join("baseline.json");
     let hard_link = fixture.path().join("hard-link.json");
     let symlink = fixture.path().join("symlink.json");

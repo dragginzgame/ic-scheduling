@@ -9,13 +9,7 @@ use ic_jobs::{
     Attempt, ExecutionId, Job, JobError, JobId, JobRecord, JobState, Outcome, RetryPolicy, Schedule,
 };
 
-#[expect(
-    dead_code,
-    reason = "the shared roundtrip helper is used by the other integration targets"
-)]
-mod support;
-
-use support::recurring_schedules;
+use super::support::recurring_schedules;
 
 #[derive(Clone, Copy, Debug)]
 enum Operation {

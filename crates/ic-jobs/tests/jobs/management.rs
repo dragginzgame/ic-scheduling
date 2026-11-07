@@ -4,9 +4,7 @@ use ic_jobs::{
     RetryPolicy, Schedule, next_due_ns, start_next,
 };
 
-mod support;
-
-use support::{recurring_schedules, roundtrip};
+use super::support::{recurring_schedules, roundtrip};
 
 fn recurring(missed: MissedRunPolicy) -> Job {
     Job::new(

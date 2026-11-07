@@ -31,10 +31,7 @@ async fn trapped_work_keeps_committed_successor_and_executor_is_private() {
     assert_eq!(snapshot(pic, canister_id).await, before_external);
 
     let trap_at = update_u64(pic, canister_id, Method::ArmTrap).await;
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 12)
+    advance_and_tick(pic, Duration::from_secs(1), 12)
         .await
         .expect("advance and tick PocketIC");
     let trapped = snapshot(pic, canister_id).await;
@@ -56,10 +53,7 @@ async fn trapped_work_keeps_committed_successor_and_executor_is_private() {
     assert_eq!(trapped.work_memory, None);
     assert_eq!(trapped.next_deadline_ns, Some(trap_at + 1_000_000_000));
 
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 12)
+    advance_and_tick(pic, Duration::from_secs(1), 12)
         .await
         .expect("advance and tick PocketIC");
     let recovered = snapshot(pic, canister_id).await;
@@ -110,10 +104,7 @@ async fn trapped_work_keeps_committed_successor_and_executor_is_private() {
     assert_eq!(upgraded.wakeups_armed.total, 1);
     assert!(upgraded.next_deadline_ns.is_some());
 
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 12)
+    advance_and_tick(pic, Duration::from_secs(1), 12)
         .await
         .expect("advance and tick PocketIC");
     let after_upgrade = snapshot(pic, canister_id).await;
@@ -161,10 +152,7 @@ async fn instruction_exhaustion_leaves_successor_for_later_progress() {
     assert!(update_bool(pic, canister_id, Method::Start).await);
 
     let exhaust_at = update_u64(pic, canister_id, Method::ArmExhaustion).await;
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 30)
+    advance_and_tick(pic, Duration::from_secs(1), 30)
         .await
         .expect("advance and tick PocketIC");
     let exhausted = snapshot(pic, canister_id).await;
@@ -182,10 +170,7 @@ async fn instruction_exhaustion_leaves_successor_for_later_progress() {
     assert_eq!(exhausted.work_memory, None);
     assert_eq!(exhausted.next_deadline_ns, Some(exhaust_at + 1_000_000_000));
 
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16)
+    advance_and_tick(pic, Duration::from_secs(1), 16)
         .await
         .expect("advance and tick PocketIC");
     let recovered = snapshot(pic, canister_id).await;
@@ -363,10 +348,7 @@ async fn insufficient_cycles_defer_due_work_until_top_up() {
     .expect("probe multi-result update succeeds");
     assert!(call_cost > 0);
 
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 8)
+    advance_and_tick(pic, Duration::from_secs(1), 8)
         .await
         .expect("advance and tick PocketIC");
     let deferred = snapshot(pic, canister_id).await;
@@ -380,10 +362,7 @@ async fn insufficient_cycles_defer_due_work_until_top_up() {
         .await
         .expect("advance and tick PocketIC");
     assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16)
+    advance_and_tick(pic, Duration::from_secs(1), 16)
         .await
         .expect("advance and tick PocketIC");
     let progressed = snapshot(pic, canister_id).await;

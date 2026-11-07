@@ -77,10 +77,7 @@ async fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
         "{thawed:?}"
     );
     assert!(update_bool(pic, canister_id, Method::ExpiredOrdinaryContextRejected).await);
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16)
+    advance_and_tick(pic, Duration::from_secs(1), 16)
         .await
         .expect("advance and tick PocketIC");
     let settled = ordinary_observation(pic, canister_id).await;
@@ -320,10 +317,7 @@ async fn ordinary_await_allows_ingress_and_other_timers_before_completion() {
             .await;
             assert_eq!(suspended.gate_error, None);
             assert!(update_bool(pic, canister_id, Method::Start).await);
-            pic.advance_time(Duration::from_secs(2))
-                .await
-                .expect("advance IC time");
-            advance_and_tick(pic, Duration::ZERO, 16)
+            advance_and_tick(pic, Duration::from_secs(2), 16)
                 .await
                 .expect("advance and tick PocketIC");
             assert_eq!(
@@ -490,20 +484,14 @@ async fn dispatch_response_trap_cleanup_preserves_pending_work_for_retry() {
             .await
             .expect("advance and tick PocketIC");
         assert!(ordinary_observation(pic, canister_id).await.declared);
-        pic.advance_time(Duration::from_secs(1))
-            .await
-            .expect("advance IC time");
-        advance_and_tick(pic, Duration::ZERO, 32)
+        advance_and_tick(pic, Duration::from_secs(1), 32)
             .await
             .expect("advance and tick PocketIC");
         assert_ordinary_abandonment(&ordinary_observation(pic, canister_id).await, true);
 
         // Confirm the backend still dispatches independent work after cleanup.
         assert!(update_bool(pic, canister_id, Method::Start).await);
-        pic.advance_time(Duration::from_secs(2))
-            .await
-            .expect("advance IC time");
-        advance_and_tick(pic, Duration::ZERO, 16)
+        advance_and_tick(pic, Duration::from_secs(2), 16)
             .await
             .expect("advance and tick PocketIC");
         assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
@@ -528,10 +516,7 @@ async fn ordinary_trap_before_await_retires_the_rolled_back_scheduled_delivery()
             assert_ordinary_abandonment(&observed, lifetime == ProbeLifetime::RemoveWhenStopped);
             assert_eq!(observed.gate_replies, 0);
             assert!(update_bool(pic, canister_id, Method::Start).await);
-            pic.advance_time(Duration::from_secs(2))
-                .await
-                .expect("advance IC time");
-            advance_and_tick(pic, Duration::ZERO, 16)
+            advance_and_tick(pic, Duration::from_secs(2), 16)
                 .await
                 .expect("advance and tick PocketIC");
             assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
@@ -623,10 +608,7 @@ async fn ordinary_continuation_trap_retires_running_work_and_releases_expired_au
                     if removed { 2 } else { 1 }
                 );
                 assert!(update_bool(pic, canister_id, Method::Start).await);
-                pic.advance_time(Duration::from_secs(2))
-                    .await
-                    .expect("advance IC time");
-                advance_and_tick(pic, Duration::ZERO, 16)
+                advance_and_tick(pic, Duration::from_secs(2), 16)
                     .await
                     .expect("advance and tick PocketIC");
                 assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
@@ -673,10 +655,7 @@ async fn accepted_ordinary_work_survives_dispatch_timeout_without_replay() {
     .await
     .unwrap();
     assert!(accepted);
-    pic.advance_time(Duration::from_secs(301))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 20)
+    advance_and_tick(pic, Duration::from_secs(301), 20)
         .await
         .expect("advance and tick PocketIC");
     let timed_out = ordinary_observation(pic, canister_id).await;

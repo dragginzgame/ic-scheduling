@@ -7,6 +7,35 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.12] - Unreleased
+
+### 📦 Dependencies
+
+- Adopt Testkit 0.91 with the Host 0.75 execution/cleanup error identities used
+  by native qualification. Retain explicit request budgets and server custody.
+- Qualify Storage 0.68.5, Platform 0.23.6, Wire 0.17.8 and Endpoint 0.7.3 in the
+  consumer graph, retaining Runtime/macros/exact guard 0.19.5 and Types 0.18.2.
+
+### 🧪 Testing
+
+- Share the native full-capacity rearming scenario across timer policies while
+  retaining typed controls and Watchdog's distinct scheduler/work assertions.
+- Reuse capture-registration and stopping-callback fixtures, preserving callback
+  completion classifications, execution timing and destruction-order checks.
+- Share host discovery fixture setup while retaining independent admission,
+  ignored-subject and failed-producer checks.
+- Use Testkit's combined time-advance/tick operation in installed-runtime tests,
+  preserving explicit durations, tick budgets and intervening observations.
+- Remove retired-feature rejection cases owned by Cargo; keep provider,
+  dependency and exact Runtime guard policy checks.
+
+### 🛠️ Tooling
+
+- Adopt Shared Tooling 0.31.5 for fresh scratch-directory handling and isolated
+  release-command checks.
+- Adopt Host Artifacts/FS/Process 0.75 and Build 0.78 for native probe builds,
+  process supervision and qualification receipts.
+
 ## [0.40.11] - 2026-11-07
 
 ### 📦 Dependencies

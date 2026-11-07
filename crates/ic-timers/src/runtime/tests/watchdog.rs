@@ -46,10 +46,9 @@ fn immediate_watchdog_reconciliation_arms_one_zero_delay_scheduler() {
         &timer,
         TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
         WatchdogReconcileState::ScheduledImmediately,
-        move |_context| {
+        stopping_watchdog(move || {
             callback_calls.set(callback_calls.get().saturating_add(1));
-            WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop)
-        },
+        }),
     )
     .expect("fresh immediate reconciliation should succeed");
 
@@ -88,7 +87,7 @@ fn immediate_watchdog_ensure_moves_cadence_earlier_and_repeats_idempotently() {
         timer.clone(),
         TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
         TimerStart::Retained { initial: None },
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     )
     .expect("watchdog registration should succeed");
     registration
@@ -132,7 +131,7 @@ fn immediate_watchdog_ensure_coalesces_an_overdue_cadence_wakeup() {
         timer.clone(),
         TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
         TimerStart::Retained { initial: None },
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     )
     .expect("watchdog registration should succeed");
     registration
@@ -638,7 +637,7 @@ fn remove_on_stop_watchdog_clears_successor_before_dropping_entry() {
         TimerStart::RemoveWhenStopped {
             initial: TimerSchedule::After(Duration::from_nanos(5)),
         },
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     )
     .expect("watchdog registration should succeed");
     set_time(15);

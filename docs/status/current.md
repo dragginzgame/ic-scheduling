@@ -1,5 +1,36 @@
 # Current handoff
 
+## Storage/Testkit adoption and release preparation — 2026-11-07
+
+The requested delivery selects Timers 0.40.12 followed by Jobs 0.34.11, with
+crates.io publication through Shared's captured batch flow to `origin/main`.
+Package versions remain at their delivered base until the standard runner bumps
+each group. No new release or publication has happened yet.
+
+The root catalog/lock select Storage 0.68.5, Testkit 0.91.0, Host Artifacts/FS/Process
+0.75.0 and Build 0.78.0. Testkit now shares the Host 0.75 error identities; the old
+Host 0.74 copies are gone. Runtime/macros/exact guard 0.19.5, Types 0.18.2,
+Platform 0.23.6, Wire 0.17.8, Endpoint/macros 0.7.3, Logging 0.24.11 and Metrics
+0.29.6 are retained. Jobs stays Serde-only; public APIs and stored formats are
+unchanged. Shared Tooling's latest committed revision remains 0.31.5,
+`b2026a118e38de4af1555c527af327cb604eacdf` (152 managed files).
+
+The cleanup narrows notification fixtures to validated composition/recovery;
+the actual Queue owns management/auth/pagination. Timers shares capacity, capture
+and stopping fixtures, preserving typed controls, classifications, destruction
+ordering and separate Watchdog messages. Four Cargo-owned retired-feature checks
+were removed; provider/dependency guards and distinct recovery fixtures remain.
+Jobs now shares one integration target with all 48 cases/frozen records. Installed
+tests combine 27 adjacent advance/tick pairs with unchanged budgets and observations.
+Shared cloc: tests 25,608 → 25,009 (599 fewer), library/app unchanged at 5,494.
+
+Before release capture, Storage's 49 native Queue and 14 composition tests pass;
+the Testkit 0.91 recovery consumer compiles. Testkit's selected CLI is prepared.
+Current adoption/preparation evidence: `target/evidence/deploy-storage0685-testkit091/`.
+Earlier cleanup and Host checks remain historical at `target/evidence/cleanup-shared0315/`,
+`cleanup-fixtures/`, `cleanup-progress/` and `adoption-host075/`. Their older lock
+identities are superseded by this release candidate; they are not release gates.
+
 ## Jobs 0.34.10 and Timers 0.40.11 delivered — 2026-11-07
 
 Both groups are tagged, pushed to `origin/main` and published to crates.io through
@@ -21,7 +52,7 @@ qualification; it does not establish production application deployment.
 
 ## Released supplier graph and Testkit migration
 
-The root catalog/lock select Build 0.77.0 and Testkit 0.90.0. Runtime/macros/exact
+The delivered graph used Build 0.77.0 and Testkit 0.90.0. Runtime/macros/exact
 guard 0.19.5, Types 0.18.2, Platform 0.23.5, Storage 0.68.3, Wire 0.17.6,
 Endpoint/macros 0.7.2, Logging 0.24.11, Metrics 0.29.6 and Host 0.74.4 are retained.
 Shared's reviewed snapshot is 0.31.1,
@@ -66,11 +97,9 @@ Captured validation roots under `target/release-frozen/batch-vLPyIAUg/target/`:
   durable verification custody below. Queue and CLI logs share the normal
   `target/deployment-build077-testkit090/jobs-final-installed.log`.
 
-Hosted CI runs asynchronously. At delivery inspection, the Jobs
-[run 42363044232](https://github.com/dragginzgame/ic-scheduling/actions/runs/42363044232)
-was in progress; the preceding Timers run was cancelled by the succeeding push.
-These are not fresh hosted/macOS passes. Preserve actual source-bound results;
-no full hosted matrix or cross-release installed migration is inferred.
+At delivery, hosted Jobs [run 42363044232](https://github.com/dragginzgame/ic-scheduling/actions/runs/42363044232)
+was in progress; the preceding Timers run was cancelled. These historical statuses
+establish no fresh hosted/macOS or cross-release installed migration pass.
 
 ## Normal checkout and deferred supplier updates
 

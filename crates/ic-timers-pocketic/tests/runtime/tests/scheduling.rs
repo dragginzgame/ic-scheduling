@@ -34,10 +34,7 @@ async fn self_call_queue_pressure_defers_timer_submission_without_losing_work() 
         .await
         .expect("advance and tick PocketIC");
     assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16)
+    advance_and_tick(pic, Duration::from_secs(1), 16)
         .await
         .expect("advance and tick PocketIC");
     let completed = snapshot(pic, canister_id).await;
@@ -104,10 +101,7 @@ async fn deferred_submission_cancellation_and_replacement_do_not_revive_old_work
         .expect("stale self-call result");
         assert!(stale_delivery);
         assert_eq!(snapshot(pic, canister_id).await.completed_work, 0);
-        pic.advance_time(Duration::from_secs(1))
-            .await
-            .expect("advance IC time");
-        advance_and_tick(pic, Duration::ZERO, 16)
+        advance_and_tick(pic, Duration::from_secs(1), 16)
             .await
             .expect("advance and tick PocketIC");
         let recovered = snapshot(pic, canister_id).await;
@@ -266,10 +260,7 @@ async fn commit_window_ensure_stop_resume_and_large_overdue_time_remain_bounded(
     pic.stop_canister(canister_id, None)
         .await
         .expect("canister stop should succeed");
-    pic.advance_time(Duration::from_secs(300))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 4)
+    advance_and_tick(pic, Duration::from_secs(300), 4)
         .await
         .expect("advance and tick PocketIC");
     pic.start_canister(canister_id, None)
@@ -287,19 +278,13 @@ async fn commit_window_ensure_stop_resume_and_large_overdue_time_remain_bounded(
     assert!(resumed.next_deadline_ns.is_some());
 
     update_unit(pic, canister_id, Method::StopOnNextWork).await;
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16)
+    advance_and_tick(pic, Duration::from_secs(1), 16)
         .await
         .expect("advance and tick PocketIC");
     let terminal = snapshot(pic, canister_id).await;
     assert_eq!(terminal.completed_work, 2);
     assert_eq!(terminal.next_deadline_ns, None);
-    pic.advance_time(Duration::from_secs(2))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 8)
+    advance_and_tick(pic, Duration::from_secs(2), 8)
         .await
         .expect("advance and tick PocketIC");
     assert_eq!(snapshot(pic, canister_id).await.completed_work, 2);
@@ -390,10 +375,7 @@ async fn exact_deadline_sleeps_and_registration_replacement_marks_counter_regrow
     let later = first_deadline + 10_000_000_000;
     update_deadline(pic, canister_id, Method::ScheduleAt, later).await;
     update_deadline(pic, canister_id, Method::ScheduleAt, later).await;
-    pic.advance_time(Duration::from_secs(2))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16)
+    advance_and_tick(pic, Duration::from_secs(2), 16)
         .await
         .expect("advance and tick PocketIC");
     let sleeping = snapshot(pic, canister_id).await;
@@ -417,10 +399,7 @@ async fn exact_deadline_sleeps_and_registration_replacement_marks_counter_regrow
     assert_eq!(completed.completed_work, 1);
     assert_eq!(completed.next_deadline_ns, Some(continuation));
     assert_eq!(completed.registration_id, initial.registration_id);
-    pic.advance_time(Duration::from_secs(2))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16)
+    advance_and_tick(pic, Duration::from_secs(2), 16)
         .await
         .expect("advance and tick PocketIC");
     assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
@@ -439,10 +418,7 @@ async fn exact_deadline_sleeps_and_registration_replacement_marks_counter_regrow
     assert_eq!((old_id.0, old_id.1), (new_id.0, new_id.1));
     assert!(new_id.2 > old_id.2);
     for _ in 0..2 {
-        pic.advance_time(Duration::from_secs(1))
-            .await
-            .expect("advance IC time");
-        advance_and_tick(pic, Duration::ZERO, 16)
+        advance_and_tick(pic, Duration::from_secs(1), 16)
             .await
             .expect("advance and tick PocketIC");
     }

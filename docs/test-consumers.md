@@ -17,9 +17,9 @@ requirements without advertising an implemented adapter.
 | Restored intent remains blocked even if the effect was never submitted | [interruption_before_delivery_keeps_committed_intent_blocked](../apps/ic-jobs-test-consumer/tests/composition.rs) |
 | A known safe retry keeps its payload and rejects old replies | [known_rejection_retries_same_payload_and_rejects_old_reply](../apps/ic-jobs-test-consumer/tests/composition.rs) |
 | Reconciliation requires exact payload/effect evidence | [reconciliation_requires_matching_payload_and_prefers_success_evidence](../apps/ic-jobs-test-consumer/tests/composition.rs) |
-| Invalid records refuse before effects, including records not currently due | [management_validates_future_records_before_reads_or_mutation](../apps/ic-jobs-test-consumer/tests/composition.rs) |
-| Authorization precedes private storage access | [management_refuses_unauthorized_calls_before_decoding_or_writing](../apps/ic-jobs-test-consumer/tests/composition.rs) |
-| Failed management commits preserve the previous queue deadline | [management_commit_failures_preserve_queue_and_derived_wakeup](../apps/ic-jobs-test-consumer/tests/composition.rs) |
+| Invalid records refuse before effects, including records not currently due | [notification queue admission](../apps/ic-jobs-test-consumer/tests/composition.rs) and [actual Queue admission](../apps/ic-jobs-test-consumer/src/queue/tests/admission.rs) |
+| Authorization preserves caller and job authority | [actual Queue management](../apps/ic-jobs-test-consumer/src/queue/tests/management.rs) and [installed endpoint recovery](../crates/ic-jobs-canister-tests/tests/recovery.rs) |
+| Failed queue mutations preserve the previous committed deadline | [failed_queue_mutations_preserve_committed_deadlines](../apps/ic-jobs-test-consumer/tests/composition.rs) |
 | Retained allocation bindings and blocked effects survive cold reopening | [host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects](../apps/ic-jobs-test-consumer/tests/composition.rs) |
 | Wire records retain states/attempts and still require validated restoration | [stored Wire conformance](../apps/ic-jobs-test-consumer/tests/stored_wire.rs) |
 | Duplicate receipts and late continuations cannot overwrite terminal/successor state | [packaged adapter example](../crates/ic-jobs/examples/persisted_job.rs) |
@@ -143,35 +143,20 @@ live harness uses IC Testkit's selected server setup/check contract; see the
 source-bound evidence in the handoff rather than treating native passes as live
 qualification or claiming that no live qualification has ever run.
 
-## Native management fixture
+## Native composition and management owners
 
-The notification consumer now exercises an application management boundary:
-create a one-shot notification, inspect it, list a bounded page, cancel pending
-work or dispatch one eligible due notification. All calls require the fixture's
-configured manager identity before decoding storage, reading private payloads
-or writing. The supplied caller is trusted boundary input; a real canister must
-obtain it from the IC caller API, never from a request field. This native policy
-check does not qualify Wire endpoints or IC caller authentication.
+The notification fixture focuses on bounded payloads, commit-before-dispatch,
+exact receipts and blocked-effect recovery. Every load validates all records
+through `Job::restore`; corrupt future records also block otherwise due work.
+Failed enqueue/cancel/dispatch commits preserve the previous bytes and deadline.
+Dispatch exposes its envelope only after committing intent. Direct Timers
+composition checks ScheduleAt/Stop projection without registering provider wakeups.
 
-Listing accepts limits from one to four and an optional exclusive job-ID cursor.
-Pages sort by job ID independently of queue insertion order; each page observes
-the current committed queue, without claiming a snapshot across requests.
-Every read and mutation validates the entire bounded queue through `Job::restore`.
-Unknown jobs, invalid page limits, corrupt future records, duplicate identities
-and oversized snapshots are refused without changing committed records.
-
-Successful responses include the earliest deadline derived from committed
-records. Failed create/cancel/dispatch writes expose no successful management
-response or delivery envelope and retain the previous deadline. Direct IC Timers
-composition tests projection of those deadlines into ScheduleAt/Stop decisions;
-it does not register provider wakeups. Cancellation retains terminal history,
-refuses Running/Uncertain work and cannot undo an effect. An early dispatch is
-idle; restored intent stays blocked until exact destination evidence resolves it.
-
-These flows use the existing byte-replacement store and immutable payloads.
-They establish consumer composition evidence only. The native host fixture below
-uses committed IC Storage allocations; the separate canister fixture owns its
-lifecycle integration. Neither path assigns component memory-ID ranges.
+The actual Queue owns management, pagination and caller authorization. Its native
+tests and installed endpoint tests qualify those boundaries. The notification
+fixture uses the byte-replacement store to inject commit failures; it maintains
+no second endpoint or authorization API. The host fixture below separately opens
+committed IC Storage allocations. Neither fixture assigns component memory IDs.
 
 ## Consumer memory requests
 
@@ -239,7 +224,7 @@ must remain terminal after upgrade, with no duplicate committed local effect.
 Matching installed evidence includes the tested source, dependency graph and Wasm
 variants; the current handoff records those identities and limits.
 
-The current [configuration tests](../crates/ic-jobs/tests/configuration.rs)
+The current [configuration tests](../crates/ic-jobs/tests/jobs/configuration.rs)
 round-trip current records and retain unresolved dispatch as blocked. Frozen
 retired JSON and Candid replies are negative inputs. Earlier physical images are
 ledger-refusal evidence, not a compatibility promise. The frozen Memory 0.55.2

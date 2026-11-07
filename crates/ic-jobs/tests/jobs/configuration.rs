@@ -111,7 +111,7 @@ fn running_uses_transition_time_and_uncertainty_retains_original_dispatch() {
     assert_eq!(job.record().state, JobState::Completed);
 
     assert!(
-        serde_json::from_slice::<JobRecord>(include_bytes!("fixtures/running-record-015.json"))
+        serde_json::from_slice::<JobRecord>(include_bytes!("../fixtures/running-record-015.json"))
             .is_err()
     );
 }
@@ -119,7 +119,7 @@ fn running_uses_transition_time_and_uncertainty_retains_original_dispatch() {
 #[test]
 fn recorded_outcome_json_roundtrips_without_unblocking_an_effect() {
     // Hand-authored current-format bytes, independent of the writer under test.
-    let bytes = include_str!("fixtures/uncertain-record.json").trim_end();
+    let bytes = include_str!("../fixtures/uncertain-record.json").trim_end();
     let record: JobRecord = serde_json::from_str(bytes).unwrap();
     assert_eq!(
         record.last_outcome,

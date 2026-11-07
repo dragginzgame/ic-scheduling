@@ -18,7 +18,7 @@ impl Drop for RemovalCapture {
         let replacement = register_once(
             self.timer.clone(),
             TimerStart::Retained { initial: None },
-            |_| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+            stopping_once(|| {}),
         )
         .unwrap();
         replacement.ensure_scheduled(TimerSchedule::At(20)).unwrap();
@@ -47,47 +47,7 @@ fn cancellation_and_unregistration_release_captures_after_provider_cleanup() {
                     initial: TimerSchedule::At(20),
                 }
             };
-            let claim = match policy {
-                TestPolicy::Once => {
-                    register_once(
-                        timer,
-                        start,
-                        stopping_once(move || {
-                            std::hint::black_box(&captured);
-                        }),
-                    )
-                    .unwrap()
-                    .claim
-                }
-                TestPolicy::AfterCompletion => {
-                    register_after_completion(
-                        timer,
-                        TimerCadence::from_nanos(5).unwrap(),
-                        start,
-                        stopping_after_completion(move || {
-                            std::hint::black_box(&captured);
-                        }),
-                    )
-                    .unwrap()
-                    .claim
-                }
-                TestPolicy::Watchdog => {
-                    register_watchdog(
-                        timer,
-                        TimerCadence::from_nanos(5).unwrap(),
-                        start,
-                        move |_| {
-                            std::hint::black_box(&captured);
-                            WatchdogRunResult::new(
-                                TimerCompletion::no_work(),
-                                WatchdogDecision::Stop,
-                            )
-                        },
-                    )
-                    .unwrap()
-                    .claim
-                }
-            };
+            let claim = initial_registration_with_capture(policy, timer, start, captured).unwrap();
             if unregister {
                 unregister_claim(&claim).unwrap();
             } else {
@@ -114,46 +74,20 @@ fn rejected_registration_releases_its_captures_outside_registry_borrow() {
         TimerStart::Retained {
             initial: Some(TimerSchedule::At(20)),
         },
-        |_| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+        stopping_once(|| {}),
     )
     .unwrap();
     for policy in TestPolicy::ALL {
         let dropped = Rc::new(Cell::new(false));
         let captured = RejectedCapture(Rc::clone(&dropped));
-        let rejected = match policy {
-            TestPolicy::Once => register_once(
-                timer.clone(),
-                TimerStart::Retained {
-                    initial: Some(TimerSchedule::At(20)),
-                },
-                stopping_once(move || {
-                    std::hint::black_box(&captured);
-                }),
-            )
-            .map(|_| ()),
-            TestPolicy::AfterCompletion => register_after_completion(
-                timer.clone(),
-                TimerCadence::from_nanos(5).unwrap(),
-                TimerStart::Retained {
-                    initial: Some(TimerSchedule::At(20)),
-                },
-                stopping_after_completion(move || {
-                    std::hint::black_box(&captured);
-                }),
-            )
-            .map(|_| ()),
-            TestPolicy::Watchdog => register_watchdog(
-                timer.clone(),
-                TimerCadence::from_nanos(5).unwrap(),
-                TimerStart::Retained {
-                    initial: Some(TimerSchedule::At(20)),
-                },
-                stopping_watchdog(move || {
-                    std::hint::black_box(&captured);
-                }),
-            )
-            .map(|_| ()),
-        };
+        let rejected = initial_registration_with_capture(
+            policy,
+            timer.clone(),
+            TimerStart::Retained {
+                initial: Some(TimerSchedule::At(20)),
+            },
+            captured,
+        );
         assert!(matches!(
             rejected,
             Err(TimerError::Register(
@@ -521,11 +455,11 @@ fn later_reconciliation_provider_error_retains_original_callback_for_retry() {
     }
 }
 
-fn initial_registration_with_capture(
+fn initial_registration_with_capture<C: 'static>(
     policy: TestPolicy,
     timer: TimerIdentity,
     start: TimerStart,
-    captured: RemovalCapture,
+    captured: C,
 ) -> Result<RegistrationClaim, TimerError> {
     let work = move || {
         std::hint::black_box(&captured);
@@ -722,7 +656,7 @@ fn initial_capacity_rejection_preserves_existing_declarations_and_releases_facto
             register_once(
                 identity(&format!("initial-capacity-{index}")),
                 TimerStart::Retained { initial: None },
-                |_| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+                stopping_once(|| {}),
             )
             .unwrap(),
         );

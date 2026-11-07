@@ -5,7 +5,7 @@ use ic_jobs::{
 };
 use ic_storage::MemoryRequest;
 use serde::{Deserialize, Serialize};
-use std::{error::Error, fmt, io};
+use std::io;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct Notification {
@@ -19,15 +19,6 @@ pub(crate) struct NotificationSnapshot<J = JobRecord> {
     pub(crate) payload: Notification,
 }
 
-impl NotificationSnapshot<Job> {
-    fn into_stored(self) -> NotificationSnapshot {
-        NotificationSnapshot {
-            job: self.job.record(),
-            payload: self.payload,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct Delivery {
     pub(crate) attempt: Attempt,
@@ -36,42 +27,20 @@ pub(crate) struct Delivery {
 
 // The synchronous scheduler produces committed intent for a separate delivery
 // continuation. Neither the scheduler nor a watchdog callback calls a receiver.
+// This fixture owns no endpoint/authentication API; the real Queue tests do.
 pub(crate) struct Notifications {
     pub(crate) store: Store,
 }
 
-// The fixture receives a trusted caller from its application boundary. A real
-// canister obtains that identity from the IC caller API, never request payloads.
-pub(crate) const NOTIFICATION_MANAGER: &str = "notification-manager";
-
 const MAX_NOTIFICATIONS: usize = 4;
 
 #[derive(Debug, Eq, PartialEq)]
-pub(crate) struct ManagementReply<T> {
-    pub(crate) value: T,
+pub(crate) struct Dispatch {
+    pub(crate) delivery: Option<Delivery>,
     // The application projects this committed queue deadline into its watchdog.
     // Native execution does not register or qualify a platform timer.
     pub(crate) next_due_ns: Option<u64>,
 }
-
-#[derive(Debug, Eq, PartialEq)]
-pub(crate) enum ManagementError {
-    Unauthorized,
-    UnknownJob,
-    InvalidPageLimit,
-}
-
-impl fmt::Display for ManagementError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(match self {
-            Self::Unauthorized => "caller cannot manage this notification queue",
-            Self::UnknownJob => "notification job is not retained",
-            Self::InvalidPageLimit => "page limit must be between one and four",
-        })
-    }
-}
-
-impl Error for ManagementError {}
 
 impl Notifications {
     // Reconstruction resets only volatile fault injection. Reads still admit
@@ -137,44 +106,7 @@ impl Notifications {
         self.store.write(&jobs)
     }
 
-    fn commit_entry(
-        &mut self,
-        jobs: Vec<NotificationSnapshot<Job>>,
-        index: usize,
-    ) -> Result<ManagementReply<NotificationSnapshot>> {
-        self.commit(&jobs)?;
-        Ok(Self::entry_reply(jobs, index))
-    }
-
-    fn entry_reply(
-        mut jobs: Vec<NotificationSnapshot<Job>>,
-        index: usize,
-    ) -> ManagementReply<NotificationSnapshot> {
-        // Project the full queue before extracting the reply. Mutating callers
-        // commit the original ordering before reaching this projection.
-        let due = next_due_ns(jobs.iter().map(|entry| &entry.job));
-        ManagementReply {
-            value: jobs.swap_remove(index).into_stored(),
-            next_due_ns: due,
-        }
-    }
-
-    fn authorize(caller: &str) -> Result<()> {
-        // Authorization precedes decoding, reads of private payloads and writes.
-        if caller != NOTIFICATION_MANAGER {
-            return Err(ManagementError::Unauthorized.into());
-        }
-        Ok(())
-    }
-
-    pub(crate) fn enqueue(
-        &mut self,
-        caller: &str,
-        id: JobId,
-        at_ns: u64,
-        payload: Notification,
-    ) -> Result<ManagementReply<NotificationSnapshot>> {
-        Self::authorize(caller)?;
+    pub(crate) fn enqueue(&mut self, id: JobId, at_ns: u64, payload: Notification) -> Result<()> {
         let mut jobs = self.load()?;
         if jobs.len() == MAX_NOTIFICATIONS || Self::index(&jobs, id).is_some() {
             return Err(io::Error::new(
@@ -184,72 +116,25 @@ impl Notifications {
             .into());
         }
         let job = Job::new(id, Schedule::Once { at_ns }, RetryPolicy::NONE);
-        let index = jobs.len();
         jobs.push(NotificationSnapshot { job, payload });
-        self.commit_entry(jobs, index)
+        self.commit(&jobs)
     }
 
-    pub(crate) fn inspect(
-        &self,
-        caller: &str,
-        id: JobId,
-    ) -> Result<ManagementReply<NotificationSnapshot>> {
-        Self::authorize(caller)?;
-        let jobs = self.load()?;
-        let index = Self::index(&jobs, id).ok_or(ManagementError::UnknownJob)?;
-        Ok(Self::entry_reply(jobs, index))
-    }
-
-    pub(crate) fn page(
-        &self,
-        caller: &str,
-        after: Option<JobId>,
-        limit: usize,
-    ) -> Result<ManagementReply<Vec<NotificationSnapshot>>> {
-        Self::authorize(caller)?;
-        if !(1..=4).contains(&limit) {
-            return Err(ManagementError::InvalidPageLimit.into());
-        }
+    pub(crate) fn cancel(&mut self, id: JobId, now_ns: u64) -> Result<()> {
         let mut jobs = self.load()?;
-        let due = next_due_ns(jobs.iter().map(|entry| &entry.job));
-        jobs.sort_by_key(|entry| entry.job.record().id);
-        let snapshots = jobs
-            .into_iter()
-            .filter(|entry| after.is_none_or(|id| entry.job.record().id > id))
-            .take(limit)
-            .map(NotificationSnapshot::into_stored)
-            .collect();
-        Ok(ManagementReply {
-            value: snapshots,
-            next_due_ns: due,
-        })
-    }
-
-    pub(crate) fn cancel(
-        &mut self,
-        caller: &str,
-        id: JobId,
-        now_ns: u64,
-    ) -> Result<ManagementReply<NotificationSnapshot>> {
-        Self::authorize(caller)?;
-        let mut jobs = self.load()?;
-        let index = Self::index(&jobs, id).ok_or(ManagementError::UnknownJob)?;
+        let index = Self::index(&jobs, id)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "job not retained"))?;
         jobs[index].job.cancel(now_ns)?;
-        self.commit_entry(jobs, index)
+        self.commit(&jobs)
     }
 
-    pub(crate) fn dispatch_due(
-        &mut self,
-        caller: &str,
-        now_ns: u64,
-    ) -> Result<ManagementReply<Option<Delivery>>> {
-        Self::authorize(caller)?;
+    pub(crate) fn dispatch_due(&mut self, now_ns: u64) -> Result<Dispatch> {
         let mut jobs = self.load()?;
         let Some((index, attempt)) =
             start_next(jobs.iter_mut().map(|entry| &mut entry.job), now_ns)?
         else {
-            return Ok(ManagementReply {
-                value: None,
+            return Ok(Dispatch {
+                delivery: None,
                 next_due_ns: next_due_ns(jobs.iter().map(|entry| &entry.job)),
             });
         };
@@ -257,8 +142,8 @@ impl Notifications {
         // No delivery capability escapes before the intent and payload commit.
         let due = next_due_ns(jobs.iter().map(|entry| &entry.job));
         let payload = jobs.swap_remove(index).payload;
-        Ok(ManagementReply {
-            value: Some(Delivery { attempt, payload }),
+        Ok(Dispatch {
+            delivery: Some(Delivery { attempt, payload }),
             next_due_ns: due,
         })
     }

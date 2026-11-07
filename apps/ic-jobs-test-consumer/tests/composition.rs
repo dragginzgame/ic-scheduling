@@ -15,8 +15,8 @@ use ic_storage::{
 mod consumer_support;
 
 use consumer_support::{
-    Destination, Maintenance, MaintenanceSnapshot, ManagementError, NOTIFICATION_MANAGER,
-    Notification, NotificationSnapshot, Notifications, Result, Wake,
+    Destination, Maintenance, MaintenanceSnapshot, Notification, NotificationSnapshot,
+    Notifications, Result, Wake,
 };
 
 #[test]
@@ -35,7 +35,6 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
         let backing = VectorMemory::default();
         let mut sender = Notifications::new()?;
         sender.enqueue(
-            NOTIFICATION_MANAGER,
             JobId(3),
             200,
             Notification {
@@ -43,10 +42,7 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
                 body: "Later".into(),
             },
         )?;
-        let delivery = sender
-            .dispatch_due(NOTIFICATION_MANAGER, 100)?
-            .value
-            .unwrap();
+        let delivery = sender.dispatch_due(100)?.delivery.unwrap();
         if uncertain {
             sender.finish(delivery.attempt, 101, Outcome::Uncertain)?;
         }
@@ -119,10 +115,7 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
             let mut restored = Notifications::from_bytes(queue.get().clone());
             let restored_maintenance = Maintenance::from_bytes(state.get().clone());
             assert_eq!(restored.outstanding()?, vec![delivery.clone()]);
-            assert_eq!(
-                restored.dispatch_due(NOTIFICATION_MANAGER, 150)?.value,
-                None
-            );
+            assert_eq!(restored.dispatch_due(150)?.delivery, None);
             assert!(!restored.reconcile(delivery.attempt, &Destination::default(), 150)?);
             let maintenance_snapshot = restored_maintenance.load()?;
             assert_eq!(maintenance_snapshot.job.next_due_ns(), Some(130));
@@ -132,7 +125,7 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
                 if reopen == 0 { Some(200) } else { None }
             );
             if reopen == 0 {
-                restored.cancel(NOTIFICATION_MANAGER, JobId(3), 150)?;
+                restored.cancel(JobId(3), 150)?;
                 queue.set(restored.store.bytes)?;
                 // Unrelated consumer bytes remain intact after the queue commit.
                 assert_eq!(state.get(), &restored_maintenance.store.bytes);
@@ -154,18 +147,18 @@ fn notification_commit_failure_never_exposes_delivery() -> Result<()> {
     );
 
     let before = sender.store.bytes.clone();
-    let idle = sender.dispatch_due(NOTIFICATION_MANAGER, 99)?;
-    assert_eq!(idle.value, None);
+    let idle = sender.dispatch_due(99)?;
+    assert_eq!(idle.delivery, None);
     assert_eq!(idle.next_due_ns, Some(100));
     sender.store.writes_before_failure = Some(0);
-    assert!(sender.dispatch_due(NOTIFICATION_MANAGER, 100).is_err());
+    assert!(sender.dispatch_due(100).is_err());
     assert_eq!(sender.store.bytes, before);
     assert!(sender.outstanding()?.is_empty());
     assert_eq!(sender.next_due_ns()?, Some(100));
 
-    let dispatched = sender.dispatch_due(NOTIFICATION_MANAGER, 100)?;
+    let dispatched = sender.dispatch_due(100)?;
     assert_eq!(dispatched.next_due_ns, None);
-    let delivery = dispatched.value.unwrap();
+    let delivery = dispatched.delivery.unwrap();
     assert_eq!(sender.outstanding()?, vec![delivery]);
     assert_eq!(sender.next_due_ns()?, None);
     Ok(())
@@ -176,10 +169,7 @@ fn lost_reply_and_failed_result_commit_reconcile_without_redelivery() -> Result<
     for failed_result_commit in [false, true] {
         let mut sender = Notifications::new()?;
         let mut destination = Destination::default();
-        let delivery = sender
-            .dispatch_due(NOTIFICATION_MANAGER, 100)?
-            .value
-            .unwrap();
+        let delivery = sender.dispatch_due(100)?.delivery.unwrap();
         assert!(destination.deliver(&delivery));
         if failed_result_commit {
             sender.store.writes_before_failure = Some(0);
@@ -193,15 +183,9 @@ fn lost_reply_and_failed_result_commit_reconcile_without_redelivery() -> Result<
         // Only committed bytes survive reconstruction; the destination is separate.
         let mut restored = Notifications::from_bytes(sender.store.bytes);
         assert_eq!(restored.outstanding()?, vec![delivery.clone()]);
-        assert_eq!(
-            restored.dispatch_due(NOTIFICATION_MANAGER, 200)?.value,
-            None
-        );
+        assert_eq!(restored.dispatch_due(200)?.delivery, None);
         restored.finish(delivery.attempt, 200, Outcome::Uncertain)?;
-        assert_eq!(
-            restored.dispatch_due(NOTIFICATION_MANAGER, 201)?.value,
-            None
-        );
+        assert_eq!(restored.dispatch_due(201)?.delivery, None);
         assert!(!restored.reconcile(delivery.attempt, &Destination::default(), 201)?);
         assert_eq!(
             restored.load()?[0].job.record().state,
@@ -215,16 +199,10 @@ fn lost_reply_and_failed_result_commit_reconcile_without_redelivery() -> Result<
                 .is_err()
         );
         assert_eq!(restored.store.bytes, unresolved);
-        assert_eq!(
-            restored.dispatch_due(NOTIFICATION_MANAGER, 202)?.value,
-            None
-        );
+        assert_eq!(restored.dispatch_due(202)?.delivery, None);
         assert!(restored.reconcile(delivery.attempt, &destination, 202)?);
         assert_eq!(restored.load()?[0].job.record().state, JobState::Completed);
-        assert_eq!(
-            restored.dispatch_due(NOTIFICATION_MANAGER, 300)?.value,
-            None
-        );
+        assert_eq!(restored.dispatch_due(300)?.delivery, None);
         assert_eq!(destination.calls, 1);
         assert_eq!(destination.receipts.len(), 1);
     }
@@ -238,19 +216,13 @@ fn known_rejection_retries_same_payload_and_rejects_old_reply() -> Result<()> {
         reject_next: true,
         ..Destination::default()
     };
-    let first = sender
-        .dispatch_due(NOTIFICATION_MANAGER, 100)?
-        .value
-        .unwrap();
+    let first = sender.dispatch_due(100)?.delivery.unwrap();
     assert!(!destination.deliver(&first));
     assert!(destination.receipts.is_empty());
     sender.finish(first.attempt, 101, Outcome::RetryableFailure)?;
     assert_eq!(sender.next_due_ns()?, Some(111));
-    assert_eq!(sender.dispatch_due(NOTIFICATION_MANAGER, 110)?.value, None);
-    let second = sender
-        .dispatch_due(NOTIFICATION_MANAGER, 111)?
-        .value
-        .unwrap();
+    assert_eq!(sender.dispatch_due(110)?.delivery, None);
+    let second = sender.dispatch_due(111)?.delivery.unwrap();
     assert_eq!(first.attempt.execution, second.attempt.execution);
     assert_ne!(first.attempt.sequence, second.attempt.sequence);
     assert_eq!(first.payload, second.payload);
@@ -373,7 +345,7 @@ fn consumers_reject_corrupt_records_before_effects() -> Result<()> {
     notifications[0].job.state = JobState::Completed;
     sender.store.write(&notifications)?;
     let before = sender.store.bytes.clone();
-    let error = sender.dispatch_due(NOTIFICATION_MANAGER, 100).unwrap_err();
+    let error = sender.dispatch_due(100).unwrap_err();
     assert_eq!(
         error.downcast_ref::<JobError>(),
         Some(&JobError::InvalidRecord)
@@ -399,7 +371,6 @@ fn shared_notification_wakeup_preserves_order_and_progress_past_unresolved_work(
     let mut sender = Notifications::new()?;
     for (id, at_ns) in [(2, 90), (3, 95), (4, 90)] {
         sender.enqueue(
-            NOTIFICATION_MANAGER,
             JobId(id),
             at_ns,
             Notification {
@@ -409,20 +380,14 @@ fn shared_notification_wakeup_preserves_order_and_progress_past_unresolved_work(
         )?;
     }
     assert_eq!(sender.next_due_ns()?, Some(90));
-    assert_eq!(sender.dispatch_due(NOTIFICATION_MANAGER, 89)?.value, None);
-    let first = sender
-        .dispatch_due(NOTIFICATION_MANAGER, 90)?
-        .value
-        .unwrap();
+    assert_eq!(sender.dispatch_due(89)?.delivery, None);
+    let first = sender.dispatch_due(90)?.delivery.unwrap();
     assert_eq!(first.attempt.execution.job, JobId(2));
 
     // Reconstruct the whole bounded queue with job 2's intent still unresolved.
     let mut restored = Notifications::from_bytes(sender.store.bytes);
     let mut destination = Destination::default();
-    let tied = restored
-        .dispatch_due(NOTIFICATION_MANAGER, 90)?
-        .value
-        .unwrap();
+    let tied = restored.dispatch_due(90)?.delivery.unwrap();
     assert_eq!(tied.attempt.execution.job, JobId(4));
     restored.finish(first.attempt, 91, Outcome::Uncertain)?;
     assert!(destination.deliver(&tied));
@@ -430,24 +395,18 @@ fn shared_notification_wakeup_preserves_order_and_progress_past_unresolved_work(
     assert_eq!(restored.next_due_ns()?, Some(95));
 
     let before = restored.store.bytes.clone();
-    assert!(restored.cancel(NOTIFICATION_MANAGER, JobId(2), 91).is_err());
+    assert!(restored.cancel(JobId(2), 91).is_err());
     assert_eq!(restored.store.bytes, before);
-    restored.cancel(NOTIFICATION_MANAGER, JobId(3), 91)?;
+    restored.cancel(JobId(3), 91)?;
     assert_eq!(restored.next_due_ns()?, Some(100));
-    assert_eq!(restored.dispatch_due(NOTIFICATION_MANAGER, 99)?.value, None);
-    let last = restored
-        .dispatch_due(NOTIFICATION_MANAGER, 100)?
-        .value
-        .unwrap();
+    assert_eq!(restored.dispatch_due(99)?.delivery, None);
+    let last = restored.dispatch_due(100)?.delivery.unwrap();
     assert_eq!(last.attempt.execution.job, JobId(1));
     assert_eq!(last.payload.recipient, "alice");
     assert!(destination.deliver(&last));
     restored.finish(last.attempt, 101, Outcome::Success)?;
     assert_eq!(restored.next_due_ns()?, None);
-    assert_eq!(
-        restored.dispatch_due(NOTIFICATION_MANAGER, 1000)?.value,
-        None
-    );
+    assert_eq!(restored.dispatch_due(1000)?.delivery, None);
     assert_eq!(restored.outstanding()?, vec![first.clone()]);
     assert!(!restored.reconcile(first.attempt, &destination, 1000)?);
     assert_eq!(destination.calls, 2);
@@ -458,23 +417,14 @@ fn shared_notification_wakeup_preserves_order_and_progress_past_unresolved_work(
 #[test]
 fn interruption_before_delivery_keeps_committed_intent_blocked() -> Result<()> {
     let mut sender = Notifications::new()?;
-    let delivery = sender
-        .dispatch_due(NOTIFICATION_MANAGER, 100)?
-        .value
-        .unwrap();
+    let delivery = sender.dispatch_due(100)?.delivery.unwrap();
     let mut restored = Notifications::from_bytes(sender.store.bytes);
     let destination = Destination::default();
-    assert_eq!(
-        restored.dispatch_due(NOTIFICATION_MANAGER, 200)?.value,
-        None
-    );
+    assert_eq!(restored.dispatch_due(200)?.delivery, None);
     assert_eq!(restored.outstanding()?, vec![delivery.clone()]);
     restored.finish(delivery.attempt, 200, Outcome::Uncertain)?;
     assert!(!restored.reconcile(delivery.attempt, &destination, 201)?);
-    assert_eq!(
-        restored.dispatch_due(NOTIFICATION_MANAGER, 1000)?.value,
-        None
-    );
+    assert_eq!(restored.dispatch_due(1000)?.delivery, None);
     assert_eq!(destination.calls, 0);
     assert_eq!(
         restored.load()?[0].job.record().state,
@@ -488,21 +438,27 @@ fn notification_queue_rejects_reused_identities_and_excess_work() -> Result<()> 
     let mut sender = Notifications::new()?;
     let payload = sender.load()?[0].payload.clone();
     let before = sender.store.bytes.clone();
-    assert!(
-        sender
-            .enqueue(NOTIFICATION_MANAGER, JobId(1), 200, payload.clone())
-            .is_err()
-    );
-    assert_eq!(sender.store.bytes, before);
+    for (id, body) in [(1, "duplicate".into()), (2, "x".repeat(4097))] {
+        assert!(
+            sender
+                .enqueue(
+                    JobId(id),
+                    200,
+                    Notification {
+                        recipient: "bob".into(),
+                        body,
+                    }
+                )
+                .is_err()
+        );
+        assert_eq!(sender.store.bytes, before);
+        assert_eq!(sender.next_due_ns()?, Some(100));
+    }
     for id in 2..=4 {
-        sender.enqueue(NOTIFICATION_MANAGER, JobId(id), 200, payload.clone())?;
+        sender.enqueue(JobId(id), 200, payload.clone())?;
     }
     let before = sender.store.bytes.clone();
-    assert!(
-        sender
-            .enqueue(NOTIFICATION_MANAGER, JobId(5), 200, payload.clone())
-            .is_err()
-    );
+    assert!(sender.enqueue(JobId(5), 200, payload.clone()).is_err());
     assert_eq!(sender.store.bytes, before);
 
     let mut snapshots: Vec<NotificationSnapshot> = sender.store.read()?;
@@ -512,7 +468,7 @@ fn notification_queue_rejects_reused_identities_and_excess_work() -> Result<()> 
     });
     sender.store.write(&snapshots)?;
     let before = sender.store.bytes.clone();
-    assert!(sender.dispatch_due(NOTIFICATION_MANAGER, 100).is_err());
+    assert!(sender.dispatch_due(100).is_err());
     assert_eq!(sender.store.bytes, before);
     snapshots.pop();
 
@@ -520,7 +476,7 @@ fn notification_queue_rejects_reused_identities_and_excess_work() -> Result<()> 
     snapshots[3].job = snapshots[0].job;
     sender.store.write(&snapshots)?;
     let before = sender.store.bytes.clone();
-    assert!(sender.dispatch_due(NOTIFICATION_MANAGER, 100).is_err());
+    assert!(sender.dispatch_due(100).is_err());
     assert_eq!(sender.store.bytes, before);
 
     // A corrupt future record must also block dispatch of the valid due record.
@@ -529,7 +485,7 @@ fn notification_queue_rejects_reused_identities_and_excess_work() -> Result<()> 
     snapshots[3].job.state = JobState::Completed;
     sender.store.write(&snapshots)?;
     let before = sender.store.bytes.clone();
-    let error = sender.dispatch_due(NOTIFICATION_MANAGER, 100).unwrap_err();
+    let error = sender.dispatch_due(100).unwrap_err();
     assert_eq!(
         error.downcast_ref::<JobError>(),
         Some(&JobError::InvalidRecord)
@@ -546,18 +502,12 @@ fn lost_rejection_reply_uses_exact_evidence_and_retains_retry_budget() -> Result
             reject_next: true,
             ..Destination::default()
         };
-        let first = sender
-            .dispatch_due(NOTIFICATION_MANAGER, 100)?
-            .value
-            .unwrap();
+        let first = sender.dispatch_due(100)?.delivery.unwrap();
         assert!(!destination.deliver(&first));
         // The receiver retains its rejection even if an old delivery is repeated.
         assert!(!destination.deliver(&first));
         let mut restored = Notifications::from_bytes(sender.store.bytes);
-        assert_eq!(
-            restored.dispatch_due(NOTIFICATION_MANAGER, 101)?.value,
-            None
-        );
+        assert_eq!(restored.dispatch_due(101)?.delivery, None);
         restored.finish(first.attempt, 101, Outcome::Uncertain)?;
 
         let before = restored.store.bytes.clone();
@@ -570,20 +520,11 @@ fn lost_rejection_reply_uses_exact_evidence_and_retains_retry_budget() -> Result
                 .is_err()
         );
         assert_eq!(restored.store.bytes, before);
-        assert_eq!(
-            restored.dispatch_due(NOTIFICATION_MANAGER, 102)?.value,
-            None
-        );
+        assert_eq!(restored.dispatch_due(102)?.delivery, None);
         assert!(restored.reconcile(first.attempt, &destination, 102)?);
         assert_eq!(restored.next_due_ns()?, Some(112));
-        assert_eq!(
-            restored.dispatch_due(NOTIFICATION_MANAGER, 111)?.value,
-            None
-        );
-        let second = restored
-            .dispatch_due(NOTIFICATION_MANAGER, 112)?
-            .value
-            .unwrap();
+        assert_eq!(restored.dispatch_due(111)?.delivery, None);
+        let second = restored.dispatch_due(112)?.delivery.unwrap();
         assert_eq!(second.attempt.execution, first.attempt.execution);
         assert_ne!(second.attempt.sequence, first.attempt.sequence);
         assert_eq!(second.payload, first.payload);
@@ -610,10 +551,7 @@ fn lost_rejection_reply_uses_exact_evidence_and_retains_retry_budget() -> Result
             }
         );
         assert_eq!(restored.next_due_ns()?, None);
-        assert_eq!(
-            restored.dispatch_due(NOTIFICATION_MANAGER, 1000)?.value,
-            None
-        );
+        assert_eq!(restored.dispatch_due(1000)?.delivery, None);
         assert!(restored.outstanding()?.is_empty());
         assert_eq!(destination.receipts.len(), usize::from(second_succeeds));
     }
@@ -623,10 +561,7 @@ fn lost_rejection_reply_uses_exact_evidence_and_retains_retry_budget() -> Result
 #[test]
 fn reconciliation_requires_matching_payload_and_prefers_success_evidence() -> Result<()> {
     let mut sender = Notifications::new()?;
-    let delivery = sender
-        .dispatch_due(NOTIFICATION_MANAGER, 100)?
-        .value
-        .unwrap();
+    let delivery = sender.dispatch_due(100)?.delivery.unwrap();
     sender.finish(delivery.attempt, 101, Outcome::Uncertain)?;
     let different = Notification {
         body: "another effect".into(),
@@ -702,143 +637,23 @@ fn maintenance_resumes_after_partial_batch_commit_without_repeating_work() -> Re
 }
 
 #[test]
-fn management_creation_inspection_and_pages_survive_reconstruction() -> Result<()> {
-    let mut sender = Notifications::new()?;
-    for (id, at_ns, body, next_due_ns) in [(8, 80, "eight", 80), (3, 200, "three", 80)] {
-        let reply = sender.enqueue(
-            NOTIFICATION_MANAGER,
-            JobId(id),
-            at_ns,
-            Notification {
-                recipient: "bob".into(),
-                body: body.into(),
-            },
-        )?;
-        assert_eq!(reply.next_due_ns, Some(next_due_ns));
-        let snapshot = reply.value;
-        assert_eq!(snapshot.job.id, JobId(id));
-        assert_eq!(snapshot.job.state, JobState::Pending { due_ns: at_ns });
-        assert_eq!(snapshot.payload.body, body);
-    }
-    let mut restored = Notifications::from_bytes(sender.store.bytes);
-    let before = restored.store.bytes.clone();
-    let reply = restored.inspect(NOTIFICATION_MANAGER, JobId(8))?;
-    assert_eq!(reply.value.payload.body, "eight");
-    assert_eq!(reply.next_due_ns, Some(80));
-
-    // Cursor order follows stable job identity, independently of insertion order.
-    let mut after = None;
-    for (expected, body) in [(1, "Your report is ready"), (3, "three"), (8, "eight")] {
-        let reply = restored.page(NOTIFICATION_MANAGER, after, 1)?;
-        assert_eq!(reply.next_due_ns, Some(80));
-        let page = reply.value;
-        assert_eq!(page.len(), 1);
-        assert_eq!(page[0].job.id, JobId(expected));
-        assert_eq!(page[0].payload.body, body);
-        after = Some(page[0].job.id);
-    }
-    let reply = restored.page(NOTIFICATION_MANAGER, after, 1)?;
-    assert!(reply.value.is_empty());
-    assert_eq!(restored.store.bytes, before);
-    let reply = restored.cancel(NOTIFICATION_MANAGER, JobId(8), 81)?;
-    assert_eq!(reply.value.job.id, JobId(8));
-    assert_eq!(reply.value.job.state, JobState::Cancelled);
-    assert_eq!(reply.value.payload.body, "eight");
-    assert_eq!(reply.next_due_ns, Some(100));
-    assert_eq!(
-        restored
-            .inspect(NOTIFICATION_MANAGER, JobId(3))?
-            .value
-            .payload
-            .body,
-        "three"
-    );
-    Ok(())
-}
-
-// Test selections name the typed entrypoints; only successful reply values are
-// erased so each refusal still crosses the real application boundary.
-#[derive(Clone, Copy, Debug)]
-enum ManagementOperation {
-    Enqueue,
-    Inspect,
-    Page,
-    Cancel,
-    Dispatch,
-}
-
-impl ManagementOperation {
-    const ALL: [Self; 5] = [
-        Self::Enqueue,
-        Self::Inspect,
-        Self::Page,
-        Self::Cancel,
-        Self::Dispatch,
-    ];
-
-    fn apply(self, sender: &mut Notifications, caller: &str) -> Result<Option<u64>> {
-        match self {
-            Self::Enqueue => sender
-                .enqueue(
-                    caller,
-                    JobId(3),
-                    80,
-                    Notification {
-                        recipient: "bob".into(),
-                        body: "private".into(),
-                    },
-                )
-                .map(|reply| reply.next_due_ns),
-            Self::Inspect => sender
-                .inspect(caller, JobId(1))
-                .map(|reply| reply.next_due_ns),
-            Self::Page => sender.page(caller, None, 4).map(|reply| reply.next_due_ns),
-            Self::Cancel => sender
-                .cancel(caller, JobId(1), 100)
-                .map(|reply| reply.next_due_ns),
-            Self::Dispatch => sender
-                .dispatch_due(caller, 100)
-                .map(|reply| reply.next_due_ns),
-        }
-    }
-}
-
-#[test]
-fn management_refuses_unauthorized_calls_before_decoding_or_writing() -> Result<()> {
-    for corrupt in [false, true] {
-        let mut sender = Notifications::new()?;
-        if corrupt {
-            sender.store.bytes = b"not a snapshot".to_vec();
-        }
-        let before = sender.store.bytes.clone();
-        sender.store.writes_before_failure = Some(0);
-        for operation in ManagementOperation::ALL {
-            let error = operation.apply(&mut sender, "other-caller").unwrap_err();
-            assert_eq!(
-                error.downcast_ref::<ManagementError>(),
-                Some(&ManagementError::Unauthorized),
-                "{operation:?}"
-            );
-            assert_eq!(sender.store.bytes, before);
-            assert_eq!(sender.store.writes_before_failure, Some(0));
-        }
-    }
-    Ok(())
-}
-
-#[test]
-fn management_commit_failures_preserve_queue_and_derived_wakeup() -> Result<()> {
-    for (operation, expected_deadline) in [
-        (ManagementOperation::Enqueue, Some(80)),
-        (ManagementOperation::Cancel, None),
-        (ManagementOperation::Dispatch, None),
-    ] {
+fn failed_queue_mutations_preserve_committed_deadlines() -> Result<()> {
+    let payload = || Notification {
+        recipient: "bob".into(),
+        body: "later".into(),
+    };
+    for cancel in [false, true] {
         let mut sender = Notifications::new()?;
         let before = sender.store.bytes.clone();
+        let mutate = |sender: &mut Notifications| {
+            if cancel {
+                sender.cancel(JobId(1), 100)
+            } else {
+                sender.enqueue(JobId(3), 80, payload())
+            }
+        };
         sender.store.writes_before_failure = Some(0);
-        let error = operation
-            .apply(&mut sender, NOTIFICATION_MANAGER)
-            .unwrap_err();
+        let error = mutate(&mut sender).unwrap_err();
         assert_eq!(
             error.downcast_ref::<io::Error>().unwrap().kind(),
             io::ErrorKind::Other
@@ -846,154 +661,8 @@ fn management_commit_failures_preserve_queue_and_derived_wakeup() -> Result<()> 
         assert_eq!(sender.store.bytes, before);
         assert!(sender.outstanding()?.is_empty());
         assert_eq!(sender.next_due_ns()?, Some(100));
-
-        let deadline = operation.apply(&mut sender, NOTIFICATION_MANAGER)?;
-        assert_eq!(deadline, expected_deadline, "{operation:?}");
-    }
-    Ok(())
-}
-
-#[test]
-fn management_preserves_due_admission_and_blocks_unresolved_effects() -> Result<()> {
-    let mut sender = Notifications::new()?;
-    let before = sender.store.bytes.clone();
-    let early = sender.dispatch_due(NOTIFICATION_MANAGER, 99)?;
-    assert_eq!(early.value, None);
-    assert_eq!(early.next_due_ns, Some(100));
-    assert_eq!(sender.store.bytes, before);
-
-    let reply = sender.dispatch_due(NOTIFICATION_MANAGER, 100)?;
-    let delivery = reply.value.unwrap();
-    assert_eq!(reply.next_due_ns, None);
-    assert_eq!(sender.outstanding()?, vec![delivery.clone()]);
-    let before = sender.store.bytes.clone();
-    let error = sender
-        .cancel(NOTIFICATION_MANAGER, JobId(1), 101)
-        .unwrap_err();
-    assert_eq!(error.downcast_ref::<JobError>(), Some(&JobError::InFlight));
-    assert_eq!(sender.store.bytes, before);
-
-    let mut restored = Notifications::from_bytes(sender.store.bytes);
-    assert_eq!(
-        restored.dispatch_due(NOTIFICATION_MANAGER, 200)?.value,
-        None
-    );
-    restored.finish(delivery.attempt, 200, Outcome::Uncertain)?;
-    let before = restored.store.bytes.clone();
-    let error = restored
-        .cancel(NOTIFICATION_MANAGER, JobId(1), 201)
-        .unwrap_err();
-    assert_eq!(error.downcast_ref::<JobError>(), Some(&JobError::InFlight));
-    assert_eq!(restored.store.bytes, before);
-    assert!(!restored.reconcile(delivery.attempt, &Destination::default(), 202)?);
-    assert_eq!(
-        restored.dispatch_due(NOTIFICATION_MANAGER, 203)?.value,
-        None
-    );
-
-    let mut destination = Destination::default();
-    assert!(destination.deliver(&delivery));
-    assert!(restored.reconcile(delivery.attempt, &destination, 204)?);
-    let inspected = restored.inspect(NOTIFICATION_MANAGER, JobId(1))?;
-    assert_eq!(inspected.value.job.state, JobState::Completed);
-    assert_eq!(inspected.next_due_ns, None);
-    assert_eq!(destination.calls, 1);
-    Ok(())
-}
-
-#[test]
-fn management_refused_inputs_preserve_committed_jobs_and_deadlines() -> Result<()> {
-    let mut sender = Notifications::new()?;
-    let before = sender.store.bytes.clone();
-    // Each operation has a statically known reply; erase it only for this common
-    // error/unchanged-state assertion table.
-    let operations: [fn(&mut Notifications) -> Result<()>; 4] = [
-        |sender| sender.inspect(NOTIFICATION_MANAGER, JobId(99)).map(|_| ()),
-        |sender| {
-            sender
-                .cancel(NOTIFICATION_MANAGER, JobId(99), 0)
-                .map(|_| ())
-        },
-        |sender| sender.page(NOTIFICATION_MANAGER, None, 0).map(|_| ()),
-        |sender| sender.page(NOTIFICATION_MANAGER, None, 5).map(|_| ()),
-    ];
-    for (operation, expected) in operations.into_iter().zip([
-        ManagementError::UnknownJob,
-        ManagementError::UnknownJob,
-        ManagementError::InvalidPageLimit,
-        ManagementError::InvalidPageLimit,
-    ]) {
-        let error = operation(&mut sender).unwrap_err();
-        assert_eq!(error.downcast_ref::<ManagementError>(), Some(&expected));
-        assert_eq!(sender.store.bytes, before);
-        assert_eq!(sender.next_due_ns()?, Some(100));
-    }
-    for (id, body) in [(1, "duplicate".into()), (2, "x".repeat(4097))] {
-        assert!(
-            sender
-                .enqueue(
-                    NOTIFICATION_MANAGER,
-                    JobId(id),
-                    80,
-                    Notification {
-                        recipient: "bob".into(),
-                        body
-                    },
-                )
-                .is_err()
-        );
-        assert_eq!(sender.store.bytes, before);
-        assert_eq!(sender.next_due_ns()?, Some(100));
-    }
-    let cancelled = sender.cancel(NOTIFICATION_MANAGER, JobId(1), 90)?;
-    assert_eq!(cancelled.value.job.state, JobState::Cancelled);
-    assert_eq!(cancelled.next_due_ns, None);
-    let before = sender.store.bytes.clone();
-    let error = sender
-        .cancel(NOTIFICATION_MANAGER, JobId(1), 100)
-        .unwrap_err();
-    assert_eq!(
-        error.downcast_ref::<JobError>(),
-        Some(&JobError::NotPending)
-    );
-    assert_eq!(sender.store.bytes, before);
-    assert_eq!(sender.dispatch_due(NOTIFICATION_MANAGER, 100)?.value, None);
-    Ok(())
-}
-
-#[test]
-fn management_validates_future_records_before_reads_or_mutation() -> Result<()> {
-    let mut sender = Notifications::new()?;
-    sender.enqueue(
-        NOTIFICATION_MANAGER,
-        JobId(2),
-        200,
-        Notification {
-            recipient: "bob".into(),
-            body: "future".into(),
-        },
-    )?;
-    let mut snapshots: Vec<NotificationSnapshot> = sender.store.read()?;
-    snapshots[1].job.state = JobState::Completed;
-    sender.store.write(&snapshots)?;
-    let before = sender.store.bytes.clone();
-    for limit in [0, 5] {
-        let error = sender.page(NOTIFICATION_MANAGER, None, limit).unwrap_err();
-        assert_eq!(
-            error.downcast_ref::<ManagementError>(),
-            Some(&ManagementError::InvalidPageLimit)
-        );
-        assert_eq!(sender.store.bytes, before);
-    }
-    for operation in ManagementOperation::ALL {
-        let error = operation
-            .apply(&mut sender, NOTIFICATION_MANAGER)
-            .unwrap_err();
-        assert_eq!(
-            error.downcast_ref::<JobError>(),
-            Some(&JobError::InvalidRecord)
-        );
-        assert_eq!(sender.store.bytes, before);
+        mutate(&mut sender)?;
+        assert_eq!(sender.next_due_ns()?, if cancel { None } else { Some(80) });
     }
     Ok(())
 }

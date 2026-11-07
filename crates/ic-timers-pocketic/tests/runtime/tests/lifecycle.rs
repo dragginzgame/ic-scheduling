@@ -46,10 +46,7 @@ async fn provider_replacement_churn_preserves_cancellation_and_reports_memory() 
     assert_eq!(immediate.inventory_len, 1);
     assert!(!immediate.armed);
     assert!(immediate.wasm_pages >= replaced.wasm_pages);
-    pic.advance_time(Duration::from_secs(3_601))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16)
+    advance_and_tick(pic, Duration::from_secs(3_601), 16)
         .await
         .expect("advance and tick PocketIC");
     let drained = churn_observation(pic, canister_id).await;
@@ -92,10 +89,7 @@ async fn armed_callback_removal_releases_captures_with_registry_access() {
         assert!(!removed.armed);
         assert_eq!(removed.captures_dropped, 1);
         assert!(removed.capture_registry_accessible);
-        pic.advance_time(Duration::from_secs(2))
-            .await
-            .expect("advance IC time");
-        advance_and_tick(pic, Duration::ZERO, 8)
+        advance_and_tick(pic, Duration::from_secs(2), 8)
             .await
             .expect("advance and tick PocketIC");
         let after_deadline = ordinary_observation(pic, canister_id).await;
@@ -128,10 +122,7 @@ async fn rejected_initial_schedules_preserve_ic_inventory_and_release_captures()
             assert_eq!(result, (true, 1, true));
         }
     }
-    pic.advance_time(Duration::from_secs(2))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 8)
+    advance_and_tick(pic, Duration::from_secs(2), 8)
         .await
         .expect("advance and tick PocketIC");
     let observation = ordinary_observation(pic, canister_id).await;
@@ -166,10 +157,7 @@ async fn rejected_initial_reconciliation_preserves_ic_inventory_and_releases_cap
         .expect("initial reconciliation rejection observation");
         assert_eq!(result, (true, true, 1, true));
     }
-    pic.advance_time(Duration::from_secs(2))
-        .await
-        .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 8)
+    advance_and_tick(pic, Duration::from_secs(2), 8)
         .await
         .expect("advance and tick PocketIC");
     let observation = ordinary_observation(pic, canister_id).await;

@@ -68,7 +68,7 @@ fn rejected_watchdog_cadence_preserves_the_complete_snapshot() {
         timer.clone(),
         TimerCadence::from_nanos(u64::MAX).expect("positive cadence is valid"),
         TimerStart::Retained { initial: None },
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     )
     .expect("declaration should register without arming");
     let before = timer_snapshot(&timer).expect("snapshot should be readable");
@@ -139,18 +139,14 @@ fn fresh_inactive_reconciliation_reserves_complete_retained_inventory() {
     let mut after = None;
     let mut watchdog = None;
 
-    reconcile_once(&mut once, &once_identity, None, |_context| async {
-        OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop)
-    })
-    .expect("fresh inactive once declaration should be retained");
+    reconcile_once(&mut once, &once_identity, None, stopping_once(|| {}))
+        .expect("fresh inactive once declaration should be retained");
     reconcile_after_completion(
         &mut after,
         &after_identity,
         cadence,
         TimerReconcileState::Inactive,
-        |_context| async {
-            AfterCompletionRunResult::new(TimerCompletion::no_work(), AfterCompletionDecision::Stop)
-        },
+        stopping_after_completion(|| {}),
     )
     .expect("fresh inactive after-completion declaration should be retained");
     reconcile_watchdog(
@@ -158,7 +154,7 @@ fn fresh_inactive_reconciliation_reserves_complete_retained_inventory() {
         &watchdog_identity,
         cadence,
         WatchdogReconcileState::Inactive,
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     )
     .expect("fresh inactive watchdog declaration should be retained");
 
@@ -210,7 +206,7 @@ fn fresh_transient_cancellation_expires_every_registration_policy() {
         TimerStart::RemoveWhenStopped {
             initial: TimerSchedule::At(15),
         },
-        |_context| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+        stopping_once(|| {}),
     )
     .expect("once registration should succeed");
     let after = register_after_completion(
@@ -219,9 +215,7 @@ fn fresh_transient_cancellation_expires_every_registration_policy() {
         TimerStart::RemoveWhenStopped {
             initial: TimerSchedule::After(Duration::from_nanos(5)),
         },
-        |_context| async {
-            AfterCompletionRunResult::new(TimerCompletion::no_work(), AfterCompletionDecision::Stop)
-        },
+        stopping_after_completion(|| {}),
     )
     .expect("after-completion registration should succeed");
     let watchdog = register_watchdog(
@@ -230,7 +224,7 @@ fn fresh_transient_cancellation_expires_every_registration_policy() {
         TimerStart::RemoveWhenStopped {
             initial: TimerSchedule::After(Duration::from_nanos(5)),
         },
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     )
     .expect("watchdog registration should succeed");
 
@@ -271,23 +265,21 @@ fn registration_claims_report_exact_provider_wakeup_ownership() {
     let once = register_once(
         identity("liveness-once"),
         TimerStart::Retained { initial: None },
-        |_context| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+        stopping_once(|| {}),
     )
     .expect("once registration should succeed");
     let after = register_after_completion(
         identity("liveness-after"),
         TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
         TimerStart::Retained { initial: None },
-        |_context| async {
-            AfterCompletionRunResult::new(TimerCompletion::no_work(), AfterCompletionDecision::Stop)
-        },
+        stopping_after_completion(|| {}),
     )
     .expect("after-completion registration should succeed");
     let watchdog = register_watchdog(
         identity("liveness-watchdog"),
         TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
         TimerStart::Retained { initial: None },
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop),
+        stopping_watchdog(|| {}),
     )
     .expect("watchdog registration should succeed");
 
@@ -341,7 +333,7 @@ fn removed_transient_claim_cannot_report_wakeup_liveness() {
         TimerStart::RemoveWhenStopped {
             initial: TimerSchedule::At(15),
         },
-        |_context| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+        stopping_once(|| {}),
     )
     .expect("registration should succeed");
     assert!(timer.has_armed_wakeup().expect("claim should be readable"));
@@ -356,7 +348,7 @@ fn removed_transient_claim_cannot_report_wakeup_liveness() {
     let replacement = register_once(
         timer_identity,
         TimerStart::Retained { initial: None },
-        |_context| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+        stopping_once(|| {}),
     )
     .expect("replacement registration should succeed");
     replacement
@@ -382,7 +374,7 @@ fn stale_reused_identity_callback_cannot_change_handles_or_measurements() {
         TimerStart::RemoveWhenStopped {
             initial: TimerSchedule::At(15),
         },
-        |_context| async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) },
+        stopping_once(|| {}),
     )
     .expect("old registration should succeed");
     let old_handle = with_registry_mut(|registry| {
@@ -483,10 +475,9 @@ fn replacement_and_cancellation_clear_actual_owned_handles() {
     let registration = register_once(
         timer.clone(),
         TimerStart::Retained { initial: None },
-        move |_context| {
+        stopping_once(move || {
             callback_calls.set(callback_calls.get() + 1);
-            async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) }
-        },
+        }),
     )
     .expect("registration should succeed");
     registration
@@ -554,10 +545,9 @@ fn duplicate_registration_and_reconstruction_preserve_live_work_and_release_capa
         TimerStart::RemoveWhenStopped {
             initial: TimerSchedule::At(20),
         },
-        move |_context| {
+        stopping_once(move || {
             callback_calls.set(callback_calls.get() + 1);
-            async { OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop) }
-        },
+        }),
     )
     .expect("registration should succeed");
     let before = timer_inventory().unwrap();

@@ -12,11 +12,9 @@ fn declaration(
     let cadence = TimerCadence::from_nanos(5).unwrap();
     match policy {
         TestPolicy::Once => {
-            register_once(timer.clone(), start, |_| async {
-                OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop)
-            })
-            .unwrap()
-            .claim
+            register_once(timer.clone(), start, stopping_once(|| {}))
+                .unwrap()
+                .claim
         }
         TestPolicy::AfterCompletion => {
             register_after_completion(timer.clone(), cadence, start, |_| async {
@@ -455,19 +453,16 @@ fn dropping_public_claims_does_not_cancel_or_unregister() {
         };
         let cadence = TimerCadence::from_nanos(5).unwrap();
         match policy {
-            TestPolicy::Once => drop(
-                register_once(timer.clone(), start, |_| async {
-                    OnceRunResult::new(TimerCompletion::no_work(), OnceDecision::Stop)
-                })
-                .unwrap(),
-            ),
+            TestPolicy::Once => {
+                drop(register_once(timer.clone(), start, stopping_once(|| {})).unwrap());
+            }
             TestPolicy::AfterCompletion => drop(
-                register_after_completion(timer.clone(), cadence, start, |_| async {
-                    AfterCompletionRunResult::new(
-                        TimerCompletion::no_work(),
-                        AfterCompletionDecision::Stop,
-                    )
-                })
+                register_after_completion(
+                    timer.clone(),
+                    cadence,
+                    start,
+                    stopping_after_completion(|| {}),
+                )
                 .unwrap(),
             ),
             TestPolicy::Watchdog => drop(
