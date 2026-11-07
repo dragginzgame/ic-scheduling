@@ -24,9 +24,9 @@ repository = "https://github.com/dragginzgame/ic-scheduling"
 [workspace.dependencies]
 # Jobs
 # Changelog : releases/jobs/CHANGELOG.md
-ic-jobs = { path = "crates/ic-jobs", version = "0.34.11" }
-ic-jobs-canister-tests = { path = "crates/ic-jobs-canister-tests", version = "0.34.11" }
-ic-jobs-test-consumer = { path = "apps/ic-jobs-test-consumer", version = "0.34.11" }
+ic-jobs = { path = "crates/ic-jobs", version = "0.34.12" }
+ic-jobs-canister-tests = { path = "crates/ic-jobs-canister-tests", version = "0.34.12" }
+ic-jobs-test-consumer = { path = "apps/ic-jobs-test-consumer", version = "0.34.12" }
 
 # Timers
 # Changelog : releases/timers/CHANGELOG.md
