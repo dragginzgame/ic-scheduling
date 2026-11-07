@@ -1,120 +1,89 @@
 # Current handoff
 
-## Testkit 0.92 adoption pending — 2026-11-07
+## Testkit 0.92 adoption delivered — 2026-11-07
 
-The root catalog now selects published Testkit 0.92.0. Its native client requires
-Platform 0.24.0 for the exposed `CborError` identity; this is the only additional
-supplier alignment. There is no direct Platform facade declaration to migrate.
-The concurrent pending Wire update now selects 0.17.10 and is preserved. Public Jobs/Timers APIs,
-Runtime/guard, payload bytes, request budgets and server cleanup are unchanged.
-The matching Testkit CLI is prepared and passes offline selection admission.
-On this graph, both harnesses pass strict all-target lint; all 11 installed Jobs
-recovery cases, the queue workflow, CLI cleanup across five exit/interruption
-modes and three selected installed timer subjects pass. The timer selection
-covers typed Wire admission, trap/upgrade recovery and bounded time progress;
-it does not replace full release runtime/cohort gates. Current logs and exact
-input lock: `target/evidence/adoption-testkit092-wire01710/`. The lock stayed
-unchanged throughout qualification (SHA-256
-`4661db787b04e7cc28175148d700ca1be905d52d9c7023d4f7b885e45397ef63`).
-Installed receipts: `target/tmp/jobs-recovery.42XfXr/` and
-`target/tmp/timer-qualification-158958-0/runtime.json`. Earlier six native harness
-cases and installed checks against Wire 0.17.9 remain historical under
-`target/evidence/adoption-testkit092/`. Pending patch notes are Jobs 0.34.12 and
-Timers 0.40.13; package versions remain delivered values until standard release
-preparation. Deployment is now authorized for `timers,jobs`, with crates.io
-publication through the captured batch flow. No new publication has happened yet.
-
-## Storage/Testkit adoption delivered — 2026-11-07
-
-Timers 0.40.12 and Jobs 0.34.11 are tagged, pushed to `origin/main` and published
+Timers 0.40.13 and Jobs 0.34.12 are tagged, pushed to `origin/main` and published
 to crates.io through Shared Tooling 0.31.5's captured batch flow. Source adoption:
-`43dc4f4e77eec07bfcdf8d19d1b6d7823fc3ecb1`. Batch `batch-ArjuBucS` is complete
-at index 2; normal main was reconciled with its final release commit through the
-shared guarded command. Do not replay either upload.
+`417e2d502eeaadc020aff76918f9268672c8bbd2`. Batch `batch-IaXAn_cc` is complete
+at index 2. Normal main was fast-forwarded through the guarded shared reconcile
+command. Both group journals are complete; do not replay uploads.
 
-- Timers release: `e91c45c4ea14c945440ea373bf86a9b6c0781e53`;
-  annotated `timers-v0.40.12`: `a257f6ce87a651fdde10b644400a6e0592e52af5`;
-  archive SHA-256: `1dadb4d2894f4a2190f21ad78a9de758ce429aa85877413454706537731e40b6`.
-- Jobs release: `6844f3a9b371c11981ae2aea702bbf9b7e5fd1a6`;
-  annotated `jobs-v0.34.11`: `4f1283182b78632ad09d204401b523fa18b34dae`;
-  archive SHA-256: `1664281cadb460bfa184b19a0770c91799b1d410ad01b303c26305b560105c42`.
+- Timers release: `479b92a3e17f64930272da673de59a9ae344ad9f`;
+  annotated `timers-v0.40.13`: `ccbe402720ebd786f3136f00db2d2fb0e8da3b84`;
+  archive SHA-256: `413d8928c6de95fe8391b57532299b6e2f24c0383953878b048cbf4141f0957d`.
+- Jobs release: `84f7b287d9f69f80b128851382ba3ff80de072e4`;
+  annotated `jobs-v0.34.12`: `0efedc40c5b083cd1d3da0bdf04764c1583d4b8d`;
+  archive SHA-256: `221c34a77914f73358e40f96d24b0e9d797943ae25ada8eb5b854d592a6c3f7f`.
 
 Official registry metadata, downloaded archives, both retained Cargo publication
 archives, clean VCS provenance and remote annotated tags agree. This is library
-publication with local PocketIC qualification, not production canister deployment.
+publication with local installed qualification, not production canister deployment.
 
-## Released graph and cleanup
+## Released supplier graph
 
-Storage 0.68.5 and Testkit 0.91.0 align with Host Artifacts/FS/Process 0.75.0 and
-Build 0.78.0; the older Host 0.74 copies are gone. Retained suppliers:
-Runtime/macros/exact guard 0.19.5, Types 0.18.2, Platform 0.23.6, Wire 0.17.8,
-Endpoint/macros 0.7.3, Logging 0.24.11 and Metrics 0.29.6. Shared Tooling is
-0.31.5, revision `b2026a118e38de4af1555c527af327cb604eacdf` (152 managed files).
-Jobs remains Serde-only. Public APIs and stored formats are unchanged; the retired
-Memory package remains excluded. Explicit request budgets and server custody remain.
+Testkit 0.92.0 brings Platform 0.24.0's native `CborError` identity. Scheduling has
+no direct facade declaration or affected error match to migrate. Native harnesses
+and the matching lock-selected CLI adopt the same Testkit generation. Wire 0.17.10
+absorbs the previously deferred update; its public codec contracts are unchanged.
 
-Notification fixtures now focus on committed intent, receipts and validated
-recovery; actual Queue tests retain management/auth/pagination coverage. Timers
-shares capacity, capture and stopping fixtures while retaining typed controls,
-classifications, destruction ordering and separate Watchdog messages. Four
-Cargo-owned retired-feature rejection cases were removed; provider/dependency
-guards and distinct recovery boundaries remain. Jobs uses one integration target
-with all 48 cases and frozen records. Installed tests combine 27 adjacent
-advance/tick pairs with unchanged durations, budgets and observations. Shared cloc:
-tests 25,608 → 25,009 (599 fewer); library/app unchanged at 5,494.
+Retained suppliers: Storage 0.68.5, Host Artifacts/FS/Process 0.75.0, Build 0.78.0,
+Runtime/macros/exact guard 0.19.5, Types 0.18.2, Endpoint/macros 0.7.3, Logging
+0.24.11 and Metrics 0.29.6. Shared Tooling remains 0.31.5, revision
+`b2026a118e38de4af1555c527af327cb604eacdf` (152 managed files). Jobs stays
+Serde-only. Public Jobs/Timers APIs, stored formats, owned Wire payloads, explicit
+request budgets and server cleanup are unchanged. Memory remains excluded.
 
-## Qualification and custody
+## Qualification and evidence
 
-Both complete 37-stage Linux/Rust 1.99.1 release gates passed. Each includes all
-35 installed Timers runtime cases and policy cohorts. Real release-tooling
-fixtures also passed source isolation, rollback, uncertain-publication recovery,
-second-group recovery, completed resume and reconciliation; substituted fixture
-uploads are distinct from actual publication proof.
+Both complete 37-stage Linux/Rust 1.99.1 release gates passed, each including all
+35 installed Timers runtime cases and policy cohorts. Release-tooling fixtures
+passed rollback, captured-source isolation, uncertain-publication recovery,
+second-group recovery, completed resume and reconciliation. Their substituted
+uploads remain distinct from the actual registry proof above.
 
-Captured evidence under `target/release-frozen/batch-ArjuBucS/target/`:
+Captured evidence under `target/release-frozen/batch-IaXAn_cc/target/`:
 
-- Timers gate: `release-validation/validation.euwjk5fy/`, actual logs
-  `logs/validation.Nd6X9I`; source `43dc4f4`; runtime receipt
-  `tmp/timer-qualification-1808472-0/runtime.json`, cohorts `1887817-0`.
-- Jobs gate: `release-validation/validation.RcYfUyp3/`, actual logs
-  `logs/validation.iGdzPK`; source `e91c45c`; runtime receipt
-  `tmp/timer-qualification-834726-0/runtime.json`, cohorts `927072-0`.
-- Against final Jobs commit `6844f3a`, all 11 installed recovery cases passed;
-  receipt bundle `tmp/jobs-recovery.8MIndN/`. Queue workflow and process-level CLI
-  cleanup covering five exit/interruption modes passed on retry.
+- Timers gate: `release-validation/validation.uhOiIwT9/`, actual full run
+  `logs/validation.Tj4D1B`; source `417e2d5`; runtime receipt
+  `tmp/timer-qualification-416898-0/runtime.json`, cohorts `497888-0`.
+- Jobs gate: `release-validation/validation.u99Gavfk/`, actual full run
+  `logs/validation.9U7QH6`; source `479b92a`; runtime receipt
+  `tmp/timer-qualification-3659947-0/runtime.json`, cohorts `3703997-0`.
+- Against final Jobs commit `84f7b28`, all 11 installed recovery cases, the queue
+  workflow and CLI cleanup covering five exit/interruption modes pass. Recovery
+  bundle: `tmp/jobs-recovery.T0dP4Z/`; combined log in normal
+  `target/evidence/deploy-testkit092/jobs-final-installed.log`.
 
 Final released lock SHA-256:
-`c72a1402442c0cfaeeae4422b8c5103b56fc7d2f7e48c7085916160254f2e55b`.
-Normal raw logs and adoption inputs: `target/evidence/deploy-storage0685-testkit091/`.
-The first installed command passed recovery but stopped at queue admission because
-a competing process held the shared tool-store installation lock. Its original
-log is retained; `jobs-final-queue-retry.log` covers only the remaining checks.
+`1f6598129ca0da177ff823ffbe24efe609a79805d8985c2b8e00ae57a001aa67`.
+Pre-release focused checks remain historical at
+`target/evidence/adoption-testkit092-wire01710/` and the earlier Wire 0.17.9 graph
+at `target/evidence/adoption-testkit092/`; neither replaces the full release gates.
 
-Preserve `.git/release-state/frozen/batch-ArjuBucS/`: durable Git store, complete
+Hosted Jobs [run 42384135905](https://github.com/dragginzgame/ic-scheduling/actions/runs/42384135905)
+was in progress at delivery. Local Linux passes establish no fresh hosted/macOS
+result or cross-release installed migration proof.
+
+## Recovery custody and normal checkout
+
+Preserve `.git/release-state/frozen/batch-IaXAn_cc/`: durable Git store, complete
 intent, group journals/receipts and `verification/{jobs,timers}/` with official
-registry metadata, archives, provenance, remote refs and runtime/cohort receipts.
-No batch retirement or deletion was performed. Hosted Jobs
-[run 42374466527](https://github.com/dragginzgame/ic-scheduling/actions/runs/42374466527)
-was in progress at delivery; local Linux passes establish no fresh macOS result
-or cross-release installed migration proof.
+registry metadata, all three matching archives, VCS provenance, remote tag refs,
+runtime/cohort receipts and final installed Jobs proof. Managed delivery source
+and build artifacts remain under `target/release-frozen/batch-IaXAn_cc/`.
+Normal raw logs and preparation records: `target/evidence/deploy-testkit092/`.
+No batch retirement or deletion was performed.
 
-## Deferred normal-checkout work and prior custody
+The normal lock matches the released graph. No new deferred supplier changes were
+observed during this batch. The older Wire preservation branch
+`deferred/batch-ArjuBucS-suppliers` and stash
+`6d9e52644b4d90a59c676dfe4dd4608ab02baec3` remain recovery history; do not restore
+their whole older lock over released group versions.
 
-A concurrent update selected Wire 0.17.9 in the normal lock during delivery. The
-captured graph stayed at 0.17.8. Before guarded reconciliation, the later update
-was preserved on branch `deferred/batch-ArjuBucS-suppliers`, stash
-`6d9e52644b4d90a59c676dfe4dd4608ab02baec3`, plus
-`target/evidence/deploy-storage0685-testkit091/deferred-normal-lock.patch`.
-Only that supplier patch was reapplied, preserving released group versions.
-The normal selection later advanced to 0.17.10; it remains uncommitted and is
-included in the pending Testkit adoption graph above, not the published releases.
-Do not replace the current lock wholesale with an old one.
-
-Earlier custody is unchanged, including completed `batch-vLPyIAUg` and
-`batch-hCRiwOcg`, failed `batch-qIKZnu6X`, their deferred supplier branches/stashes
-and all older release evidence. Full historical identities and recovery references
-are in the immutable
-[preceding handoff](https://github.com/dragginzgame/ic-scheduling/blob/43dc4f4e77eec07bfcdf8d19d1b6d7823fc3ecb1/docs/status/current.md).
+Prior batches `batch-ArjuBucS`, `batch-vLPyIAUg`, `batch-hCRiwOcg` and failed
+`batch-qIKZnu6X`, their journals, evidence, branches and stashes remain preserved.
+Full prior release identities and custody are linked in the immutable
+[preceding handoff](https://github.com/dragginzgame/ic-scheduling/blob/417e2d502eeaadc020aff76918f9268672c8bbd2/docs/status/current.md).
 No older tag, upload or receipt was rewritten. Issue #89 remains closed. Canic
 issues #735–737 and their local fixes were reviewed read-only; no sibling source
 or release was changed here.
