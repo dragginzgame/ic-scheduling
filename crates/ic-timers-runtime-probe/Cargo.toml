@@ -2,7 +2,7 @@
 name = "ic-timers-runtime-probe"
 rust-version.workspace = true
 edition.workspace = true
-version = "0.40.12"
+version = "0.40.13"
 publish = false
 license.workspace = true
 
