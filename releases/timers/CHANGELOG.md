@@ -7,6 +7,15 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.40.13]
+
+### 🧪 Testing
+
+- Adopt Testkit 0.92 and its Platform 0.24 native client error identity for
+  installed timer qualification. Public Timers APIs, runtime selection and Wire
+  payloads are unchanged; retain explicit request budgets and server cleanup.
+- Qualify the retained Wire 0.17.10 consumer graph without changing owned payloads.
+
 ## [0.40.12] - 2026-11-07
 
 ### 📦 Dependencies

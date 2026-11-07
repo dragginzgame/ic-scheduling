@@ -1,5 +1,29 @@
 # Current handoff
 
+## Testkit 0.92 adoption pending — 2026-11-07
+
+The root catalog now selects published Testkit 0.92.0. Its native client requires
+Platform 0.24.0 for the exposed `CborError` identity; this is the only additional
+supplier alignment. There is no direct Platform facade declaration to migrate.
+The concurrent pending Wire update now selects 0.17.10 and is preserved. Public Jobs/Timers APIs,
+Runtime/guard, payload bytes, request budgets and server cleanup are unchanged.
+The matching Testkit CLI is prepared and passes offline selection admission.
+On this graph, both harnesses pass strict all-target lint; all 11 installed Jobs
+recovery cases, the queue workflow, CLI cleanup across five exit/interruption
+modes and three selected installed timer subjects pass. The timer selection
+covers typed Wire admission, trap/upgrade recovery and bounded time progress;
+it does not replace full release runtime/cohort gates. Current logs and exact
+input lock: `target/evidence/adoption-testkit092-wire01710/`. The lock stayed
+unchanged throughout qualification (SHA-256
+`4661db787b04e7cc28175148d700ca1be905d52d9c7023d4f7b885e45397ef63`).
+Installed receipts: `target/tmp/jobs-recovery.42XfXr/` and
+`target/tmp/timer-qualification-158958-0/runtime.json`. Earlier six native harness
+cases and installed checks against Wire 0.17.9 remain historical under
+`target/evidence/adoption-testkit092/`. Pending patch notes are Jobs 0.34.12 and
+Timers 0.40.13; package versions remain delivered values until standard release
+preparation. Deployment is now authorized for `timers,jobs`, with crates.io
+publication through the captured batch flow. No new publication has happened yet.
+
 ## Storage/Testkit adoption delivered — 2026-11-07
 
 Timers 0.40.12 and Jobs 0.34.11 are tagged, pushed to `origin/main` and published
@@ -82,8 +106,9 @@ was preserved on branch `deferred/batch-ArjuBucS-suppliers`, stash
 `6d9e52644b4d90a59c676dfe4dd4608ab02baec3`, plus
 `target/evidence/deploy-storage0685-testkit091/deferred-normal-lock.patch`.
 Only that supplier patch was reapplied, preserving released group versions.
-It remains uncommitted and unqualified for a later batch; do not replace the
-current lock wholesale with an old one.
+The normal selection later advanced to 0.17.10; it remains uncommitted and is
+included in the pending Testkit adoption graph above, not the published releases.
+Do not replace the current lock wholesale with an old one.
 
 Earlier custody is unchanged, including completed `batch-vLPyIAUg` and
 `batch-hCRiwOcg`, failed `batch-qIKZnu6X`, their deferred supplier branches/stashes

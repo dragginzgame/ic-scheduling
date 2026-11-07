@@ -4,6 +4,15 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.12]
+
+### 🧪 Testing
+
+- Adopt Testkit 0.92 and its Platform 0.24 native client error identity for
+  consumer recovery and queue qualification. Public Jobs APIs and stored formats
+  are unchanged; retain explicit request budgets and server cleanup.
+- Qualify the retained Wire 0.17.10 consumer graph without changing owned payloads.
+
 ## [0.34.11] - 2026-11-07
 
 ### 📦 Dependencies
