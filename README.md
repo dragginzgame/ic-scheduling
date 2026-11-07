@@ -120,10 +120,12 @@ Owned native DTO principals exclude external Principal and SHA-2 dependencies.
 The Wasm application selects neither principal conversion nor SHA-2 hashing.
 Storage supplies native IO metering under its test-support feature.
 Native tests select `principal-self-authenticating` explicitly;
-the native harness selects `principal-external` and Testkit 0.89's async-only
+the native harness selects `principal-external` and Testkit 0.90's async-only
 `ic_testkit::pocket_ic` client. Callers own their Tokio runtime and await explicit
-instance closure. Testkit does not install a global subscriber or file log sink;
-application logging remains caller-owned. Managed `PocketIcStartupConfig::build_instance` supplies its
+instance closure. Each client uses an explicit 60-second request budget, separate
+from its server startup deadline. Testkit does not install a global subscriber or
+file log sink; application logging remains caller-owned.
+Managed `PocketIcStartupConfig::build_instance` supplies its
 explicit server endpoint and retains server custody. The deployed
 graph has one Runtime 0.19 owner and exact matching executor guard.
 

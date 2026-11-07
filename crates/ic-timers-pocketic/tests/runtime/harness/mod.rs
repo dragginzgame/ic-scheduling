@@ -11,6 +11,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use std::{convert::Infallible, env, fmt::Debug, path::PathBuf, task::Poll, time::Duration};
 
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 pub const INIT_CYCLES: u128 = 2_000_000_000_000;
 
 /// Preserve tick-before-observation boundaries while Testkit owns bounded progress.
@@ -74,7 +75,7 @@ pub async fn fresh_pocket_ic() -> PocketIcInstance<PocketIc> {
         server_idle_ttl: None,
         server_output_files: Some((logs.join("stdout.log"), logs.join("stderr.log"))),
     }
-    .build_instance(PocketIcBuilder::new().with_application_subnet())
+    .build_instance(PocketIcBuilder::new(REQUEST_TIMEOUT).with_application_subnet())
     .await
     .expect("construct a fresh owned PocketIC instance through ic-testkit")
 }

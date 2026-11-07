@@ -6,10 +6,25 @@ and [coordinated history through 0.33.1](../history.md).
 
 ## [0.34.10]
 
+### 📦 Dependencies
+
+- Qualify the current Platform graph with Runtime/macros/exact guard 0.19.5,
+  Types 0.18.2 and Platform 0.23.5. Jobs remains Serde-only.
+- Retain Logging 0.24.11, Metrics 0.29.6, Storage 0.68.3 and Wire 0.17.6
+  in the consumer qualification graph.
+
 ### 🛠️ Tooling
 
 - Restore macOS repository host-tool setup with Shared Tooling 0.31.1's
   Bash 3.2 checksum-parser fix. Library runtime behavior is unchanged.
+- Adopt IC Build 0.77 for native artifact capture and the root-selected release
+  metadata CLI. Public Jobs dependencies remain unchanged.
+
+### 🧪 Testing
+
+- Adopt Testkit 0.90 with explicit 60-second request budgets in recovery tests
+  and the queue example, separate from server startup deadlines
+  ([#89](https://github.com/dragginzgame/ic-scheduling/issues/89)).
 
 ## [0.34.9] - 2026-11-06
 

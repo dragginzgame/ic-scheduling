@@ -69,8 +69,9 @@ Runtime owns the maintained IC0 bindings and executor. The root catalog disables
 default Runtime features. The library selects only `executor` and `ic0`; the two
 canister probes select `cdk` for entrypoint contexts,
 protected calls/spawning, traps, cycle burning and stable byte I/O. The native
-harness selects Testkit 0.88's async-only `pocket_ic` module for clients and
+harness selects Testkit 0.90's async-only `pocket_ic` module for clients and
 `ic-platform-types` 0.18 with `principal-external` for canonical identities.
+Clients select a 60-second request budget independently of server startup limits.
 The protocol package selects Wire and Serde without a direct Runtime dependency.
 
 The private platform uses `ic_platform_runtime::ic0` for system calls,
@@ -98,7 +99,7 @@ Runtime copies arguments. Decode failure prevents the handler; reply encoding
 failure traps rather than committing a partial response. Empty RPCs still carry
 a method-bound frame. Init and upgrade hooks take raw empty arguments.
 
-Wire Endpoint 0.6 binds the probes' explicit-codec entrypoints to Runtime contexts
+Wire Endpoint 0.7 binds the probes' explicit-codec entrypoints to Runtime contexts
 and protected spawning. Wire owns codec admission and failure diagnostics; the
 probes retain method identities and limits. Real self-call gates and queue pressure
 use raw Wire frames, retaining their IC suspension and call-failure behavior. The
@@ -539,6 +540,12 @@ consumers can detect counter replacement within one runtime epoch. See the
 [continuity and deadline contract](design/0.8-registration-continuity-and-deadlines.md).
 
 ## Consumer integration
+
+For current Canic application integration, use Canic's
+[native timer guide](https://github.com/dragginzgame/canic/blob/main/docs/features/runtime/native-timers.md).
+Applications register directly with `ic-timers`; Canic owns framework lifecycle,
+durable business recovery, snapshot coordination and observation endpoints.
+The dated adoption records below qualify only their recorded sources and graphs.
 
 Read-only inspection on 2026-10-18 found one registry `ic-timers` 0.27.1 package
 in each available Canic, IcyDB and Jobs lockfile, with no `ic-cdk-timers` package.

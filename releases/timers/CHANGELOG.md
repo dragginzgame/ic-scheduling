@@ -9,10 +9,25 @@ entry alone does not establish publication.
 
 ## [0.40.11]
 
+### 📦 Dependencies
+
+- Qualify Runtime/macros/exact guard 0.19.5 and Types 0.18.2 with Platform 0.23.5
+  in native tooling. Public timer APIs and retained formats are unchanged.
+- Retain Logging 0.24.11, Metrics 0.29.6, Storage 0.68.3 and Wire 0.17.6
+  in qualification consumers.
+
 ### 🛠️ Tooling
 
 - Restore macOS repository host-tool setup with Shared Tooling 0.31.1's
   Bash 3.2 checksum-parser fix. Library runtime behavior is unchanged.
+- Adopt IC Build 0.77 for native Wasm artifact preparation and the root-selected
+  release metadata CLI. Public timer APIs and stored formats are unchanged.
+
+### 🧪 Testing
+
+- Adopt Testkit 0.90 with an explicit 60-second runtime-fixture request budget,
+  separate from server startup deadlines
+  ([#89](https://github.com/dragginzgame/ic-scheduling/issues/89)).
 
 ## [0.40.10] - 2026-11-06
 

@@ -196,7 +196,7 @@ impl Demo {
         )
         .map_err(failure)?;
         let pic = config
-            .build_instance(PocketIcBuilder::new().with_application_subnet())
+            .build_instance(PocketIcBuilder::new(Duration::from_secs(60)).with_application_subnet())
             .await
             .map_err(failure)?;
         let installed = async {

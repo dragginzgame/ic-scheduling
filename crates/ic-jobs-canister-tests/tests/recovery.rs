@@ -17,6 +17,8 @@ use ic_wire::native;
 use serde::{Serialize, de::DeserializeOwned};
 use std::{convert::Infallible, path::PathBuf, task::Poll, time::Duration};
 
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+
 struct Fixture {
     pic: PocketIcInstance<PocketIc>,
     wasm: Vec<u8>,
@@ -87,7 +89,7 @@ impl Fixture {
         let config = PocketIcStartupConfig::from_env(Duration::from_secs(30))
             .expect("use ic-testkit-server run after explicit setup/check");
         let pic = config
-            .build_instance(PocketIcBuilder::new().with_application_subnet())
+            .build_instance(PocketIcBuilder::new(REQUEST_TIMEOUT).with_application_subnet())
             .await
             .expect("bounded PocketIC startup");
         let manager = ExternalPrincipal::self_authenticating(b"jobs-manager");

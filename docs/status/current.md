@@ -1,5 +1,34 @@
 # Current handoff
 
+## Local IC Build 0.77 / Testkit 0.90 adoption — 2026-11-07
+
+The root catalog and lock select published Build 0.77.0 and Testkit 0.90.0.
+Build's removed forwarding getters are unused. All three PocketIC constructors
+now select a positive 60-second request budget, separate from startup deadlines;
+instance ownership, explicit teardown and fixture limits remain unchanged.
+Platform was already current: Runtime/macros/exact guard 0.19.5, Types 0.18.2 and
+facade 0.23.5. Root ranges remain compatible; incoming supplier work is preserved.
+
+Strict selected-consumer Clippy, 18 native cases, native/Wasm dependency admission,
+Wasm consumers and Rust 1.99.1 checks pass. All six selected Linux installed cases
+pass: Jobs request refusals, upgrade/watchdog and uncertain-effect recovery; the
+queue workflow; Timers rejected registration and trap/upgrade reconstruction.
+Both groups' Build metadata fixtures pass with product checks/uploads substituted.
+The final lock checksum is unchanged through qualification. Raw logs and input
+snapshots are under `target/evidence/adoption-build077-testkit090/`; the Timers
+runtime receipt is `target/tmp/timer-qualification-3016515-0/runtime.json`.
+No full suite or native macOS run is claimed. #89 is implemented and qualified
+locally; delivered-source acceptance remains pending. No commit, push or release.
+
+The Timers architecture guide now names Testkit 0.90 and Endpoint 0.7 and links
+Canic's current native-timer integration guide. Dated adoption records remain
+historical evidence. Documentation link and diff checks pass. At the user's request,
+the three Canic findings are filed instead of changing sibling source:
+[recovery errors #735](https://github.com/dragginzgame/canic/issues/735),
+[sampling consistency #736](https://github.com/dragginzgame/canic/issues/736) and
+[transient claim cleanup #737](https://github.com/dragginzgame/canic/issues/737).
+Each records committed-source evidence and focused acceptance; no Canic code changed.
+
 ## Jobs 0.34.9 and Timers 0.40.10 delivered — 2026-11-06
 
 Both groups are tagged, pushed to `origin/main` and published to crates.io through
@@ -90,9 +119,10 @@ Normal delivery, verification, tool-recovery and reconciliation logs are under
 `target/deployment-shared031/`. Earlier adoption evidence stays under
 `target/evidence/shared031/` and `target/evidence/frozen-hooks/`.
 
-The normal lock still has deferred Logging 0.24.11, Metrics 0.29.6, Platform
-0.23.5 and Storage 0.68.2 updates. They are outside both releases and remain
-unqualified. Preserve branch `deferred/shared031-6456b5a`, stash
+The normal lock retains Logging 0.24.11, Metrics 0.29.6, Storage 0.68.3,
+Wire 0.17.6 and smallvec 1.16.5 refreshes, alongside the locally qualified graph
+above. All remain outside both published releases; the focused checks above do
+not replace a complete release gate. Preserve branch `deferred/shared031-6456b5a`, stash
 `96492f00b7f0e99d13898109e413bd0b6acb412f` and the deployment directory's
 `deferred-final-Cargo.lock.patch`. Do not restore a whole old lock over current
 workspace versions. Optional supplier patches alone do not require republishing.
