@@ -211,13 +211,13 @@ does not make inspection an authorization or zero-cost guarantee.
 
 ## Minimal `Once` example
 
-The examples require Timers 0.40.0 with Runtime 0.19 and Metrics 0.29.
+The examples require Timers 0.41.0 with Runtime 0.20 and Metrics 0.29.
 Align the complete canister graph with the
 [runtime compatibility requirements](#runtime-compatibility):
 
 ```toml
 [dependencies]
-ic-timers = "0.40.0"
+ic-timers = "0.41.0"
 ```
 
 Every framework and application crate linked into the same canister must resolve
@@ -525,17 +525,17 @@ for commands and qualification. The [architecture](../../docs/timers/architectur
 
 ## Runtime compatibility
 
-Timers 0.40 selects Runtime 0.19.0 or a compatible 0.19 patch
+Timers 0.41 selects Runtime 0.20.0 or a compatible 0.20 patch
 for IC0 and execution. Runtime requires its exact matching executor guard.
-Applications retaining Runtime 0.18 must align all executor and Endpoint
-suppliers together before adopting it. Timers 0.38 remains on Runtime 0.18;
+Applications retaining Runtime 0.19 must align all executor and Endpoint
+suppliers together before adopting it. Timers 0.40 remains on Runtime 0.19;
 removing or overriding the singleton guard is not a compatibility fix.
 
-Consumers exchanging Timers 0.40's public measurement types with a direct
+Consumers exchanging Timers 0.41's public measurement types with a direct
 Metrics dependency select Metrics 0.29. Canister entrypoints select Runtime's `cdk`
 feature; canonical identities come from Types 0.18. The qualification consumer
-selects Storage 0.66, Wire Core 0.16 and Endpoint 0.6. The native harness selects
-Testkit 0.85, which owns the PocketIC client at `ic_testkit::pocket_ic`; no separate
+selects Storage 0.68, Wire Core 0.17 and Endpoint 0.8. The native harness selects
+Testkit 0.92, which owns the PocketIC client at `ic_testkit::pocket_ic`; no separate
 client dependency is needed. Managed startup supplies the client's explicit server
 endpoint and retains server custody. No retired Testkit Native or Memory crate is used.
 

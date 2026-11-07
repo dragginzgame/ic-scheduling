@@ -7,6 +7,15 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.41.0]
+
+### ⚠️ Breaking
+
+- Select Runtime 0.20 and its matching macros/exact executor guard. Align all
+  execution suppliers and Wire Endpoint 0.8 in the canister graph before upgrading;
+  mixed runtime generations remain rejected. Runtime entrypoints use the ordinary
+  `cdk` macro family. Timer APIs, Wire payloads and stored formats are unchanged.
+
 ## [0.40.13] - 2026-11-07
 
 ### 🧪 Testing

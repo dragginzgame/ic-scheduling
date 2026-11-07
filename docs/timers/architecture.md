@@ -62,14 +62,14 @@ metrics adapter or introduce a persisted-format migration.
 
 ## Candid and CDK dependency boundary
 
-Registry-published `ic-platform-runtime` 0.19 is the selected execution boundary.
+Registry-published `ic-platform-runtime` 0.20 is the selected execution boundary.
 The current lock and source-qualified receipts are recorded in
 [current status](../status/current.md).
 Runtime owns the maintained IC0 bindings and executor. The root catalog disables
 default Runtime features. The library selects only `executor` and `ic0`; the two
 canister probes select `cdk` for entrypoint contexts,
 protected calls/spawning, traps, cycle burning and stable byte I/O. The native
-harness selects Testkit 0.90's async-only `pocket_ic` module for clients and
+harness selects Testkit 0.92's async-only `pocket_ic` module for clients and
 `ic-platform-types` 0.18 with `principal-external` for canonical identities.
 Clients select a 60-second request budget independently of server startup limits.
 The protocol package selects Wire and Serde without a direct Runtime dependency.
@@ -77,7 +77,7 @@ The protocol package selects Wire and Serde without a direct Runtime dependency.
 The private platform uses `ic_platform_runtime::ic0` for system calls,
 retaining context placement, protected spawning and callback/trap cleanup.
 Runtime selects its exact matching executor singleton guard. Applications must
-align all executor and Endpoint suppliers with Runtime 0.19; removing or
+align all executor and Endpoint suppliers with Runtime 0.20; removing or
 overriding the guard does not establish compatibility. Deployed roots have one
 Runtime executor owner and no standalone
 `ic-cdk-executor` or `ic0` package. Native substitutes cannot
@@ -99,7 +99,7 @@ Runtime copies arguments. Decode failure prevents the handler; reply encoding
 failure traps rather than committing a partial response. Empty RPCs still carry
 a method-bound frame. Init and upgrade hooks take raw empty arguments.
 
-Wire Endpoint 0.7 binds the probes' explicit-codec entrypoints to Runtime contexts
+Wire Endpoint 0.8 binds the probes' explicit-codec entrypoints to Runtime contexts
 and protected spawning. Wire owns codec admission and failure diagnostics; the
 probes retain method identities and limits. Real self-call gates and queue pressure
 use raw Wire frames, retaining their IC suspension and call-failure behavior. The
@@ -146,7 +146,7 @@ Principal values.
 Testkit also selects Candid/management support for native provider
 fixtures; PocketIC retains Candid for its simulator protocols. These are native
 qualification dependencies. Independent library and canister graphs
-remain Candid-free and select Runtime 0.19.
+remain Candid-free and select Runtime 0.20.
 These host-only providers do not enter deployed graphs; there is no unpublished
 override.
 The local provider check also rejects Candid codec paths and default-codec

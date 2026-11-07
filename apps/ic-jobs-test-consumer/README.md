@@ -249,7 +249,7 @@ The consumer's own Wire dependency supplies its endpoint codecs. Metrics has no
 optional `wire` feature; its optional keyed heap `recording` feature stays disabled.
 Published `ic-jobs` remains independent of Metrics.
 Metrics now lives in the IC Observability repository with the same published
-crate identity and arithmetic. Runtime 0.19 and Wire 0.17 supply explicit endpoint
+crate identity and arithmetic. Runtime 0.20 and Wire 0.17 supply explicit endpoint
 codecs and bounded decoding for this consumer and its host harness.
 Its transport boundary is separate from Storage's installation cut above.
 Native DTOs select canonical Types 0.18. Native tests explicitly select

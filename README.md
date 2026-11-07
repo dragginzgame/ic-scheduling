@@ -112,9 +112,9 @@ The qualification app selects Runtime's `cdk` feature only on Wasm. Native
 consumer builds select canonical Types directly for Serde DTOs
 and Wire contracts. Jobs, Storage and Timers remain Wasm/test dependencies; JSON
 is limited to native fixtures and tooling. Parser, Agent,
-certification and crypto features are not selected. Runtime 0.19 owns the
+certification and crypto features are not selected. Runtime 0.20 owns the
 deployed executor, IC0 adapters and generator shared with Timers, Storage 0.68
-and Wire Endpoint 0.7. The qualification Wasm
+and Wire Endpoint 0.8. The qualification Wasm
 selects neither Candid nor full `ic-cdk`.
 Owned native DTO principals exclude external Principal and SHA-2 dependencies.
 The Wasm application selects neither principal conversion nor SHA-2 hashing.
@@ -127,7 +127,7 @@ from its server startup deadline. Testkit does not install a global subscriber o
 file log sink; application logging remains caller-owned.
 Managed `PocketIcStartupConfig::build_instance` supplies its
 explicit server endpoint and retains server custody. The deployed
-graph has one Runtime 0.19 owner and exact matching executor guard.
+graph has one Runtime 0.20 owner and exact matching executor guard.
 
 Installation, management, fixture controls and delivery use IC Wire native Serde
 frames. Consumer-owned method identities and request/reply budgets live in

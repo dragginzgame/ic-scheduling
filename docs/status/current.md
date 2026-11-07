@@ -1,5 +1,36 @@
 # Current handoff
 
+## Runtime 0.20 adoption qualified locally — 2026-11-07
+
+Endpoint and Endpoint Macros 0.8.0 are now published and not yanked; official
+metadata is retained below. The root catalog/lock select Runtime/macros/exact
+guard 0.20.0 and Endpoint/macros 0.8.0, preserving incoming Storage 0.68.7 and
+Wire Core 0.17.12. The old execution cohort is gone. Existing ordinary `cdk`
+entrypoint attributes already match Runtime's retained macro family; no Rust
+implementation change was needed. Jobs stays Serde-only. Stored formats,
+owned payloads, explicit request budgets and provider confinement are unchanged.
+
+Version-specific cohort guards and their negative fixtures now require Runtime
+0.20 while retaining registry identity, exact guard and dependency exclusions.
+Native/Wasm strict lint, graph checks, dependency-refusal fixtures, 178 native
+Timers tests, all 11 installed Jobs recovery cases, all 35 installed Timers runtime
+cases, policy cohorts and current-source Timers archive verification pass on
+Linux/Rust 1.99.1. Logs/metadata/input lock:
+`target/evidence/adoption-runtime020/endpoint-ready/`; lock SHA-256
+`17e7e9c798234552943eddb088c5b1c8b511941a064898ea2fff811bdd40c663`.
+Installed receipts: `target/tmp/jobs-recovery.8iJwvp/`,
+`target/tmp/timer-qualification-257607-0/runtime.json` and
+`target/tmp/timer-qualification-346423-0/cohorts.json`. The lock stayed unchanged.
+
+Pending notes: Timers 0.41.0 requires consumers to align Runtime/Endpoint suppliers;
+Jobs 0.34.13 changes private qualification only. Deployment is now authorized:
+release/publish Timers with a minor increment, reconcile it, then capture/release
+Jobs with a patch increment. Both use the standard complete release gates;
+the current shared batch interface applies one increment per batch. Package
+versions remain delivered values until standard preparation. Earlier refusal/404 records under
+`target/evidence/adoption-runtime020/` remain historical, not current blockers.
+Full release gates and fresh macOS qualification are separate from this adoption.
+
 ## Testkit 0.92 adoption delivered — 2026-11-07
 
 Timers 0.40.13 and Jobs 0.34.12 are tagged, pushed to `origin/main` and published
@@ -74,8 +105,9 @@ and build artifacts remain under `target/release-frozen/batch-IaXAn_cc/`.
 Normal raw logs and preparation records: `target/evidence/deploy-testkit092/`.
 No batch retirement or deletion was performed.
 
-The normal lock matches the released graph. No new deferred supplier changes were
-observed during this batch. The older Wire preservation branch
+At that delivery the normal lock matched the released graph; the pending adoption
+above now changes its suppliers. No deferred changes occurred during that batch.
+The older Wire preservation branch
 `deferred/batch-ArjuBucS-suppliers` and stash
 `6d9e52644b4d90a59c676dfe4dd4608ab02baec3` remain recovery history; do not restore
 their whole older lock over released group versions.
