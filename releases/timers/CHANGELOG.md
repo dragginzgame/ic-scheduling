@@ -7,7 +7,7 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
-## [0.41.1]
+## [0.41.1] - 2026-11-08
 
 ### 🧹 Cleanup
 
