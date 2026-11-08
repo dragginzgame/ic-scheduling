@@ -176,6 +176,7 @@ sub select_plan {
         baseline_tag=>$tag, baseline_object=>$baseline->{object},
         dirty=>$dirty ? JSON::PP::true : JSON::PP::false,
         configuration=>configuration(), inventory=>inventory()};
+    $context->{fixture_stage} = fixture_stage_enabled();
     write_json("$directory/context.json", $context);
     # CI and release use the same flat roster. Shared checkpoints each selected
     # obligation; omissions retain their own explicit not-applicable reason.
@@ -210,6 +211,7 @@ sub admission {
         && json($plan->{stages}) eq json(select_stages(release_policy(), $scope, $reason))
         or die "validation selection differs from the product mapping\n";
     json($context->{configuration}) eq json(configuration()) or die "validation host/compiler/build configuration changed\n";
+    json($context->{fixture_stage}) eq json(fixture_stage_enabled()) or die "fixture stage contract changed\n";
     json($context->{inventory}) eq json(inventory()) or die "validation source inventory changed\n";
     if (defined $context->{baseline_object}) {
         observe('git', 'rev-parse', "refs/tags/$context->{baseline_tag}") eq $context->{baseline_object}
@@ -231,8 +233,48 @@ sub admission {
     for my $name (keys %generated) {
         ($proof->{inputs}{$name} // '') eq $generated{$name} or die "missing generated selection input\n";
     }
-    return {schema=>2, kind=>'scheduling-group-validation', source=>$source,
+    my $value = {schema=>3, kind=>'scheduling-group-validation', source=>$source,
         group=>$group, scope=>$plan->{scope}, shared_proof_sha256=>hash_file("$base/shared-proof.json")};
+    if ($context->{fixture_stage} && grep { $_->{target} eq 'test-release-validation' && $_->{required} } @{$plan->{stages}}) {
+        $value->{fixture_stage} = fixture_admission($base);
+    }
+    return $value;
+}
+sub fixture_stage_enabled {
+    return -f 'ci/validation-fixture-inputs.txt' ? JSON::PP::true : JSON::PP::false;
+}
+sub fixture_admission {
+    my ($base) = @_;
+    my $decision = read_json("$base/fixture-stage/decision.json");
+    $decision->{schema} == 1 && $decision->{source} eq $source && $decision->{group} eq $group
+        or die "fixture stage identity changed\n";
+    if ($decision->{mode} eq 'ordinary') {
+        length($decision->{reason}//'') or die "missing ordinary fixture execution reason\n";
+        return $decision;
+    }
+    $decision->{mode} =~ /\A(?:executed|reused)\z/ or die "unknown fixture stage mode\n";
+    my $sealed = $decision->{seal};
+    $sealed->{kind} eq 'sealed-cargo-stage-admission'
+        && $sealed->{admission}{source} eq $source && $sealed->{admission}{group} eq $group
+        && $sealed->{admission}{stage} eq 'test-release-validation'
+        && $sealed->{admission}{contract} eq 'scheduling-validation-fixture/1'
+        && $sealed->{admission}{mode} eq $decision->{mode}
+        && $sealed->{candidate_identity} =~ /\A[0-9a-f]{64}\z/
+        && keys(%{$sealed->{files}}) == 4
+        && json([sort keys %{$sealed->{files}}]) eq json([sort keys %{$decision->{copies}}])
+        or die "fixture stage seal changed\n";
+    for my $path (keys %{$sealed->{files}}) {
+        my $copy = $decision->{copies}{$path};
+        $copy =~ /\Aoriginal-[0-3]\z/ or die "invalid retained stage copy\n";
+        hash_file("$base/fixture-stage/$copy") eq $sealed->{files}{$path}
+            or die "retained fixture proof changed\n";
+    }
+    if ($operation eq 'seal') {
+        my $current = $decoder->decode(observe($^X, 'scripts/ci/seal-validation-stage.pl',
+            File::Spec->rel2abs("$base/fixture-stage/admission.json"), $source, $group, $sealed->{candidate_identity}));
+        json($current) eq json($sealed) or die "fixture proof changed before group sealing\n";
+    }
+    return $decision;
 }
 sub evidence_inventory {
     my ($base) = @_;
@@ -265,12 +307,12 @@ if ($operation eq 'select') {
         $directory .= "/$1";
     }
     my $saved = read_json("$directory/execution.json");
-    $saved->{schema} == 2 && $saved->{kind} eq 'scheduling-group-validation'
+    $saved->{schema} == 3 && $saved->{kind} eq 'scheduling-group-validation'
         or die "unknown group validation receipt; preserve its original adapter\n";
     json(evidence_inventory($directory)) eq json($saved->{files}) or die "retained validation evidence changed\n";
     my $value = admission($directory, read_json("$directory/shared-proof.json"));
     $value->{files} = $saved->{files};
     json($value) eq json($saved) or die "retained validation admission changed\n";
-    print "scheduling-group-validation-v2\n", hash_file("$directory/execution.json"), "\n"
+    print "scheduling-group-validation-v3\n", hash_file("$directory/execution.json"), "\n"
         if $operation eq 'identity';
 }

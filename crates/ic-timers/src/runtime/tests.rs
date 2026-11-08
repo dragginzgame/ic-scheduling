@@ -208,6 +208,20 @@ fn identity(name: &str) -> TimerIdentity {
     TimerIdentity::try_new("test", "runtime", name).expect("fixture identity should be valid")
 }
 
+// Successful setup/observation preconditions belong here. Tests of missing
+// registrations, unavailable runtime or invalid cadence keep the raw boundary.
+#[track_caller]
+fn registered_snapshot(timer: &TimerIdentity) -> TimerSnapshot {
+    timer_snapshot(timer)
+        .expect("fixture snapshot lookup should succeed")
+        .expect("fixture registration should be present")
+}
+
+#[track_caller]
+fn test_cadence(nanoseconds: u64) -> TimerCadence {
+    TimerCadence::from_nanos(nanoseconds).expect("fixture cadence should be valid")
+}
+
 #[must_use = "retain the fixture until the test scope ends"]
 struct RuntimeFixture {
     epoch: TimerEpoch,

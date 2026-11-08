@@ -93,9 +93,7 @@ fn rejected_watchdog_cadence_preserves_the_complete_snapshot() {
         .expect("a valid request remains possible after rejection");
     assert_eq!(timer_count(), 1);
     assert_eq!(
-        timer_snapshot(&timer)
-            .expect("snapshot should be readable")
-            .expect("armed declaration exists")
+        registered_snapshot(&timer)
             .observability()
             .counters()
             .schedule_requests()
@@ -134,7 +132,7 @@ fn fresh_inactive_reconciliation_reserves_complete_retained_inventory() {
     let once_identity = identity("built-in-once");
     let after_identity = identity("built-in-after");
     let watchdog_identity = identity("built-in-watchdog");
-    let cadence = TimerCadence::from_nanos(5).expect("fixture cadence should be valid");
+    let cadence = test_cadence(5);
     let mut once = None;
     let mut after = None;
     let mut watchdog = None;
@@ -199,7 +197,7 @@ fn fresh_transient_cancellation_expires_every_registration_policy() {
     let once_identity = identity("fresh-transient-once");
     let after_identity = identity("fresh-transient-after");
     let watchdog_identity = identity("fresh-transient-watchdog");
-    let cadence = TimerCadence::from_nanos(5).expect("fixture cadence should be valid");
+    let cadence = test_cadence(5);
 
     let once = register_once(
         once_identity.clone(),
@@ -270,14 +268,14 @@ fn registration_claims_report_exact_provider_wakeup_ownership() {
     .expect("once registration should succeed");
     let after = register_after_completion(
         identity("liveness-after"),
-        TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         stopping_after_completion(|| {}),
     )
     .expect("after-completion registration should succeed");
     let watchdog = register_watchdog(
         identity("liveness-watchdog"),
-        TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         stopping_watchdog(|| {}),
     )
@@ -412,7 +410,7 @@ fn stale_reused_identity_callback_cannot_change_handles_or_measurements() {
         .expect("replacement wake-up should arm");
     assert_eq!(timer_count(), 1);
 
-    let before = timer_snapshot(replacement.identity()).unwrap().unwrap();
+    let before = registered_snapshot(replacement.identity());
     let before_performance = before.observability().performance();
     let stale_token = old_token.clone();
     let _stale_delivery = platform::set_timer(Duration::ZERO, async move {
@@ -422,7 +420,7 @@ fn stale_reused_identity_callback_cannot_change_handles_or_measurements() {
     // Exercise the accounting boundary directly; stale dispatch would return
     // before taking a measurement and cannot reach this ownership check.
     stale_measurement.record(&old_token);
-    let after = timer_snapshot(replacement.identity()).unwrap().unwrap();
+    let after = registered_snapshot(replacement.identity());
     let counters = after.observability().counters();
     assert_eq!(after.observability().performance(), before_performance);
     assert_eq!(counters.stale_wakeups().exact_total().unwrap(), 1);
@@ -436,7 +434,7 @@ fn stale_reused_identity_callback_cannot_change_handles_or_measurements() {
 
     set_time(25);
     assert!(run_next_due());
-    let completed = timer_snapshot(replacement.identity()).unwrap().unwrap();
+    let completed = registered_snapshot(replacement.identity());
     let performance = completed.observability().performance();
     assert_eq!(performance.work_instructions().aggregate().samples(), 1);
     assert_eq!(performance.work_instructions().aggregate().total(), 7);
@@ -457,7 +455,7 @@ fn stale_reused_identity_callback_cannot_change_handles_or_measurements() {
         before_performance.scheduler_memory_pages()
     );
     stale_measurement.record(&old_token);
-    let after_stale = timer_snapshot(replacement.identity()).unwrap().unwrap();
+    let after_stale = registered_snapshot(replacement.identity());
     assert_eq!(after_stale.observability().performance(), performance);
 
     replacement
@@ -493,11 +491,7 @@ fn replacement_and_cancellation_clear_actual_owned_handles() {
             .and_then(|snapshot| snapshot.next_deadline_ns()),
         Some(50)
     );
-    let cancelled_generation = timer_snapshot(&timer)
-        .unwrap()
-        .unwrap()
-        .generation()
-        .unwrap();
+    let cancelled_generation = registered_snapshot(&timer).generation().unwrap();
 
     registration.cancel().expect("cancel should clear handle");
     assert_eq!(timer_count(), 0);
@@ -507,9 +501,7 @@ fn replacement_and_cancellation_clear_actual_owned_handles() {
     set_time(100);
     assert!(!run_next_due());
     assert_eq!(calls.get(), 0);
-    let snapshot = timer_snapshot(&timer)
-        .expect("snapshot lookup should succeed")
-        .expect("retained snapshot should exist");
+    let snapshot = registered_snapshot(&timer);
     assert_eq!(
         snapshot
             .observability()
@@ -524,7 +516,7 @@ fn replacement_and_cancellation_clear_actual_owned_handles() {
         .ensure_scheduled(TimerSchedule::At(150))
         .unwrap();
     assert_eq!(
-        timer_snapshot(&timer).unwrap().unwrap().generation(),
+        registered_snapshot(&timer).generation(),
         Some(cancelled_generation + 1)
     );
     assert_eq!(timer_count(), 1);
@@ -614,7 +606,7 @@ fn registration_identity_survives_control_but_changes_on_replacement_and_restart
         )
         .unwrap()
     };
-    let snapshot = || timer_snapshot(&timer).unwrap().unwrap();
+    let snapshot = || registered_snapshot(&timer);
     let first = create();
     let original = snapshot().registration_id();
     assert_eq!(original.epoch(), epoch);

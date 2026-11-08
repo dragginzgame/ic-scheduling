@@ -80,6 +80,14 @@ pub async fn fresh_pocket_ic() -> PocketIcInstance<PocketIc> {
     .expect("construct a fresh owned PocketIC instance through ic-testkit")
 }
 
+/// Consume the instance and await deletion while its managed server is alive.
+pub async fn close_instance(owned: PocketIcInstance<PocketIc>) {
+    owned
+        .close()
+        .await
+        .expect("delete PocketIC instance before stopping its server");
+}
+
 /// Invoke an anonymous update with no arguments or return values.
 pub async fn update_unit(pic: &PocketIc, canister_id: ExternalPrincipal, method: Method) {
     update_wire::<(), _>(pic, canister_id, ExternalPrincipal::anonymous(), method, ())
@@ -135,4 +143,19 @@ pub fn canister_rejection(error: ClientError) -> RejectResponse {
         ClientError::Canister(response) => response,
         other => panic!("expected canister rejection, got {other:?}"),
     }
+}
+
+/// Advance the selected duration and rounds at the caller's observation boundary.
+pub async fn advance(pic: &PocketIc, duration: Duration, rounds: u32) {
+    ic_testkit::pic::advance_and_tick(pic, duration, rounds)
+        .await
+        .expect("advance and tick PocketIC");
+}
+
+/// Read the IC clock afresh at the caller's observation boundary.
+pub async fn now_ns(pic: &PocketIc) -> u64 {
+    pic.get_time()
+        .await
+        .expect("read IC time")
+        .as_nanos_since_unix_epoch()
 }

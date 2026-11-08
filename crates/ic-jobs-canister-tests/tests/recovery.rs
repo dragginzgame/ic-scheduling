@@ -27,6 +27,22 @@ struct Fixture {
 }
 
 impl Fixture {
+    async fn now_ns(&self) -> u64 {
+        self.pic
+            .instance()
+            .get_time()
+            .await
+            .expect("read IC time")
+            .as_nanos_since_unix_epoch()
+    }
+
+    async fn close(self) {
+        self.pic
+            .close()
+            .await
+            .expect("delete Jobs instance before stopping its server");
+    }
+
     async fn install(
         pic: &PocketIc,
         wasm: &[u8],
@@ -323,11 +339,7 @@ async fn management_wire_refuses_retired_and_invalid_unit_requests() {
     assert_canister_trap(error);
     assert_eq!(fixture.summary(fixture.sender).await, before);
 
-    fixture
-        .pic
-        .close()
-        .await
-        .expect("delete Jobs instance before stopping its server");
+    fixture.close().await;
 }
 
 #[tokio::test]
@@ -435,11 +447,7 @@ async fn delivery_wire_endpoints_refuse_candid_and_preserve_authorized_receipts(
     );
     assert_eq!(fixture.summary(receiver).await.receipts, 1);
 
-    fixture
-        .pic
-        .close()
-        .await
-        .expect("delete Jobs instance before stopping its server");
+    fixture.close().await;
 }
 
 #[tokio::test]
@@ -447,13 +455,7 @@ async fn delivery_wire_endpoints_refuse_candid_and_preserve_authorized_receipts(
 async fn management_upgrade_and_real_watchdog_delivery() {
     let fixture = Fixture::new().await;
     let receiver = fixture.install_receiver().await;
-    let now = fixture
-        .pic
-        .instance()
-        .get_time()
-        .await
-        .expect("read IC time")
-        .as_nanos_since_unix_epoch();
+    let now = fixture.now_ns().await;
     let unauthorized: Result<u64, Error> = fixture
         .update_as(
             ExternalPrincipal::anonymous(),
@@ -508,16 +510,7 @@ async fn management_upgrade_and_real_watchdog_delivery() {
         .update(
             Method::Create,
             (Create {
-                timing: Timing::Once(
-                    fixture
-                        .pic
-                        .instance()
-                        .get_time()
-                        .await
-                        .expect("read IC time")
-                        .as_nanos_since_unix_epoch()
-                        + 10_000_000_000,
-                ),
+                timing: Timing::Once(fixture.now_ns().await + 10_000_000_000),
                 task: Task::Deliver(DeliveryPayload {
                     destination: receiver.into(),
                     message: "timer delivery".into(),
@@ -544,11 +537,7 @@ async fn management_upgrade_and_real_watchdog_delivery() {
         .expect("advance and tick PocketIC");
     assert_eq!(fixture.summary(receiver).await.receipts, 1);
 
-    fixture
-        .pic
-        .close()
-        .await
-        .expect("delete Jobs instance before stopping its server");
+    fixture.close().await;
 }
 
 #[tokio::test]
@@ -558,17 +547,7 @@ async fn synchronous_trap_rolls_back_storage_identity_and_timer_changes() {
     let id: u64 = fixture
         .update(
             Method::Create,
-            (increment(
-                fixture
-                    .pic
-                    .instance()
-                    .get_time()
-                    .await
-                    .expect("read IC time")
-                    .as_nanos_since_unix_epoch()
-                    + 60_000_000_000,
-                3,
-            ),),
+            (increment(fixture.now_ns().await + 60_000_000_000, 3),),
         )
         .await
         .unwrap();
@@ -577,17 +556,7 @@ async fn synchronous_trap_rolls_back_storage_identity_and_timer_changes() {
         .update_as::<(), _>(
             fixture.manager,
             Method::TrapAfterCreate,
-            (increment(
-                fixture
-                    .pic
-                    .instance()
-                    .get_time()
-                    .await
-                    .expect("read IC time")
-                    .as_nanos_since_unix_epoch()
-                    + 30_000_000_000,
-                9,
-            ),),
+            (increment(fixture.now_ns().await + 30_000_000_000, 9),),
         )
         .await;
     assert_canister_trap(failed.unwrap_err());
@@ -602,41 +571,20 @@ async fn synchronous_trap_rolls_back_storage_identity_and_timer_changes() {
     let next: u64 = fixture
         .update(
             Method::Create,
-            (increment(
-                fixture
-                    .pic
-                    .instance()
-                    .get_time()
-                    .await
-                    .expect("read IC time")
-                    .as_nanos_since_unix_epoch()
-                    + 120_000_000_000,
-                4,
-            ),),
+            (increment(fixture.now_ns().await + 120_000_000_000, 4),),
         )
         .await
         .unwrap();
     assert_eq!(next, id + 1);
 
-    fixture
-        .pic
-        .close()
-        .await
-        .expect("delete Jobs instance before stopping its server");
+    fixture.close().await;
 }
 
 #[tokio::test]
 #[ignore = "explicit PocketIC qualification; run make test-canister"]
 async fn watchdog_batch_trap_rolls_back_then_recovers_without_repeating_local_effects() {
     let fixture = Fixture::new().await;
-    let due = fixture
-        .pic
-        .instance()
-        .get_time()
-        .await
-        .expect("read IC time")
-        .as_nanos_since_unix_epoch()
-        + 10_000_000_000;
+    let due = fixture.now_ns().await + 10_000_000_000;
     let healthy: u64 = fixture
         .update(Method::Create, (increment(due, 1),))
         .await
@@ -753,11 +701,7 @@ async fn watchdog_batch_trap_rolls_back_then_recovers_without_repeating_local_ef
     assert_eq!(fixture.view(failed).await.status, Status::Failed);
     assert!(!fixture.summary(fixture.sender).await.armed);
 
-    fixture
-        .pic
-        .close()
-        .await
-        .expect("delete Jobs instance before stopping its server");
+    fixture.close().await;
 }
 
 #[tokio::test]
@@ -857,18 +801,7 @@ async fn lost_result_keeps_intent_blocked_and_receipt_resolution_does_not_redeli
             fixture
                 .update::<(), _>(
                     Method::Reschedule,
-                    (
-                        absent,
-                        Timing::Once(
-                            fixture
-                                .pic
-                                .instance()
-                                .get_time()
-                                .await
-                                .expect("read IC time")
-                                .as_nanos_since_unix_epoch()
-                        )
-                    )
+                    (absent, Timing::Once(fixture.now_ns().await))
                 )
                 .await
                 .is_err()
@@ -877,11 +810,7 @@ async fn lost_result_keeps_intent_blocked_and_receipt_resolution_does_not_redeli
     }
     assert_eq!(fixture.summary(receiver).await.receipts, 1);
 
-    fixture
-        .pic
-        .close()
-        .await
-        .expect("delete Jobs instance before stopping its server");
+    fixture.close().await;
 }
 
 #[tokio::test]
@@ -891,17 +820,7 @@ async fn invalid_restore_refuses_upgrade_and_preserves_the_controller_snapshot()
     let id: u64 = fixture
         .update(
             Method::Create,
-            (increment(
-                fixture
-                    .pic
-                    .instance()
-                    .get_time()
-                    .await
-                    .expect("read IC time")
-                    .as_nanos_since_unix_epoch()
-                    + 3_600_000_000_000,
-                1,
-            ),),
+            (increment(fixture.now_ns().await + 3_600_000_000_000, 1),),
         )
         .await
         .unwrap();
@@ -944,25 +863,14 @@ async fn invalid_restore_refuses_upgrade_and_preserves_the_controller_snapshot()
     ));
     assert_eq!(fixture.summary(fixture.sender).await.counter, 0);
 
-    fixture
-        .pic
-        .close()
-        .await
-        .expect("delete Jobs instance before stopping its server");
+    fixture.close().await;
 }
 
 #[tokio::test]
 #[ignore = "explicit PocketIC qualification; run make test-canister"]
 async fn overdue_fixed_rate_work_reconstructs_catch_up_and_skip_policies() {
     let fixture = Fixture::new().await;
-    let first_ns = fixture
-        .pic
-        .instance()
-        .get_time()
-        .await
-        .expect("read IC time")
-        .as_nanos_since_unix_epoch()
-        + 10_000_000_000;
+    let first_ns = fixture.now_ns().await + 10_000_000_000;
     let mut ids = vec![];
     for catch_up in [false, true] {
         let id: u64 = fixture
@@ -1010,16 +918,7 @@ async fn overdue_fixed_rate_work_reconstructs_catch_up_and_skip_policies() {
     let Status::Pending { due_ns } = fixture.view(ids[0]).await.status else {
         panic!("overdue occurrence must remain pending");
     };
-    assert!(
-        due_ns
-            > fixture
-                .pic
-                .instance()
-                .get_time()
-                .await
-                .expect("read IC time")
-                .as_nanos_since_unix_epoch()
-    );
+    assert!(due_ns > fixture.now_ns().await);
     for id in ids {
         fixture
             .update::<(), _>(Method::Cancel, (id,))
@@ -1033,11 +932,7 @@ async fn overdue_fixed_rate_work_reconstructs_catch_up_and_skip_policies() {
         .expect("advance and tick PocketIC");
     assert_eq!(fixture.summary(fixture.sender).await.counter, before);
 
-    fixture
-        .pic
-        .close()
-        .await
-        .expect("delete Jobs instance before stopping its server");
+    fixture.close().await;
 }
 
 #[tokio::test]
@@ -1047,17 +942,7 @@ async fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
     let id: u64 = fixture
         .update(
             Method::Create,
-            (increment(
-                fixture
-                    .pic
-                    .instance()
-                    .get_time()
-                    .await
-                    .expect("read IC time")
-                    .as_nanos_since_unix_epoch()
-                    + 30_000_000_000,
-                5,
-            ),),
+            (increment(fixture.now_ns().await + 30_000_000_000, 5),),
         )
         .await
         .unwrap();
@@ -1086,14 +971,7 @@ async fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
         .await
         .expect("advance and tick PocketIC");
     assert_eq!(fixture.summary(fixture.sender).await.counter, 0);
-    let later = fixture
-        .pic
-        .instance()
-        .get_time()
-        .await
-        .expect("read IC time")
-        .as_nanos_since_unix_epoch()
-        + 100_000_000_000;
+    let later = fixture.now_ns().await + 100_000_000_000;
     fixture
         .update::<(), _>(Method::Reschedule, (id, Timing::Once(later)))
         .await
@@ -1112,14 +990,7 @@ async fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
         Some(later)
     );
     assert!(fixture.summary(fixture.sender).await.armed);
-    let due = fixture
-        .pic
-        .instance()
-        .get_time()
-        .await
-        .expect("read IC time")
-        .as_nanos_since_unix_epoch()
-        + 15_000_000_000;
+    let due = fixture.now_ns().await + 15_000_000_000;
     fixture
         .update::<(), _>(Method::Reschedule, (id, Timing::Once(due)))
         .await
@@ -1130,19 +1001,7 @@ async fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
         .update_as::<(), _>(
             fixture.manager,
             Method::TrapAfterReschedule,
-            (
-                id,
-                Timing::Once(
-                    fixture
-                        .pic
-                        .instance()
-                        .get_time()
-                        .await
-                        .expect("read IC time")
-                        .as_nanos_since_unix_epoch()
-                        + 5_000_000_000,
-                ),
-            ),
+            (id, Timing::Once(fixture.now_ns().await + 5_000_000_000)),
         )
         .await;
     assert_canister_trap(failed.unwrap_err());
@@ -1168,11 +1027,7 @@ async fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
     assert_eq!(fixture.view(id).await.sequence, 1);
     assert!(!fixture.summary(fixture.sender).await.armed);
 
-    fixture
-        .pic
-        .close()
-        .await
-        .expect("delete Jobs instance before stopping its server");
+    fixture.close().await;
 }
 
 #[tokio::test]
@@ -1231,11 +1086,7 @@ async fn job_metrics_are_authorized_resettable_and_restart_on_upgrade() {
     assert_eq!(reopened.reset_sequence, Some(0));
     assert_eq!(fixture.view(id).await, job);
 
-    fixture
-        .pic
-        .close()
-        .await
-        .expect("delete Jobs instance before stopping its server");
+    fixture.close().await;
 }
 
 #[tokio::test]
@@ -1298,9 +1149,5 @@ async fn job_logs_are_manager_only_and_restart_without_changing_jobs() {
     assert!(reopened.canister_version > completed.canister_version);
     assert_eq!(fixture.view(id).await, job);
 
-    fixture
-        .pic
-        .close()
-        .await
-        .expect("delete Jobs instance before stopping its server");
+    fixture.close().await;
 }

@@ -30,7 +30,7 @@ enum Conflict {
 fn assert_conflict_keeps_original_work(conflict: Conflict) {
     let _fixture = setup();
     let timer = identity("reconciliation-conflict");
-    let cadence = TimerCadence::from_nanos(5).unwrap();
+    let cadence = test_cadence(5);
     let calls = Rc::new(Cell::new(0_u64));
     let callback_calls = Rc::clone(&calls);
     let mut slot = if conflict == Conflict::Identity {
@@ -77,7 +77,7 @@ fn assert_conflict_keeps_original_work(conflict: Conflict) {
         timer.clone()
     };
     let requested_cadence = if conflict == Conflict::Cadence {
-        TimerCadence::from_nanos(6).unwrap()
+        test_cadence(6)
     } else {
         cadence
     };
@@ -129,7 +129,7 @@ fn after_completion_reconciliation_rejects_cadence_mismatch_without_disturbing_l
 fn watchdog_reconciliation_rejects_reused_identity_claim_without_clearing_replacement() {
     let _fixture = setup();
     let timer = identity("reconcile-watchdog-expired");
-    let cadence = TimerCadence::from_nanos(5).unwrap();
+    let cadence = test_cadence(5);
     let calls = Rc::new(Cell::new(0_u64));
     let expired_calls = Rc::clone(&calls);
     let mut expired = Some(
@@ -200,7 +200,7 @@ fn watchdog_reconciliation_rejects_reused_identity_claim_without_clearing_replac
 fn after_completion_reconstruction_reuses_its_exact_claim() {
     let _fixture = setup();
     let timer = identity("after-reconstruct");
-    let cadence = TimerCadence::from_nanos(5).expect("fixture cadence should be valid");
+    let cadence = test_cadence(5);
     let calls = Rc::new(Cell::new(0_u64));
     let callback_calls = Rc::clone(&calls);
     let mut registration = None;
@@ -306,23 +306,23 @@ fn watchdog_exact_deadline_reconstruction_moves_both_directions_and_sleeps() {
     reconcile_watchdog(
         &mut registration,
         &timer,
-        TimerCadence::from_nanos(5).unwrap(),
+        test_cadence(5),
         WatchdogReconcileState::ScheduledAt(20),
         |_| WatchdogRunResult::new(TimerCompletion::success(1), WatchdogDecision::Stop),
     )
     .unwrap();
     let registration = registration.unwrap();
-    let initial = timer_snapshot(&timer).unwrap().unwrap();
+    let initial = registered_snapshot(&timer);
     for deadline in [40, 15, 15] {
         registration
             .reconcile_schedule(Some(TimerSchedule::At(deadline)))
             .unwrap();
-        let current = timer_snapshot(&timer).unwrap().unwrap();
+        let current = registered_snapshot(&timer);
         assert_eq!(current.next_deadline_ns(), Some(deadline));
         assert_eq!(current.registration_id(), initial.registration_id());
         assert_eq!(timer_count(), 1);
     }
-    let scheduled = timer_snapshot(&timer).unwrap().unwrap();
+    let scheduled = registered_snapshot(&timer);
     assert_eq!(
         scheduled
             .observability()
@@ -347,19 +347,13 @@ fn watchdog_exact_deadline_reconstruction_moves_both_directions_and_sleeps() {
     registration
         .reconcile_schedule(Some(TimerSchedule::At(0)))
         .unwrap();
-    assert_eq!(
-        timer_snapshot(&timer)
-            .unwrap()
-            .unwrap()
-            .latest_armed_delay_ns(),
-        Some(0)
-    );
+    assert_eq!(registered_snapshot(&timer).latest_armed_delay_ns(), Some(0));
     assert!(run_next_due());
     assert_eq!(timer_count(), 2);
     assert!(run_next_due());
     assert_eq!(timer_count(), 0);
     assert_eq!(
-        timer_snapshot(&timer).unwrap().unwrap().registration_id(),
+        registered_snapshot(&timer).registration_id(),
         initial.registration_id()
     );
 }
@@ -372,7 +366,7 @@ fn watchdog_deadline_decision_replaces_only_the_prearmed_successor() {
     let callback_calls = Rc::clone(&calls);
     let registration = register_watchdog(
         timer.clone(),
-        TimerCadence::from_nanos(5).unwrap(),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         move |_| {
             callback_calls.set(callback_calls.get() + 1);
@@ -391,7 +385,7 @@ fn watchdog_deadline_decision_replaces_only_the_prearmed_successor() {
     registration.ensure_scheduled_immediately().unwrap();
     assert!(run_next_due());
     assert!(run_next_due());
-    let completed = timer_snapshot(&timer).unwrap().unwrap();
+    let completed = registered_snapshot(&timer);
     assert_eq!(completed.next_deadline_ns(), Some(100));
     assert_eq!(completed.scheduling_mode(), TimerSchedulingMode::Deadline);
     assert_eq!(completed.latest_requested_delay_ns(), None);
@@ -412,7 +406,7 @@ fn watchdog_dispatched_reconciliation_preserves_recovery_until_completion() {
     let timer = identity("dispatched-deadline");
     let registration = register_watchdog(
         timer.clone(),
-        TimerCadence::from_nanos(5).unwrap(),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         |_| WatchdogRunResult::new(TimerCompletion::success(1), WatchdogDecision::Stop),
     )
@@ -422,16 +416,10 @@ fn watchdog_dispatched_reconciliation_preserves_recovery_until_completion() {
     registration
         .reconcile_schedule(Some(TimerSchedule::At(100)))
         .unwrap();
-    assert_eq!(
-        timer_snapshot(&timer).unwrap().unwrap().next_deadline_ns(),
-        Some(15)
-    );
+    assert_eq!(registered_snapshot(&timer).next_deadline_ns(), Some(15));
     assert_eq!(timer_count(), 2);
     assert!(run_next_due());
-    assert_eq!(
-        timer_snapshot(&timer).unwrap().unwrap().next_deadline_ns(),
-        Some(100)
-    );
+    assert_eq!(registered_snapshot(&timer).next_deadline_ns(), Some(100));
     assert_eq!(timer_count(), 1);
     registration.cancel().unwrap();
     assert_eq!(timer_count(), 0);
@@ -445,7 +433,7 @@ fn watchdog_deadline_context_arbitrates_and_expires() {
     let callback_saved = Rc::clone(&saved);
     let registration = register_watchdog(
         timer.clone(),
-        TimerCadence::from_nanos(5).unwrap(),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         move |context| {
             context.cancel().unwrap();
@@ -462,7 +450,7 @@ fn watchdog_deadline_context_arbitrates_and_expires() {
     registration.ensure_scheduled_immediately().unwrap();
     assert!(run_next_due());
     assert!(run_next_due());
-    let current = timer_snapshot(&timer).unwrap().unwrap();
+    let current = registered_snapshot(&timer);
     assert_eq!(current.next_deadline_ns(), Some(40));
     assert_eq!(current.latest_requested_delay_ns(), Some(30));
     assert!(matches!(
@@ -486,7 +474,7 @@ fn invalid_watchdog_deadline_request_preserves_the_live_schedule() {
     let timer = identity("invalid-deadline");
     let registration = register_watchdog(
         timer.clone(),
-        TimerCadence::from_nanos(5).unwrap(),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         |_| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Continue),
     )
@@ -513,7 +501,7 @@ fn transient_watchdog_deadline_cancellation_clears_both_owned_handles() {
         let timer = identity("transient-deadline");
         let registration = register_watchdog(
             timer.clone(),
-            TimerCadence::from_nanos(5).unwrap(),
+            test_cadence(5),
             TimerStart::RemoveWhenStopped {
                 initial: TimerSchedule::At(10),
             },
@@ -540,14 +528,14 @@ fn recovery_retires_an_interrupted_attempts_exact_deadline_proposal() {
     let timer = identity("retired-deadline");
     let registration = register_watchdog(
         timer.clone(),
-        TimerCadence::from_nanos(5).unwrap(),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         |_| WatchdogRunResult::new(TimerCompletion::success(1), WatchdogDecision::Continue),
     )
     .unwrap();
     registration.ensure_scheduled_immediately().unwrap();
     assert!(run_next_due());
-    let before = timer_snapshot(&timer).unwrap().unwrap();
+    let before = registered_snapshot(&timer);
     registration
         .reconcile_schedule(Some(TimerSchedule::At(100)))
         .unwrap();
@@ -555,7 +543,7 @@ fn recovery_retires_an_interrupted_attempts_exact_deadline_proposal() {
     set_time(15);
     assert!(run_next_due());
     assert!(run_next_due());
-    let recovered = timer_snapshot(&timer).unwrap().unwrap();
+    let recovered = registered_snapshot(&timer);
     assert_eq!(recovered.next_deadline_ns(), Some(20));
     assert_eq!(
         recovered
@@ -576,7 +564,7 @@ fn coalesced_watchdog_requests_preserve_paired_handles_without_reinstallation() 
     let timer = identity("paired-request-preservation");
     let registration = register_watchdog(
         timer,
-        TimerCadence::from_nanos(5).unwrap(),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         |context| {
             ProviderFault::BINDING.inject();

@@ -102,7 +102,7 @@ fn retained_after_completion_rearms_at_full_registry_capacity() {
     let callback_calls = Rc::clone(&calls);
     let registration = register_after_completion(
         identity("retained-after-completion"),
-        TimerCadence::from_nanos(5).unwrap(),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         stopping_after_completion(move || callback_calls.set(callback_calls.get() + 1)),
     )
@@ -130,7 +130,7 @@ fn retained_watchdog_rearms_at_full_registry_capacity() {
     let callback_calls = Rc::clone(&calls);
     let registration = register_watchdog(
         identity("retained-watchdog"),
-        TimerCadence::from_nanos(5).unwrap(),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         stopping_watchdog(move || callback_calls.set(callback_calls.get() + 1)),
     )

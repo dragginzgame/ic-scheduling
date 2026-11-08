@@ -49,14 +49,66 @@ jq -e --arg docs "$docs_condition" --arg native "$native_condition" \
     $jobs.validate.steps[1].id == "classification-admission" and
     $jobs.validate.steps[1].env.CLASSIFICATION_RESULT == "${{ needs.change-scope.result }}" and
     all($jobs.validate.steps[];
-        if .id == "documentation" then .if == $docs
+        if .id == "documentation" or .id == "save-doc-downloads" then .if == $docs
         elif .id == "classification-admission" or (.uses // "" | startswith("actions/checkout@"))
-            or .run == "make install-host-tools" then has("if") | not
+            or .id == "restore-downloads" or .run == "make install-host-tools" then has("if") | not
         elif .if == "failure()" then .uses == "./.github/actions/retain-failure-evidence"
         else .if == $native end) and
     ((.on.pull_request // {}) | has("paths") | not) and
     ((.on.push // {}) | has("paths") | not)
 ' "$fixture/workflow.json" > "$fixture/workflow-contract.txt"
+
+# The repository scan runs even for docs and failed classification, once outside
+# native/recovery matrices. Exercise the real scan step's arguments and failure.
+jq -e '
+    .jobs.secrets |
+    ."runs-on" == "ubuntu-24.04" and
+    (has("strategy") or has("needs") or has("if") | not) and
+    .steps[0].with."fetch-depth" == 0 and
+    ([.steps[] | select(.id == "scan-secrets")] | length == 1) and
+    all(.steps[]; has("if") | not)
+' "$fixture/workflow.json" > "$fixture/secrets-contract.txt"
+jq '.jobs.secrets.steps' "$fixture/workflow.json" > "$fixture/secrets-steps.json"
+bash "$root/scripts/ci/extract-workflow-step.sh" "$fixture/secrets-steps.json" scan-secrets > "$fixture/scan.sh"
+cat > "$fixture/scanner" <<'SCANNER'
+#!/usr/bin/env bash
+[[ "$*" == 'git --redact=100 --no-banner --no-color --log-level error' ]] || exit 91
+exit "$SCANNER_RESULT"
+SCANNER
+chmod +x "$fixture/scanner"
+for result in 0 23; do
+    status=0
+    GITLEAKS_BIN="$fixture/scanner" SCANNER_RESULT="$result" bash -e -o pipefail "$fixture/scan.sh" || status=$?
+    [[ "$status" == "$result" ]]
+done
+
+# Cache restoration precedes setup; each scope saves admitted downloads before
+# its product checks. The explicitly dispatched recovery workflow shares setup,
+# but does not schedule a second repository scan.
+yq -o json '.' "$root/.github/workflows/recovery.yml" > "$fixture/recovery.json"
+jq -e --slurpfile recovery "$fixture/recovery.json" '
+    def position($id): map(.id) | index($id);
+    def cache_steps:
+        all(.[] | select(.id == "restore-downloads" or .id == "save-downloads" or .id == "save-doc-downloads");
+            .uses == "./.github/actions/cache-tool-downloads" and
+            (if .id == "restore-downloads" then (.with.mode // "restore") == "restore"
+             else .with.mode == "save" end));
+    .jobs.validate.steps as $steps |
+    ($steps | cache_steps) and
+    ([$steps[].id] | contains(["restore-downloads", "host-tools", "save-doc-downloads", "documentation", "selected-tools", "save-downloads", "validate"])) and
+    ($steps | position("restore-downloads")) < ($steps | position("host-tools")) and
+    ($steps | position("host-tools")) < ($steps | position("save-doc-downloads")) and
+    ($steps | position("save-doc-downloads")) < ($steps | position("documentation")) and
+    ($steps | position("selected-tools")) < ($steps | position("save-downloads")) and
+    ($steps | position("save-downloads")) < ($steps | position("validate")) and
+    ($recovery[0].jobs.recovery.steps as $r |
+        ($r | cache_steps) and
+        ([$r[].id] | contains(["restore-downloads", "host-tools", "selected-tools", "save-downloads", "live"])) and
+        ($r | position("restore-downloads")) < ($r | position("host-tools")) and
+        ($r | position("selected-tools")) < ($r | position("save-downloads")) and
+        ($r | position("save-downloads")) < ($r | position("live"))) and
+    ([., $recovery[0]] | [.. | objects | select(.id? == "scan-secrets")] | length == 1)
+' "$fixture/workflow.json" > "$fixture/cache-order.txt"
 
 mkdir -p "$fixture/repo/ci" "$fixture/repo/scripts/ci" "$fixture/bin"
 cp "$root/ci/docs-only-paths.txt" "$fixture/repo/ci/"

@@ -53,7 +53,15 @@ for arg in "$@"; do
         shared-tooling-check|clippy-jobs|clippy-timers|package-jobs|package-timers)
             exec "$FROZEN_TEST_REAL_MAKE" "$@" ;;
     esac
-    if jq -e --arg target "$arg" '.stages | index($target) != null' ci/release-validation.json > /dev/null; then exit 0; fi
+    if jq -e --arg target "$arg" '.stages | index($target) != null' ci/release-validation.json > /dev/null; then
+        if [[ "$arg" == test-release-validation && -n "${SCHEDULING_VALIDATION_ATTEMPT:-}" ]]; then
+            mkdir -p "$SCHEDULING_VALIDATION_ATTEMPT/fixture-stage"
+            jq -cnS --arg source "$RELEASE_SOURCE" --arg group "$RELEASE_GROUP" \
+                '{schema:1,source:$source,group:$group,mode:"ordinary",reason:"fixture substitutes product commands"}' \
+                > "$SCHEDULING_VALIDATION_ATTEMPT/fixture-stage/decision.json"
+        fi
+        exit 0
+    fi
 done
 exec "$FROZEN_TEST_REAL_MAKE" "$@"
 MAKE

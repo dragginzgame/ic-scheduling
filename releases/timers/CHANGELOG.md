@@ -7,6 +7,31 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.41.2] - Unreleased
+
+### 📦 Dependencies
+
+- Refresh the packaged Runtime and executor-guard lock to 0.20.1, retaining
+  existing public dependency requirements and timer-provider ownership.
+
+### 🛠️ Tooling
+
+- Adopt Build 0.79 for private probe builds and Shared Tooling 0.31.11 for
+  formatting, hashing dependency admission and crate/module LOC reports.
+- Cache authenticated downloads in hosted qualification and keep repository
+  secret scanning outside the host and release-group matrices.
+- Remove the duplicate core compile stage from CI and release plans. Admit
+  unchanged validation-fixture evidence separately for each release group, with
+  ordinary execution for unsupported configurations. Exercise invalidation at
+  the stage boundary while retaining full-plan cross-group and recovery tests.
+
+### 🧪 Testing
+
+- Share private clock, advancement, setup and awaited instance cleanup across
+  runtime qualification, preserving timing, observations and server teardown.
+  Consolidate native snapshot/cadence preconditions and simplify counter
+  assertions while retaining error boundaries and generated command scenarios.
+
 ## [0.41.1] - 2026-11-08
 
 ### 🧹 Cleanup

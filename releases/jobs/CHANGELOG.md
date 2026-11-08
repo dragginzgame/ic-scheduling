@@ -4,6 +4,24 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.15] - Unreleased
+
+### 🛠️ Tooling
+
+- Adopt Build 0.79 and Shared Tooling 0.31.11 for artifact capture, release
+  metadata, workspace-owned formatting and hashing dependency admission.
+- Cache authenticated tool downloads in hosted checks and scan repository
+  history once per CI run, including documentation-only changes.
+- Remove the duplicate core compile stage from CI and release plans. Admit
+  unchanged validation-fixture evidence separately for each release group, with
+  ordinary execution for unsupported configurations. Exercise invalidation at
+  the stage boundary while retaining full-plan cross-group and recovery tests.
+
+### 🧪 Testing
+
+- Share private recovery clock reads and awaited instance cleanup, preserving
+  recovery observations and server teardown order.
+
 ## [0.34.14] - 2026-11-08
 
 ### 🧹 Cleanup

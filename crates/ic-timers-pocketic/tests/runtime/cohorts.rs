@@ -1,7 +1,6 @@
-use super::harness::{fresh_pocket_ic, install_probe, update_unit};
+use super::harness::{advance, fresh_pocket_ic, install_probe, update_unit};
 use super::harness::{query_wire, update_wire};
 use ic_platform_types::principal::ExternalPrincipal;
-use ic_testkit::pic::advance_and_tick;
 use ic_testkit::pocket_ic::PocketIc;
 use ic_timers_pocketic::{BuildContext, Cohort};
 use ic_timers_pocketic::{CalibrationMetrics, Measurements, PolicyMetrics};
@@ -69,9 +68,7 @@ async fn run_cohort(cohort: Cohort) -> PolicyMetrics {
     pic.advance_time(Duration::from_secs(1))
         .await
         .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::ZERO, 16).await;
     let dispatch_cycles = cycles_before_dispatch.saturating_sub(
         pic.cycle_balance(canister_id)
             .await
@@ -123,9 +120,7 @@ async fn run_cohort(cohort: Cohort) -> PolicyMetrics {
     pic.advance_time(Duration::from_secs(1))
         .await
         .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::ZERO, 16).await;
     let cancelled = observe(pic, canister_id).await;
     assert_eq!(cancelled.callbacks, completed.callbacks);
     assert_eq!(cancelled.next_deadline_ns, None);
@@ -194,9 +189,7 @@ async fn run_watchdog_calibration(representative_work: bool) -> CalibrationMetri
     pic.advance_time(Duration::from_secs(1))
         .await
         .expect("advance IC time");
-    advance_and_tick(pic, Duration::ZERO, 16)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::ZERO, 16).await;
     let dispatch_cycles = cycles_before_dispatch.saturating_sub(
         pic.cycle_balance(canister_id)
             .await

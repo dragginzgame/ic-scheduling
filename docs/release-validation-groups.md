@@ -2,20 +2,21 @@
 
 Scheduling adopts the Shared Tooling [group-plan contract](release-group-validation.md).
 The versioned policy is [ci/release-validation.json](../ci/release-validation.json);
-the sole ordered roster contains 33 common CI obligations and four standalone
-Timers obligations. `make release-validation-stages` emits all 37; normal `make ci`
-executes the 33 common obligations once. Both project that declaration through
+the sole ordered roster contains 32 common CI obligations and four standalone
+Timers obligations. `make release-validation-stages` emits all 36; normal `make ci`
+executes the 32 common obligations once. Both project that declaration through
 Shared's roster and Cargo group-name admission. Every release stage now names an
 individual check, including explicit not-applicable decisions. There is no nested
 aggregate `ci` stage. Patch, minor and major use the same selection rules. No skip
-flag or stage-proof reuse is available.
+flag is available. One qualified fixture may admit exact-input stage evidence as
+described below.
 
 ## Stage mapping
 
 | Stage | Jobs-only scope | Timers, shared or uncertain scope | Boundary |
 | --- | --- | --- | --- |
 | Source/tool/group admission, pins, links, declaration and graph policies, release command admission, formatting | Required | Required | Preserve source custody, compiler/tool selection, Jobs purity and combined consumer runtime singleton checks. |
-| `clippy-jobs`, `check`, `test-jobs`, `test-consumers`, `check-consumer`, `check-wasm`, `docs-jobs`, `package-jobs` | Required | Required | Jobs model, native harness and real Jobs/Timers consumer, Wasm, documentation and Jobs archive. |
+| `clippy-jobs`, `test-jobs`, `test-consumers`, `check-consumer`, `check-wasm`, `docs-jobs`, `package-jobs` | Required | Required | Jobs model, native harness and real Jobs/Timers consumer, Wasm, documentation and Jobs archive. |
 | `test-consumer-tooling`, `test-recovery-evidence` | Required | Required | Consumer tool/launcher and artifact-capture inputs may change inside Jobs-owned source paths. |
 | `clippy-timers`, `check-timer-provider`, `check-timer-dependencies`, `check-timer-probes`, `test-timers`, `test-timer-dependencies`, `docs-timers`, `package-timers` | Not applicable | Required | Standalone Timers sources/probes and dependency selections are unchanged in admitted Jobs-only scope. |
 | Release/validation/formatting/CI-selection/status/hook self-tests | Not applicable | Required | `test-release-tooling`, `test-release-validation`, `test-formatting-evidence`, `test-ci-change-selection`, `test-release-status`, `formatting-hook-check`: their scripts and configuration cannot change in Jobs-only scope. |
@@ -24,7 +25,7 @@ flag or stage-proof reuse is available.
 | `test-timer-watchdog` | Not applicable | Required | Timers provider, executor, traps, cancellation and recovery. |
 | `test-timer-cohorts` | Not applicable | Required | Timers policy/cohort artifact and installed measurement qualification. |
 
-Proven Jobs-only releases require **19** obligations and explicitly omit **18**.
+Proven Jobs-only releases require **18** obligations and explicitly omit **18**.
 Every new, unclassified obligation is required by default. Full `ci` remains
 complete, including every tooling self-test and both libraries. Its mixed lint,
 docs and archive targets now have separate Jobs/Timers recipes, also reused by
@@ -40,7 +41,8 @@ may select group scope only against its current version's **annotated**
 `jobs-vX.Y.Z` release tag, on an ancestor of that source. That trusted release
 boundary is selected from the admitted Cargo group catalog; callers cannot supply
 an arbitrary baseline. Missing/lightweight/divergent baselines select all stages.
-No previous execution proof is relabelled or reused.
+No previous whole-gate proof is relabelled. The bounded fixture below retains
+its original execution and receives fresh source/group admission.
 
 All changes since that baseline are reviewed by the selector, not merely the
 latest commit. The closed Jobs mapping covers model/consumer/harness source,
@@ -50,7 +52,7 @@ Jobs obligations still qualify the changed combined consumer. Any manifest,
 dependency lock,
 compiler, tooling/configuration, generator outside those owned source trees,
 Timers input, shared file or unknown path selects workspace scope. Uncommitted
-inputs also select all stages. Timers always requires the full 37-stage roster.
+inputs also select all stages. Timers always requires the full 36-stage roster.
 
 The first release containing this mapping remains a full-gate release because
 the selector/Make/policy changes are shared inputs. Current outstanding Timers
@@ -69,7 +71,7 @@ cannot be sealed as a successful group execution. Exclusions are explicitly
 `not-applicable`, never synthetic passes. The original order is preserved:
 snapshot/tool admission, lint, metadata and fixtures, native/Wasm/package checks,
 then explicitly installed qualification. Every obligation has its own source/input
-checkpoint and retained event/log. Full CI runs all 33 common obligations once,
+checkpoint and retained event/log. Full CI runs all 32 common obligations once,
 without looping over groups or repeating their shared work.
 
 At seal time Scheduling invokes Shared's
@@ -87,7 +89,7 @@ baseline observation and saved dirty classification. A self-consistent edited pl
 cannot omit Jobs/consumer/graph checks or replace the mapped baseline. Metadata
 projection keeps the baseline bound to the pre-bump source, not the live version.
 
-The version-2 Scheduling receipt binds the shared proof and every retained byte.
+The version-3 Scheduling receipt binds the shared proof and every retained byte.
 A successful release-runner invocation copies it beside the group's Git-owned
 journal. Recovery checks that immutable evidence, current source/configuration,
 baseline identity and all inherited input hashes. Generated plan/policy/context
@@ -101,19 +103,18 @@ receipt admission.
 Deleting original `target/` scratch therefore preserves the durable evidence.
 Failed attempts cannot seal, missing or changed evidence refuses, and replacing a
 validation receipt archives its prior pointer and receipt. Historical version-1
-receipts remain with their original source/adapter; they are never converted into
-version-2 proofs or used to authorize the changed plan. No upload or new release
+and version-2 receipts remain with their original source/adapter; they are never converted into
+version-3 proofs or used to authorize the changed plan. No upload or new release
 is performed by this adoption.
 
 <a id="shared-tooling-0307-adoption-status"></a>
 <a id="shared-tooling-0309-adoption-status"></a>
 
-## Shared Tooling 0.31.0 adoption status
+## Shared release batch contract
 
-The current snapshot is 0.31.1: its Bash 3.2 checksum-parser repair changes
-repository host-tool setup, with the release interface and stage roster unchanged.
-The published Jobs 0.34.9 / Timers 0.40.10 source used 0.31.0; its Linux proof
-remains source-bound. Current macOS qualification runs through hosted CI.
+The current snapshot is 0.31.11. The batch interface introduced at 0.31.0
+remains in use; its receipt schema is independent of the Scheduling group
+validation receipt. Historical release evidence remains source-bound.
 
 Shared Tooling 0.31.0 owns the automatic single-group default; the local overlay
 does not duplicate it or permit an empty-roster fallback to live delivery.
@@ -149,11 +150,34 @@ These fixtures do not replace the actual release plan's complete product gates.
 Jobs' mapping includes isolated model, consumer and harness implementation paths;
 Timers remains full-gate-only. Archive recipes select their actual package with
 `-p`; shared or uncertain inputs retain both archives and complete obligations.
-Stage reuse remains disabled, so stages execute without claiming cache savings.
-The core `check` and first Jobs Clippy command repeat the same compile selection;
-removing that stage needs separate roster/receipt qualification. Preserve the
-distinct Wasm, default-feature, installed and archive proofs when doing so, and
-measure matching attempt timings before claiming savings.
+The first `clippy-jobs` command covers the former core `check` stage's identical
+packages, targets, features, profile and compiler. That duplicate roster entry is
+removed; standalone `make check` remains available. Wasm, default-feature,
+installed and archive obligations remain distinct.
+
+### Bounded fixture reuse
+
+On qualified Linux configurations, `test-release-validation` uses Shared's
+exact-input runner and sealer. The closed input roster is
+[ci/validation-fixture-inputs.txt](../ci/validation-fixture-inputs.txt). It covers
+the fixture, selector and evidence helpers, its own regression test, tool bytes,
+Perl/native loader closure, compiler identity, file modes and bounded environment.
+The fixture creates its own dummy manifests, lock and catalog; it does not read
+product Cargo metadata or build product artifacts. A release version bump alone
+therefore need not invalidate this one fixture's proof. All other required
+stages, including `test-release-tooling`, continue to execute.
+
+Each group still selects and executes its complete plan. The adapter records
+`executed`, `reused`, or `ordinary` with a fallback reason. Reuse retains the
+original source/group, proof and logs, while admitting the current source/group.
+The version-3 group receipt binds self-contained copies of those original bytes;
+recovery does not depend on the regenerable `target/validation-fixture-cache`.
+Missing or corrupt proofs require execution; changed inputs cannot reuse them.
+
+Custom process/compiler/Git configuration, parallel Make, nonstandard external
+tool paths and unqualified hosts use ordinary execution. macOS reuse is not
+qualified. Manual `make test-release-validation` also executes ordinarily.
+This is stage evidence reuse, not a cached whole release or a product-test skip.
 
 ## Focused qualification
 
@@ -163,7 +187,9 @@ recipes and the catalog observation are substituted. It checks same-source
 normal CI versus Jobs/full Timers command selection, required/excluded failures,
 new roster stages, shared inputs, stale source, missing/unknown groups and baselines, roster drift,
 incomplete plans, self-consistent unauthorized omissions, tampered/missing evidence
-and recovery after failure. Its independent expected Jobs roster keeps consumer
+and recovery after failure. Reuse-contract checks retain full-plan cross-group,
+failed-required-stage and durable recovery attempts; input invalidation and
+configuration fallback dispatch the fixture stage directly. Its independent expected Jobs roster keeps consumer
 boundaries required and proves newly added obligations remain required even after
 a new policy baseline is admitted. It reports
 command counts and elapsed fixture time; that is not a measured production speed-up.

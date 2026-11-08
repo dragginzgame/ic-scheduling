@@ -29,9 +29,7 @@ fn once_owns_one_provider_handle_and_executes_without_registry_borrow() {
         .ensure_scheduled(TimerSchedule::After(Duration::from_nanos(5)))
         .expect("ensure should arm provider timer");
     assert_eq!(timer_count(), 1);
-    let scheduled = timer_snapshot(&timer)
-        .expect("snapshot lookup should succeed")
-        .expect("snapshot should exist");
+    let scheduled = registered_snapshot(&timer);
     assert_eq!(
         scheduled
             .observability()
@@ -47,33 +45,16 @@ fn once_owns_one_provider_handle_and_executes_without_registry_borrow() {
     assert!(run_next_due());
     assert_eq!(timer_count(), 0);
     assert_eq!(calls.get(), 1);
-    let stopped = timer_snapshot(&timer)
-        .expect("snapshot lookup should succeed")
-        .expect("retained snapshot should exist");
+    let stopped = registered_snapshot(&timer);
+    let stopped_counters = stopped.observability().counters();
     assert_eq!(
         stopped.state(),
         TimerRuntimeStateSnapshot::Inactive {
             reason: InactiveReason::Stopped,
         }
     );
-    assert_eq!(
-        stopped
-            .observability()
-            .counters()
-            .work_started()
-            .exact_total()
-            .unwrap(),
-        1
-    );
-    assert_eq!(
-        stopped
-            .observability()
-            .counters()
-            .work_completed()
-            .exact_total()
-            .unwrap(),
-        1
-    );
+    assert_eq!(stopped_counters.work_started().exact_total().unwrap(), 1);
+    assert_eq!(stopped_counters.work_completed().exact_total().unwrap(), 1);
     assert_eq!(
         stopped
             .observability()
@@ -133,7 +114,7 @@ fn ordinary_callback_borrow_failure_stops_without_invoking_or_measuring_work() {
             let registered = if recurring {
                 registry.register_after_completion_with_callback(
                     timer.clone(),
-                    TimerCadence::from_nanos(5).unwrap(),
+                    test_cadence(5),
                     lifetime,
                     Rc::clone(&callback),
                 )
@@ -197,7 +178,7 @@ fn after_completion_recurrence_follows_returned_completion_classification() {
         let timer = identity("classified-recurrence");
         let registration = register_after_completion(
             timer.clone(),
-            TimerCadence::from_nanos(5).unwrap(),
+            test_cadence(5),
             TimerStart::Retained { initial: None },
             move |_| async move {
                 AfterCompletionRunResult::new(
@@ -210,7 +191,7 @@ fn after_completion_recurrence_follows_returned_completion_classification() {
         registration.ensure_scheduled().unwrap();
         set_time(15);
         assert!(run_next_due());
-        let snapshot = timer_snapshot(&timer).unwrap().unwrap();
+        let snapshot = registered_snapshot(&timer);
         let invariant = completion.outcome() == crate::TimerCompletionOutcome::InvariantFailure;
         assert_eq!(
             snapshot.next_deadline_ns(),
@@ -256,7 +237,7 @@ fn after_completion_rearms_from_actual_completion_time() {
     let callback_calls = Rc::clone(&calls);
     let registration = register_after_completion(
         timer.clone(),
-        TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         move |_context| {
             let call = callback_calls.get() + 1;
@@ -286,27 +267,10 @@ fn after_completion_rearms_from_actual_completion_time() {
     assert!(run_next_due());
     assert_eq!(calls.get(), 2);
     assert_eq!(timer_count(), 0);
-    let snapshot = timer_snapshot(&timer)
-        .expect("snapshot lookup should succeed")
-        .expect("retained snapshot should exist");
-    assert_eq!(
-        snapshot
-            .observability()
-            .counters()
-            .wakeups_armed()
-            .exact_total()
-            .unwrap(),
-        2
-    );
-    assert_eq!(
-        snapshot
-            .observability()
-            .counters()
-            .work_completed()
-            .exact_total()
-            .unwrap(),
-        2
-    );
+    let snapshot = registered_snapshot(&timer);
+    let snapshot_counters = snapshot.observability().counters();
+    assert_eq!(snapshot_counters.wakeups_armed().exact_total().unwrap(), 2);
+    assert_eq!(snapshot_counters.work_completed().exact_total().unwrap(), 2);
 }
 
 #[test]
@@ -317,7 +281,7 @@ fn after_completion_context_can_restore_recurrence_after_nested_cancel() {
     let callback_calls = Rc::clone(&calls);
     let registration = register_after_completion(
         timer.clone(),
-        TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         move |context: AfterCompletionContext| {
             let call = callback_calls.get() + 1;

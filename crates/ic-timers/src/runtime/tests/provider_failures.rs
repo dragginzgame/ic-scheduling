@@ -5,9 +5,8 @@ fn assert_retained_provider_binding_failure(
     schedule_requests: u128,
     wakeups_armed: u128,
 ) {
-    let failed = timer_snapshot(timer)
-        .expect("snapshot lookup should succeed")
-        .expect("retained registration should remain declared");
+    let failed = registered_snapshot(timer);
+    let failed_counters = failed.observability().counters();
     assert_eq!(
         failed.state(),
         TimerRuntimeStateSnapshot::Inactive {
@@ -16,21 +15,11 @@ fn assert_retained_provider_binding_failure(
     );
     assert_eq!(failed.generation(), None);
     assert_eq!(
-        failed
-            .observability()
-            .counters()
-            .schedule_requests()
-            .exact_total()
-            .unwrap(),
+        failed_counters.schedule_requests().exact_total().unwrap(),
         schedule_requests
     );
     assert_eq!(
-        failed
-            .observability()
-            .counters()
-            .wakeups_armed()
-            .exact_total()
-            .unwrap(),
+        failed_counters.wakeups_armed().exact_total().unwrap(),
         wakeups_armed
     );
 }
@@ -41,7 +30,7 @@ fn immediate_watchdog_completion_fault_traps_and_leaves_cadence_successor_armed(
     let timer = identity("watchdog-completion-fault");
     let registration = register_watchdog(
         timer.clone(),
-        TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         |_context| {
             grow_memory_pages(2, 3);
@@ -67,9 +56,7 @@ fn immediate_watchdog_completion_fault_traps_and_leaves_cadence_successor_armed(
         1,
         "the cadence successor was committed by the earlier scheduler message"
     );
-    let snapshot = timer_snapshot(&timer)
-        .expect("snapshot lookup should succeed")
-        .expect("retained watchdog should remain declared");
+    let snapshot = registered_snapshot(&timer);
     let counters = snapshot.observability().counters();
     assert_eq!(counters.work_started().exact_total().unwrap(), 1);
     assert_eq!(counters.work_completed().exact_total().unwrap(), 0);
@@ -85,7 +72,7 @@ fn immediate_watchdog_provider_replacement_failure_traps_for_message_rollback() 
     let timer = identity("watchdog-immediate-provider-fault");
     let registration = register_watchdog(
         timer,
-        TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         |_context| {
             WatchdogRunResult::new(
@@ -118,7 +105,7 @@ fn public_immediate_watchdog_replacement_failure_retires_false_scheduled_state()
     let timer = identity("watchdog-public-immediate-provider-fault");
     let registration = register_watchdog(
         timer.clone(),
-        TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         stopping_watchdog(|| {}),
     )
@@ -142,7 +129,7 @@ fn provider_cleanup_borrow_failure_is_returned_instead_of_discarded() {
     let timer = identity("provider-cleanup-fault");
     let registration = register_watchdog(
         timer.clone(),
-        TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         stopping_watchdog(|| {}),
     )
@@ -218,7 +205,7 @@ fn unchanged_watchdog_successor_and_queued_work_stay_bound_without_reinstallatio
         let timer = identity("provider-unaffected-handles");
         let registration = register_watchdog(
             timer.clone(),
-            TimerCadence::from_nanos(5).unwrap(),
+            test_cadence(5),
             TimerStart::Retained {
                 initial: Some(TimerSchedule::At(15)),
             },
@@ -243,7 +230,7 @@ fn unchanged_watchdog_successor_and_queued_work_stay_bound_without_reinstallatio
         assert!(run_next_due());
         assert_eq!(timer_count(), 1);
         assert!(registration.has_armed_wakeup().unwrap());
-        let snapshot = timer_snapshot(&timer).unwrap().unwrap();
+        let snapshot = registered_snapshot(&timer);
         assert_eq!(snapshot.next_deadline_ns(), Some(20));
         assert_eq!(
             snapshot
@@ -276,7 +263,7 @@ fn terminal_scheduler_failure_clears_queued_work_before_transient_removal() {
         let observed_work = Rc::clone(&work);
         let registration = register_watchdog(
             timer.clone(),
-            TimerCadence::from_nanos(5).unwrap(),
+            test_cadence(5),
             scheduled_start(lifetime, TimerSchedule::After(Duration::from_nanos(5))),
             move |_| {
                 observed_work.set(observed_work.get() + 1);
@@ -305,7 +292,7 @@ fn terminal_scheduler_failure_clears_queued_work_before_transient_removal() {
         if lifetime == DeclarationLifetime::Retained {
             assert!(!registration.has_armed_wakeup().unwrap());
             assert_eq!(
-                timer_snapshot(&timer).unwrap().unwrap().state(),
+                registered_snapshot(&timer).state(),
                 TimerRuntimeStateSnapshot::Inactive {
                     reason: InactiveReason::ControlFailure(TimerControlFailure::DeadlineOverflow),
                 }
@@ -341,7 +328,7 @@ fn rejected_and_coalesced_requests_preserve_bound_handles_without_reinstallation
     registration
         .ensure_scheduled(TimerSchedule::At(15))
         .unwrap();
-    let before = timer_snapshot(&timer).unwrap().unwrap();
+    let before = registered_snapshot(&timer);
 
     // If either request attempts a handle reinstall it consumes this fault.
     ProviderFault::BINDING.inject();
@@ -349,13 +336,13 @@ fn rejected_and_coalesced_requests_preserve_bound_handles_without_reinstallation
         registration.ensure_scheduled(TimerSchedule::After(Duration::MAX)),
         Err(TimerError::Schedule(ScheduleError::DelayOutOfRange))
     ));
-    assert_eq!(timer_snapshot(&timer).unwrap().unwrap(), before);
+    assert_eq!(registered_snapshot(&timer), before);
     registration
         .ensure_scheduled(TimerSchedule::At(20))
         .unwrap();
     assert!(registration.has_armed_wakeup().unwrap());
     assert_eq!(timer_count(), 1);
-    let after = timer_snapshot(&timer).unwrap().unwrap();
+    let after = registered_snapshot(&timer);
     assert_eq!(after.generation(), before.generation());
     assert_eq!(after.next_deadline_ns(), before.next_deadline_ns());
     assert_eq!(
@@ -429,7 +416,7 @@ fn inactive_ordinary_provider_install_failure_retires_false_scheduled_state() {
         let result = if recurring {
             let registration = register_after_completion(
                 timer.clone(),
-                TimerCadence::from_nanos(5).unwrap(),
+                test_cadence(5),
                 TimerStart::Retained { initial: None },
                 stopping_after_completion(|| {}),
             )
@@ -473,7 +460,7 @@ fn watchdog_failed_dispatch_clears_handles_without_confirming_work() {
             let callback_calls = Rc::clone(&calls);
             let registration = register_watchdog(
                 timer.clone(),
-                TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
+                test_cadence(5),
                 scheduled_start(lifetime, TimerSchedule::After(Duration::from_nanos(5))),
                 move |_context| {
                     callback_calls.set(callback_calls.get() + 1);
@@ -499,7 +486,7 @@ fn watchdog_failed_dispatch_clears_handles_without_confirming_work() {
             if lifetime == DeclarationLifetime::Retained {
                 assert_retained_provider_binding_failure(&timer, 1, 1);
                 assert!(!registration.has_armed_wakeup().unwrap());
-                let snapshot = timer_snapshot(&timer).unwrap().unwrap();
+                let snapshot = registered_snapshot(&timer);
                 let counters = snapshot.observability().counters();
                 assert_eq!(counters.scheduler_started().exact_total().unwrap(), 1);
                 assert_eq!(counters.work_dispatched().exact_total().unwrap(), 0);
@@ -536,7 +523,7 @@ fn stale_watchdog_dispatch_clears_partial_arms_without_confirming_work() {
     let _fixture = setup();
     let registration = register_watchdog(
         identity("stale-dispatch"),
-        TimerCadence::from_nanos(5).unwrap(),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         |_| panic!("manual effects must not execute consumer work"),
     )
@@ -565,9 +552,7 @@ fn stale_watchdog_dispatch_clears_partial_arms_without_confirming_work() {
     assert_eq!(timer_inventory().unwrap(), before);
     apply_effect(second.effect(), ProviderHandles::default()).unwrap();
     assert_eq!(timer_count(), 2);
-    let counts = timer_snapshot(registration.identity())
-        .unwrap()
-        .unwrap()
+    let counts = registered_snapshot(registration.identity())
         .observability()
         .counters();
     assert_eq!(counts.wakeups_armed().exact_total().unwrap(), 2);

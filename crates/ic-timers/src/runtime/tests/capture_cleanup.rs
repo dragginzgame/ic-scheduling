@@ -133,7 +133,7 @@ fn terminal_provider_and_scheduler_failures_release_captures_outside_registry_bo
     };
     let _registration = register_watchdog(
         timer,
-        TimerCadence::from_nanos(5).unwrap(),
+        test_cadence(5),
         TimerStart::RemoveWhenStopped {
             initial: TimerSchedule::At(u64::MAX),
         },
@@ -194,10 +194,7 @@ fn repeated_reconciliation_releases_unused_factory_before_applying_control() {
     .unwrap();
     gate.resume();
     assert!(run_next_due());
-    assert_eq!(
-        timer_snapshot(&timer).unwrap().unwrap().next_deadline_ns(),
-        Some(20)
-    );
+    assert_eq!(registered_snapshot(&timer).next_deadline_ns(), Some(20));
     assert_eq!(timer_count(), 1);
     slot.take().unwrap().unregister().unwrap();
 }
@@ -254,14 +251,8 @@ fn failed_first_reconciliation_retires_all_policies_before_retry() {
             assert!(!run_next_due());
 
             let retry_calls = Rc::new(Cell::new(0));
-            slot.reconcile(
-                &timer,
-                TimerCadence::from_nanos(5).unwrap(),
-                true,
-                (),
-                Rc::clone(&retry_calls),
-            )
-            .unwrap();
+            slot.reconcile(&timer, test_cadence(5), true, (), Rc::clone(&retry_calls))
+                .unwrap();
             assert!(has_armed_wakeup_claim(slot.claim().unwrap()).unwrap());
             assert_eq!(timer_count(), 1);
             set_time(15);
@@ -307,7 +298,7 @@ fn later_reconciliation_deadline_error_preserves_existing_inactive_authority() {
     for policy in TestPolicy::ALL {
         let _fixture = setup();
         let timer = identity("later-reconciliation-deadline");
-        let cadence = TimerCadence::from_nanos(u64::MAX).unwrap();
+        let cadence = test_cadence(u64::MAX);
         let dropped = Rc::new(Cell::new(false));
         let captured = RemovalCapture {
             timer: timer.clone(),
@@ -342,7 +333,7 @@ fn later_reconciliation_provider_error_retains_original_callback_for_retry() {
     for policy in TestPolicy::ALL {
         let _fixture = setup();
         let timer = identity("later-reconciliation-provider");
-        let cadence = TimerCadence::from_nanos(5).unwrap();
+        let cadence = test_cadence(5);
         let dropped = Rc::new(Cell::new(false));
         let captured = RemovalCapture {
             timer: timer.clone(),
@@ -359,13 +350,13 @@ fn later_reconciliation_provider_error_retains_original_callback_for_retry() {
             Rc::clone(&original_calls),
         )
         .unwrap();
-        let original_id = timer_snapshot(&timer).unwrap().unwrap().registration_id();
+        let original_id = registered_snapshot(&timer).registration_id();
         ProviderFault::BINDING.inject();
         let result = slot.reconcile(&timer, cadence, true, (), Rc::clone(&ignored_calls));
         assert!(matches!(result, Err(TimerError::OwnershipInvariant)));
         assert!(slot.claim().is_some());
         assert!(!dropped.get());
-        let failed = timer_snapshot(&timer).unwrap().unwrap();
+        let failed = registered_snapshot(&timer);
         assert_eq!(failed.registration_id(), original_id);
         assert_eq!(
             failed.state(),
@@ -400,18 +391,15 @@ fn initial_registration_with_capture<C: 'static>(
         }
         TestPolicy::AfterCompletion => register_after_completion(
             timer,
-            TimerCadence::from_nanos(5).unwrap(),
+            test_cadence(5),
             start,
             stopping_after_completion(work),
         )
         .map(|registration| registration.claim),
-        TestPolicy::Watchdog => register_watchdog(
-            timer,
-            TimerCadence::from_nanos(5).unwrap(),
-            start,
-            stopping_watchdog(work),
-        )
-        .map(|registration| registration.claim),
+        TestPolicy::Watchdog => {
+            register_watchdog(timer, test_cadence(5), start, stopping_watchdog(work))
+                .map(|registration| registration.claim)
+        }
     }
 }
 
@@ -438,7 +426,7 @@ fn initial_registration_confirms_exact_wakeup_before_returning_authority() {
             .unwrap();
             assert!(has_armed_wakeup_claim(&claim).unwrap());
             assert_eq!(timer_count(), 1);
-            let snapshot = timer_snapshot(&timer).unwrap().unwrap();
+            let snapshot = registered_snapshot(&timer);
             assert_eq!(snapshot.next_deadline_ns(), Some(20));
             assert_eq!(
                 snapshot

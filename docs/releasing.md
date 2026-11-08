@@ -131,8 +131,8 @@ Jobs-owned changes since its admitted annotated release baseline select the Jobs
 and combined-consumer native/Wasm, lint, docs, graph and archive obligations.
 Unchanged standalone Timers checks and release-tooling self-tests are explicitly
 not applicable. Timers, shared inputs, changed manifests/locks and uncertain scope
-retain the complete 37-stage release roster. All plans name individual checks;
-none hides work inside `ci`. Repository CI retains all 33 common obligations on
+retain the complete 36-stage release roster. All plans name individual checks;
+none hides work inside `ci`. Repository CI retains all 32 common obligations on
 its three native hosts, including both public crate archives. The `clippy`,
 `docs-check` and `package-all` commands remain complete aggregates.
 Independent core qualification stays explicit; the Jobs model remains Serde-only.
@@ -141,10 +141,12 @@ Its commit-before-dispatch, exact attempts/receipts, uncertain effects and
 trap/upgrade obligations remain mandatory. One lockfile continues to resolve all
 eight members; release groups do not isolate incompatible runtime stacks.
 
-Version-2 validation receipts bind Shared's admitted proof plus the canonical group plan/policy,
+Version-3 validation receipts bind Shared's admitted proof plus the canonical group plan/policy,
 input checkpoint, native/compiler/build configuration and successful stage
-evidence. Required stages are executed; excluded stages are not applicable.
-No proof reuse is enabled. Durable evidence stays beside the group's journal;
+evidence. Required stages execute, with exact-input reuse admitted only for the
+qualified validation fixture on supported Linux configurations; excluded stages
+are not applicable. Original fixture proofs and logs retain their source/group
+identity. Durable copies stay beside the group's journal;
 missing, changed or failed evidence refuses preparation and recovery. Older
 whole-workspace attempts must use their recorded source/adapters, rather than
 having their receipts reinterpreted as group qualification.

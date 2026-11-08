@@ -9,7 +9,7 @@ fn declaration(
     lifetime: DeclarationLifetime,
 ) -> RegistrationClaim {
     let start = scheduled_start(lifetime, TimerSchedule::After(Duration::from_nanos(5)));
-    let cadence = TimerCadence::from_nanos(5).unwrap();
+    let cadence = test_cadence(5);
     match policy {
         TestPolicy::Once => {
             register_once(timer.clone(), start, stopping_once(|| {}))
@@ -451,7 +451,7 @@ fn dropping_public_claims_does_not_cancel_or_unregister() {
         let start = TimerStart::Retained {
             initial: Some(TimerSchedule::At(10)),
         };
-        let cadence = TimerCadence::from_nanos(5).unwrap();
+        let cadence = test_cadence(5);
         match policy {
             TestPolicy::Once => {
                 drop(register_once(timer.clone(), start, stopping_once(|| {})).unwrap());
@@ -480,7 +480,7 @@ fn dropping_public_claims_does_not_cancel_or_unregister() {
             assert!(run_next_due());
         }
         assert_eq!(timer_count(), 0);
-        let snapshot = timer_snapshot(&timer).unwrap().unwrap();
+        let snapshot = registered_snapshot(&timer);
         assert_eq!(
             snapshot.observability().counters().work_completed().total(),
             1

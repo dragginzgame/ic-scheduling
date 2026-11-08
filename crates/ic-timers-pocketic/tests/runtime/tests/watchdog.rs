@@ -31,9 +31,7 @@ async fn trapped_work_keeps_committed_successor_and_executor_is_private() {
     assert_eq!(snapshot(pic, canister_id).await, before_external);
 
     let trap_at = update_u64(pic, canister_id, Method::ArmTrap).await;
-    advance_and_tick(pic, Duration::from_secs(1), 12)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::from_secs(1), 12).await;
     let trapped = snapshot(pic, canister_id).await;
     assert_eq!(trapped.registration_id, before_external.registration_id);
     assert_eq!(trapped.completed_work, 0);
@@ -53,9 +51,7 @@ async fn trapped_work_keeps_committed_successor_and_executor_is_private() {
     assert_eq!(trapped.work_memory, None);
     assert_eq!(trapped.next_deadline_ns, Some(trap_at + 1_000_000_000));
 
-    advance_and_tick(pic, Duration::from_secs(1), 12)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::from_secs(1), 12).await;
     let recovered = snapshot(pic, canister_id).await;
     assert_eq!(recovered.registration_id, trapped.registration_id);
     assert_eq!(recovered.completed_work, 1);
@@ -104,9 +100,7 @@ async fn trapped_work_keeps_committed_successor_and_executor_is_private() {
     assert_eq!(upgraded.wakeups_armed.total, 1);
     assert!(upgraded.next_deadline_ns.is_some());
 
-    advance_and_tick(pic, Duration::from_secs(1), 12)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::from_secs(1), 12).await;
     let after_upgrade = snapshot(pic, canister_id).await;
     assert_eq!(after_upgrade.completed_work, recovered.completed_work + 1);
     assert_eq!(
@@ -122,10 +116,7 @@ async fn trapped_work_keeps_committed_successor_and_executor_is_private() {
         recovered.unacknowledged.total,
     );
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }
 
 fn assert_memory_summary_is_coherent(summary: &ProbeMemorySummary) {
@@ -152,9 +143,7 @@ async fn instruction_exhaustion_leaves_successor_for_later_progress() {
     assert!(update_bool(pic, canister_id, Method::Start).await);
 
     let exhaust_at = update_u64(pic, canister_id, Method::ArmExhaustion).await;
-    advance_and_tick(pic, Duration::from_secs(1), 30)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::from_secs(1), 30).await;
     let exhausted = snapshot(pic, canister_id).await;
     assert_eq!(exhausted.completed_work, 0);
     assert_eq!(exhausted.scheduler_started.total, 1);
@@ -170,9 +159,7 @@ async fn instruction_exhaustion_leaves_successor_for_later_progress() {
     assert_eq!(exhausted.work_memory, None);
     assert_eq!(exhausted.next_deadline_ns, Some(exhaust_at + 1_000_000_000));
 
-    advance_and_tick(pic, Duration::from_secs(1), 16)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::from_secs(1), 16).await;
     let recovered = snapshot(pic, canister_id).await;
     assert_eq!(recovered.completed_work, 1);
     assert_eq!(recovered.scheduler_started.total, 2);
@@ -192,10 +179,7 @@ async fn instruction_exhaustion_leaves_successor_for_later_progress() {
     assert_eq!(recovered_work_memory.samples, 1);
     assert_memory_summary_is_coherent(recovered_work_memory);
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }
 
 #[tokio::test]
@@ -229,14 +213,7 @@ async fn scheduler_abandonment_under_round_pressure_recovers_after_stop() {
             let armed = snapshot(pic, canister_id).await;
             let deadline = armed.next_deadline_ns.unwrap();
             pic.advance_time(Duration::from_nanos(
-                deadline
-                    .checked_sub(
-                        pic.get_time()
-                            .await
-                            .expect("read IC time")
-                            .as_nanos_since_unix_epoch(),
-                    )
-                    .unwrap(),
+                deadline.checked_sub(now_ns(pic).await).unwrap(),
             ))
             .await
             .expect("advance IC time");
@@ -270,9 +247,7 @@ async fn scheduler_abandonment_under_round_pressure_recovers_after_stop() {
                 .await
                 .expect("restart queued scheduler");
             // Time and ticks alone must not be mistaken for explicit owner repair.
-            advance_and_tick(pic, Duration::from_secs(2), 16)
-                .await
-                .expect("advance and tick PocketIC");
+            advance(pic, Duration::from_secs(2), 16).await;
             let stopped = snapshot(pic, canister_id).await;
             assert_eq!(stopped.registration_id, armed.registration_id);
             assert_eq!(stopped.work_dispatched, armed.work_dispatched);
@@ -316,18 +291,13 @@ async fn scheduler_abandonment_under_round_pressure_recovers_after_stop() {
             assert_eq!(recovered.work_started.total, armed.work_started.total + 1);
             assert_eq!(recovered.registration_id, armed.registration_id);
             assert_eq!(recovered.unacknowledged, armed.unacknowledged);
-            advance_and_tick(pic, Duration::ZERO, 16)
-                .await
-                .expect("advance and tick PocketIC");
+            advance(pic, Duration::ZERO, 16).await;
             assert_eq!(
                 snapshot(pic, canister_id).await.completed_work,
                 armed.completed_work + 1
             );
 
-            owned
-                .close()
-                .await
-                .expect("delete PocketIC instance before stopping its server");
+            close_instance(owned).await;
         }
     }
 }
@@ -348,9 +318,7 @@ async fn insufficient_cycles_defer_due_work_until_top_up() {
     .expect("probe multi-result update succeeds");
     assert!(call_cost > 0);
 
-    advance_and_tick(pic, Duration::from_secs(1), 8)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::from_secs(1), 8).await;
     let deferred = snapshot(pic, canister_id).await;
     assert_eq!(deferred.completed_work, 0);
     assert_eq!(deferred.scheduler_started.total, 0);
@@ -358,21 +326,14 @@ async fn insufficient_cycles_defer_due_work_until_top_up() {
     pic.add_cycles(canister_id, INIT_CYCLES)
         .await
         .expect("fund canister cycles");
-    advance_and_tick(pic, Duration::ZERO, 4)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::ZERO, 4).await;
     assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
-    advance_and_tick(pic, Duration::from_secs(1), 16)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::from_secs(1), 16).await;
     let progressed = snapshot(pic, canister_id).await;
     assert_eq!(progressed.completed_work, 1);
     assert_eq!(progressed.scheduler_started.total, 1);
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }
 
 #[tokio::test]
@@ -415,13 +376,7 @@ async fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
         .next_deadline_ns
         .expect("committed watchdog deadline");
     freeze_for_five_minutes(pic, canister_id, budget.seconds, budget.reserve).await;
-    assert!(
-        pic.get_time()
-            .await
-            .expect("read IC time")
-            .as_nanos_since_unix_epoch()
-            > deadline
-    );
+    assert!(now_ns(pic).await > deadline);
     // No ensure/reconcile call, threshold reset, raw timer write or upgrade can
     // repair the wakeup here. A top-up and replica rounds must suffice.
     pic.add_cycles(canister_id, budget.balance * 16)
@@ -457,9 +412,7 @@ async fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     assert_eq!(resumed.work_started.total, 1);
     assert_eq!(resumed.work_completed.total, 1);
     assert!(!resumed.post_upgrade_reconstructed);
-    advance_and_tick(pic, Duration::ZERO, 16)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::ZERO, 16).await;
     let settled = snapshot(pic, canister_id).await;
     assert!(settled.registered);
     assert_eq!(settled.registration_id, before.registration_id);
@@ -469,11 +422,7 @@ async fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     assert_eq!(settled.work_started.total, u128::from(settled_count));
     assert_eq!(settled.work_completed.total, u128::from(settled_count));
     assert_eq!(settled.unacknowledged.total, 0);
-    let now = pic
-        .get_time()
-        .await
-        .expect("read IC time")
-        .as_nanos_since_unix_epoch();
+    let now = now_ns(pic).await;
     assert!(settled.next_deadline_ns.is_some_and(|next| next > now));
     pic.advance_time(Duration::from_secs(1))
         .await
@@ -500,8 +449,5 @@ async fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     assert_eq!(after.module_hash, budget.module_hash);
     assert_eq!(after.settings.freezing_threshold, budget.seconds);
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }

@@ -46,9 +46,7 @@ async fn provider_replacement_churn_preserves_cancellation_and_reports_memory() 
     assert_eq!(immediate.inventory_len, 1);
     assert!(!immediate.armed);
     assert!(immediate.wasm_pages >= replaced.wasm_pages);
-    advance_and_tick(pic, Duration::from_secs(3_601), 16)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::from_secs(3_601), 16).await;
     let drained = churn_observation(pic, canister_id).await;
     assert_eq!(
         drained.completed, 64,
@@ -64,10 +62,7 @@ async fn provider_replacement_churn_preserves_cancellation_and_reports_memory() 
         drained.inventory_len
     );
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }
 
 #[tokio::test]
@@ -89,18 +84,13 @@ async fn armed_callback_removal_releases_captures_with_registry_access() {
         assert!(!removed.armed);
         assert_eq!(removed.captures_dropped, 1);
         assert!(removed.capture_registry_accessible);
-        advance_and_tick(pic, Duration::from_secs(2), 8)
-            .await
-            .expect("advance and tick PocketIC");
+        advance(pic, Duration::from_secs(2), 8).await;
         let after_deadline = ordinary_observation(pic, canister_id).await;
         assert_eq!(after_deadline.completed, 0);
         assert_eq!(after_deadline.captures_dropped, 1);
         assert_eq!(after_deadline.inventory_len, 0);
 
-        owned
-            .close()
-            .await
-            .expect("delete PocketIC instance before stopping its server");
+        close_instance(owned).await;
     }
 }
 
@@ -122,18 +112,13 @@ async fn rejected_initial_schedules_preserve_ic_inventory_and_release_captures()
             assert_eq!(result, (true, 1, true));
         }
     }
-    advance_and_tick(pic, Duration::from_secs(2), 8)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::from_secs(2), 8).await;
     let observation = ordinary_observation(pic, canister_id).await;
     assert_eq!(observation.inventory_len, 0);
     assert_eq!(observation.completed, 0);
     assert_eq!(observation.captures_dropped, 6);
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }
 
 #[tokio::test]
@@ -157,18 +142,13 @@ async fn rejected_initial_reconciliation_preserves_ic_inventory_and_releases_cap
         .expect("initial reconciliation rejection observation");
         assert_eq!(result, (true, true, 1, true));
     }
-    advance_and_tick(pic, Duration::from_secs(2), 8)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::from_secs(2), 8).await;
     let observation = ordinary_observation(pic, canister_id).await;
     assert_eq!(observation.inventory_len, 0);
     assert_eq!(observation.completed, 0);
     assert_eq!(observation.captures_dropped, 3);
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }
 
 async fn mixed_snapshot(pic: &PocketIc, canister_id: ExternalPrincipal) -> TimerProbeSnapshot {
@@ -184,9 +164,7 @@ async fn mixed_snapshot(pic: &PocketIc, canister_id: ExternalPrincipal) -> Timer
 }
 
 async fn advance_mixed_round(pic: &PocketIc, duration: Duration) {
-    advance_and_tick(pic, duration, 2)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, duration, 2).await;
 }
 
 #[tokio::test]
@@ -197,9 +175,7 @@ async fn shared_watchdog_survives_instruction_exhaustion() {
     let exhaust_at = update_u64(pic, canister_id, Method::StartupTimerProbeArmExhaustion).await;
     advance_mixed_round(pic, Duration::from_secs(1)).await;
     // Finish deterministic execution slices without advancing IC time.
-    advance_and_tick(pic, Duration::ZERO, 24)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::ZERO, 24).await;
     let exhausted = mixed_snapshot(pic, canister_id).await;
     assert_eq!(exhausted.exhaust_at, Some(exhaust_at));
     assert_eq!(exhausted.watchdog_callbacks, 0);
@@ -212,10 +188,7 @@ async fn shared_watchdog_survives_instruction_exhaustion() {
     assert!(resumed_at > exhaust_at);
     assert!(resumed_at <= exhaust_at.saturating_add(1_000_000_100));
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }
 
 #[tokio::test]
@@ -279,10 +252,7 @@ async fn shared_watchdog_survives_trap_and_upgrade() {
     assert!(!stopped.watchdog_registered);
     assert!(!stopped.application_registered);
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }
 
 #[tokio::test]
@@ -303,8 +273,5 @@ async fn overdue_shared_timers_coalesce_to_bounded_work() {
     assert!(overdue.watchdog_callbacks > 0);
     assert!(overdue.application_callbacks > 0);
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }

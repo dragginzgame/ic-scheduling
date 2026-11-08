@@ -61,7 +61,15 @@ for arg in "$@"; do
             if [[ "${GROUP_TEST_PUSH_FAILURE:-0}" == 1 ]]; then exit 37; fi ;;
     esac
     # Product obligations come from the same policy as CI and release selection.
-    if jq -e --arg target "$arg" '.stages | index($target) != null' ci/release-validation.json > /dev/null; then exit 0; fi
+    if jq -e --arg target "$arg" '.stages | index($target) != null' ci/release-validation.json > /dev/null; then
+        if [[ "$arg" == test-release-validation && -n "${SCHEDULING_VALIDATION_ATTEMPT:-}" ]]; then
+            mkdir -p "$SCHEDULING_VALIDATION_ATTEMPT/fixture-stage"
+            jq -cnS --arg source "$RELEASE_SOURCE" --arg group "$RELEASE_GROUP" \
+                '{schema:1,source:$source,group:$group,mode:"ordinary",reason:"fixture substitutes product commands"}' \
+                > "$SCHEDULING_VALIDATION_ATTEMPT/fixture-stage/decision.json"
+        fi
+        exit 0
+    fi
 done
 exec "$GROUP_TEST_REAL_MAKE" "$@"
 MAKE

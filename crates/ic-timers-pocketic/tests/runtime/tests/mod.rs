@@ -1,9 +1,12 @@
 //! Shared installed-runtime fixture and bounded observations.
 
-use super::harness::{INIT_CYCLES, fresh_pocket_ic, install_probe, update_unit, wait_for_probe};
+use super::harness::{
+    INIT_CYCLES, advance, close_instance, fresh_pocket_ic, install_probe, now_ns, update_unit,
+    wait_for_probe,
+};
 use super::harness::{canister_rejection, query_wire, update_wire};
 use ic_platform_types::principal::ExternalPrincipal;
-use ic_testkit::pic::{PocketIcInstance, advance_and_tick};
+use ic_testkit::pic::PocketIcInstance;
 use ic_testkit::pocket_ic::{CanisterSettings, ErrorCode, PocketIc, RejectCode};
 use ic_timers_test_protocol::rpc::{
     Method, OrdinaryPolicy, ProbeLifetime, ProbePolicy, SchedulerReconcileMode,
@@ -73,9 +76,7 @@ async fn freeze_for_five_minutes(
     )
     .await
     .expect("raise freezing reserve");
-    advance_and_tick(pic, Duration::from_secs(300), 16)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::from_secs(300), 16).await;
     let frozen_balance = pic
         .cycle_balance(canister_id)
         .await
@@ -178,4 +179,23 @@ async fn ordinary_observation(
     assert!(!observed.unacknowledged.total_overflowed);
     assert!(!observed.cancellations.total_overflowed);
     observed
+}
+
+// Successful ordinary setup shares transport plumbing; ingress rejection tests
+// keep their raw requests and typed errors at the boundary under test.
+async fn start_ordinary(
+    pic: &PocketIc,
+    canister_id: ExternalPrincipal,
+    policy: OrdinaryPolicy,
+    lifetime: ProbeLifetime,
+) {
+    update_wire::<(), _>(
+        pic,
+        canister_id,
+        ExternalPrincipal::anonymous(),
+        Method::StartOrdinary,
+        (policy, lifetime),
+    )
+    .await
+    .expect("start ordinary probe");
 }

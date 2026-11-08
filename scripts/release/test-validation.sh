@@ -45,7 +45,7 @@ ci:
 	+bash scripts/release/ci.sh
 MAKE
 cd "$fixture"
-git init -q -b main
+git init -q --template= -b main
 git config user.name 'Scheduling validation fixture'
 git config user.email 'fixture@example.invalid'
 git config core.hooksPath /dev/null
@@ -103,7 +103,6 @@ check-release-commands
 test-consumer-tooling
 test-recovery-evidence
 fmt-check
-check
 test-jobs
 test-consumers
 check-consumer
@@ -177,7 +176,7 @@ cp -R "$good" .git/release-state/fixture.receipts/validation.retained
 printf 'validation.retained\n' > .git/release-state/fixture.receipts/validation-evidence
 rm -rf "$good"
 perl scripts/release/validation.pl identity .git/release-state/fixture.receipts > target/identity
-grep -Fx scheduling-group-validation-v2 target/identity > /dev/null
+grep -Fx scheduling-group-validation-v3 target/identity > /dev/null
 RELEASE_GROUP=timers refuse perl scripts/release/validation.pl identity .git/release-state/fixture.receipts
 start_case
 FAIL_STAGE=validation-tools-check refuse run_case
@@ -306,6 +305,8 @@ git checkout -- crates/ic-jobs/src/lib.rs
 : > target/events
 run_case
 perl scripts/release/validation.pl check "$attempt"
-printf 'Group plans passed: 19 Jobs obligations; 37 complete release obligations; unchanged full CI; exact mapping, shared verifier and durable recovery; product commands substituted.\n'
+printf 'Group plans passed: 18 Jobs obligations; 36 complete release obligations; unchanged product coverage; exact mapping, shared verifier and durable recovery; product commands substituted.\n'
 printf 'Same-source substituted-command qualification: Jobs %ss; complete Timers gate %ss. No production-time saving is claimed.\n' "$narrow_seconds" "$full_seconds"
 fixture_complete=true
+# Qualify this consumer contract inside the one bounded fixture execution.
+bash "$root/scripts/release/test-validation-reuse.sh"

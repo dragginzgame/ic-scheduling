@@ -1,0 +1,134 @@
+{
+  "schema": 1,
+  "source": "354dd5143d7c2d848096d836301fd349a68e9ad8 plus pending tooling adoption",
+  "shared_revision": "6c529e6940a97226cca826726491e03173b08cd2",
+  "rust_source_inventory_sha256": "cc33a0a7fd863846985d84c8f3ddd59ae7d5a464fc0b6bc36869d737389d4fcf",
+  "totals": {
+    "benchmarks": 0,
+    "build_tooling": 907,
+    "examples": 752,
+    "library_app": 5465,
+    "tests": 25056,
+    "total": 32180,
+    "unclassified": 0
+  },
+  "crates": [
+    {
+      "name": "ic-jobs",
+      "counts": {
+        "benchmarks": 0,
+        "build_tooling": 0,
+        "examples": 214,
+        "library_app": 672,
+        "tests": 1582,
+        "total": 2468,
+        "unclassified": 0
+      }
+    },
+    {
+      "name": "ic-jobs-canister-tests",
+      "counts": {
+        "benchmarks": 0,
+        "build_tooling": 90,
+        "examples": 538,
+        "library_app": 0,
+        "tests": 1798,
+        "total": 2426,
+        "unclassified": 0
+      }
+    },
+    {
+      "name": "ic-jobs-test-consumer",
+      "counts": {
+        "benchmarks": 0,
+        "build_tooling": 0,
+        "examples": 0,
+        "library_app": 0,
+        "tests": 5150,
+        "total": 5150,
+        "unclassified": 0
+      }
+    },
+    {
+      "name": "ic-timers",
+      "counts": {
+        "benchmarks": 0,
+        "build_tooling": 1,
+        "examples": 0,
+        "library_app": 4793,
+        "tests": 10437,
+        "total": 15231,
+        "unclassified": 0
+      }
+    },
+    {
+      "name": "ic-timers-pocketic",
+      "counts": {
+        "benchmarks": 0,
+        "build_tooling": 816,
+        "examples": 0,
+        "library_app": 0,
+        "tests": 3566,
+        "total": 4382,
+        "unclassified": 0
+      }
+    },
+    {
+      "name": "ic-timers-runtime-probe",
+      "counts": {
+        "benchmarks": 0,
+        "build_tooling": 0,
+        "examples": 0,
+        "library_app": 0,
+        "tests": 1754,
+        "total": 1754,
+        "unclassified": 0
+      }
+    },
+    {
+      "name": "ic-timers-size-probe",
+      "counts": {
+        "benchmarks": 0,
+        "build_tooling": 0,
+        "examples": 0,
+        "library_app": 0,
+        "tests": 368,
+        "total": 368,
+        "unclassified": 0
+      }
+    },
+    {
+      "name": "ic-timers-test-protocol",
+      "counts": {
+        "benchmarks": 0,
+        "build_tooling": 0,
+        "examples": 0,
+        "library_app": 0,
+        "tests": 401,
+        "total": 401,
+        "unclassified": 0
+      }
+    }
+  ],
+  "repeated_plumbing": {
+    "explicit_close_sites": 44,
+    "jobs_get_time_sites": 14
+  },
+  "historical_release_stages": [
+    {
+      "group": "timers",
+      "source": "b6e62260000f9136f2b6d4ef6192141d1d46d05b",
+      "total_seconds": 1900,
+      "test_release_tooling_seconds": 1414,
+      "test_release_validation_seconds": 136
+    },
+    {
+      "group": "jobs",
+      "source": "306bdf7342af9f7fcf8901b5b7573a1e6959c972",
+      "total_seconds": 1852,
+      "test_release_tooling_seconds": 1374,
+      "test_release_validation_seconds": 128
+    }
+  ],
+  "limits": "Static counts and prior release timings; no newly measured runtime or speed-up"
+}

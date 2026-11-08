@@ -7,11 +7,7 @@ async fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
     let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
     let caller = ExternalPrincipal::anonymous();
-    let now = pic
-        .get_time()
-        .await
-        .expect("read IC time")
-        .as_nanos_since_unix_epoch();
+    let now = now_ns(pic).await;
     let foreign = now + 100_000_000_000;
     let set_foreign = async |timestamp| {
         update_wire::<u64, _>(
@@ -96,15 +92,10 @@ async fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
     assert_eq!(completed.scheduler_started.total, 1);
     update_unit(pic, canister_id, Method::Stop).await;
     assert_eq!(snapshot(pic, canister_id).await.next_deadline_ns, None);
-    advance_and_tick(pic, Duration::from_secs(2), 16)
-        .await
-        .expect("advance and tick PocketIC");
+    advance(pic, Duration::from_secs(2), 16).await;
     assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }
 
 #[tokio::test]
@@ -203,10 +194,7 @@ async fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authentic
     assert_eq!(completed.scheduler_started.total, 1);
     assert_eq!(completed.work_started.total, 1);
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }
 
 #[tokio::test]
@@ -347,10 +335,7 @@ async fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
             .unwrap();
     assert!(observed.0.declared);
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }
 
 #[tokio::test]
@@ -385,8 +370,5 @@ async fn backend_rejects_malformed_self_calls_and_ignores_unknown_deliveries() {
     }
     assert_eq!(snapshot(pic, canister_id).await, before);
 
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    close_instance(owned).await;
 }

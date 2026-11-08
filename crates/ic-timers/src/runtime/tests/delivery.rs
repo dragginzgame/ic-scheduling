@@ -43,7 +43,7 @@ fn dropped_ordinary_deliveries_retire_confirmed_scheduled_and_running_work() {
                     ));
                 }
                 if lifetime == DeclarationLifetime::Retained {
-                    let snapshot = timer_snapshot(&timer).unwrap().unwrap();
+                    let snapshot = registered_snapshot(&timer);
                     assert_eq!(
                         snapshot.state(),
                         TimerRuntimeStateSnapshot::Inactive {
@@ -78,7 +78,7 @@ fn dropped_ordinary_deliveries_retire_confirmed_scheduled_and_running_work() {
                         .unwrap();
                     set_time(30);
                     assert!(run_next_due());
-                    let completed = timer_snapshot(&timer).unwrap().unwrap();
+                    let completed = registered_snapshot(&timer);
                     let counters = completed.observability().counters();
                     assert_eq!(counters.work_completed().exact_total().unwrap(), 1);
                     assert_eq!(counters.unacknowledged().exact_total().unwrap(), 1);
@@ -145,7 +145,7 @@ fn abandoned_running_work_discards_scheduling_commands_and_finishes_unregistrati
                 if command == "unregister" || lifetime == DeclarationLifetime::RemoveWhenStopped {
                     assert!(timer_snapshot(&timer).unwrap().is_none());
                 } else {
-                    let snapshot = timer_snapshot(&timer).unwrap().unwrap();
+                    let snapshot = registered_snapshot(&timer);
                     assert_eq!(
                         snapshot.state(),
                         TimerRuntimeStateSnapshot::Inactive {
@@ -300,7 +300,7 @@ fn unconfirmed_ordinary_delivery_drop_preserves_binding_failure_accounting() {
         );
         ProviderFault::BINDING.inject();
         assert!(reconcile_ordinary_claim(Declared(&claim), Some(TimerSchedule::At(10))).is_err());
-        let snapshot = timer_snapshot(&timer).unwrap().unwrap();
+        let snapshot = registered_snapshot(&timer);
         assert_eq!(
             snapshot.state(),
             TimerRuntimeStateSnapshot::Inactive {
@@ -353,7 +353,7 @@ fn suspended_once_work_allows_other_timers_and_arbitrates_external_commands() {
             let callback_calls = Rc::clone(&unrelated_calls);
             let _unrelated = register_watchdog(
                 identity("unrelated-watchdog"),
-                TimerCadence::from_nanos(5).unwrap(),
+                test_cadence(5),
                 TimerStart::Retained {
                     initial: Some(TimerSchedule::At(15)),
                 },
@@ -483,7 +483,7 @@ fn policy_specific_results_schedule_through_live_runtime() {
                     };
                     let registration = register_after_completion(
                         timer.clone(),
-                        TimerCadence::from_nanos(5).unwrap(),
+                        test_cadence(5),
                         TimerStart::Retained { initial: None },
                         move |context| async move {
                             if reconcile {
@@ -529,7 +529,7 @@ fn policy_specific_results_schedule_through_live_runtime() {
                 }
                 set_time(20);
                 assert!(run_next_due());
-                let snapshot = timer_snapshot(&timer).unwrap().unwrap();
+                let snapshot = registered_snapshot(&timer);
                 let deadline = if reconcile && case != InvariantFailure {
                     Some(100)
                 } else {
@@ -593,7 +593,7 @@ fn suspended_after_completion_uses_completion_time_and_exact_reconciliation() {
         let callback_gate = gate.clone();
         let registration = register_after_completion(
             timer.clone(),
-            TimerCadence::from_nanos(5).unwrap(),
+            test_cadence(5),
             TimerStart::Retained { initial: None },
             move |_| {
                 let gate = callback_gate.clone();
@@ -622,7 +622,7 @@ fn suspended_after_completion_uses_completion_time_and_exact_reconciliation() {
         gate.resume();
         assert!(run_next_due());
         assert_eq!(
-            timer_snapshot(&timer).unwrap().unwrap().next_deadline_ns(),
+            registered_snapshot(&timer).next_deadline_ns(),
             Some(if reconcile { 50 } else { 35 })
         );
         assert_eq!(timer_count(), 1);

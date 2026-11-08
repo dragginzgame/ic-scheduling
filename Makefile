@@ -83,7 +83,7 @@ release-validation-stages:
 	@perl scripts/release/validation.pl release-stages
 
 test-release-validation:
-	+bash scripts/release/test-validation.sh
+	+perl scripts/release/validation-fixture.pl
 
 .PHONY: help version install-hooks check test-jobs test-consumers check-msrv check-wasm clippy docs-check check-doc-links shared-tooling-check check-pins check-release-commands test-release-tooling test-formatting-evidence package publish-check publish ci
 help:

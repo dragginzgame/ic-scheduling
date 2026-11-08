@@ -13,7 +13,7 @@ fn abandoned_initial_and_successor_schedulers_reconcile_all_owner_contracts() {
             let timer = identity("abandoned-scheduler");
             let calls = Rc::new(Cell::new(0));
             let callback_calls = Rc::clone(&calls);
-            let cadence = TimerCadence::from_nanos(5).unwrap();
+            let cadence = test_cadence(5);
             let mut owner = Some(
                 register_watchdog(
                     timer.clone(),
@@ -36,7 +36,7 @@ fn abandoned_initial_and_successor_schedulers_reconcile_all_owner_contracts() {
                 assert!(run_next_due());
                 assert!(run_next_due());
             }
-            let before = timer_snapshot(&timer).unwrap().unwrap();
+            let before = registered_snapshot(&timer);
             let deadline = before.next_deadline_ns().unwrap();
             assert_eq!(deadline, expected_deadline);
             let old = with_registry_mut(|registry| Ok(registry.take_wakeup_handle(&timer)))
@@ -48,7 +48,7 @@ fn abandoned_initial_and_successor_schedulers_reconcile_all_owner_contracts() {
             set_time(deadline);
             assert!(discard_next_due());
             assert!(!owner.as_ref().unwrap().has_armed_wakeup().unwrap());
-            assert_eq!(timer_snapshot(&timer).unwrap().unwrap(), before);
+            assert_eq!(registered_snapshot(&timer), before);
             for _ in 0..2 {
                 reconcile_watchdog(&mut owner, &timer, cadence, desired, |_| {
                     unreachable!("existing callback retained")
@@ -61,7 +61,7 @@ fn abandoned_initial_and_successor_schedulers_reconcile_all_owner_contracts() {
             assert!(run_next_due());
             assert!(run_next_due());
             assert_eq!(calls.get(), u64::from(successor) + 1);
-            let after = timer_snapshot(&timer).unwrap().unwrap();
+            let after = registered_snapshot(&timer);
             assert_eq!(after.registration_id(), before.registration_id());
             assert_eq!(
                 after
@@ -82,7 +82,7 @@ fn abandoned_successor_repair_keeps_queued_work_and_pending_reconciliation() {
         let timer = identity("lost-successor-with-pending-work");
         let calls = Rc::new(Cell::new(0));
         let callback_calls = Rc::clone(&calls);
-        let cadence = TimerCadence::from_nanos(5).unwrap();
+        let cadence = test_cadence(5);
         let mut owner = Some(
             register_watchdog(
                 timer.clone(),
@@ -119,7 +119,7 @@ fn abandoned_successor_repair_keeps_queued_work_and_pending_reconciliation() {
         }
         assert!(run_next_due());
         assert_eq!(calls.get(), 1);
-        let after = timer_snapshot(&timer).unwrap().unwrap();
+        let after = registered_snapshot(&timer);
         assert_eq!(
             after.next_deadline_ns(),
             Some(if discard_work { 20 } else { 100 })
@@ -142,7 +142,7 @@ fn watchdog_successor_retires_an_unacknowledged_dispatched_attempt() {
     let timer = identity("watchdog-unacknowledged");
     let registration = register_watchdog(
         timer.clone(),
-        TimerCadence::from_nanos(5).expect("fixture cadence should be valid"),
+        test_cadence(5),
         TimerStart::Retained { initial: None },
         stopping_watchdog(|| {}),
     )
@@ -165,34 +165,18 @@ fn watchdog_successor_retires_an_unacknowledged_dispatched_attempt() {
     set_time(20);
     assert!(run_next_due());
     assert_eq!(timer_count(), 2);
-    let snapshot = timer_snapshot(&timer)
-        .expect("snapshot lookup should succeed")
-        .expect("watchdog snapshot should exist");
-    assert_eq!(
-        snapshot
-            .observability()
-            .counters()
-            .unacknowledged()
-            .exact_total()
-            .unwrap(),
-        1
-    );
-    assert_eq!(
-        snapshot
-            .observability()
-            .counters()
-            .work_started()
-            .exact_total()
-            .unwrap(),
-        0
-    );
+    let snapshot = registered_snapshot(&timer);
+    let snapshot_counters = snapshot.observability().counters();
+    assert_eq!(snapshot_counters.unacknowledged().exact_total().unwrap(), 1);
+    assert_eq!(snapshot_counters.work_started().exact_total().unwrap(), 0);
     assert_eq!(
         snapshot.observability().outcomes().last_outcome(),
         Some(TimerLastOutcome::Unacknowledged)
     );
 
     assert!(run_next_due());
-    let completed = timer_snapshot(&timer).unwrap().unwrap();
+    let completed = registered_snapshot(&timer);
+    let completed_counters = completed.observability().counters();
     assert_eq!(
         completed.state(),
         TimerRuntimeStateSnapshot::Inactive {
@@ -201,21 +185,11 @@ fn watchdog_successor_retires_an_unacknowledged_dispatched_attempt() {
         "the retired attempt's reconciliation must not override the successor's Stop"
     );
     assert_eq!(
-        completed
-            .observability()
-            .counters()
-            .unacknowledged()
-            .exact_total()
-            .unwrap(),
+        completed_counters.unacknowledged().exact_total().unwrap(),
         1
     );
     assert_eq!(
-        completed
-            .observability()
-            .counters()
-            .work_completed()
-            .exact_total()
-            .unwrap(),
+        completed_counters.work_completed().exact_total().unwrap(),
         1
     );
     assert_eq!(timer_count(), 0);
@@ -229,7 +203,7 @@ fn watchdog_successor_retires_an_unacknowledged_dispatched_attempt() {
 fn reconstruction_and_external_demand_are_synchronous_and_idempotent() {
     let _fixture = setup();
     let timer = identity("reconstructed-watchdog");
-    let cadence = TimerCadence::from_nanos(5).expect("fixture cadence should be valid");
+    let cadence = test_cadence(5);
     let result = Rc::new(Cell::new(WatchdogRunResult::new(
         TimerCompletion::success(1),
         WatchdogDecision::ContinueImmediately,
@@ -276,9 +250,7 @@ fn reconstruction_and_external_demand_are_synchronous_and_idempotent() {
     ));
     run_watchdog_round(20);
     assert_eq!((pages.get(), timer_count()), (1, 1));
-    let retrying = timer_snapshot(&timer)
-        .expect("snapshot lookup should succeed")
-        .expect("retryable failure must retain the watchdog");
+    let retrying = registered_snapshot(&timer);
     assert!(matches!(
         retrying.state(),
         TimerRuntimeStateSnapshot::Watchdog(WatchdogRuntimeStateSnapshot::Scheduled { .. })
@@ -296,9 +268,7 @@ fn reconstruction_and_external_demand_are_synchronous_and_idempotent() {
     ));
     run_watchdog_round(25);
     assert_eq!((pages.get(), timer_count()), (1, 0));
-    let stopped = timer_snapshot(&timer)
-        .expect("snapshot lookup should succeed")
-        .expect("retained watchdog should remain declared");
+    let stopped = registered_snapshot(&timer);
     assert_lifecycle_measurements(&stopped);
 
     result.set(WatchdogRunResult::new(
@@ -324,9 +294,7 @@ fn reconstruction_and_external_demand_are_synchronous_and_idempotent() {
     ));
     assert!(run_next_due());
     assert_eq!(timer_count(), 0);
-    let terminal = timer_snapshot(&timer)
-        .expect("snapshot lookup should succeed")
-        .expect("retained watchdog should remain declared");
+    let terminal = registered_snapshot(&timer);
     assert_eq!(
         terminal.state(),
         TimerRuntimeStateSnapshot::Inactive {
@@ -375,7 +343,7 @@ fn reconstruction_and_external_demand_are_synchronous_and_idempotent() {
     let mismatch = reconcile_watchdog(
         &mut registration,
         &timer,
-        TimerCadence::from_nanos(6).expect("fixture cadence should be valid"),
+        test_cadence(6),
         WatchdogReconcileState::Inactive,
         stopping_watchdog(|| {}),
     );

@@ -294,6 +294,8 @@ this repository has no frontend formatter integration.
 `make cloc` reports library, test, example and tooling source separately. Private
 qualification packages declare their roles in Cargo metadata; see
 [source layout and LOC reporting](docs/fleet-tools.md).
+Use `make cloc CLOC_DEPTH=1` for module rows, or
+`bash scripts/dev/cloc.sh -d 1 ic-timers::runtime` to inspect one source branch.
 
 Standard formatting reports each manifest/Rustfmt pass and its elapsed time.
 Eligible unchanged inputs can reuse a successful result after tool admission;
