@@ -1,4 +1,4 @@
-# Native artifact capture with an explicitly enabled recovery harness and queue client.
+# Native artifact capture with an explicitly enabled recovery harness.
 [package]
 name = "ic-jobs-canister-tests"
 version = "0.34.15"
@@ -11,15 +11,13 @@ publish = false
 category = "build_tooling"
 
 [package.metadata.shared-tooling.loc.paths]
-"examples" = "examples"
-"examples/tests" = "tests"
 "src/bin/tests" = "tests"
 "src/harness.rs" = "tests"
 "tests" = "tests"
 
 [features]
 default = []
-# Explicitly enable the native recovery transport and queue example.
+# Explicitly enable the native recovery transport.
 harness = [
     "dep:ic-jobs-test-consumer",
     "dep:ic-platform-types",
@@ -40,22 +38,13 @@ ic-wire = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 
 [dev-dependencies]
-ctrlc.workspace = true
 ic-host-fs = { workspace = true, features = ["test-support"] }
 ic-host-process = { workspace = true, features = ["test-support"] }
 ic-platform-types = { workspace = true, features = ["principal-self-authenticating"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 
-[[example]]
-name = "queue"
-required-features = ["harness"]
-
 [[test]]
 name = "recovery"
-required-features = ["harness"]
-
-[[test]]
-name = "queue_cli"
 required-features = ["harness"]
 
 [lints]

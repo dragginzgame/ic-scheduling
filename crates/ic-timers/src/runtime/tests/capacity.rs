@@ -71,12 +71,9 @@ fn retained_once_rearms_at_full_registry_capacity() {
     let _fixture = setup();
     let calls = Rc::new(Cell::new(0));
     let callback_calls = Rc::clone(&calls);
-    let registration = register_once(
-        identity("retained-once"),
-        TimerStart::Retained { initial: None },
-        stopping_once(move || callback_calls.set(callback_calls.get() + 1)),
-    )
-    .unwrap();
+    let registration = retained_once(identity("retained-once"), move || {
+        callback_calls.set(callback_calls.get() + 1);
+    });
     assert_full_capacity_rearming(
         &calls,
         |deadline| {

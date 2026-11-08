@@ -9,7 +9,7 @@ use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::PocketIcInstance;
 use ic_testkit::pocket_ic::{CanisterSettings, ErrorCode, PocketIc, RejectCode};
 use ic_timers_test_protocol::rpc::{
-    Method, OrdinaryPolicy, ProbeLifetime, ProbePolicy, SchedulerReconcileMode,
+    Method, OrdinaryPolicy, ProbeLifetime, ProbePolicy, SchedulerReconcileMode, WorkDecision,
 };
 use ic_timers_test_protocol::{
     ChurnObservation, DispatchBatchObservation, OrdinaryObservation, OrdinaryTermination,
@@ -198,4 +198,16 @@ async fn start_ordinary(
     )
     .await
     .expect("start ordinary probe");
+}
+
+async fn set_work_decision(pic: &PocketIc, canister_id: ExternalPrincipal, decision: WorkDecision) {
+    update_wire::<(), _>(
+        pic,
+        canister_id,
+        ExternalPrincipal::anonymous(),
+        Method::SetWorkDecision,
+        (decision,),
+    )
+    .await
+    .expect("set next watchdog work decision");
 }

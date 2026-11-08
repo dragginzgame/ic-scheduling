@@ -1,6 +1,24 @@
-use super::rpc::{Method, REQUEST_LIMITS, RESPONSE_LIMITS};
+use super::rpc::{Method, REQUEST_LIMITS, RESPONSE_LIMITS, WorkDecision};
 use super::{CohortObservation, CounterObservation, ProbeMemorySummary, ProbeSnapshot};
-use ic_wire::native::{decode_response, encode_response};
+use ic_wire::native::{decode_request, decode_response, encode_request, encode_response};
+
+#[test]
+fn next_work_decisions_use_one_typed_method_boundary() {
+    let id = Method::SetWorkDecision as u64;
+    for decision in [
+        WorkDecision::ContinueImmediately,
+        WorkDecision::ScheduleAt(u64::MAX),
+        WorkDecision::Stop,
+    ] {
+        let frame = encode_request(id, &(decision,), REQUEST_LIMITS).unwrap();
+        assert_eq!(
+            decode_request::<(WorkDecision,)>(id, &frame, REQUEST_LIMITS),
+            Ok((decision,))
+        );
+    }
+    let invalid = encode_request(id, &(3_u8,), REQUEST_LIMITS).unwrap();
+    assert!(decode_request::<(WorkDecision,)>(id, &invalid, REQUEST_LIMITS).is_err());
+}
 
 #[test]
 fn borrowed_cohort_label_decodes_into_owned_text_with_wide_totals() {

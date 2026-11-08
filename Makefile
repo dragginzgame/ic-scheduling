@@ -71,7 +71,7 @@ MINIMUM_RUST = bash scripts/dev/minimum-rust.sh
 RELEASE_METADATA_LOCKFILE ?= $(CURDIR)/Cargo.lock
 RELEASE_METADATA_TOOL = bash scripts/dev/install-rust-tools.sh --package ic-build --lockfile "$(RELEASE_METADATA_LOCKFILE)" --bin ic-build-release-metadata --profile debug --features cli
 VALIDATION_INPUTS := --input Cargo.toml --input Cargo.lock --input rust-toolchain.toml \
-	--input .shared-tooling.snapshot --input toko-tooling.lock --input Makefile --input scripts/dev/testkit-tool.sh --input scripts/dev/queue-command.sh --input scripts/dev/minimum-rust.sh --input ci/tool-versions.env \
+	--input .shared-tooling.snapshot --input toko-tooling.lock --input Makefile --input scripts/dev/testkit-tool.sh --input scripts/dev/minimum-rust.sh --input ci/tool-versions.env \
 	--input ci/ic-tools.tsv --input ci/release-delivery.txt --input ci/cargo-dependency-boundaries.json --input ci/candid-boundary.json --input ci/cbor-dependencies.json --input ci/cargo-release-groups.json \
 	--input .github/workflows/ci.yml --input .github/workflows/recovery.yml --input ci/docs-only-paths.txt --input scripts/ci/classify-ci-change.pl \
 	--input ci/release-validation.json --input scripts/release/validation.pl --input scripts/release/verify.sh --input scripts/release/ci.sh \
@@ -96,7 +96,6 @@ help:
 	@echo "Aggregates: check, test-jobs, test-consumers, check-msrv, check-wasm, clippy, docs-check, fmt-check"
 	@echo "Consumer: check-consumer (native, Wasm, harness compilation); build-consumer (Wasm artifact)"
 	@echo "Explicit IC qualification: install-testkit-tools; install-consumer-server; test-canister[-optimized]"
-	@echo "Local canister queue: demo (interactive); test-demo (live scenario); test-demo-cli (process shutdown)"
 	@echo "Metadata: shared-tooling-check, check-doc-links, check-pins, check-candid-boundary, check-dependency-boundaries, check-dependency-graphs, check-release-commands"
 	@echo "Read-only readiness: release-status (STATUS_OFFLINE=1, STATUS_JSON=1; optional RELEASE_GROUP)"
 	@echo "Tooling fixtures: version, test-release-tooling, test-formatting-evidence, test-consumer-tooling"
@@ -127,7 +126,7 @@ test-consumers:
 check-consumer:
 	+$(MINIMUM_RUST) cargo test -p ic-jobs-test-consumer --lib --test api_wire --locked --offline
 	+$(MAKE) --no-print-directory build-consumer
-	+$(MINIMUM_RUST) cargo test -p ic-jobs-canister-tests --bin jobs-capture-artifact --example queue --test queue_cli --test recovery --features harness --locked --offline
+	+$(MINIMUM_RUST) cargo test -p ic-jobs-canister-tests --bin jobs-capture-artifact --test recovery --features harness --locked --offline
 
 build-consumer:
 	+$(MINIMUM_RUST) cargo build -p ic-jobs-test-consumer --release --target wasm32-unknown-unknown --locked --offline
@@ -155,23 +154,6 @@ test-canister test-canister-optimized: consumer-server-check
 	+$(MAKE) --no-print-directory build-recovery-tools
 	+$(MINIMUM_RUST) cargo test -p ic-jobs-canister-tests --test recovery --features harness --locked --offline --no-run
 	+bash scripts/ci/test-canister.sh $(if $(filter test-canister-optimized,$@),--optimized)
-
-.PHONY: demo test-demo test-demo-cli
-demo: consumer-server-check
-	+$(MAKE) --no-print-directory build-consumer
-	+$(MINIMUM_RUST) cargo build -p ic-jobs-canister-tests --example queue --features harness --locked --offline
-	+bash scripts/dev/queue-command.sh demo
-
-test-demo: consumer-server-check
-	+$(MAKE) --no-print-directory build-consumer
-	+$(MINIMUM_RUST) cargo test -p ic-jobs-canister-tests --example queue --features harness --locked --offline --no-run
-	+bash scripts/dev/queue-command.sh test-demo
-
-# Spawn-mode process tests intentionally do not borrow the batch runner's server.
-test-demo-cli: consumer-server-check
-	+$(MAKE) --no-print-directory build-consumer
-	+$(MINIMUM_RUST) cargo build -p ic-jobs-canister-tests --example queue --features harness --locked --offline
-	+bash scripts/dev/queue-command.sh test-demo-cli
 
 .PHONY: rust-policy-check
 rust-policy-check:

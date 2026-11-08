@@ -2,6 +2,7 @@
 //! This package owns no timer state, runtime authority or platform sampling.
 //! Rebuild private probes and host decoders together: ordinary termination uses
 //! an enum and a fresh method identity. Upgrade checkpoint field order is retained.
+//! Next-work decisions share one typed method; the three former setters are retired.
 
 use serde::{Deserialize, Serialize};
 

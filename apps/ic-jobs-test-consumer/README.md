@@ -400,8 +400,7 @@ compilation alone does not establish installed behavior.
 ## Committed job-outcome diagnostics
 
 The manager can query `job_metrics` or call `reset_job_metrics`; both use distinct
-unit-request Wire identities and the existing request/reply limits. The interactive
-queue client exposes `metrics` and `reset-metrics`. Existing summary/job replies
+unit-request Wire identities and the existing request/reply limits. Existing summary/job replies
 and retained snapshots are unchanged. Reset performs no stable write or timer
 reconciliation and cannot change an attempt, retry budget or blocked effect.
 
@@ -489,12 +488,5 @@ diagnostic evidence only; durable jobs and exact receipts own effect/retry state
 Heap observations share IC message rollback; installed trap/upgrade behaviour
 requires the explicitly selected live qualification.
 
-The local queue demo exposes the same protected reader:
-
-```bash
-logs
-logs --before 8
-```
-
-Use the cursor returned by the preceding page. The demo reports eight rows per
-page and leaves severity filtering available through the typed Wire request.
+Use `next_before` from the preceding page in the next typed Wire request;
+keep the same severity filter throughout pagination.

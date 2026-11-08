@@ -5,7 +5,7 @@ use ic_timers::{
     timer_inventory, timer_snapshot,
 };
 use ic_timers_test_protocol::{
-    CounterObservation, ProbeMemorySummary, ProbeSnapshot, RuntimeCheckpoint,
+    CounterObservation, ProbeMemorySummary, ProbeSnapshot, RuntimeCheckpoint, rpc::WorkDecision,
 };
 use std::cell::{Cell, RefCell};
 
@@ -158,12 +158,16 @@ fn take_work_decision() -> WatchdogDecision {
 }
 
 #[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::ContinueImmediatelyOnNextWork as u64,
+    id = ic_timers_test_protocol::rpc::Method::SetWorkDecision as u64,
     request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
     response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
-fn continue_immediately_on_next_work() {
-    NEXT_WORK_DECISION.with(|requested| requested.set(WatchdogDecision::ContinueImmediately));
+fn set_work_decision((decision,): (WorkDecision,)) {
+    NEXT_WORK_DECISION.set(match decision {
+        WorkDecision::ContinueImmediately => WatchdogDecision::ContinueImmediately,
+        WorkDecision::ScheduleAt(deadline) => WatchdogDecision::ScheduleAt(deadline),
+        WorkDecision::Stop => WatchdogDecision::Stop,
+    });
 }
 
 #[ic_wire_endpoint::update(
@@ -183,15 +187,6 @@ fn schedule_at((deadline_ns,): (u64,)) {
             ic_platform_runtime::cdk::api::trap("deadline reconciliation failed");
         }
     });
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::ScheduleAtOnNextWork as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn schedule_at_on_next_work((deadline_ns,): (u64,)) {
-    NEXT_WORK_DECISION.with(|requested| requested.set(WatchdogDecision::ScheduleAt(deadline_ns)));
 }
 
 #[ic_wire_endpoint::update(
@@ -263,15 +258,6 @@ fn failure_window() -> (u64, u64) {
         .checked_add(CADENCE_NS)
         .unwrap_or_else(|| ic_platform_runtime::cdk::api::trap("failure window overflow"));
     (start, end)
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::StopOnNextWork as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn stop_on_next_work() {
-    NEXT_WORK_DECISION.with(|requested| requested.set(WatchdogDecision::Stop));
 }
 
 #[ic_wire_endpoint::update(

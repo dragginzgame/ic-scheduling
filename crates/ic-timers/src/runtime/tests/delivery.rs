@@ -180,12 +180,7 @@ fn abandoned_running_work_discards_scheduling_commands_and_finishes_unregistrati
 fn stale_delivery_drop_cannot_retire_rearmed_or_reused_identity() {
     let _fixture = setup();
     let timer = identity("stale-delivery-drop");
-    let registration = register_once(
-        timer.clone(),
-        TimerStart::Retained { initial: None },
-        stopping_once(|| {}),
-    )
-    .unwrap();
+    let registration = retained_once(timer.clone(), || {});
     registration
         .reconcile_schedule(Some(TimerSchedule::At(20)))
         .unwrap();
@@ -202,12 +197,7 @@ fn stale_delivery_drop_cannot_retire_rearmed_or_reused_identity() {
     drop(old_delivery);
     assert_eq!(timer_inventory().unwrap(), before);
     registration.unregister().unwrap();
-    let replacement = register_once(
-        timer,
-        TimerStart::Retained { initial: None },
-        stopping_once(|| {}),
-    )
-    .unwrap();
+    let replacement = retained_once(timer, || {});
     replacement
         .reconcile_schedule(Some(TimerSchedule::At(40)))
         .unwrap();
@@ -269,12 +259,7 @@ fn abandoned_transient_releases_capacity_and_drops_captures_outside_registry_bor
     );
     assert!(discard_next_due());
     assert!(dropped.get());
-    let replacement = register_once(
-        timer,
-        TimerStart::Retained { initial: None },
-        stopping_once(|| {}),
-    )
-    .unwrap();
+    let replacement = retained_once(timer, || {});
     assert!(matches!(
         registration.has_armed_wakeup(),
         Err(TimerError::RegistrationExpired)

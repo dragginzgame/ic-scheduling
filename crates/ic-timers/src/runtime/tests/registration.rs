@@ -260,12 +260,7 @@ fn fresh_transient_cancellation_expires_every_registration_policy() {
 #[test]
 fn registration_claims_report_exact_provider_wakeup_ownership() {
     let _fixture = setup();
-    let once = register_once(
-        identity("liveness-once"),
-        TimerStart::Retained { initial: None },
-        stopping_once(|| {}),
-    )
-    .expect("once registration should succeed");
+    let once = retained_once(identity("liveness-once"), || {});
     let after = register_after_completion(
         identity("liveness-after"),
         test_cadence(5),
@@ -470,14 +465,9 @@ fn replacement_and_cancellation_clear_actual_owned_handles() {
     let timer = identity("replace-cancel");
     let calls = Rc::new(Cell::new(0_u64));
     let callback_calls = Rc::clone(&calls);
-    let registration = register_once(
-        timer.clone(),
-        TimerStart::Retained { initial: None },
-        stopping_once(move || {
-            callback_calls.set(callback_calls.get() + 1);
-        }),
-    )
-    .expect("registration should succeed");
+    let registration = retained_once(timer.clone(), move || {
+        callback_calls.set(callback_calls.get() + 1);
+    });
     registration
         .ensure_scheduled(TimerSchedule::At(100))
         .expect("initial ensure should succeed");

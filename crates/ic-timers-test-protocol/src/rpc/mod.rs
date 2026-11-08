@@ -28,6 +28,14 @@ impl OrdinaryPolicy {
     pub const ALL: [Self; 2] = [Self::Once, Self::AfterCompletion];
 }
 
+/// Proposal consumed by the next successful watchdog work message.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum WorkDecision {
+    ContinueImmediately,
+    ScheduleAt(u64),
+    Stop,
+}
+
 /// All policies exercised by registration-failure and removal probes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ProbePolicy {
@@ -92,6 +100,7 @@ macro_rules! methods {
 }
 
 methods! {
+    SetWorkDecision = 66 => "set_work_decision",
     CohortStart = 58 => "cohort_start",
     ArmExhaustion = 1 => "arm_exhaustion",
     ArmTrap = 2 => "arm_trap",
@@ -101,7 +110,6 @@ methods! {
     ChangePendingDispatchBatch = 6 => "change_pending_dispatch_batch",
     ChurnObservation = 7 => "churn_observation",
     ClearOrdinaryTrap = 8 => "clear_ordinary_trap",
-    ContinueImmediatelyOnNextWork = 9 => "continue_immediately_on_next_work",
     DiscardExpiredOrdinaryClaim = 10 => "discard_expired_ordinary_claim",
     DispatchBatchGate = 11 => "dispatch_batch_gate",
     DispatchBatchObservation = 12 => "dispatch_batch_observation",
@@ -134,7 +142,6 @@ methods! {
     ReplaceDistantDeadlines = 34 => "replace_distant_deadlines",
     ReplaceRegistration = 35 => "replace_registration",
     ScheduleAt = 36 => "schedule_at",
-    ScheduleAtOnNextWork = 37 => "schedule_at_on_next_work",
     SchedulerPressureCompleted = 62 => "scheduler_pressure_completed",
     SchedulingTrace = 38 => "scheduling_trace",
     Snapshot = 39 => "snapshot",
@@ -152,7 +159,6 @@ methods! {
     StartupTimerProbeStart = 50 => "startup_timer_probe_start",
     StartupTimerProbeStop = 51 => "startup_timer_probe_stop",
     Stop = 52 => "stop",
-    StopOnNextWork = 53 => "stop_on_next_work",
     TrapOrdinaryCaptureDrop = 54 => "trap_ordinary_capture_drop",
     TrapOrdinaryWork = 55 => "trap_ordinary_work",
     UnregisterOrdinary = 56 => "unregister_ordinary",

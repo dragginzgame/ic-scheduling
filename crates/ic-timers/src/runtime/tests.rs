@@ -88,6 +88,18 @@ fn stopping_once(
     }
 }
 
+// Successful inactive declarations only; registration refusals and capture-drop
+// boundary tests keep their explicit public calls and callbacks.
+#[track_caller]
+fn retained_once(timer: TimerIdentity, work: impl FnMut() + 'static) -> OnceRegistration {
+    register_once(
+        timer,
+        TimerStart::Retained { initial: None },
+        stopping_once(work),
+    )
+    .expect("fixture registration should succeed")
+}
+
 fn stopping_after_completion(
     mut work: impl FnMut() + 'static,
 ) -> impl FnMut(AfterCompletionContext) -> std::future::Ready<AfterCompletionRunResult> {

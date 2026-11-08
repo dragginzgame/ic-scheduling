@@ -452,7 +452,7 @@ fn watchdog_nested_cancel_then_ensure_retains_committed_successor() {
     let calls = Rc::new(Cell::new(0_u64));
     let callback_calls = Rc::clone(&calls);
     let registration = register_watchdog(
-        timer.clone(),
+        timer,
         test_cadence(5),
         TimerStart::Retained { initial: None },
         move |context: WatchdogContext| {
@@ -476,14 +476,7 @@ fn watchdog_nested_cancel_then_ensure_retains_committed_successor() {
     assert!(run_next_due());
     assert_eq!(calls.get(), 1);
     assert_eq!(timer_count(), 1);
-    assert!(matches!(
-        timer_snapshot(&timer)
-            .expect("snapshot lookup should succeed")
-            .map(|snapshot| snapshot.state()),
-        Some(TimerRuntimeStateSnapshot::Watchdog(
-            WatchdogRuntimeStateSnapshot::Scheduled { .. }
-        ))
-    ));
+    assert!(registration.has_armed_wakeup().unwrap());
 }
 
 #[test]

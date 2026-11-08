@@ -130,15 +130,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "block2"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdeb9d870516001442e364c5220d3574d2da8dc765554b4a617230d33fa58ef5"
-dependencies = [
- "objc2",
-]
-
-[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -313,6 +304,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "cmov"
+version = "0.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a"
+
+[[package]]
 name = "cobs"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -404,14 +401,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "ctrlc"
-version = "3.5.2"
+name = "ctutils"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0b1fab2ae45819af2d0731d60f2afe17227ebb1a1538a236da84c93e9a60162"
+checksum = "261af4dc7a06ea8a527a8717d8cbba3417530d6ea14e1edb3de6b67806be474f"
 dependencies = [
- "dispatch2",
- "nix",
- "windows-sys 0.61.2",
+ "cmov",
 ]
 
 [[package]]
@@ -428,7 +423,6 @@ checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
  "block-buffer 0.10.4",
  "crypto-common 0.1.7",
- "subtle",
 ]
 
 [[package]]
@@ -439,18 +433,7 @@ checksum = "f1dd6dbb5841937940781866fa1281a1ff7bd3bf827091440879f9994983d5c2"
 dependencies = [
  "block-buffer 0.12.1",
  "crypto-common 0.2.2",
-]
-
-[[package]]
-name = "dispatch2"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e0e367e4e7da84520dedcac1901e4da967309406d1e51017ae1abfb97adbd38"
-dependencies = [
- "bitflags",
- "block2",
- "libc",
- "objc2",
+ "ctutils",
 ]
 
 [[package]]
@@ -665,11 +648,11 @@ dependencies = [
 
 [[package]]
 name = "hmac"
-version = "0.12.1"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
+checksum = "6303bc9732ae41b04cb554b844a762b4115a61bfaa81e3e83050991eeb56863f"
 dependencies = [
- "digest 0.10.7",
+ "digest 0.11.3",
 ]
 
 [[package]]
@@ -782,9 +765,9 @@ dependencies = [
 
 [[package]]
 name = "ic-build"
-version = "0.79.1"
+version = "0.80.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cc8b7d1d2a2d5034a0f621420e60cf14871c6cbe46de724572f7117b59b2d80"
+checksum = "b9a1bbec617f1ddd3b88fda3c547e09b35b31ed5f06f775a95a0c14684d20f8c"
 dependencies = [
  "cargo_metadata",
  "hmac",
@@ -795,6 +778,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "sha2 0.11.1",
  "thiserror 2.0.21",
  "toml",
  "toml_edit",
@@ -814,9 +798,9 @@ dependencies = [
 
 [[package]]
 name = "ic-host-artifacts"
-version = "0.75.1"
+version = "0.76.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8737667e678fed1f2c865ce3f4213c1ecbe9a6e7ca100d1ed16a9be8da15794"
+checksum = "6c0c40f7454888845287be579a513f32d740278c8da086b4a4b6d364605aa209"
 dependencies = [
  "flate2",
  "sha2 0.10.9",
@@ -824,9 +808,9 @@ dependencies = [
 
 [[package]]
 name = "ic-host-fs"
-version = "0.75.1"
+version = "0.76.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2232e610ba23225babb982f47037df8a4d2a7691f06ff327913b6fab73f7a7cf"
+checksum = "fc209b014e4061dbaacbeaf3462e5ad652bd71fc47777f4303120fe30b0dd4d5"
 dependencies = [
  "ic-host-artifacts",
  "rustix",
@@ -835,9 +819,9 @@ dependencies = [
 
 [[package]]
 name = "ic-host-process"
-version = "0.75.1"
+version = "0.76.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98d4af45d0bd0ec0a7cf812f1ef80e7ede0dd42d09388c89b0530629ea8864c6"
+checksum = "fed0ae77169f264a9d180b81bdd766cfd846e9b857876af686b8b750da6e559b"
 dependencies = [
  "command-fds",
  "ic-host-artifacts",
@@ -860,7 +844,6 @@ name = "ic-jobs-canister-tests"
 version = "0.34.15"
 dependencies = [
  "clap",
- "ctrlc",
  "ic-build",
  "ic-host-fs",
  "ic-host-process",
@@ -908,15 +891,15 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.29.6"
+version = "0.29.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7aa1b95a894d02d797929104bbbd0998fc1e69f3b45eb2342deaa0c69d769723"
+checksum = "d56b2cfab39b52534105bcb3757a149f338e52d8f67fe0bf655141f165c1c6d7"
 
 [[package]]
 name = "ic-platform"
-version = "0.26.1"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f85ecc082d0a62d952ecd0f1439fcfe32b4dea2efe9dab2e0ecb1d37ceb75cbf"
+checksum = "33e040a299213e54bc4a37142a9d164a7daaf74181fd5520bba57fd7acb3a2cd"
 dependencies = [
  "candid",
  "ic-certification",
@@ -978,9 +961,9 @@ dependencies = [
 
 [[package]]
 name = "ic-storage"
-version = "0.69.0"
+version = "0.69.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90b93d6a307e67f7a83ea9de7046bd6a26e405957ada63679997d91024053241"
+checksum = "66ae72c144ab3d906f08884e2173dd54754b10f8c35c5e31986b7d52fe85da4d"
 dependencies = [
  "ic-platform-runtime",
  "ic-wire",
@@ -990,9 +973,9 @@ dependencies = [
 
 [[package]]
 name = "ic-testkit"
-version = "0.93.2"
+version = "0.94.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7937fb862f412ca5e6213f42da7a561e0861cf001ef58092d314a8c3bcb2325f"
+checksum = "a9a6d2dc2b9eeefa4424112db6ef978114135a0ea831e2f06ee5907aedabc78d"
 dependencies = [
  "base64",
  "candid",
@@ -1441,21 +1424,6 @@ checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
 ]
-
-[[package]]
-name = "objc2"
-version = "0.6.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08849bbd4767dfae9457696856ae1c84fe4e0281bbe4a7abff2d0e06fb7981f8"
-dependencies = [
- "objc2-encode",
-]
-
-[[package]]
-name = "objc2-encode"
-version = "4.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef25abbcd74fb2609453eb695bd2f860d389e457f67dc17cafc8b8cbc89d0c33"
 
 [[package]]
 name = "object"

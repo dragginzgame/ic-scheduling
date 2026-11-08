@@ -8,9 +8,9 @@ use ic_jobs_test_consumer::{
 };
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{
-    CanisterDiagnosticsRequest, CanisterInstallError, CanisterInstallExt, CanisterLogRenderLimits,
-    InstallSpec, PocketIcDiagnosticsExt, PocketIcInstance, PocketIcStartupConfig, RetryPolicy,
-    WireCallError, advance_and_tick, query_wire, tick_until,
+    CanisterDiagnosticsRequest, CanisterInstallError, CanisterLogRenderLimits, InstallSpec,
+    PocketIcInstance, PocketIcStartupConfig, RetryPolicy, WireCallError, advance_and_tick,
+    query_wire, tick_until,
 };
 use ic_testkit::pocket_ic::{ClientError, ErrorCode, PocketIc, PocketIcBuilder, RejectResponse};
 use ic_wire::native;

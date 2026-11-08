@@ -158,12 +158,7 @@ fn provider_cleanup_borrow_failure_is_returned_instead_of_discarded() {
 fn rejected_provider_binding_clears_handles_for_unavailable_or_expired_authority() {
     let _fixture = setup();
     let timer = identity("provider-binding-authority");
-    let registration = register_once(
-        timer.clone(),
-        TimerStart::Retained { initial: None },
-        stopping_once(|| {}),
-    )
-    .expect("registration should succeed");
+    let registration = retained_once(timer.clone(), || {});
     registration
         .ensure_scheduled(TimerSchedule::At(15))
         .expect("provider wake-up should arm");
@@ -371,14 +366,9 @@ fn public_provider_install_failure_retires_false_scheduled_state() {
     let timer = identity("provider-install-fault");
     let calls = Rc::new(Cell::new(0_u64));
     let callback_calls = Rc::clone(&calls);
-    let registration = register_once(
-        timer.clone(),
-        TimerStart::Retained { initial: None },
-        stopping_once(move || {
-            callback_calls.set(callback_calls.get() + 1);
-        }),
-    )
-    .expect("registration should succeed");
+    let registration = retained_once(timer.clone(), move || {
+        callback_calls.set(callback_calls.get() + 1);
+    });
 
     registration
         .ensure_scheduled(TimerSchedule::At(100))
@@ -424,12 +414,7 @@ fn inactive_ordinary_provider_install_failure_retires_false_scheduled_state() {
             ProviderFault::BINDING.inject();
             registration.ensure_scheduled()
         } else {
-            let registration = register_once(
-                timer.clone(),
-                TimerStart::Retained { initial: None },
-                stopping_once(|| {}),
-            )
-            .unwrap();
+            let registration = retained_once(timer.clone(), || {});
             ProviderFault::BINDING.inject();
             registration.ensure_scheduled(TimerSchedule::At(15))
         };
@@ -498,12 +483,7 @@ fn watchdog_failed_dispatch_clears_handles_without_confirming_work() {
                     registration.has_armed_wakeup(),
                     Err(TimerError::RegistrationExpired)
                 ));
-                let replacement = register_once(
-                    timer,
-                    TimerStart::Retained { initial: None },
-                    stopping_once(|| {}),
-                )
-                .expect("failed transient dispatch should release the identity");
+                let replacement = retained_once(timer, || {});
                 replacement.ensure_scheduled(TimerSchedule::At(25)).unwrap();
                 assert!(replacement.has_armed_wakeup().unwrap());
                 assert!(matches!(

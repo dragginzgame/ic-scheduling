@@ -33,11 +33,6 @@ versions. The unpublished [canister consumer](apps/ic-jobs-test-consumer/README.
 demonstrates application-owned storage, management and lifecycle integration.
 Its PocketIC harness is compiled by CI; live qualification is explicitly selected.
 
-To queue jobs for seconds, minutes or weeks and see their current schedule, run
-the [local canister queue demo](crates/ic-jobs-canister-tests/README.md). `make demo`
-opens a terminal connected to the real fixture canister in local PocketIC;
-`watch` shows countdowns and `advance` fast-forwards IC time.
-
 ## Scope and validation
 
 The library owns metadata and checked transitions. Applications own storage,
@@ -53,7 +48,7 @@ It supplies no global queue, database, lifecycle exports or exactly-once effects
 | Principal and explicit-codec canister runtime | Published IC Platform; Jobs retains endpoints, schemas, limits and error policy |
 | Installation, management and delivery encoding and bounded decoding | Published IC Wire; Jobs retains method identities, limits and receipt policy |
 | PocketIC transport and startup | IC Testkit; Jobs supplies Wire frames and retains scenario policy |
-| Shared native management client | Feature-gated `ic-jobs-canister-tests::harness`, used only by the recovery test and queue example |
+| Shared native management client | Feature-gated `ic-jobs-canister-tests::harness`, used by the recovery tests |
 | Artifact retention and native filesystem/process mechanics | IC Build and IC Host; Jobs retains optimizer flags and evidence naming |
 | Common setup, formatting and release mechanics | Reviewed Shared Tooling snapshot; Jobs owns its gates, direct-delivery policy and package upload admission |
 
@@ -66,7 +61,7 @@ qualification dependencies out of the libraries.
 | Private package | Purpose |
 | --- | --- |
 | `ic-jobs-test-consumer` | Consumer-owned durable state, qualification canister and native composition tests |
-| `ic-jobs-canister-tests` | Lightweight native artifact capture; explicit `harness` feature for installed recovery tests and queue demo |
+| `ic-jobs-canister-tests` | Lightweight native artifact capture; explicit `harness` feature for installed recovery tests |
 | `ic-timers-pocketic` | Native runtime qualification and cohort runner |
 | `ic-timers-runtime-probe` | Wasm canister exercising timer runtime behavior |
 | `ic-timers-size-probe` | Separate minimal Wasm builds measuring each timer policy's size |
@@ -91,7 +86,7 @@ metadata checks use the same grouped policy for working and selected commits.
 | Published `ic-jobs` library | None | None; normal dependencies contain only Serde |
 | Published `ic-timers` library | None | Runtime's executor and IC0; no full CDK |
 | Qualification `ic_jobs_test_consumer.wasm` | None; all owned inputs/replies use Wire | Runtime's Wasm-only `cdk` feature supplies entrypoints; upstream `ic-cdk` is absent, and Timers shares that executor |
-| Native recovery tests and queue demo | PocketIC requires Candid for external simulator/management protocols; Jobs RPCs use Wire | Runtime's `cdk` feature is enabled only for the qualification Wasm |
+| Native recovery tests | PocketIC requires Candid for external simulator/management protocols; Jobs RPCs use Wire | Runtime's `cdk` feature is enabled only for the qualification Wasm |
 | `jobs-capture-artifact` host binary | No Candid dependency in its normal/build graph | No CDK dependency in its normal/build graph |
 
 The Wasm above is an unpublished test fixture, not a production service. This

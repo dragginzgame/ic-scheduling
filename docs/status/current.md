@@ -1,306 +1,104 @@
 # Current handoff
 
-## Delivered: Timers 0.41.3 and Jobs 0.34.15 — 2026-11-08
+## Timers 0.41.4 delivery selected — 2026-11-08
 
-Both groups are tagged, pushed to `origin/main` and published to crates.io through
-frozen `batch-OGberYFh`. Intent is complete at index 2. The guarded reconciliation
-fast-forwarded the clean normal checkout to the final Jobs commit. Do not replay
-publication. All eight member versions match their groups; tooling remains outside
-Cargo's package graph.
+All four accepted cleanup items are implemented locally. The interactive queue
+example, dedicated parser/process/live tests, launcher, Make recipes and obsolete
+consumer-tooling fixture are removed. Artifact capture, native management transport
+and installed Jobs recovery remain. Cargo removes only ctrlc and its four now-unused
+macOS backend packages; all supplier versions from the pending adoption remain.
+
+Native Timers tests share successful inactive Once registration setup. Runtime
+assertions focus on actual provider effects and public-result handoff; owner-local
+outcome/counter/directive matrices remain. All 89 runtime tests, including generated
+command sequences and independent suspension/abandonment checks, are retained.
+
+The private probe protocol replaces three next-work setter methods with one typed
+request (fresh method ID 66); its roster shrinks from 64 to 62. Host and probe must
+be rebuilt together. Message order, one-time decision consumption, installed subject
+names, ordinary/watchdog semantics and checkpoint bytes remain unchanged.
+Public library APIs and all eight package versions remain unchanged. Pending notes
+remain Jobs 0.34.16 and Timers 0.41.4: private tooling cleanup is patch-compatible
+with both published libraries and does not itself require publication.
+
+The earlier supplier adoption remains: Storage 0.69.1, Testkit 0.94.0, Build 0.80.0
+and Host Artifacts/FS/Process 0.76.0. Root requirements advance for the incompatible
+Testkit/Build/Host generations; Storage's compatible 0.69.0 minimum remains.
+Testkit requires Platform 0.27 transitively; Build adds its HMAC 0.13/SHA-2 0.11
+closure. All six requested archives were authenticated against registry checksums.
+No sibling source or release changed. Current application lock SHA-256:
+`00c1d1485a9642cc6b0bd727e3a0d9d526e9b591b5e4f062a59966f05e27502b`.
+
+Focused Linux/Rust 1.99.1 evidence is under
+`target/evidence/cleanup-four-20261108/`: locked metadata, snapshot/pin/dependency
+and release-adapter admission; strict affected native/Wasm Clippy; 122 passing
+native tests; and selected CLI/server admission, input-drift and group-recipe
+fixtures using substitute tool effects. Formatting, shell lint and doc links pass.
+The prior supplier check evidence remains under `target/evidence/suppliers-20261108/`.
+Complete product/release gates and the full installed runtime/cohort roster have
+not yet run for this graph. No fresh installed Jobs recovery or macOS pass is claimed.
+
+The three changed installed control subjects passed through the focused driver
+with PocketIC 16.1.0 against the final source. Receipt:
+`target/tmp/timer-qualification-3360410-0/runtime.json`; the earlier passing run is
+also retained. This focused selection does not replace the full runtime roster.
+Rust LOC falls from 31,359 to 30,517 (-842): tests -306, examples -536; libraries
+remain 5,465, build tooling 907 and unclassified zero. Comparison uses the captured
+dirty starting tree, excluding preceding supplier work. Raw physical Rust churn
+is +97/-990/net -893 and is distinct from classified code LOC.
+
+Authorized delivery selects only Timers 0.41.4 for a fresh frozen batch, with
+crates.io publication and direct `origin/main` delivery. Preview archives compared
+with the verified 0.41.3/0.34.15 downloads show changed packaged Timers tests and
+Cargo.lock; Jobs is byte-identical except VCS provenance, including its normalized
+manifest and packaged lock. Jobs' private demo removal/adoption ships in Git only;
+its 0.34.16 notes remain pending. Public dependency requirements remain unchanged.
+Comparison evidence: `target/evidence/deploy-cleanup-20261108/publication-impact.json`.
+
+## Delivered baseline — Timers 0.41.3 and Jobs 0.34.15
+
+Both groups were tagged, pushed to `origin/main` and published to crates.io via
+`batch-OGberYFh` on 2026-11-08. Intent is complete at index 2 and guarded
+reconciliation finished. Do not replay publication. The later handoff commit is
+`49a83343c958e0f4a498f115897724c2539bb35b`.
 
 - Captured source: `392c8be1ee3657936fe78dc381b35bc00ed14020`.
-- Timers release: `627154ad66920ce41ffa51be5d3ebb51db3f32ef`.
-  Annotated `timers-v0.41.3`: `f3b880034b4cc69be16dd483a51f1e22ba6844a1`.
-  Archive SHA-256: `65e4235764d429e67295a508f8ec053706e7d47f1e635ef7090885084b29e3c4`.
-- Jobs release: `33683baa66739472bb3f20fcef22ff4b2a82cf30`.
-  Annotated `jobs-v0.34.15`: `62b266a88041c32184d14ef7e1b093bfe5490a49`.
-  Archive SHA-256: `1dc3a29eadb0bed1aaf840c1402419413ecabc12893741a1ade6d9e9e91d5d8e`.
+- Timers release: `627154ad66920ce41ffa51be5d3ebb51db3f32ef`,
+  tag `timers-v0.41.3`; archive SHA-256
+  `65e4235764d429e67295a508f8ec053706e7d47f1e635ef7090885084b29e3c4`.
+- Jobs release: `33683baa66739472bb3f20fcef22ff4b2a82cf30`,
+  tag `jobs-v0.34.15`; archive SHA-256
+  `1dc3a29eadb0bed1aaf840c1402419413ecabc12893741a1ade6d9e9e91d5d8e`.
 
-Registry metadata and downloaded bytes match the retained uploads and clean tagged
-VCS identities; neither version is yanked. All 60 Timers and 13 Jobs packaged Rust
-files match their tagged sources. Compared with the previous verified archives,
-both packages changed shipped tests; their public requirements remain unchanged.
-Both releases were therefore selected, in order `timers,jobs`.
+Both complete 36-stage plans and all 35 installed Timers runtime cases per group
+passed on Linux/Rust 1.99.1 with PocketIC 16.1.0. Registry bytes, upload bytes,
+clean tagged source and all packaged Rust files matched; neither version was
+yanked. This evidence belongs to the delivered graph, not the pending refresh.
+It does not establish fresh installed Jobs recovery or a new macOS pass.
+Hosted matrices were asynchronous; pending/cancelled work is not a pass.
 
-### Qualification and supplier graph
+Durable delivery evidence:
+`.git/release-state/frozen/batch-OGberYFh/verification/`; original group journals
+remain in its `repository.git/release-state`. Raw preparation/release/reconcile
+logs remain under `target/evidence/deploy-root-tooling-20261108/`.
+First capture `batch-TkFUywgM` stopped at publication-fixture integrity admission,
+before version mutation/tag/push/upload. The repaired fixture and both complete
+release suites passed in the successful batch. Preserve both batches and logs.
 
-Both complete 36-stage plans passed on Linux/Rust 1.99.1, including strict lint,
-native/consumer/Wasm/docs/archive checks and installed Timers runtime/cohort gates.
-Each plan passed all 35 live runtime cases with PocketIC 16.1.0. This does not
-establish fresh installed Jobs recovery or native macOS qualification.
+## Tooling and recovery custody
 
-The full release-tooling suites took 1,481s and 1,467s. The qualified validation
-fixture executed for Timers and reused unchanged evidence with fresh Jobs admission
-in 12s. Other required stages executed. Metadata preparation preserved every
-registry supplier record; only owned group metadata changed.
+Root metadata plus `toko-tooling.lock` select Tooling 0.34.0, independently of
+Cargo's application graph. All 102 entrypoints and 165 managed files remain.
+Use `make shared-tooling-update` after changing that declaration and
+`make shared-tooling-install` to reinstall the dedicated lock. Keep tooling
+admission before release cleanup, publication and other effects.
 
-Captured graph: Build 0.79.1, Host 0.75.1, Logging 0.24.11, Metrics 0.29.6,
-Platform 0.26.1, Runtime/macros/exact guard 0.20.2, Storage 0.69.0, Testkit 0.93.2,
-Wire 0.17.14 and Endpoint/macros 0.8.1. Root metadata and `toko-tooling.lock`
-select Tooling 0.34.0, with all 102 entrypoints and 165 managed files admitted.
-Source lock SHA-256:
-`b0de1eec40975070144d8706c40859334297aa7db3e26b14a567aff7d0fd1637`.
-Delivered lock SHA-256:
-`73694112de3a0e37150d61c983570fd689dbe98dc0d6079caecbcceb678e7010`.
-No normal-tree dependency update needed deferral or reapplication.
+Completed migration, cleanup, earlier delivery and supplier-deferral details are
+preserved in the [preceding handoff](https://github.com/dragginzgame/ic-scheduling/blob/49a83343c958e0f4a498f115897724c2539bb35b/docs/status/current.md).
+Preserve earlier batches, tags, source pins, supplier branches/stashes, archives
+and recovery evidence. Trimming this summary does not retire any artifact.
 
-### Evidence and retained failure
-
-Durable verification is under
-`.git/release-state/frozen/batch-OGberYFh/verification/`: both registry observations,
-upload/download archives, source verification, plans, timing tables, runtime/cohort
-receipts, remote identities, publication-impact comparison and complete release log.
-Original journals and composed group evidence remain in the batch's
-`repository.git/release-state`. Raw preparation, focused repair and both batch logs
-remain under `target/evidence/deploy-root-tooling-20261108/`.
-
-First capture `batch-TkFUywgM` at
-`bfc4f555620259e9530aa37d0ed192cdb11a5e56` stopped at test-release-tooling before
-version mutation/tag/push/upload. Its publication fixture replaced a snapshot-owned
-registry checker, which the new integrity gate correctly refused. The repaired
-fixture keeps the checker intact and substitutes phase-local HTTP transport;
-focused publication-admission checks and both complete release suites passed.
-Preserve that failed batch, all original logs and earlier source pins/stashes.
-No retained batch, tag, archive or recovery artifact was retired.
-
-Hosted CI runs asynchronously. Timers' Linux job and full-history secret scan
-passed in [run 42507042834](https://github.com/dragginzgame/ic-scheduling/actions/runs/42507042834);
-its macOS jobs were subsequently cancelled by the newer Jobs release push.
-Jobs delivery [run 42509890898](https://github.com/dragginzgame/ic-scheduling/actions/runs/42509890898)
-was in progress when observed. The handoff push may supersede it; pending or
-cancelled jobs are not passes.
-
-The sections below record earlier local preparation and prior deliveries; their
-uncommitted/pending statements are historical and are superseded by this delivery.
-
-## Root-owned Tooling 0.34 migration — 2026-11-08
-
-Local migration explicitly replaces the 0.33 Cargo-dependency scheme. Root
-`[workspace.metadata.toko-tooling]` selects published 0.34.0;
-`toko-tooling.lock` owns the archive SHA-256
-`5ca8ad09ad9359bc4945a4afdaafce301dd5a4b4955cd5c9f5058d7a54ffcf10`.
-The new installer matches committed producer release
-`44b294db78477ac253f83e02ccbdd09a96df8f73` and the downloaded registry package.
-Bootstrap used that checkout with historical `--source` supplied; new payloads
-came from authenticated registry archives. Installation, setup and offline tool
-admission passed; all 102 entrypoints remain and 165 managed files verify.
-
-Removed both the root catalog entry and `ic-timers-pocketic` dev-dependency.
-Cargo metadata contains no tooling package or dependency. No associated machete
-exception or selection-only member existed. Keep `ic-timers-pocketic`: its build
-and runtime qualification code remains required. All eight workspace members,
-default members, group versions and release-group catalogs are unchanged.
-Cargo refreshed the application lock only to remove the tooling package/edge;
-all application supplier records, including Storage 0.69.0, are preserved.
-Application lock SHA-256:
-`b0de1eec40975070144d8706c40859334297aa7db3e26b14a567aff7d0fd1637`.
-
-Change the declared tooling version intentionally, then run
-`make shared-tooling-update`. `make shared-tooling-install` reinstalls the existing
-tooling lock; application Cargo updates no longer select tooling. Keep the root
-metadata, dedicated lock and snapshot receipt together in source control.
-Old 0.33 dependency mentions below are explicitly historical evidence; the shared
-migration guide describes that scheme solely to remove it.
-
-CI checkpoints now include the dedicated lock. Local release prerequisites admit
-tooling before Shared's source-directory cleanup; publish-check and the direct
-publication script also admit tooling before product effects. Saved batch context,
-full product gates and installed-runtime/recovery requirements are unchanged.
-Consumer fixture sources carry the complete receipt and tooling lock; routing-only
-fixtures substitute admission/cleanup explicitly.
-
-Focused checks passed: root declaration/lock/snapshot admission, application-lock
-independence and 18 actual caller rejection routes for absent locks, version drift
-and checksum drift; CI input-drift rejection including the tooling lock; batch
-routing and group recipes; both membership catalogs; dependency inheritance and
-boundaries; release adapters, CI change selection (tooling lock selects full CI),
-formatting failure evidence, formatting, shell lint and documentation links.
-Consumer rejections substitute Cargo/Git/network effects, not tooling admission.
-Evidence: `target/evidence/tooling-root-selection-20261108/`.
-No full product/release suite, commit, push or publication was performed.
-The previous Storage adoption and fixture cleanup remain local and preserved.
-
-## Storage 0.69 adoption — 2026-11-08
-
-Local adoption selects published `ic-storage` 0.69.0 from the root catalog and
-lockfile. Registry archive SHA-256:
-`90b93d6a307e67f7a83ea9de7046bd6a26e405957ada63679997d91024053241`.
-The targeted update replaces only Storage 0.68.11; all other pending supplier
-selections and installed `toko-tooling` 0.33.0 remain unchanged. Locked fetch
-passed. Current lock SHA-256:
-`b48189ee0410d943bab44cf5b107cf1f6104b5d7d1c8d24e6a0dbb3f9d0cc970`.
-
-The qualification Queue and its corruption/composition fixtures use direct Cell
-writes. Removed obsolete collection error arms; typed creation/load refusal,
-consumer-owned `Job::restore`, backing custody and commit-before-effect ordering
-remain. Storage's ordinary operation failures still trap. Storage 0.68 cell
-images need no reset or conversion; existing historical refusal fixtures remain.
-No published Jobs/Timers API, package version or new storage policy changed.
-
-Focused checks passed on Rust 1.99.1: 41 Queue, 13 composition and three stored
-Wire tests, plus strict native/all-target and Wasm consumer Clippy. This is native
-and compilation evidence, not fresh installed IC recovery or release acceptance.
-Evidence is in `target/evidence/storage-adoption-20261108/`.
-The prior tooling migration and fixture cleanup remain local and preserved.
-No commit, push or publication was performed.
-
-## Native fixture cleanup — 2026-11-08
-
-Local cleanup reduces counted Rust LOC from 31,587 to 31,364 (-223), all in
-tests. Tests are 24,240 LOC; library code remains 5,465, examples 752 and tooling
-907. Unclassified remains zero. The comparison uses Shared Tooling 0.33's same
-LOC classification before and after this batch, including its existing migration
-changes and the unchanged pending supplier lock.
-
-Queue scenarios share fresh setup and expected-value constructors; durable reads,
-dispatch effects, memory metering and reopen boundaries remain explicit. Four
-registry scenarios share policy registration. Jobs' malformed-record cases share
-one named table. Composition cases share interrupted/lost-reply reconstruction and
-due/future corruption admission, retaining every semantic case.
-
-The notification/maintenance composition harness remains deliberately separate:
-its failed-commit injection, retained rejection evidence and two-component Storage
-bootstrap are not supplied by the canister Queue. No new test framework, feature,
-dependency or public API was introduced. Production source and group versions
-are unchanged; both ledgers retain pending private-maintenance notes.
-
-Focused native checks passed: 41 Queue tests, 13 composition tests, 43 registry
-tests and 25 Jobs scheduling tests. Strict Clippy passed for the consumer and
-Timers test targets and the Jobs integration target. Evidence and before/after
-LOC reports are in `target/evidence/cleanup-fixtures-20261108/`.
-These checks use the pending supplier graph; they do not establish installed IC
-recovery, macOS qualification or full release readiness. No commit, push or
-publication was performed.
-
-## Historical 0.33 Cargo-dependency migration — superseded by 0.34
-
-The following records the earlier bootstrap and its evidence. Root-owned tooling
-selection replaces it; no Cargo tooling dependency or related update instruction
-remains active.
-
-Local, uncommitted adoption selects crates.io `toko-tooling = "0.33"` in the
-root dependency catalog, inherited only as a dev-dependency by the existing
-private `ic-timers-pocketic` member. Cargo selected 0.33.0 with archive SHA-256
-`4bd31469e2819833bcf120144d250c1b917b570682f7dcfdf02da3d219162e81`.
-No package or release-group versions changed.
-
-Resolved Cargo metadata and `cargo fetch --locked` passed. The installer was
-located through locked offline Cargo metadata and executed from that downloaded
-registry package, with `/home/adam/projects/toko-tooling` supplied only for
-historical Git ownership proof. All 102 recorded entrypoints were retained;
-163 managed files now match the registry receipt. Installation, tool setup and
-offline tool admission passed. Existing supplier lock selections were preserved.
-
-Focused checks passed: snapshot integrity, formatting, documentation links,
-release-command adapters, dependency pins/boundaries, both release-group
-catalogs, actual CI workflow selection and formatting failure evidence. Consumer
-batch commands, CI input-drift rejection and group recipes passed with external
-tool/product effects substituted. The drift fixture now substitutes the new
-tooling admission entrypoint instead of the retired direct verifier call.
-The local LOC caller reports zero unclassified lines. Evidence is under
-`target/evidence/tooling-registry-migration/`.
-
-This maintenance batch has not been committed, pushed or released. Product
-release qualification, installed-runtime coverage, group selection and saved
-batch recovery requirements remain unchanged. The delivery below describes the
-previously published graph, not qualification of the pending supplier refresh.
-
-## Timers 0.41.2 delivered — 2026-11-08
-
-Timers 0.41.2 is tagged, pushed to origin/main and published to crates.io through
-Shared's frozen `batch-3bIH1nRr`. Intent is complete at index 1; the normal branch
-was reconciled through the guarded helper. Do not replay the upload.
-
-- Captured source: `ef8c275ea1aa7f1acb874c643fcb737f0df6a399`.
-- Release commit: `54984adc58e5e3ee0161b057210f538ee14f7168`.
-- Annotated `timers-v0.41.2` object: `4e5bfd4e07401fe4106a3be3453b332b44df5c62`.
-- Archive SHA-256: `1db8ff240ea8f7524cc623389375ea7ad479a3c6d664be56ef9e01e35c9e3d8c`.
-
-Registry metadata and downloaded bytes match the actual upload, clean tagged
-VCS identity and all 59 packaged Rust source files. The version is not yanked.
-Timers and its four private members are 0.41.2. The root index's stale Jobs
-private-package count is corrected to two.
-
-Jobs stays published at 0.34.14. Comparison against its verified published archive
-found identical payload and normalized manifest except VCS provenance; no Jobs
-release was selected. Its private-maintenance notes remain pending at 0.34.15.
-Jobs release commit: `0ba498e484e8d6e8efc98866f21b3eb743a7fd44`;
-tag object: `fe613b57f8e3960ea629936ba6e6697ae852cbb3`;
-archive: `e553cb749e2fded602d016ec6a0dbae52c42132f5c9da49602cd775d693312fc`.
-
-## Qualification and changes
-
-All 36 required release stages passed on Linux/Rust 1.99.1, including early
-strict lint, native/consumer/Wasm/docs checks, both archives, all 35 installed
-Timers runtime cases and policy cohorts/calibrations using PocketIC 16.1.0.
-Metadata projection, source/tag/registry admission and post-bump Cargo archive
-verification passed. Native checks do not establish installed Jobs recovery;
-no fresh Jobs live recovery is claimed for this graph.
-
-Captured supplier graph: Build 0.79.1, Storage 0.68.11, Runtime/macros/guard
-0.20.1, Testkit 0.93.1, Wire 0.17.14 and Endpoint/macros 0.8.1.
-Source lock SHA-256:
-`3d87f45f81241e1098bcc374cc33f7e5f4f4440bc28a0ec73c763820a4dc8ff1`.
-Delivered lock after group metadata projection:
-`f32198714a6efdf2f4d45ab36b6c23b0c7e5fd89e7104ed747c88419a50591eb`.
-
-Shared Tooling 0.31.11 is pinned at
-`6c529e6940a97226cca826726491e03173b08cd2` (158 managed files). Delivery includes
-Cargo-owned formatting/hash admission/LOC reports, one independent full-history
-redacted CI secret scan, authenticated download-cache wiring, the flat group
-roster and bounded Linux fixture reuse with fresh per-group custody.
-There are 32 common CI obligations plus four installed release obligations;
-proven Jobs-only scope requires 18 and omits 18. Other stages still execute.
-
-The [structural audit](../reports/audits/2026/11/08/complexity-duplication/01/report.md)
-remains immutable. Its three findings and the follow-up test cleanup are addressed.
-Rust tests decreased by 593 LOC to 24,463; production stays 5,465, examples 752,
-tooling 907, total 31,587, unclassified zero. Timing/observations/teardown and all
-scenarios remain; snapshot/cadence preconditions and counter projections are shared.
-The reuse regression retains four full-plan attempts and five direct-stage cases.
-Its earlier 206s execute/6s reuse measurements are single-stage observations,
-not a whole-release benchmark. The largest tooling stage still runs normally.
-
-First capture `batch-9PFRX4TP` stopped before version/tag/push/publication because
-the formatting-evidence fixture lacked required workspace metadata and expected
-Rustfmt --all. The consumer fixture now checks an explicit Cargo-owned member;
-focused rejection/order/archive retention and the complete restarted gate pass.
-Preserve that failed batch and its original failure logs.
-
-## Hosted CI and evidence custody
-
-Maintenance source ef8c275 passed hosted Linux and the actual full-history secret
-scan in [run 42482714452](https://github.com/dragginzgame/ic-scheduling/actions/runs/42482714452).
-Its macOS jobs were cancelled by the newer release push. Release/handoff host
-matrices run asynchronously; no fresh macOS code pass is claimed here.
-
-Durable current evidence is under
-`.git/release-state/frozen/batch-3bIH1nRr/verification/timers/`: registry response,
-metadata, upload/download archives, source verification, runtime/cohort receipts,
-remote identities, timing table and complete release log. Group journals and
-version-3 validation receipts remain in the batch's repository.git/release-state.
-Raw logs: target/evidence/deploy-maintenance-20261108/ (both attempts and fixture
-fix), plus earlier target/tmp/cleanup-{three,followup,native-fixtures}/.
-No source pin, batch, tag, stash or artifact was retired.
-
-## Deferred supplier update — not part of this release
-
-Normal-checkout updates during validation were excluded from the frozen graph:
-Platform 0.26.1, Runtime/macros/guard 0.20.2 and Testkit 0.93.2. They remain pending
-and unqualified; do not attribute the release gate to them.
-Preserved branch: `deferred/batch-3bIH1nRr-suppliers`, commit
-`c08c92c20ea413b6f9813d53ec93ba2e63ddb52a`;
-retained stash: `032c4538c774b72e4f32996da5c498e49a3e77e9`.
-Pre-reconciliation lock: `1e8bbedaa8419b6f7bf4d0f8c763d37cac632889996d4898c9681d7c35d11a19`.
-Reapplied lock: `aa20141b6053368ae1ab2505e4f77c559e272ef190face980b2f35c77338a254`.
-All eight local lock/catalog/member versions were checked: Timers remains 0.41.2
-and Jobs 0.34.14. The working lock is intentionally dirty; nothing restored old
-group versions. Reconciliation/deferral identities live beside verification/.
-
-Earlier release custody, supplier branches/stashes and Canic/issue history remain
-in the [preceding handoff](https://github.com/dragginzgame/ic-scheduling/blob/ef8c275ea1aa7f1acb874c643fcb737f0df6a399/docs/status/current.md),
-including batch-3JHG7IaR and its completed Jobs/Timers publications. Preserve them.
-Jobs stays Serde-only and consumer-owned; every restore uses Job::restore and
-uncertain effects remain blocked. Timers retains its sole private IC provider,
-unsafe confinement, exact executor guard and runtime/policy gates. Memory remains
-excluded; sibling source and releases were unchanged.
+Jobs remains Serde-only and consumer-owned; every restoration uses Job::restore
+and uncertain effects stay blocked. Timers retains its sole private IC provider,
+unsafe confinement, exact Runtime 0.20.2 guard and runtime/cohort gates. The retired
+ic-memory remains excluded. Sibling source and releases remain read-only.

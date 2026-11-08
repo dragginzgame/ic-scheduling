@@ -141,7 +141,7 @@ async fn successful_immediate_continuation_runs_again_without_waiting_for_cadenc
     let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
     assert!(update_bool(pic, canister_id, Method::Start).await);
-    update_unit(pic, canister_id, Method::ContinueImmediatelyOnNextWork).await;
+    set_work_decision(pic, canister_id, WorkDecision::ContinueImmediately).await;
 
     let cycles_before_first = pic
         .cycle_balance(canister_id)
@@ -239,7 +239,7 @@ async fn commit_window_ensure_stop_resume_and_large_overdue_time_remain_bounded(
     assert_eq!(resumed.work_completed.total, 1);
     assert!(resumed.next_deadline_ns.is_some());
 
-    update_unit(pic, canister_id, Method::StopOnNextWork).await;
+    set_work_decision(pic, canister_id, WorkDecision::Stop).await;
     advance(pic, Duration::from_secs(1), 16).await;
     let terminal = snapshot(pic, canister_id).await;
     assert_eq!(terminal.completed_work, 2);
@@ -333,9 +333,9 @@ async fn exact_deadline_sleeps_and_registration_replacement_marks_counter_regrow
     let continuation = later + 10_000_000_000;
     // Last request wins; superseded stop/immediate requests cannot leak into
     // this callback or a later one.
-    update_unit(pic, canister_id, Method::StopOnNextWork).await;
-    update_unit(pic, canister_id, Method::ContinueImmediatelyOnNextWork).await;
-    update_deadline(pic, canister_id, Method::ScheduleAtOnNextWork, continuation).await;
+    set_work_decision(pic, canister_id, WorkDecision::Stop).await;
+    set_work_decision(pic, canister_id, WorkDecision::ContinueImmediately).await;
+    set_work_decision(pic, canister_id, WorkDecision::ScheduleAt(continuation)).await;
     update_deadline(pic, canister_id, Method::ScheduleAt, first_deadline).await;
     advance(pic, Duration::ZERO, 16).await;
     let completed = snapshot(pic, canister_id).await;

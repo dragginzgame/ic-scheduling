@@ -4,6 +4,22 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.16] - Unreleased
+
+### 🗑️ Removed
+
+- Retire the interactive queue demo, its launcher, Make targets and dedicated
+  parser/process/live tests. Remove the unused Ctrl+C dependency. Artifact
+  capture, the native management harness and installed recovery tests remain.
+
+### 📦 Dependencies
+
+- Refresh the qualification graph to Storage 0.69.1, Testkit 0.94 and its
+  Platform 0.27 adapter. Use Testkit's inherent install/diagnostics methods;
+  stored images and the published Jobs API remain unchanged.
+- Adopt Build 0.80 and Host Artifacts/FS/Process 0.76 for artifact capture and
+  release metadata; retain the lock-selected CLI setup and admission flow.
+
 ## [0.34.15] - 2026-11-08
 
 ### 📦 Dependencies

@@ -51,11 +51,6 @@ Historical runs and their exact graph boundaries are recorded in the
 [current handoff](status/current.md). Compilation alone is not live acceptance;
 earlier executions do not qualify a changed Storage format.
 
-The tooling fixture binds its Cargo stubs in Make's incoming PATH, including
-direct and recursive demo recipes on macOS GNU Make 3.81. Failed demo commands
-print their retained log and preserve the original exit status. The existing
-recorded-command cases still verify build/admission order and refused effects.
-
 `make test-consumers` aggregates two small application-owned consumers in
 [the integration fixture](../apps/ic-jobs-test-consumer/tests/composition.rs), stored Wire
 conformance and the packaged adapter example on Rust 1.99.1, using the selected

@@ -7,6 +7,22 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.41.4] - Unreleased
+
+### 🧹 Cleanup
+
+- Share successful inactive Once fixture registration. Keep provider effects in
+  runtime tests and outcome/counter/directive matrices with their semantic owners.
+- Replace three private next-work control endpoints with one typed request.
+  Rebuild the unpublished probe and host harness together; callback decision
+  order, one-time consumption and checkpoint bytes remain unchanged.
+
+### 📦 Dependencies
+
+- Adopt Build 0.80, Host Artifacts/FS/Process 0.76 and Testkit 0.94 for native
+  runtime qualification. Use Testkit's inherent installation methods and its
+  Platform 0.27 adapter; the published Timers API and runtime owner are unchanged.
+
 ## [0.41.3] - 2026-11-08
 
 ### 📦 Dependencies

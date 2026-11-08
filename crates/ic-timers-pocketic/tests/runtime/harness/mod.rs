@@ -2,8 +2,7 @@
 
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{
-    CanisterInstallExt, InstallSpec, PocketIcInstance, PocketIcStartupConfig, WireCallError,
-    WireCallSpec, tick_until,
+    InstallSpec, PocketIcInstance, PocketIcStartupConfig, WireCallError, WireCallSpec, tick_until,
 };
 use ic_testkit::pocket_ic::{ClientError, PocketIc, PocketIcBuilder, RejectResponse};
 use ic_timers_test_protocol::rpc::{Method, REQUEST_LIMITS, RESPONSE_LIMITS};

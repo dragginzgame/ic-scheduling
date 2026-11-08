@@ -204,28 +204,8 @@ fn after_completion_recurrence_follows_returned_completion_classification() {
             outcomes.last_outcome(),
             Some(TimerLastOutcome::Completed(completion.outcome()))
         );
-        assert_eq!(outcomes.last_work_count(), Some(completion.work_count()));
-        assert_eq!(
-            outcomes.consecutive_expected_failures(),
-            u64::from(completion.outcome() == crate::TimerCompletionOutcome::RetryableFailure)
-        );
-        assert_eq!(
-            snapshot
-                .observability()
-                .counters()
-                .work_completed()
-                .exact_total()
-                .unwrap(),
-            1
-        );
-        assert_eq!(
-            snapshot.latest_directive(),
-            Some(if invariant {
-                crate::TimerDirectiveSnapshot::Stop
-            } else {
-                crate::TimerDirectiveSnapshot::RecurAfterCompletion
-            })
-        );
+        // Outcome history, failure streaks, counters and directive normalization
+        // have owner-local matrices; this boundary checks real provider effects.
     }
 }
 
