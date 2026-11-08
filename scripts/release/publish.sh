@@ -14,6 +14,7 @@ root="$(cd -P "${root%/*}/../.." && printf '%s/.' "$PWD")"
 root="${root%/.}"
 cd "$root"
 bash "$root/scripts/release/group.sh" validate
+make --no-print-directory -C "$root" shared-tooling-check
 # Capture identity before admission so network observations and linting must
 # authorize the same release. Source admission still precedes metadata reads.
 bash "$root/scripts/ci/check-make-execution.sh"

@@ -112,7 +112,10 @@ is performed by this adoption.
 
 ## Shared release batch contract
 
-The current snapshot is 0.31.11. The batch interface introduced at 0.31.0
+The installed tooling is crates.io `toko-tooling` 0.34.0, selected by root
+workspace metadata and `toko-tooling.lock`, independently of application Cargo.lock.
+Its installed archive checksum is recorded in `.shared-tooling.snapshot`.
+The batch interface introduced at 0.31.0
 remains in use; its receipt schema is independent of the Scheduling group
 validation receipt. Historical release evidence remains source-bound.
 

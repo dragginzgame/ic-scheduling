@@ -4,11 +4,11 @@ set -euo pipefail
 # only their affected caller phases, without replaying installer/hosted suites.
 phases=("$@")
 if [[ $# == 0 ]]; then
-    phases=(candid-boundary fixture-scratch batch-commands cli-admission server-commands workflow-selection demo-commands input-admission artifact-capture ci-admission rust-policy group-recipes)
+    phases=(candid-boundary fixture-scratch batch-commands tooling-admission cli-admission server-commands workflow-selection demo-commands input-admission artifact-capture ci-admission rust-policy group-recipes)
 fi
 for phase in "${phases[@]}"; do
     case "$phase" in
-        candid-boundary|fixture-scratch|batch-commands|cli-admission|server-commands|workflow-selection|demo-commands|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
+        candid-boundary|fixture-scratch|batch-commands|tooling-admission|cli-admission|server-commands|workflow-selection|demo-commands|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
         *) echo "unknown consumer tooling phase: $phase" >&2; exit 2 ;;
     esac
 done
@@ -41,7 +41,7 @@ prepare_phase() {
     cp "$root/scripts/ci/read-cargo-workspace-rust-version.sh" "$fixture/scripts/ci/"
     cp "$root/Cargo.toml" "$root/rust-toolchain.toml" "$fixture/"
     cp "$root/scripts/ci/"{verify-file-checksum,test-canister,fixture-lifecycle}.sh "$fixture/scripts/ci/"
-    cp "$root/Cargo.lock" "$fixture/Cargo.lock"
+    cp "$root/"{Cargo.lock,toko-tooling.lock} "$fixture/"
     export JOBS_CONSUMER_TOOLING_EVENTS="$fixture/events"
     : > "$fixture/events"
 }
@@ -72,6 +72,59 @@ printf '{"target_directory":"%s"}\n' "$JOBS_CONSUMER_WASM_TARGET"
 CARGO
 chmod +x "$fixture/.tools/rust/common/bin/cargo"
 }
+
+phase_tooling_admission() (
+local fixture
+trap - EXIT
+prepare_phase tooling-admission
+cp "$root/.shared-tooling.snapshot" "$fixture/"
+# Exercise this consumer's actual receipt and entrypoints, without registry,
+# compiler or product effects. Copy every receipt-owned file for a valid baseline.
+while IFS=$'\t' read -r kind _ _ path; do
+    [[ "$kind" == file ]] || continue
+    [[ "$path" != */* ]] || mkdir -p "$fixture/${path%/*}"
+    cp -p "$root/$path" "$fixture/$path"
+done < "$root/.shared-tooling.snapshot"
+mkdir -p "$fixture/scripts/release"
+cp "$root/scripts/release/"{group,publish}.sh "$fixture/scripts/release/"
+make --no-print-directory -C "$fixture" shared-tooling-check > "$fixture/admitted.log" 2>&1
+for tool in cargo git curl rustc; do
+    cat > "$fixture/.tools/rust/common/bin/$tool" <<'EFFECT'
+#!/usr/bin/env bash
+printf '%s\n' "${0##*/} $*" >> "$JOBS_CONSUMER_TOOLING_EVENTS"
+exit 49
+EFFECT
+    chmod +x "$fixture/.tools/rust/common/bin/$tool"
+done
+# Application graph damage must not affect the independent tooling selection.
+printf 'unavailable application graph\n' > "$fixture/Cargo.lock"
+PATH="$fixture/.tools/rust/common/bin:$PATH" make --no-print-directory -C "$fixture" shared-tooling-check > "$fixture/independent.log" 2>&1
+[[ ! -s "$fixture/events" ]]
+for invalid in missing-lock version-drift checksum-drift; do
+    cp "$root/"{Cargo.toml,toko-tooling.lock} "$fixture/"
+    case "$invalid" in
+        missing-lock) rm "$fixture/toko-tooling.lock" ;;
+        version-drift)
+            perl -0pi -e 's/(\[workspace\.metadata\.toko-tooling\]\nversion = )"[^"]+"/${1}"0.0.0"/' "$fixture/Cargo.toml" ;;
+        checksum-drift)
+            jq '.checksum = ("0" * 64)' "$fixture/toko-tooling.lock" > "$fixture/changed.lock"
+            mv "$fixture/changed.lock" "$fixture/toko-tooling.lock" ;;
+    esac
+    for target in ci release-patch release-preflight publish publish-check; do
+        status=0
+        PATH="$fixture/.tools/rust/common/bin:$PATH" RELEASE_GROUP="jobs" make --no-print-directory -C "$fixture" "$target" \
+            > "$fixture/$invalid-$target.log" 2>&1 || status=$?
+        [[ "$status" == 2 && ! -s "$fixture/events" ]] || exit 1
+        grep -F 'shared-tooling-check' "$fixture/$invalid-$target.log" > /dev/null
+    done
+    status=0
+    PATH="$fixture/.tools/rust/common/bin:$PATH" RELEASE_GROUP="jobs" bash "$fixture/scripts/release/publish.sh" origin \
+        > "$fixture/$invalid-direct-publish.log" 2>&1 || status=$?
+    [[ "$status" != 0 && ! -s "$fixture/events" ]] || exit 1
+    grep -F 'shared-tooling-check' "$fixture/$invalid-direct-publish.log" > /dev/null
+done
+echo 'Root tooling admission is application-lock independent; actual CI/release/publication callers refuse drift before Cargo, Git or network effects'
+)
 
 phase_cli_admission() (
 local fixture
@@ -472,9 +525,10 @@ cp "$root/scripts/ci/"{run-validation-targets,check-format-tools}.sh "$fixture/s
 cp "$root/scripts/ci/classify-ci-change.pl" "$fixture/scripts/ci/"
 mkdir -p "$fixture/.github/workflows"
 cp "$root/.github/workflows/"{ci,recovery}.yml "$fixture/.github/workflows/"
-cat > "$fixture/scripts/ci/verify-shared-tooling-snapshot.sh" <<'VERIFY'
+cat > "$fixture/scripts/dev/shared-tooling.sh" <<'VERIFY'
 #!/usr/bin/env bash
-exit 0
+# Snapshot admission is substituted here; this phase owns later input drift.
+[[ "$*" == "check --consumer $PWD --manifest .shared-tooling.snapshot" ]]
 VERIFY
 for toolset in host ic rust; do
     cat > "$fixture/scripts/dev/install-$toolset-tools.sh" <<'ADMISSION'
@@ -505,8 +559,9 @@ chmod +x "$fixture/.tools/rust/common/bin/cargo"
 # observation failures, checkpoint files and timing format. Retain this actual
 # Jobs Make/CI wiring proof: changing the lock, CLI selection or demo launcher
 # during admission stops checks before product Cargo effects.
-for input in Cargo.lock scripts/dev/testkit-tool.sh scripts/dev/queue-command.sh ci/docs-only-paths.txt; do
+for input in Cargo.lock toko-tooling.lock scripts/dev/testkit-tool.sh scripts/dev/queue-command.sh ci/docs-only-paths.txt; do
     cp "$root/Cargo.lock" "$fixture/Cargo.lock"
+    cp "$root/toko-tooling.lock" "$fixture/toko-tooling.lock"
     cp "$root/scripts/dev/testkit-tool.sh" "$fixture/scripts/dev/testkit-tool.sh"
     cp "$root/scripts/dev/queue-command.sh" "$fixture/scripts/dev/queue-command.sh"
     cp "$root/ci/docs-only-paths.txt" "$fixture/ci/docs-only-paths.txt"
@@ -683,6 +738,13 @@ phase_batch_commands() (
     unset RELEASE_GROUP RELEASE_BATCH_ACTIVE RELEASE_GROUPS RELEASE_PUBLISH_TARGET
     # Exercise the actual consumer Make includes; lifecycle effects stay with
     # Shared's producer suite. This is routing proof, not frozen-hook qualification.
+    cat > "$fixture/scripts/dev/shared-tooling.sh" <<'ADMISSION'
+#!/usr/bin/env bash
+[[ "${1:-}" == check ]]
+ADMISSION
+    cat > "$fixture/scripts/dev/clean-empty-source-dirs.pl" <<'CLEANUP'
+print "Cleanup substituted for batch routing qualification.\n";
+CLEANUP
     cat > "$fixture/scripts/ci/run-release-batch.pl" <<'RUNNER'
 use strict;
 use warnings;

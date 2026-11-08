@@ -6,8 +6,20 @@ and [coordinated history through 0.33.1](../history.md).
 
 ## [0.34.15] - Unreleased
 
+### 📦 Dependencies
+
+- Adopt Storage 0.69 for the qualification consumer. Use direct Cell writes and
+  retain typed construction/admission errors, checked backing custody and
+  commit-before-effect ordering. Existing Storage 0.68 images need no migration.
+- Refresh the native qualification graph to Testkit 0.93.2 and Platform 0.26.1,
+  retaining the canonical Runtime 0.20.2 owner and exact executor guard.
+
 ### 🛠️ Tooling
 
+- Select Shared Tooling 0.34 through root metadata and a dedicated tooling lock,
+  removing its Cargo dependency. Admit tooling before CI/release/publication
+  effects and detect lock changes during validation. Use `make shared-tooling-update`
+  after changing the declared version; installation remains explicit.
 - Adopt Build 0.79 and Shared Tooling 0.31.11 for artifact capture, release
   metadata, workspace-owned formatting and hashing dependency admission.
 - Cache authenticated tool downloads in hosted checks and scan repository
@@ -20,6 +32,9 @@ and [coordinated history through 0.33.1](../history.md).
 
 ### 🧪 Testing
 
+- Share native Queue setup and expected committed results. Consolidate equivalent
+  restore and delivery-recovery cases while retaining failed-commit, missing
+  receipt, corruption and independent-consumer checks.
 - Share private recovery clock reads and awaited instance cleanup, preserving
   recovery observations and server teardown order.
 

@@ -67,16 +67,7 @@ fn typed_commit_preserves_canonical_snapshot_bytes_and_metadata() {
     drop(queue);
     let (queue, due) = Queue::open(memory, None).unwrap();
     assert_eq!(due, None);
-    assert_eq!(
-        queue.summary().unwrap(),
-        Committed {
-            value: QueueTotals {
-                counter: 1,
-                receipts: 1
-            },
-            next_due_ns: None
-        }
-    );
+    assert_eq!(queue.summary().unwrap(), totals(1, 1, None));
     assert_eq!(queue.outstanding(delivery.job).unwrap(), delivery);
     assert_eq!(queue.inspect(later).unwrap().status, Status::Paused);
 }
@@ -91,8 +82,8 @@ fn retired_snapshot_is_refused_without_replacing_the_cell() {
     ] {
         let bytes = frozen.to_vec();
         let backing = VectorMemory::default();
-        let mut queue = Queue::open(backing.clone(), Some(config())).unwrap().0;
-        queue.cell.set(bytes.clone()).unwrap();
+        let mut queue = fresh_queue(backing.clone());
+        queue.cell.set(bytes.clone());
         drop(queue);
         for initial in [None, Some(config())] {
             assert!(matches!(
@@ -325,7 +316,7 @@ fn storage_068_refuses_previous_cells_without_releasing_effects_or_writing() {
 #[test]
 fn bounded_wire_queue_preserves_full_history_payloads_receipts_and_schedule_shapes() {
     let backing = VectorMemory::default();
-    let mut queue = Queue::open(backing.clone(), Some(config())).unwrap().0;
+    let mut queue = fresh_queue(backing.clone());
     let mut snapshot = queue.load().unwrap();
     snapshot.next_id = u64::MAX;
     snapshot.counter = u64::MAX;
@@ -401,9 +392,7 @@ fn bounded_wire_queue_preserves_full_history_payloads_receipts_and_schedule_shap
 
 #[test]
 fn wire_queue_refuses_wrong_identity_malformed_trailing_and_exhausted_budgets() {
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     queue.create(increment(100)).unwrap();
     let original = queue.cell.get().as_slice().to_vec();
     let mut wrong_identity = original.clone();
@@ -420,8 +409,8 @@ fn wire_queue_refuses_wrong_identity_malformed_trailing_and_exhausted_budgets() 
         assert!(matches!(decode(&bytes), Err(Error::InvalidStorage)));
         if bytes.len() <= MAX_BYTES {
             let memory = VectorMemory::default();
-            let mut damaged = Queue::open(memory.clone(), Some(config())).unwrap().0;
-            damaged.cell.set(bytes.clone()).unwrap();
+            let mut damaged = fresh_queue(memory.clone());
+            damaged.cell.set(bytes.clone());
             assert_eq!(damaged.dispatch(100), Err(Error::InvalidStorage));
             assert_eq!(damaged.cell.get().as_slice(), bytes);
             drop(damaged);

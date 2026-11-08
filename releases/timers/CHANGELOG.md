@@ -7,6 +7,25 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.41.3] - Unreleased
+
+### 📦 Dependencies
+
+- Refresh the packaged Runtime, macros and exact executor-guard lock to 0.20.2,
+  retaining the existing public requirements and timer-provider boundary.
+
+### 🧪 Testing
+
+- Share policy registration setup across native registry scenarios while retaining
+  policy-specific transitions, lifetime checks and callback authority assertions.
+
+### 🛠️ Tooling
+
+- Select Shared Tooling 0.34 through root metadata and a dedicated tooling lock,
+  removing its Cargo dependency. Admit tooling before CI/release/publication
+  effects and detect lock changes during validation. Use `make shared-tooling-update`
+  after changing the declared version; installation remains explicit.
+
 ## [0.41.2] - 2026-11-08
 
 ### 📦 Dependencies

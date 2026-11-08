@@ -126,7 +126,7 @@ fn host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects() -> 
             );
             if reopen == 0 {
                 restored.cancel(JobId(3), 150)?;
-                queue.set(restored.store.bytes)?;
+                queue.set(restored.store.bytes);
                 // Unrelated consumer bytes remain intact after the queue commit.
                 assert_eq!(state.get(), &restored_maintenance.store.bytes);
             }
@@ -165,12 +165,14 @@ fn notification_commit_failure_never_exposes_delivery() -> Result<()> {
 }
 
 #[test]
-fn lost_reply_and_failed_result_commit_reconcile_without_redelivery() -> Result<()> {
-    for failed_result_commit in [false, true] {
+fn interrupted_delivery_and_failed_commits_reconcile_without_redelivery() -> Result<()> {
+    for (delivered, failed_result_commit) in [(false, false), (true, false), (true, true)] {
         let mut sender = Notifications::new()?;
         let mut destination = Destination::default();
         let delivery = sender.dispatch_due(100)?.delivery.unwrap();
-        assert!(destination.deliver(&delivery));
+        if delivered {
+            assert!(destination.deliver(&delivery));
+        }
         if failed_result_commit {
             sender.store.writes_before_failure = Some(0);
             assert!(
@@ -191,6 +193,11 @@ fn lost_reply_and_failed_result_commit_reconcile_without_redelivery() -> Result<
             restored.load()?[0].job.record().state,
             JobState::Uncertain { started_ns: 100 }
         );
+        if !delivered {
+            assert_eq!(restored.dispatch_due(1000)?.delivery, None);
+            assert_eq!(destination.calls, 0);
+            continue;
+        }
         let unresolved = restored.store.bytes.clone();
         restored.store.writes_before_failure = Some(0);
         assert!(
@@ -339,19 +346,7 @@ fn local_maintenance_effect_rolls_back_with_failed_commit_and_skip_avoids_backlo
 }
 
 #[test]
-fn consumers_reject_corrupt_records_before_effects() -> Result<()> {
-    let mut sender = Notifications::new()?;
-    let mut notifications: Vec<NotificationSnapshot> = sender.store.read()?;
-    notifications[0].job.state = JobState::Completed;
-    sender.store.write(&notifications)?;
-    let before = sender.store.bytes.clone();
-    let error = sender.dispatch_due(100).unwrap_err();
-    assert_eq!(
-        error.downcast_ref::<JobError>(),
-        Some(&JobError::InvalidRecord)
-    );
-    assert_eq!(sender.store.bytes, before);
-
+fn maintenance_rejects_corrupt_records_before_effects() -> Result<()> {
     let mut maintenance = Maintenance::new(MissedRunPolicy::Skip)?;
     let mut snapshot: MaintenanceSnapshot = maintenance.store.read()?;
     snapshot.job.state = JobState::Running;
@@ -415,25 +410,6 @@ fn shared_notification_wakeup_preserves_order_and_progress_past_unresolved_work(
 }
 
 #[test]
-fn interruption_before_delivery_keeps_committed_intent_blocked() -> Result<()> {
-    let mut sender = Notifications::new()?;
-    let delivery = sender.dispatch_due(100)?.delivery.unwrap();
-    let mut restored = Notifications::from_bytes(sender.store.bytes);
-    let destination = Destination::default();
-    assert_eq!(restored.dispatch_due(200)?.delivery, None);
-    assert_eq!(restored.outstanding()?, vec![delivery.clone()]);
-    restored.finish(delivery.attempt, 200, Outcome::Uncertain)?;
-    assert!(!restored.reconcile(delivery.attempt, &destination, 201)?);
-    assert_eq!(restored.dispatch_due(1000)?.delivery, None);
-    assert_eq!(destination.calls, 0);
-    assert_eq!(
-        restored.load()?[0].job.record().state,
-        JobState::Uncertain { started_ns: 100 }
-    );
-    Ok(())
-}
-
-#[test]
 fn notification_queue_rejects_reused_identities_and_excess_work() -> Result<()> {
     let mut sender = Notifications::new()?;
     let payload = sender.load()?[0].payload.clone();
@@ -479,18 +455,22 @@ fn notification_queue_rejects_reused_identities_and_excess_work() -> Result<()> 
     assert!(sender.dispatch_due(100).is_err());
     assert_eq!(sender.store.bytes, before);
 
-    // A corrupt future record must also block dispatch of the valid due record.
+    // Both due and future corruption block the whole queue before effects.
     snapshots[3].job =
         Job::new(JobId(4), Schedule::Once { at_ns: 200 }, RetryPolicy::NONE).record();
-    snapshots[3].job.state = JobState::Completed;
-    sender.store.write(&snapshots)?;
-    let before = sender.store.bytes.clone();
-    let error = sender.dispatch_due(100).unwrap_err();
-    assert_eq!(
-        error.downcast_ref::<JobError>(),
-        Some(&JobError::InvalidRecord)
-    );
-    assert_eq!(sender.store.bytes, before);
+    for index in [0, 3] {
+        let valid = snapshots[index].job;
+        snapshots[index].job.state = JobState::Completed;
+        sender.store.write(&snapshots)?;
+        let before = sender.store.bytes.clone();
+        let error = sender.dispatch_due(100).unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<JobError>(),
+            Some(&JobError::InvalidRecord)
+        );
+        assert_eq!(sender.store.bytes, before);
+        snapshots[index].job = valid;
+    }
     Ok(())
 }
 

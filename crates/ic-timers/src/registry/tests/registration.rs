@@ -128,16 +128,7 @@ fn fresh_cancellation_preserves_retained_declarations_and_releases_transients() 
         ] {
             let mut registry = registry();
             let timer = identity("fresh-cancellation");
-            let claim = match policy {
-                TimerPolicy::Once => registry.register_once(timer, lifetime),
-                TimerPolicy::AfterCompletion { cadence } => {
-                    registry.register_after_completion(timer, cadence, lifetime)
-                }
-                TimerPolicy::Watchdog { cadence } => {
-                    registry.register_watchdog(timer, cadence, lifetime)
-                }
-            }
-            .unwrap();
+            let claim = register_policy(&mut registry, timer, policy, lifetime);
             let before = registry.inventory();
             let transition = registry.cancel(&claim).unwrap();
             assert_eq!(transition.effect(), &RegistryEffect::None);

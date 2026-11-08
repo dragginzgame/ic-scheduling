@@ -59,12 +59,10 @@ fn memory_error(error: impl std::fmt::Display) -> Error {
 
 fn cell_error(error: CollectionError) -> Error {
     match error {
-        CollectionError::NotEmpty
-        | CollectionError::Cell(_)
-        | CollectionError::Format
-        | CollectionError::Checksum
-        | CollectionError::Corrupt(_) => Error::InvalidStorage,
-        other => memory_error(other),
+        CollectionError::NotEmpty | CollectionError::Cell(_) | CollectionError::Format => {
+            Error::InvalidStorage
+        }
+        CollectionError::Growth => memory_error(error),
     }
 }
 
@@ -184,7 +182,7 @@ impl<M: Memory> Queue<M> {
         let next_due_ns = snapshot.next_due_ns();
         let bytes = encode(&snapshot)?;
         snapshot.check_collection()?;
-        self.cell.set(bytes).map_err(memory_error)?;
+        self.cell.set(bytes);
         Ok(Committed { value, next_due_ns })
     }
 
@@ -429,7 +427,7 @@ impl<M: Memory> Queue<M> {
         snapshot.index(id)?;
         let mut bytes = encode(&snapshot)?;
         bytes.pop();
-        self.cell.set(bytes).map_err(memory_error)?;
+        self.cell.set(bytes);
         Ok(())
     }
 }

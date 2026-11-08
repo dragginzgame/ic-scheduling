@@ -10,6 +10,8 @@ LOCAL_TOOL_INSTALL_TARGETS := install-ic-tools
 LOCAL_TOOL_CHECK_TARGETS := ic-tools-check
 export PATH := $(CURDIR)/.tools/ic/bin:$(PATH)
 include make/consumer.mk
+# Source cleanup may write before capture; admit tooling before that prerequisite too.
+clean-empty-source-dirs: shared-tooling-check
 # Refuse absent, empty or unknown selections before prerequisites or setup run.
 ifneq ($(filter release-patch release-minor release-major release-resume publish publish-check package,$(MAKECMDGOALS)),)
 ifneq ($(filter release-patch release-minor release-major,$(MAKECMDGOALS)),)
@@ -69,7 +71,7 @@ MINIMUM_RUST = bash scripts/dev/minimum-rust.sh
 RELEASE_METADATA_LOCKFILE ?= $(CURDIR)/Cargo.lock
 RELEASE_METADATA_TOOL = bash scripts/dev/install-rust-tools.sh --package ic-build --lockfile "$(RELEASE_METADATA_LOCKFILE)" --bin ic-build-release-metadata --profile debug --features cli
 VALIDATION_INPUTS := --input Cargo.toml --input Cargo.lock --input rust-toolchain.toml \
-	--input .shared-tooling.snapshot --input Makefile --input scripts/dev/testkit-tool.sh --input scripts/dev/queue-command.sh --input scripts/dev/minimum-rust.sh --input ci/tool-versions.env \
+	--input .shared-tooling.snapshot --input toko-tooling.lock --input Makefile --input scripts/dev/testkit-tool.sh --input scripts/dev/queue-command.sh --input scripts/dev/minimum-rust.sh --input ci/tool-versions.env \
 	--input ci/ic-tools.tsv --input ci/release-delivery.txt --input ci/cargo-dependency-boundaries.json --input ci/candid-boundary.json --input ci/cbor-dependencies.json --input ci/cargo-release-groups.json \
 	--input .github/workflows/ci.yml --input .github/workflows/recovery.yml --input ci/docs-only-paths.txt --input scripts/ci/classify-ci-change.pl \
 	--input ci/release-validation.json --input scripts/release/validation.pl --input scripts/release/verify.sh --input scripts/release/ci.sh \
@@ -346,7 +348,7 @@ package-timers:
 package:
 	+@package="$$(bash scripts/release/group.sh package)" && cargo package -p "$$package" --all-features --locked --offline --allow-dirty
 
-publish-check:
+publish-check: shared-tooling-check
 	+$(MAKE) --no-print-directory clippy
 	+@package="$$(bash scripts/release/group.sh package)" && cargo publish -p "$$package" --all-features --locked --registry crates-io --allow-dirty --dry-run
 

@@ -43,13 +43,7 @@ fn ordinary_cancellation_at_maximum_generation_preserves_lifetime_and_rejects_de
         ] {
             let mut registry = registry();
             let timer = identity("ordinary-cancel-max");
-            let claim = match policy {
-                TimerPolicy::Once => registry.register_once(timer.clone(), lifetime).unwrap(),
-                TimerPolicy::AfterCompletion { cadence } => registry
-                    .register_after_completion(timer.clone(), cadence, lifetime)
-                    .unwrap(),
-                TimerPolicy::Watchdog { .. } => unreachable!("ordinary fixture policies"),
-            };
+            let claim = register_policy(&mut registry, timer.clone(), policy, lifetime);
             let EntryKind::Ordinary { control, .. } =
                 &mut registry.entries.get_mut(&timer).unwrap().kind
             else {
@@ -179,13 +173,7 @@ fn ordinary_terminal_failures_respect_declaration_lifetime() {
                 let completing = subject.starts_with("completion");
                 let mut registry = registry();
                 let timer = identity(subject);
-                let claim = match policy {
-                    TimerPolicy::Once => registry.register_once(timer.clone(), lifetime).unwrap(),
-                    TimerPolicy::AfterCompletion { cadence } => registry
-                        .register_after_completion(timer.clone(), cadence, lifetime)
-                        .unwrap(),
-                    TimerPolicy::Watchdog { .. } => unreachable!("ordinary fixture policies"),
-                };
+                let claim = register_policy(&mut registry, timer.clone(), policy, lifetime);
                 let EntryKind::Ordinary { control, .. } =
                     &mut registry.entries.get_mut(&timer).unwrap().kind
                 else {

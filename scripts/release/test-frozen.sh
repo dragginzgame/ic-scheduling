@@ -5,14 +5,12 @@
 # focused installed checks below exercise the captured consumer sources directly.
 qualify_frozen() (
     set -euo pipefail
-    local suite="$1" root="$2" normal="$1/frozen-normal" bin="$1/frozen-bin"
+    local suite="$1" normal="$1/frozen-normal" bin="$1/frozen-bin"
     local base state batch work delivered group version commit ledger candidate
     local original_lock status before installed_proof=''
     unset RELEASE_BATCH_ACTIVE RELEASE_SOURCE RELEASE_VERSION RELEASE_COMMIT
     unset RELEASE_PREPARATION_SOURCE RELEASE_GROUP PACKAGE
     cp -R "$suite/source" "$normal"
-    cp -R "$root/"{.github,rules,audits,tasks} "$normal/"
-    cp "$root/"{DRAGGINZGAME.md,AGENTS.md} "$normal/"
     if [[ -n "${FROZEN_TEST_LOCKFILE:-}" ]]; then cp "$FROZEN_TEST_LOCKFILE" "$normal/Cargo.lock"; fi
     mkdir -p "$bin" "$suite/frozen-publications"
     export FROZEN_TEST_NORMAL="$normal" FROZEN_TEST_SUITE="$suite"

@@ -126,6 +126,22 @@ fn cadence(nanoseconds: u64) -> TimerCadence {
     TimerCadence::from_nanos(nanoseconds).expect("fixture cadence should be valid")
 }
 
+fn register_policy(
+    registry: &mut TimerRegistry,
+    timer: TimerIdentity,
+    policy: TimerPolicy,
+    lifetime: DeclarationLifetime,
+) -> RegistrationClaim {
+    match policy {
+        TimerPolicy::Once => registry.register_once(timer, lifetime),
+        TimerPolicy::AfterCompletion { cadence } => {
+            registry.register_after_completion(timer, cadence, lifetime)
+        }
+        TimerPolicy::Watchdog { cadence } => registry.register_watchdog(timer, cadence, lifetime),
+    }
+    .unwrap()
+}
+
 fn arm(transition: RegistryTransition) -> (CallbackToken, WakeupArm) {
     match transition.into_effect() {
         RegistryEffect::ArmWakeup { token, arm, .. } => (token.token().clone(), arm),

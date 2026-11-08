@@ -83,7 +83,9 @@ for the complete synchronous operation. Each in-memory entry keeps its job and
 payload together; the scheduler borrows only the jobs through an iterator. Commit
 serializes validated jobs directly and checks collection metadata by borrowing
 entries before replacing stable bytes. Encoded capacity still takes precedence
-over collection errors. Storage's `StableCell::set` persists admitted bytes;
+over collection errors. Storage 0.69's `StableCell::set` persists admitted bytes
+and directly returns the previous value; construction and load retain typed errors.
+Existing Storage 0.68 cell images need no conversion. As before,
 engine/codec failures trap before a committed reply or deadline is returned.
 IC execution supplies rollback. A native mutation panic may leave partial bytes
 and poison the shared owner; discard its runtime and leases rather than retrying

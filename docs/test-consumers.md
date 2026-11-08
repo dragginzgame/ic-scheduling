@@ -13,8 +13,7 @@ requirements without advertising an implemented adapter.
 | Required observation | Existing native reference |
 | --- | --- |
 | Failed intent commit exposes no delivery and preserves committed state | [notification_commit_failure_never_exposes_delivery](../apps/ic-jobs-test-consumer/tests/composition.rs) |
-| Failed result commit and a lost reply reconcile without repeating the effect | [lost_reply_and_failed_result_commit_reconcile_without_redelivery](../apps/ic-jobs-test-consumer/tests/composition.rs) |
-| Restored intent remains blocked even if the effect was never submitted | [interruption_before_delivery_keeps_committed_intent_blocked](../apps/ic-jobs-test-consumer/tests/composition.rs) |
+| Lost replies, failed result commits and interrupted delivery preserve blocked intent until matching evidence permits reconciliation | [interrupted_delivery_and_failed_commits_reconcile_without_redelivery](../apps/ic-jobs-test-consumer/tests/composition.rs) |
 | A known safe retry keeps its payload and rejects old replies | [known_rejection_retries_same_payload_and_rejects_old_reply](../apps/ic-jobs-test-consumer/tests/composition.rs) |
 | Reconciliation requires exact payload/effect evidence | [reconciliation_requires_matching_payload_and_prefers_success_evidence](../apps/ic-jobs-test-consumer/tests/composition.rs) |
 | Invalid records refuse before effects, including records not currently due | [notification queue admission](../apps/ic-jobs-test-consumer/tests/composition.rs) and [actual Queue admission](../apps/ic-jobs-test-consumer/src/queue/tests/admission.rs) |
@@ -65,7 +64,11 @@ focused consumer work; run the example separately with
 `bash scripts/dev/minimum-rust.sh cargo run -p ic-jobs --example persisted_job --locked --offline`.
 Configured CI also runs this target on the three supported hosts. The harness
 and its support modules belong to the unpublished consumer package; the core
-package has no Storage or Timers development dependency. `check-consumer` selects
+package has no Storage or Timers development dependency. The small composition
+consumers retain failed-commit injection, durable rejection evidence and two
+components sharing one host allocation bootstrap. The canister Queue has a
+different receipt protocol and commit boundary; it does not replace those proofs.
+`check-consumer` selects
 the consumer library and frozen API-wire tests separately, avoiding a second
 composition or stored Wire run. Installation, management and delivery use Wire
 with consumer-owned identities and limits. Typed Wire attributes retain each

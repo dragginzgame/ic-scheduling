@@ -42,16 +42,7 @@ fn running_work_boundaries_reject_unstarted_stale_and_completed_tokens() {
     ] {
         let mut registry = registry();
         let timer = identity("running-work-authority");
-        let claim = match policy {
-            TimerPolicy::Once => registry.register_once(timer, DeclarationLifetime::Retained),
-            TimerPolicy::AfterCompletion { cadence } => {
-                registry.register_after_completion(timer, cadence, DeclarationLifetime::Retained)
-            }
-            TimerPolicy::Watchdog { cadence } => {
-                registry.register_watchdog(timer, cadence, DeclarationLifetime::Retained)
-            }
-        }
-        .unwrap();
+        let claim = register_policy(&mut registry, timer, policy, DeclarationLifetime::Retained);
         let watchdog = matches!(policy, TimerPolicy::Watchdog { .. });
         let token = if watchdog {
             let (scheduler, _) = arm(registry.ensure_recurring(&claim, 0).unwrap());

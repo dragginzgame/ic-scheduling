@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn paused_rescheduled_work_retains_identity_payload_and_deadline_across_reopen() {
     let memory = VectorMemory::default();
-    let mut queue = Queue::open(memory.clone(), Some(config())).unwrap().0;
+    let mut queue = fresh_queue(memory.clone());
     let id = queue
         .create(Create {
             timing: Timing::FixedRate {
@@ -17,29 +17,11 @@ fn paused_rescheduled_work_retains_identity_payload_and_deadline_across_reopen()
         .value;
     assert_eq!(queue.dispatch(100).unwrap().value.work, 1);
     queue.pause(id, 101).unwrap();
-    assert_eq!(
-        queue.summary().unwrap(),
-        Committed {
-            value: QueueTotals {
-                counter: 2,
-                receipts: 0
-            },
-            next_due_ns: None
-        }
-    );
+    assert_eq!(queue.summary().unwrap(), totals(2, 0, None));
     drop(queue);
     let mut queue = Queue::open(memory.clone(), None).unwrap().0;
     assert_eq!(queue.inspect(id).unwrap().status, Status::Paused);
-    assert_eq!(
-        queue.dispatch(400).unwrap(),
-        Committed {
-            value: DispatchBatch {
-                deliveries: vec![],
-                work: 0
-            },
-            next_due_ns: None
-        }
-    );
+    assert_eq!(queue.dispatch(400).unwrap(), local_batch(0, None));
     queue
         .reschedule(
             id,
@@ -61,16 +43,7 @@ fn paused_rescheduled_work_retains_identity_payload_and_deadline_across_reopen()
     assert_eq!(queue.summary().unwrap().next_due_ns, Some(500));
     assert_eq!(queue.dispatch(499).unwrap().value.work, 0);
     assert_eq!(queue.dispatch(500).unwrap().value.work, 1);
-    assert_eq!(
-        queue.summary().unwrap(),
-        Committed {
-            value: QueueTotals {
-                counter: 4,
-                receipts: 0
-            },
-            next_due_ns: Some(510)
-        }
-    );
+    assert_eq!(queue.summary().unwrap(), totals(4, 0, Some(510)));
     assert_eq!(
         (
             queue.inspect(id).unwrap().sequence,
@@ -88,7 +61,7 @@ fn paused_rescheduled_work_retains_identity_payload_and_deadline_across_reopen()
 fn resume_preserves_overdue_policy_and_bounded_batch() {
     for catch_up in [false, true] {
         let memory = VectorMemory::default();
-        let mut queue = Queue::open(memory.clone(), Some(config())).unwrap().0;
+        let mut queue = fresh_queue(memory.clone());
         let id = queue
             .create(Create {
                 timing: Timing::FixedRate {
@@ -118,9 +91,7 @@ fn resume_preserves_overdue_policy_and_bounded_batch() {
 
 #[test]
 fn refused_management_preserves_stable_bytes_and_blocked_delivery() {
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     let id = queue
         .create(Create {
             timing: Timing::Once(0),
@@ -170,7 +141,7 @@ fn refused_management_preserves_stable_bytes_and_blocked_delivery() {
 #[test]
 fn retained_queue_restores_payloads_deadlines_cancellation_and_id_authority() {
     let memory = VectorMemory::default();
-    let mut queue = Queue::open(memory.clone(), Some(config())).unwrap().0;
+    let mut queue = fresh_queue(memory.clone());
     queue.authorize(manager()).unwrap();
     assert_eq!(
         queue.authorize(Principal::anonymous()),
@@ -183,16 +154,7 @@ fn retained_queue_restores_payloads_deadlines_cancellation_and_id_authority() {
     drop(queue);
     let mut restored = Queue::open(memory.clone(), None).unwrap().0;
     assert_eq!(restored.page(None, 8).unwrap(), expected);
-    assert_eq!(
-        restored.summary().unwrap(),
-        Committed {
-            value: QueueTotals {
-                counter: 0,
-                receipts: 0
-            },
-            next_due_ns: Some(200)
-        }
-    );
+    assert_eq!(restored.summary().unwrap(), totals(0, 0, Some(200)));
     assert_eq!(restored.page(Some(first), 1).unwrap()[0].id, second);
     assert_eq!(restored.page(None, 0), Err(Error::InvalidInput));
     assert_eq!(restored.create(increment(300)).unwrap().value, 3);
@@ -202,9 +164,7 @@ fn retained_queue_restores_payloads_deadlines_cancellation_and_id_authority() {
 
 #[test]
 fn skip_and_refused_mutations_preserve_committed_bytes() {
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     let id = queue
         .create(Create {
             timing: Timing::FixedRate {
@@ -241,9 +201,7 @@ fn skip_and_refused_mutations_preserve_committed_bytes() {
 
 #[test]
 fn raw_invalid_intervals_preserve_storage_and_unknown_job_precedence() {
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     let id = queue.create(increment(100)).unwrap().value;
     for timing in [
         Timing::FixedRate {
@@ -291,7 +249,7 @@ fn raw_invalid_intervals_preserve_storage_and_unknown_job_precedence() {
 #[test]
 fn mutation_replies_return_the_fresh_committed_deadline() {
     let memory = VectorMemory::default();
-    let mut queue = Queue::open(memory.clone(), Some(config())).unwrap().0;
+    let mut queue = fresh_queue(memory.clone());
     let later = queue.create(increment(300)).unwrap();
     assert_eq!(later.next_due_ns, Some(300));
     let early = queue.create(increment(100)).unwrap();
@@ -306,16 +264,7 @@ fn mutation_replies_return_the_fresh_committed_deadline() {
     );
     assert_eq!(queue.resume(early.value, 0).unwrap().next_due_ns, Some(100));
     assert_eq!(queue.cancel(early.value, 0).unwrap().next_due_ns, Some(200));
-    assert_eq!(
-        queue.dispatch(200).unwrap(),
-        Committed {
-            value: DispatchBatch {
-                deliveries: vec![],
-                work: 1
-            },
-            next_due_ns: None
-        }
-    );
+    assert_eq!(queue.dispatch(200).unwrap(), local_batch(1, None));
     let external = queue
         .create(Create {
             timing: Timing::Once(250),

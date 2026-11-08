@@ -5,7 +5,7 @@ fn running_and_uncertain_survive_reopen_and_require_exact_receipts() {
     for uncertain in [false, true] {
         let backing = VectorMemory::default();
         let destination = Principal::self_authenticating(b"receiver");
-        let mut sender = Queue::open(backing.clone(), Some(config())).unwrap().0;
+        let mut sender = fresh_queue(backing.clone());
         let id = sender
             .create(Create {
                 timing: Timing::Once(100),
@@ -28,16 +28,7 @@ fn running_and_uncertain_survive_reopen_and_require_exact_receipts() {
         let mut sender = Queue::open(backing, None).unwrap().0;
         assert_eq!(sender.outstanding(id).unwrap(), *delivery);
         assert!(sender.cancel(id, 102).is_err());
-        assert_eq!(
-            sender.dispatch(102).unwrap(),
-            Committed {
-                value: DispatchBatch {
-                    deliveries: vec![],
-                    work: 0
-                },
-                next_due_ns: None
-            }
-        );
+        assert_eq!(sender.dispatch(102).unwrap(), local_batch(0, None));
         let receiver_memory = VectorMemory::default();
         let mut receiver = Queue::open(
             receiver_memory.clone(),
@@ -97,9 +88,7 @@ fn completion_refusals_preserve_input_receipt_and_clock_precedence() {
             JobState::Failed,
             JobState::Cancelled,
         ] {
-            let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-                .unwrap()
-                .0;
+            let mut queue = fresh_queue(VectorMemory::default());
             let id = queue
                 .create(Create {
                     timing: Timing::Once(10),
@@ -239,7 +228,7 @@ fn receipt_extraction_and_duplicate_acknowledgement_leave_storage_unchanged() {
     assert_eq!(queue.summary().unwrap().value.receipts, 3);
     // Both receiver entrypoints reject an unauthenticated caller before decoding
     // corrupt private storage, and neither refusal replaces the retained bytes.
-    queue.cell.set(b"not a snapshot".to_vec()).unwrap();
+    queue.cell.set(b"not a snapshot".to_vec());
     let corrupt = queue.cell.get().as_slice().to_vec();
     assert_eq!(
         queue.receive(Principal::anonymous(), receipts[0].clone()),

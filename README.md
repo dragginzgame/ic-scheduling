@@ -198,7 +198,7 @@ dependency defaults
 cannot remove those required edges. Jobs-owned RPCs continue to use Wire.
 The policy lives in Make; Shared owns the [observation/checker](docs/cargo-graph-checks.md).
 The [snapshot manifest](.shared-tooling.snapshot) records the reviewed Shared
-Tooling version, source revision and payload digests. No sibling checkout is a
+Tooling version, registry archive checksum and payload digests. No sibling checkout is a
 runtime prerequisite.
 
 Remaining enforcement limits: these are explicit known-name policies for the
@@ -270,10 +270,19 @@ do not establish IC message rollback or upgrade recovery.
 ## Repository setup
 
 The reviewed [Shared Tooling snapshot](.shared-tooling.snapshot) records the
-canonical revision, entrypoints and payload digests. The
+installed registry archive checksum, entrypoints and payload digests. The
 [common Make interface](docs/make-interface.md) owns setup, formatting, hooks,
 snapshot checks and release routing. Jobs retains product checks, dependency
 selections and release/publication policy.
+
+Root `[workspace.metadata.toko-tooling]` selects exact version `0.34.0`.
+[`toko-tooling.lock`](toko-tooling.lock) owns the registry archive checksum;
+tooling is independent of application Cargo.lock and has no Cargo dependency.
+After changing the declared version, use `make shared-tooling-update` to resolve
+and install it. `make shared-tooling-install` reinstalls the existing tooling
+lock. CI, release and publication entrypoints require `make shared-tooling-check`
+to admit the declaration, lock and installed files before effects. See the
+[installation guide](docs/consuming-snapshots.md#cargo-selection-and-installation).
 
 Run `make install-tools` to prepare common host/Rust tools and Jobs' selected IC
 bundle for optimized qualification; `make tools-check` admits them offline.

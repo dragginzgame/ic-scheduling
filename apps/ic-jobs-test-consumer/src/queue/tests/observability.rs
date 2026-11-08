@@ -2,9 +2,7 @@ use super::*;
 
 #[test]
 fn job_metrics_count_committed_local_success_and_permanent_failure() {
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     for amount in [u64::MAX, 1] {
         queue
             .create(Create {
@@ -32,9 +30,7 @@ fn job_metrics_count_committed_local_success_and_permanent_failure() {
 
 #[test]
 fn job_metrics_separate_retries_uncertainty_and_receipt_reconciliation() {
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     queue
         .create(Create {
             timing: Timing::Once(100),
@@ -97,7 +93,7 @@ fn job_metrics_separate_retries_uncertainty_and_receipt_reconciliation() {
 #[test]
 fn job_metrics_exclude_rejected_mutations_and_leave_running_intent_blocked() {
     let backing = VectorMemory::default();
-    let mut queue = Queue::open(backing.clone(), Some(config())).unwrap().0;
+    let mut queue = fresh_queue(backing.clone());
     queue
         .create(Create {
             timing: Timing::AfterCompletion {
@@ -116,7 +112,7 @@ fn job_metrics_exclude_rejected_mutations_and_leave_running_intent_blocked() {
     assert_eq!(log_page(&queue), logs);
 
     let backing = VectorMemory::default();
-    let mut queue = Queue::open(backing.clone(), Some(config())).unwrap().0;
+    let mut queue = fresh_queue(backing.clone());
     queue
         .create(Create {
             timing: Timing::AfterCompletion {
@@ -149,9 +145,7 @@ fn job_metrics_exclude_rejected_mutations_and_leave_running_intent_blocked() {
 
 #[test]
 fn job_metrics_authorize_reset_and_never_change_durable_authority() {
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     queue
         .create(Create {
             timing: Timing::Once(100),
@@ -196,9 +190,7 @@ fn log_page(queue: &Queue<VectorMemory>) -> crate::api::JobLogPage {
 #[test]
 fn job_logs_capture_committed_outcomes_without_payloads_or_read_side_effects() {
     use crate::api::JobLogLevel;
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     queue
         .create(Create {
             timing: Timing::Once(1_000_000_000),
@@ -268,9 +260,7 @@ fn job_logs_capture_committed_outcomes_without_payloads_or_read_side_effects() {
 #[test]
 fn job_logs_bound_retention_and_filtered_scans_with_continuable_empty_pages() {
     use crate::api::JobLogLevel;
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     queue
         .create(Create {
             timing: Timing::FixedRate {
@@ -314,9 +304,7 @@ fn job_logs_bound_retention_and_filtered_scans_with_continuable_empty_pages() {
 
 #[test]
 fn job_log_refusals_are_counted_without_refusing_committed_work() {
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     queue.create(increment(0)).unwrap();
     queue.dispatch(2_000_000_000).unwrap();
     let admitted = log_page(&queue);

@@ -24,6 +24,28 @@ fn increment(at: u64) -> Create {
     }
 }
 
+fn fresh_queue<M: MemoryBacking>(memory: M) -> Queue<M> {
+    Queue::open(memory, Some(config())).unwrap().0
+}
+
+// Expected values only: dispatch and durable reads remain explicit at each assertion.
+fn totals(counter: u64, receipts: u64, next_due_ns: Option<u64>) -> Committed<QueueTotals> {
+    Committed {
+        value: QueueTotals { counter, receipts },
+        next_due_ns,
+    }
+}
+
+fn local_batch(work: u64, next_due_ns: Option<u64>) -> Committed<DispatchBatch> {
+    Committed {
+        value: DispatchBatch {
+            deliveries: vec![],
+            work,
+        },
+        next_due_ns,
+    }
+}
+
 // Inspect raw records for corruption fixtures without skipping production restore.
 fn stored_records(bytes: &[u8]) -> Result<Snapshot, ic_wire::Error> {
     native::decode(
@@ -37,7 +59,7 @@ fn stored_records(bytes: &[u8]) -> Result<Snapshot, ic_wire::Error> {
 fn mutate_records(queue: &mut Queue<VectorMemory>, mutate: impl FnOnce(&mut Snapshot)) {
     let mut snapshot = stored_records(queue.cell.get().as_slice()).unwrap();
     mutate(&mut snapshot);
-    queue.cell.set(encode(&snapshot).unwrap()).unwrap();
+    queue.cell.set(encode(&snapshot).unwrap());
 }
 
 // These fixtures start with a fresh Once job. Build only valid states through

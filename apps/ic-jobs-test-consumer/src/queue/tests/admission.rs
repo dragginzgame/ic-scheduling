@@ -2,9 +2,7 @@ use super::*;
 
 #[test]
 fn unrelated_corruption_precedes_completion_lookup_receipt_and_clock_checks() {
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     queue
         .create(Create {
             timing: Timing::Once(10),
@@ -41,7 +39,7 @@ fn unrelated_corruption_precedes_completion_lookup_receipt_and_clock_checks() {
 #[test]
 fn corrupt_future_record_blocks_due_dispatch_and_recovery_without_reset() {
     let backing = VectorMemory::default();
-    let mut queue = Queue::open(backing.clone(), Some(config())).unwrap().0;
+    let mut queue = fresh_queue(backing.clone());
     queue.create(increment(100)).unwrap();
     let corrupt = queue.create(increment(200)).unwrap().value;
     queue.corrupt_record(corrupt).unwrap();
@@ -73,7 +71,7 @@ fn assert_invalid_record_blocks_queue(
 fn contradictory_dispatch_counts_block_the_complete_stable_queue() {
     for uncertain in [false, true] {
         let backing = VectorMemory::default();
-        let mut queue = Queue::open(backing.clone(), Some(config())).unwrap().0;
+        let mut queue = fresh_queue(backing.clone());
         let corrupt = queue
             .create(Create {
                 timing: Timing::Once(100),
@@ -149,7 +147,7 @@ fn retained_timing_corruption_blocks_the_complete_stable_queue() {
         running_recurring,
     ] {
         let backing = VectorMemory::default();
-        let mut queue = Queue::open(backing.clone(), Some(config())).unwrap().0;
+        let mut queue = fresh_queue(backing.clone());
         let healthy = queue.create(increment(100)).unwrap().value;
         queue.create(increment(200)).unwrap();
         mutate_records(&mut queue, |snapshot| snapshot.jobs[1].job = corrupt);
@@ -160,9 +158,7 @@ fn retained_timing_corruption_blocks_the_complete_stable_queue() {
 #[test]
 fn snapshot_admission_preserves_restore_and_collection_error_order() {
     type Mutation = fn(&mut Snapshot);
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     queue.create(increment(100)).unwrap();
     queue.create(increment(200)).unwrap();
     let bytes = queue.cell.get().as_slice().to_vec();
@@ -225,9 +221,7 @@ fn snapshot_admission_preserves_restore_and_collection_error_order() {
 
 #[test]
 fn view_projection_preserves_large_ids_and_refuses_unadmitted_identities() {
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     queue
         .create(Create {
             timing: Timing::Once(100),
@@ -253,7 +247,7 @@ fn view_projection_preserves_large_ids_and_refuses_unadmitted_identities() {
     for invalid_id in [u128::from(u64::MAX), u128::from(u64::MAX) + 1, u128::MAX] {
         snapshot.jobs[0].job.id = JobId(invalid_id);
         let bytes = encode(&snapshot).unwrap();
-        queue.cell.set(bytes.clone()).unwrap();
+        queue.cell.set(bytes.clone());
         assert_eq!(queue.inspect(id), Err(Error::InvalidStorage));
         assert_eq!(queue.page(None, 8), Err(Error::InvalidStorage));
         assert_eq!(queue.outstanding(id), Err(Error::InvalidStorage));
@@ -264,9 +258,7 @@ fn view_projection_preserves_large_ids_and_refuses_unadmitted_identities() {
 #[test]
 fn typed_commit_refuses_invalid_collection_metadata_without_changing_bytes() {
     type Mutation = fn(&mut Snapshot<Job>, &Delivery);
-    let mut queue = Queue::open(VectorMemory::default(), Some(config()))
-        .unwrap()
-        .0;
+    let mut queue = fresh_queue(VectorMemory::default());
     queue.create(increment(100)).unwrap();
     let receipt = Delivery {
         job: 1,
@@ -347,12 +339,12 @@ fn typed_commit_refuses_invalid_collection_metadata_without_changing_bytes() {
 #[test]
 fn oversized_retained_cell_is_refused_without_replacing_its_payload() {
     let backing = VectorMemory::default();
-    let queue = Queue::open(backing.clone(), Some(config())).unwrap().0;
+    let queue = fresh_queue(backing.clone());
     drop(queue);
     // Load with a larger fixture ceiling; the consumer's normal recovery limit
     // must still refuse the retained oversized payload before allocation.
     let mut oversized = retained_cell(backing.clone(), MAX_BYTES + 1);
-    oversized.set(vec![b'x'; MAX_BYTES + 1]).unwrap();
+    oversized.set(vec![b'x'; MAX_BYTES + 1]);
     drop(oversized);
     let memory = queue_memory(backing.clone()).unwrap();
     let mut before = vec![0; ic_storage::STABLE_CELL_HEADER_SIZE + MAX_BYTES + 1];

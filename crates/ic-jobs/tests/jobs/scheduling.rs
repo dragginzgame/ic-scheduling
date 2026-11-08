@@ -444,31 +444,21 @@ fn sequence_exhaustion_cannot_reuse_attempt_identity() {
 
 #[test]
 fn corrupt_decoded_configuration_and_state_are_rejected() {
-    let record = once().record();
-    let mut exhausted = record;
-    exhausted.attempts = 5;
-    assert_eq!(
-        Job::restore(exhausted).unwrap_err(),
-        JobError::InvalidRecord
-    );
-    let mut fake_active = record;
-    fake_active.state = JobState::Running;
-    assert_eq!(
-        Job::restore(fake_active).unwrap_err(),
-        JobError::InvalidRecord
-    );
-    let mut invalid_deadline = record;
-    invalid_deadline.state = JobState::Pending { due_ns: 99 };
-    assert_eq!(
-        Job::restore(invalid_deadline).unwrap_err(),
-        JobError::InvalidRecord
-    );
-    let mut fake_completion = record;
-    fake_completion.state = JobState::Completed;
-    assert_eq!(
-        Job::restore(fake_completion).unwrap_err(),
-        JobError::InvalidRecord
-    );
+    for (name, attempts, state) in [
+        ("exhausted budget", 5, JobState::Pending { due_ns: 100 }),
+        ("unstarted active work", 0, JobState::Running),
+        ("earlier deadline", 0, JobState::Pending { due_ns: 99 }),
+        ("unstarted completion", 0, JobState::Completed),
+    ] {
+        let mut record = once().record();
+        record.attempts = attempts;
+        record.state = state;
+        assert_eq!(
+            Job::restore(record).unwrap_err(),
+            JobError::InvalidRecord,
+            "{name}"
+        );
+    }
 }
 
 #[test]

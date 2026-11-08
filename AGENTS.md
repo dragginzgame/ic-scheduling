@@ -1,7 +1,11 @@
 # IC Scheduling agent instructions
 
 Apply the reviewed [Dragginzgame baseline](DRAGGINZGAME.md) first.
-Its exact revision is recorded in [.shared-tooling.snapshot](.shared-tooling.snapshot).
+Root `[workspace.metadata.toko-tooling]` selects the exact tooling release.
+[`toko-tooling.lock`](toko-tooling.lock) owns its archive checksum independently
+of application dependencies; [.shared-tooling.snapshot](.shared-tooling.snapshot)
+records the installed files. Use `make shared-tooling-update` after changing the
+declared version; `make shared-tooling-install` reinstalls the existing lock.
 This file is the local overlay. Read [the current handoff](docs/status/current.md).
 
 - Scope is this workspace; other sibling repositories remain read-only.

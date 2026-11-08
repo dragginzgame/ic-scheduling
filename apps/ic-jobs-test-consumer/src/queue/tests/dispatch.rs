@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn local_effects_and_bounded_overdue_work_commit_together() {
     let memory = VectorMemory::default();
-    let mut queue = Queue::open(memory.clone(), Some(config())).unwrap().0;
+    let mut queue = fresh_queue(memory.clone());
     let id = queue
         .create(Create {
             timing: Timing::FixedRate {
@@ -15,40 +15,13 @@ fn local_effects_and_bounded_overdue_work_commit_together() {
         })
         .unwrap()
         .value;
-    assert_eq!(
-        queue.dispatch(125).unwrap(),
-        Committed {
-            value: DispatchBatch {
-                deliveries: vec![],
-                work: 2
-            },
-            next_due_ns: Some(120)
-        }
-    );
-    assert_eq!(
-        queue.summary().unwrap(),
-        Committed {
-            value: QueueTotals {
-                counter: 4,
-                receipts: 0
-            },
-            next_due_ns: Some(120)
-        }
-    );
+    assert_eq!(queue.dispatch(125).unwrap(), local_batch(2, Some(120)));
+    assert_eq!(queue.summary().unwrap(), totals(4, 0, Some(120)));
     drop(queue);
     let mut queue = Queue::open(memory, None).unwrap().0;
     assert_eq!(queue.inspect(id).unwrap().occurrence, 2);
     queue.dispatch(125).unwrap();
-    assert_eq!(
-        queue.summary().unwrap(),
-        Committed {
-            value: QueueTotals {
-                counter: 6,
-                receipts: 0
-            },
-            next_due_ns: Some(130)
-        }
-    );
+    assert_eq!(queue.summary().unwrap(), totals(6, 0, Some(130)));
     queue.cancel(id, 125).unwrap();
     assert_eq!(queue.summary().unwrap().next_due_ns, None);
 }
@@ -57,18 +30,9 @@ fn local_effects_and_bounded_overdue_work_commit_together() {
 fn known_local_failure_is_terminal_and_preserves_bounded_batch_progress() {
     for failed_first in [false, true] {
         let memory = VectorMemory::default();
-        let mut queue = Queue::open(memory.clone(), Some(config())).unwrap().0;
+        let mut queue = fresh_queue(memory.clone());
         queue.create(increment(0)).unwrap();
-        assert_eq!(
-            queue.dispatch(0).unwrap(),
-            Committed {
-                value: DispatchBatch {
-                    deliveries: vec![],
-                    work: 1
-                },
-                next_due_ns: None
-            }
-        );
+        assert_eq!(queue.dispatch(0).unwrap(), local_batch(1, None));
 
         let failed = Create {
             timing: Timing::FixedRate {
@@ -92,26 +56,8 @@ fn known_local_failure_is_terminal_and_preserves_bounded_batch_progress() {
             (queue.create(failed).unwrap().value, healthy)
         };
         let remaining = queue.create(increment(100)).unwrap().value;
-        assert_eq!(
-            queue.dispatch(100).unwrap(),
-            Committed {
-                value: DispatchBatch {
-                    deliveries: vec![],
-                    work: 2
-                },
-                next_due_ns: Some(100)
-            }
-        );
-        assert_eq!(
-            queue.summary().unwrap(),
-            Committed {
-                value: QueueTotals {
-                    counter: 3,
-                    receipts: 0
-                },
-                next_due_ns: Some(100)
-            }
-        );
+        assert_eq!(queue.dispatch(100).unwrap(), local_batch(2, Some(100)));
+        assert_eq!(queue.summary().unwrap(), totals(3, 0, Some(100)));
         assert_eq!(queue.inspect(failed).unwrap().status, Status::Failed);
         assert_eq!(queue.inspect(healthy).unwrap().status, Status::Completed);
         assert_eq!(
@@ -125,47 +71,11 @@ fn known_local_failure_is_terminal_and_preserves_bounded_batch_progress() {
         drop(queue);
         let mut restored = Queue::open(memory, None).unwrap().0;
         assert_eq!(restored.inspect(failed).unwrap(), failed_record);
-        assert_eq!(
-            restored.dispatch(100).unwrap(),
-            Committed {
-                value: DispatchBatch {
-                    deliveries: vec![],
-                    work: 1
-                },
-                next_due_ns: None
-            }
-        );
-        assert_eq!(
-            restored.summary().unwrap(),
-            Committed {
-                value: QueueTotals {
-                    counter: 4,
-                    receipts: 0
-                },
-                next_due_ns: None
-            }
-        );
+        assert_eq!(restored.dispatch(100).unwrap(), local_batch(1, None));
+        assert_eq!(restored.summary().unwrap(), totals(4, 0, None));
         assert_eq!(restored.inspect(failed).unwrap(), failed_record);
-        assert_eq!(
-            restored.dispatch(200).unwrap(),
-            Committed {
-                value: DispatchBatch {
-                    deliveries: vec![],
-                    work: 0
-                },
-                next_due_ns: None
-            }
-        );
-        assert_eq!(
-            restored.summary().unwrap(),
-            Committed {
-                value: QueueTotals {
-                    counter: 4,
-                    receipts: 0
-                },
-                next_due_ns: None
-            }
-        );
+        assert_eq!(restored.dispatch(200).unwrap(), local_batch(0, None));
+        assert_eq!(restored.summary().unwrap(), totals(4, 0, None));
     }
 }
 
@@ -180,7 +90,7 @@ fn idle_dispatch_validates_the_complete_snapshot_without_stable_writes() {
         Some((JobState::Completed, 100)),
     ] {
         let memory = MeteredMemory::new(VectorMemory::default());
-        let mut queue = Queue::open(memory.clone(), Some(config())).unwrap().0;
+        let mut queue = fresh_queue(memory.clone());
         let id = state.map(|_| queue.create(increment(100)).unwrap().value);
         let mut loaded = queue.load().unwrap();
         if let Some((target, at_ns)) = state {
@@ -192,13 +102,7 @@ fn idle_dispatch_validates_the_complete_snapshot_without_stable_writes() {
         memory.reset();
         assert_eq!(
             queue.dispatch(99).unwrap(),
-            Committed {
-                value: DispatchBatch {
-                    deliveries: vec![],
-                    work: 0
-                },
-                next_due_ns: expected_due
-            },
+            local_batch(0, expected_due),
             "state {state:?}"
         );
         assert!(!memory.counts().overflowed);
@@ -216,19 +120,10 @@ fn idle_dispatch_validates_the_complete_snapshot_without_stable_writes() {
     }
     // Real due work still writes its metadata and local effect together.
     let memory = MeteredMemory::new(VectorMemory::default());
-    let mut queue = Queue::open(memory.clone(), Some(config())).unwrap().0;
+    let mut queue = fresh_queue(memory.clone());
     queue.create(increment(100)).unwrap();
     memory.reset();
-    assert_eq!(
-        queue.dispatch(100).unwrap(),
-        Committed {
-            value: DispatchBatch {
-                deliveries: vec![],
-                work: 1
-            },
-            next_due_ns: None
-        }
-    );
+    assert_eq!(queue.dispatch(100).unwrap(), local_batch(1, None));
     assert!(!memory.counts().overflowed);
     assert!(memory.counts().writes > 0);
     assert_eq!(queue.summary().unwrap().value.counter, 1);
