@@ -33,11 +33,11 @@ ic-jobs-test-consumer = { path = "apps/ic-jobs-test-consumer", version = "0.34.1
 
 # Timers
 # Changelog : releases/timers/CHANGELOG.md
-ic-timers = { path = "crates/ic-timers", version = "0.41.3" }
-ic-timers-pocketic = { path = "crates/ic-timers-pocketic", version = "0.41.3" }
-ic-timers-runtime-probe = { path = "crates/ic-timers-runtime-probe", version = "0.41.3" }
-ic-timers-size-probe = { path = "crates/ic-timers-size-probe", version = "0.41.3" }
-ic-timers-test-protocol = { path = "crates/ic-timers-test-protocol", version = "0.41.3" }
+ic-timers = { path = "crates/ic-timers", version = "0.41.4" }
+ic-timers-pocketic = { path = "crates/ic-timers-pocketic", version = "0.41.4" }
+ic-timers-runtime-probe = { path = "crates/ic-timers-runtime-probe", version = "0.41.4" }
+ic-timers-size-probe = { path = "crates/ic-timers-size-probe", version = "0.41.4" }
+ic-timers-test-protocol = { path = "crates/ic-timers-test-protocol", version = "0.41.4" }
 
 # Production dependencies
 # Metrics and Serde also serve qualification consumers.
