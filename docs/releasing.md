@@ -168,6 +168,11 @@ retrying. These commands do not bump versions, commit, tag or delete artifacts.
 
 ## Focused fixtures
 
+For publication caller changes, select
+`bash scripts/release/test-tooling.sh publication-admission`. It checks both groups
+with real tooling integrity and local Git/tag admission, substituting registry
+transport and Cargo effects without changing snapshot-owned helpers.
+
 `make test-release-tooling` exercises both actual consumer adapters in disposable
 Git repositories and bare remotes. It checks exact plans/commits, unrelated
 versions/requirements/ledgers, manifest/lock rollback, group-tag delivery, retained

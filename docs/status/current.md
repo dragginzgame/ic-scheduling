@@ -14,6 +14,15 @@ Planning evidence is under `target/evidence/deploy-root-tooling-20261108/`.
 The complete release plans and installed checks have not yet run for this source;
 the published releases recorded below keep their original evidence identities.
 
+First capture `batch-TkFUywgM` at
+`bfc4f555620259e9530aa37d0ed192cdb11a5e56` stopped at test-release-tooling before
+version mutation/tag/push/upload. The publication fixture replaced a snapshot-owned
+registry checker, so the new publish-check integrity prerequisite correctly refused
+it. The fixture now keeps that checker intact and substitutes HTTP transport in
+a phase-local PATH. A focused publication-admission selection exercises both groups
+without replaying metadata/recovery setup. Preserve the failed batch and its logs;
+release execution must capture the repaired source as a new batch.
+
 ## Root-owned Tooling 0.34 migration — 2026-11-08
 
 Local migration explicitly replaces the 0.33 Cargo-dependency scheme. Root

@@ -32,6 +32,8 @@ and [coordinated history through 0.33.1](../history.md).
 
 ### 🧪 Testing
 
+- Qualify publication callers with intact authenticated tooling, substituting
+  registry transport while retaining real source and tag admission.
 - Share native Queue setup and expected committed results. Consolidate equivalent
   restore and delivery-recovery cases while retaining failed-commit, missing
   receipt, corruption and independent-consumer checks.

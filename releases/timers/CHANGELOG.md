@@ -16,6 +16,8 @@ entry alone does not establish publication.
 
 ### 🧪 Testing
 
+- Qualify publication callers with intact authenticated tooling, substituting
+  registry transport while retaining real source and tag admission.
 - Share policy registration setup across native registry scenarios while retaining
   policy-specific transitions, lifetime checks and callback authority assertions.
 

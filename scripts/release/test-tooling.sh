@@ -2,7 +2,7 @@
 # shellcheck disable=SC2030,SC2031 # Each qualification phase owns its subshell environment; only asserted files cross phases.
 set -euo pipefail
 fixture_mode="${1:-all}"
-case "$fixture_mode" in all|retention|metadata|delivery|recovery|publication|frozen) ;; *) exit 2 ;; esac
+case "$fixture_mode" in all|retention|metadata|delivery|recovery|publication|publication-admission|frozen) ;; *) exit 2 ;; esac
 root="$(cd -P "${BASH_SOURCE[0]%/*}/../.." && pwd -P)"
 export PATH="$root/.tools/host/bin:$PATH"
 # shellcheck source=scripts/ci/fixture-scratch.sh
@@ -16,7 +16,7 @@ export GROUP_TEST_REAL_MAKE GROUP_TEST_REAL_EDITOR GROUP_TEST_REAL_CARGO
 GROUP_TEST_REAL_MAKE="$(command -v make)"
 GROUP_TEST_REAL_CARGO="$(command -v cargo)"
 GROUP_TEST_REAL_EDITOR="${CARGO_RELEASE_METADATA_EDITOR:-}"
-if [[ -z "$GROUP_TEST_REAL_EDITOR" && "$fixture_mode" != frozen ]]; then
+if [[ -z "$GROUP_TEST_REAL_EDITOR" && "$fixture_mode" != frozen && "$fixture_mode" != publication-admission ]]; then
     GROUP_TEST_REAL_EDITOR="$(make --silent --no-print-directory -C "$root" release-tools-check)"
 fi
 mkdir "$fixture_suite/source" "$fixture_suite/bin"
@@ -151,17 +151,18 @@ resume_release() (
 
 check_publication() (
     local suite="$1" selected="$2" other_group="$3" candidate="$4" package="$5"
-    # Registry observation is substituted; real Git/tag/source admission stays active.
-    cat > scripts/ci/check-crates-io-version.sh <<'REGISTRY'
+    # Substitute transport, keeping the real checker and snapshot bytes intact.
+    local registry_bin="$suite/$selected-registry-bin"
+    mkdir -p "$registry_bin"
+    cat > "$registry_bin/curl" <<'REGISTRY'
 #!/usr/bin/env bash
-exit "${GROUP_TEST_REGISTRY_STATUS:-1}"
+[[ "${@: -1}" == "https://crates.io/api/v1/crates/ic-$RELEASE_GROUP/$RELEASE_VERSION" ]] || exit 49
+case "${GROUP_TEST_REGISTRY_STATUS:-1}" in
+    0) printf 200 ;; 1) printf 404 ;; 2) printf 503 ;; *) exit 49 ;;
+esac
 REGISTRY
-    git add -- scripts/ci/check-crates-io-version.sh
-    git commit -qm 'fixture registry observation'
-    # Move fixture-only tag to the fixture observation source.
-    git tag -d "$selected-v$candidate" > /dev/null
-    git tag -a "$selected-v$candidate" -m fixture
-    git push -q origin main "+refs/tags/$selected-v$candidate"
+    chmod +x "$registry_bin/curl"
+    export PATH="$registry_bin:$PATH"
     if GROUP_TEST_REGISTRY_STATUS=2 bash scripts/release/check-publication.sh origin > "$suite/$selected-unknown-registry.log" 2>&1; then exit 1; fi
     if RELEASE_GROUP="$other_group" bash scripts/release/check-publication.sh origin > "$suite/$selected-wrong-publication.log" 2>&1; then exit 1; fi
     touch unexpected-source
@@ -239,6 +240,15 @@ qualify_group() (
     git config core.hooksPath /dev/null
     git add -- .; git commit -qm baseline
     git tag -a "$selected-v$previous" -m 'Qualified fixture release boundary'
+    if [[ "$mode" == publication-admission ]]; then
+        export RELEASE_VERSION="$previous"
+        git init -q --bare "$suite/$selected-remote.git"
+        git remote add origin "$suite/$selected-remote.git"
+        git push -q origin main "refs/tags/$selected-v$previous"
+        check_publication "$suite" "$selected" "$other_group" "$previous" "$package"
+        echo "$selected publication caller passed (real tooling/Git/tag admission; substitute transport and Cargo uploads)"
+        exit 0
+    fi
     printf '# Fixture ledger\n\n## [%s] - Unreleased\n\n### 🩹 Fixed\n\n- Fixture group preparation.\n' "$candidate" > "$ledger"
     git add -- "$ledger"; git commit -qm 'Pending group notes'
     base="$(git rev-parse HEAD)"
@@ -292,7 +302,7 @@ qualify_group() (
     printf '%s group %s passed (scope=%s; real Cargo metadata/editor/Git/plan receipts; product checks, setup and uploads substituted)\n' "$selected" "$mode" "$validation_scope"
 )
 
-check_refusals "$fixture_suite"
+if [[ "$fixture_mode" != publication-admission ]]; then check_refusals "$fixture_suite"; fi
 for selected in jobs timers; do
     qualify_group "$fixture_suite" "$selected" "$fixture_mode"
 done
