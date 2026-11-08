@@ -16,6 +16,7 @@ and [coordinated history through 0.33.1](../history.md).
   unchanged validation-fixture evidence separately for each release group, with
   ordinary execution for unsupported configurations. Exercise invalidation at
   the stage boundary while retaining full-plan cross-group and recovery tests.
+  Align formatting-failure evidence with Cargo-owned member selection.
 
 ### 🧪 Testing
 

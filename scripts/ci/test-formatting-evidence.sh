@@ -59,7 +59,9 @@ attempts=("$gate_temp/"*)
 # in this disposable checkout. A sorter failure must stop the later rustfmt call.
 # Force every pass for this caller/evidence proof; metadata/reuse cases stay Shared-owned.
 consumer="$fixture/jobs"
-mkdir -p "$consumer/.tools/rust/common/bin"
+mkdir -p "$consumer/.tools/rust/common/bin" "$consumer/src"
+printf '[package]\nname = "formatting-fixture"\nversion = "0.0.0"\nedition = "2024"\n' > "$consumer/Cargo.toml"
+printf 'pub fn fixture() {}\n' > "$consumer/src/lib.rs"
 bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$consumer" make/consumer.mk
 cp "$root/Makefile" "$consumer/"
 cp -R "$root/ci" "$consumer/"
@@ -71,6 +73,13 @@ set -euo pipefail
 [[ "$CARGO_NET_OFFLINE" == true && "$RUSTUP_AUTO_INSTALL" == 0 ]] || exit 1
 perl "$JOBSERVER_PROBE"
 case "$*" in
+    'metadata --locked --offline --no-deps --format-version 1')
+        perl -MJSON::PP -MCwd=getcwd -MEncode=decode -e '
+            $root=decode("UTF-8",getcwd());
+            print encode_json({workspace_root=>$root,workspace_members=>["fixture"],
+                packages=>[{id=>"fixture",name=>"formatting-fixture",manifest_path=>"$root/Cargo.toml",
+                    targets=>[{src_path=>"$root/src/lib.rs"}]}],target_directory=>"$root/target"});'
+        exit 0 ;;
     'sort --version') echo "cargo-sort ${FORMAT_EVIDENCE_VERSION:?}"; exit 0 ;;
     'fmt --version') exit 0 ;;
 esac
@@ -81,7 +90,7 @@ case "$*" in
         if [[ "${FORMAT_EVIDENCE_FAIL:-}" == sort ]]; then
             echo sorter-error >&2; exit 23
         fi ;;
-    'fmt --all -- --check') echo successful-rustfmt-detail ;;
+    'fmt --package formatting-fixture -- --check') echo successful-rustfmt-detail ;;
     *) exit 45 ;;
 esac
 CARGO
@@ -112,7 +121,7 @@ grep -Fx retained-sorter-diff "$sorter_log" > /dev/null
 : > "$FORMAT_EVIDENCE_EVENTS"
 RUNNER_TEMP="$fixture/temp" make --no-print-directory "${parallel[@]}" -C "$consumer" \
     fmt-check FORMAT_CARGO=formatting-fixture-cargo FORMAT_RUST_ARGS=--no-cache > "$fixture/make-success"
-printf 'sort --workspace --grouped --check\nfmt --all -- --check\n' > "$fixture/expected-events"
+printf 'sort --workspace --grouped --check\nfmt --package formatting-fixture -- --check\n' > "$fixture/expected-events"
 cmp "$fixture/expected-events" "$FORMAT_EVIDENCE_EVENTS"
 printf 'Manifest sorting [.]... ok\nRust formatting [.]... ok\n' > "$fixture/expected"
 sed -E 's/ \([0-9]+[.][0-9]+s\)$//' "$fixture/make-success" > "$fixture/normalized-success"

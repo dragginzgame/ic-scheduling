@@ -42,6 +42,12 @@ A later normal-tree refresh to compatible Build 0.79.1 / Storage 0.68.11 is reta
 for the captured gate; earlier focused evidence below does not qualify that graph.
 Publication-impact evidence: target/evidence/deploy-maintenance-20261108/.
 No public API or retained format changed; delivery has not completed yet.
+First capture `batch-9PFRX4TP` stopped at the consumer formatting-evidence fixture
+before metadata/tag/push/publication. Its Cargo stub lacked mandatory workspace
+metadata and still expected Rustfmt `--all`. The consumer fixture now admits its
+one explicit member and checks member-scoped formatting; focused failure/order/
+archive-retention proof and ShellCheck pass. Preserve the failed batch and logs
+under target/evidence/deploy-maintenance-20261108/; delivery restarts from the fix.
 
 ## Focused qualification and evidence
 
