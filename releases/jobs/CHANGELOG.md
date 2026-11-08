@@ -4,7 +4,7 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
-## [0.34.14]
+## [0.34.14] - 2026-11-08
 
 ### 🧹 Cleanup
 
