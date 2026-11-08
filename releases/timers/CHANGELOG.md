@@ -7,6 +7,25 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.41.1]
+
+### 🧹 Cleanup
+
+- Centralize ordinary completion state changes, scheduling observations and
+  registration capture retention. Consolidate stale-delivery accounting while
+  preserving command precedence, cleanup ordering and Watchdog recovery behavior.
+
+### 🧪 Testing
+
+- Adopt Testkit 0.93 for native installed qualification, using its client-owned
+  CBOR failure categories and Platform 0.25 codecs. Public Timers APIs, Runtime
+  selection, request budgets and server cleanup are unchanged.
+- Share capture, reconciliation and freezing fixtures, use typed scenario
+  commands and select Tokio's current-thread runtime for native qualification.
+- Replace mutually exclusive ordinary probe flags with a terminal-reason enum
+  under a fresh private Wire method identity. Rebuild probes and host decoders
+  together; upgrade checkpoint bytes and public Timers APIs remain unchanged.
+
 ## [0.41.0] - 2026-11-07
 
 ### ⚠️ Breaking

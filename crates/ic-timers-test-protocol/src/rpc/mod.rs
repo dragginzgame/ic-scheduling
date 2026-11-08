@@ -116,7 +116,8 @@ methods! {
     MemorySamplingOverhead = 19 => "memory_sampling_overhead",
     Observe = 20 => "observe",
     OrdinaryGate = 21 => "ordinary_gate",
-    OrdinaryObservation = 22 => "ordinary_observation",
+    // The enum observation layout replaces the retired four-boolean layout (22).
+    OrdinaryObservation = 65 => "ordinary_observation",
     PressureAndStart = 23 => "pressure_and_start",
     PressureObservation = 24 => "pressure_observation",
     PressureReply = 25 => "pressure_reply",

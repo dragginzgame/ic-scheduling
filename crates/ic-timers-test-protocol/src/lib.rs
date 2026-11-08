@@ -1,5 +1,7 @@
 //! Wire records shared by unpublished canister probes and their native decoder.
 //! This package owns no timer state, runtime authority or platform sampling.
+//! Rebuild private probes and host decoders together: ordinary termination uses
+//! an enum and a fresh method identity. Upgrade checkpoint field order is retained.
 
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +11,7 @@ pub mod rpc;
 mod tests;
 
 /// Stable field order for the runtime probe's existing upgrade checkpoint.
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub struct RuntimeCheckpoint {
     pub desired_scheduled: bool,
     pub secondary_desired_scheduled: bool,
@@ -66,6 +68,16 @@ pub struct ProbeSnapshot {
     pub secondary_completed_work: u64,
 }
 
+/// Mutually exclusive terminal reasons reported by ordinary recovery subjects.
+/// Reported terminal reasons are mutually exclusive; other states have none.
+#[derive(Serialize, Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+pub enum OrdinaryTermination {
+    Abandoned,
+    Stopped,
+    Cancelled,
+    InvariantFailure,
+}
+
 /// Ordinary callback suspension, abandonment and capture-release observations.
 #[derive(Serialize, Debug, Default, Deserialize)]
 pub struct OrdinaryObservation {
@@ -80,11 +92,8 @@ pub struct OrdinaryObservation {
     pub next_deadline_ns: Option<u64>,
     pub work_started: CounterObservation,
     pub work_completed: CounterObservation,
-    pub abandoned: bool,
-    pub stopped: bool,
-    pub cancelled: bool,
+    pub termination: Option<OrdinaryTermination>,
     pub cancellations: CounterObservation,
-    pub invariant_failure: bool,
     pub armed: bool,
     pub unacknowledged: CounterObservation,
     pub instruction_samples: u64,

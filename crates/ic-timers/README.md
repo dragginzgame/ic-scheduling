@@ -535,7 +535,7 @@ Consumers exchanging Timers 0.41's public measurement types with a direct
 Metrics dependency select Metrics 0.29. Canister entrypoints select Runtime's `cdk`
 feature; canonical identities come from Types 0.18. The qualification consumer
 selects Storage 0.68, Wire Core 0.17 and Endpoint 0.8. The native harness selects
-Testkit 0.92, which owns the PocketIC client at `ic_testkit::pocket_ic`; no separate
+Testkit 0.93, which owns the PocketIC client at `ic_testkit::pocket_ic`; no separate
 client dependency is needed. Managed startup supplies the client's explicit server
 endpoint and retains server custody. No retired Testkit Native or Memory crate is used.
 

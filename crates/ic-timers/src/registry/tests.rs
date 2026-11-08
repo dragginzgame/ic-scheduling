@@ -1,7 +1,8 @@
 use super::*;
 use crate::{
-    TimerLastOutcome, TimerRegistrationStatus, TimerRuntimeStateSnapshot, WatchdogAttemptStatus,
-    WatchdogDecision, WatchdogRuntimeStateSnapshot, schedule::OrdinaryDirective,
+    TimerCompletionOutcome, TimerLastOutcome, TimerRegistrationStatus, TimerRuntimeStateSnapshot,
+    WatchdogAttemptStatus, WatchdogDecision, WatchdogRuntimeStateSnapshot,
+    schedule::OrdinaryDirective,
 };
 use std::time::Duration;
 

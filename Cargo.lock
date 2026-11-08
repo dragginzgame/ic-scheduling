@@ -903,9 +903,9 @@ checksum = "7aa1b95a894d02d797929104bbbd0998fc1e69f3b45eb2342deaa0c69d769723"
 
 [[package]]
 name = "ic-platform"
-version = "0.24.0"
+version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f2bafc5da7b457cb0efdb622151e74c3367740d26eb8892f72be2c9b4683c53"
+checksum = "76bc9d6ea3bf2d8c274541aa482c0b47f43177b7d3a6bfe2555531080bfb0100"
 dependencies = [
  "candid",
  "ic-certification",
@@ -967,9 +967,9 @@ dependencies = [
 
 [[package]]
 name = "ic-storage"
-version = "0.68.7"
+version = "0.68.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "473af01505cd385baf2cb019059a88143497275de268fc5ef924b63761ebdb02"
+checksum = "75238990dee8aeecede9bcf3c115a280ec3d96f411f33c3fda8800211d1c8280"
 dependencies = [
  "ic-platform-runtime",
  "ic-wire",
@@ -979,9 +979,9 @@ dependencies = [
 
 [[package]]
 name = "ic-testkit"
-version = "0.92.0"
+version = "0.93.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a45ed18109c81668ab742d2c3ed9f762331730be294ebaa6682ba28b4fa1113"
+checksum = "be8a613d17037c20953015fc85bdd46c4291799d97e93ab924c9e89ddd185e6b"
 dependencies = [
  "base64",
  "candid",

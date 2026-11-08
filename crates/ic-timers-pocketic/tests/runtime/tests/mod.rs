@@ -9,8 +9,8 @@ use ic_timers_test_protocol::rpc::{
     Method, OrdinaryPolicy, ProbeLifetime, ProbePolicy, SchedulerReconcileMode,
 };
 use ic_timers_test_protocol::{
-    ChurnObservation, DispatchBatchObservation, OrdinaryObservation, ProbeMemorySummary,
-    ProbeSnapshot, TimerProbeSnapshot,
+    ChurnObservation, DispatchBatchObservation, OrdinaryObservation, OrdinaryTermination,
+    ProbeMemorySummary, ProbeSnapshot, TimerProbeSnapshot,
 };
 use std::{env, fs, path::PathBuf, time::Duration};
 
@@ -28,6 +28,33 @@ async fn installed_probe() -> (PocketIcInstance<PocketIc>, ExternalPrincipal) {
     let owned = fresh_pocket_ic().await;
     let canister_id = install_probe(owned.instance(), probe_wasm()).await;
     (owned, canister_id)
+}
+
+// Observe funding before making work due: management calls must not consume
+// the scheduler/work gap that the caller is about to qualify.
+struct FreezingBudget {
+    balance: u128,
+    seconds: u64,
+    reserve: u128,
+    module_hash: Option<Vec<u8>>,
+}
+
+async fn freezing_budget(pic: &PocketIc, canister_id: ExternalPrincipal) -> FreezingBudget {
+    let status = pic.canister_status(canister_id, None).await.unwrap();
+    let balance = pic
+        .cycle_balance(canister_id)
+        .await
+        .expect("read canister cycles");
+    let idle_per_day: u128 = status.idle_cycles_burned_per_day.0.try_into().unwrap();
+    assert!(idle_per_day > 0);
+    let seconds = u64::try_from((balance * 4 * 86_400).div_ceil(idle_per_day))
+        .expect("fixture freezing threshold fits u64");
+    FreezingBudget {
+        balance,
+        seconds,
+        reserve: idle_per_day * u128::from(seconds) / 86_400,
+        module_hash: status.module_hash,
+    }
 }
 
 async fn freeze_for_five_minutes(

@@ -107,7 +107,14 @@ fn completion_arms_the_supplied_deadline() {
         let mut control = TimerControl::default();
         let generation = arm(&mut control, 100);
         assert!(control.begin(generation));
-        assert_eq!(control.arm_deadline(deadline_ns), Ok(()));
+        let result = crate::OnceRunResult::new(
+            crate::TimerCompletion::no_work(),
+            crate::OnceDecision::ScheduleAt(deadline_ns),
+        );
+        assert!(matches!(
+            control.complete(result.into(), 100, None),
+            Ok(OrdinaryCompletion::Schedule { .. })
+        ));
         assert_eq!(
             control.registration,
             TimerRegistration::Scheduled { deadline_ns }
@@ -121,7 +128,12 @@ fn completion_without_a_successor_stops_running_work() {
     let mut control = TimerControl::default();
     let generation = arm(&mut control, 100);
     assert!(control.begin(generation));
-    assert!(!control.terminate(InactiveReason::Stopped));
+    let result =
+        crate::OnceRunResult::new(crate::TimerCompletion::no_work(), crate::OnceDecision::Stop);
+    assert!(matches!(
+        control.complete(result.into(), 100, None),
+        Ok(OrdinaryCompletion::Stop(InactiveReason::Stopped))
+    ));
     assert_eq!(
         control.registration,
         TimerRegistration::Inactive {

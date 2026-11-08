@@ -1,9 +1,6 @@
 mod snapshot;
 
-use snapshot::{
-    Entry, MAX_BYTES, MAX_JOBS, Snapshot, check_entry, check_receipts, decode, delivery_valid,
-    encode, task_valid,
-};
+use snapshot::{Entry, MAX_BYTES, MAX_JOBS, Snapshot, decode, delivery_valid, encode, task_valid};
 
 use std::num::NonZeroU64;
 
@@ -186,19 +183,7 @@ impl<M: Memory> Queue<M> {
     fn commit<T>(&mut self, snapshot: Snapshot<Job>, value: T) -> Result<Committed<T>, Error> {
         let next_due_ns = snapshot.next_due_ns();
         let bytes = encode(&snapshot)?;
-        // Records came from validated Jobs and maintained public transitions.
-        // Check collection invariants without serializing and restoring them again.
-        snapshot.check_header()?;
-        let mut previous = 0;
-        for entry in &snapshot.jobs {
-            check_entry(
-                entry.job.record().id,
-                &entry.task,
-                snapshot.next_id,
-                &mut previous,
-            )?;
-        }
-        check_receipts(&snapshot.receipts)?;
+        snapshot.check_collection()?;
         self.cell.set(bytes).map_err(memory_error)?;
         Ok(Committed { value, next_due_ns })
     }

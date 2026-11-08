@@ -1,5 +1,7 @@
 mod faults;
+mod registration_fixture;
 use faults::ProviderFault;
+use registration_fixture::ReconciliationSlot;
 
 use super::effects::{apply_effect, bind_provider_handle, clear_entry_provider_handles};
 use super::*;

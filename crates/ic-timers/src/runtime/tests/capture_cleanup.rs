@@ -202,76 +202,6 @@ fn repeated_reconciliation_releases_unused_factory_before_applying_control() {
     slot.take().unwrap().unregister().unwrap();
 }
 
-enum ReconciliationSlot {
-    Once(Option<OnceRegistration>),
-    AfterCompletion(Option<AfterCompletionRegistration>),
-    Watchdog(Option<WatchdogRegistration>),
-}
-
-impl ReconciliationSlot {
-    const fn new(policy: TestPolicy) -> Self {
-        match policy {
-            TestPolicy::Once => Self::Once(None),
-            TestPolicy::AfterCompletion => Self::AfterCompletion(None),
-            TestPolicy::Watchdog => Self::Watchdog(None),
-        }
-    }
-
-    fn claim(&self) -> Option<&RegistrationClaim> {
-        match self {
-            Self::Once(slot) => slot.as_ref().map(|registration| &registration.claim),
-            Self::AfterCompletion(slot) => slot.as_ref().map(|registration| &registration.claim),
-            Self::Watchdog(slot) => slot.as_ref().map(|registration| &registration.claim),
-        }
-    }
-
-    fn reconcile(
-        &mut self,
-        timer: &TimerIdentity,
-        cadence: TimerCadence,
-        scheduled: bool,
-        captured: Option<RemovalCapture>,
-        calls: Rc<Cell<u64>>,
-    ) -> Result<(), TimerError> {
-        let record = move || {
-            std::hint::black_box(&captured);
-            calls.set(calls.get() + 1);
-        };
-        match self {
-            Self::Once(slot) => reconcile_once(
-                slot,
-                timer,
-                scheduled.then_some(TimerSchedule::After(Duration::from_nanos(
-                    cadence.as_nanos(),
-                ))),
-                stopping_once(record),
-            ),
-            Self::AfterCompletion(slot) => reconcile_after_completion(
-                slot,
-                timer,
-                cadence,
-                if scheduled {
-                    TimerReconcileState::Scheduled
-                } else {
-                    TimerReconcileState::Inactive
-                },
-                stopping_after_completion(record),
-            ),
-            Self::Watchdog(slot) => reconcile_watchdog(
-                slot,
-                timer,
-                cadence,
-                if scheduled {
-                    WatchdogReconcileState::Scheduled
-                } else {
-                    WatchdogReconcileState::Inactive
-                },
-                stopping_watchdog(record),
-            ),
-        }
-    }
-}
-
 #[test]
 fn failed_first_reconciliation_retires_all_policies_before_retry() {
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -328,7 +258,7 @@ fn failed_first_reconciliation_retires_all_policies_before_retry() {
                 &timer,
                 TimerCadence::from_nanos(5).unwrap(),
                 true,
-                None,
+                (),
                 Rc::clone(&retry_calls),
             )
             .unwrap();
@@ -393,7 +323,7 @@ fn later_reconciliation_deadline_error_preserves_existing_inactive_authority() {
         )
         .unwrap();
         let before = timer_snapshot(&timer).unwrap();
-        let result = slot.reconcile(&timer, cadence, true, None, Rc::new(Cell::new(0)));
+        let result = slot.reconcile(&timer, cadence, true, (), Rc::new(Cell::new(0)));
         assert!(matches!(
             result,
             Err(TimerError::Schedule(ScheduleError::DeadlineOverflow))
@@ -431,7 +361,7 @@ fn later_reconciliation_provider_error_retains_original_callback_for_retry() {
         .unwrap();
         let original_id = timer_snapshot(&timer).unwrap().unwrap().registration_id();
         ProviderFault::BINDING.inject();
-        let result = slot.reconcile(&timer, cadence, true, None, Rc::clone(&ignored_calls));
+        let result = slot.reconcile(&timer, cadence, true, (), Rc::clone(&ignored_calls));
         assert!(matches!(result, Err(TimerError::OwnershipInvariant)));
         assert!(slot.claim().is_some());
         assert!(!dropped.get());
@@ -444,7 +374,7 @@ fn later_reconciliation_provider_error_retains_original_callback_for_retry() {
             }
         );
         assert_eq!(timer_count(), 0);
-        slot.reconcile(&timer, cadence, true, None, Rc::clone(&ignored_calls))
+        slot.reconcile(&timer, cadence, true, (), Rc::clone(&ignored_calls))
             .unwrap();
         set_time(15);
         while run_next_due() {}

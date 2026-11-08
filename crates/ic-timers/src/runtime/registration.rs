@@ -46,12 +46,10 @@ where
     Fut: Future<Output = OnceRunResult> + 'static,
 {
     let callback = erase_ordinary_callback(callback, OnceContext::new, OrdinaryRunResult::from);
-    let claim = register_initial(start, |registry, lifetime| {
-        registry.register_once_with_callback(identity, lifetime, Rc::clone(&callback))
-    });
-    // Release factory captures only after initial registry/provider cleanup.
-    drop(callback);
-    Ok(OnceRegistration { claim: claim? })
+    register_initial(callback, start, |registry, lifetime, callback| {
+        registry.register_once_with_callback(identity, lifetime, callback)
+    })
+    .map(|claim| OnceRegistration { claim })
 }
 
 /// Register one asynchronous callback with configured after-completion recurrence.
@@ -91,17 +89,10 @@ where
         AfterCompletionContext::new,
         OrdinaryRunResult::from,
     );
-    let claim = register_initial(start, |registry, lifetime| {
-        registry.register_after_completion_with_callback(
-            identity,
-            cadence,
-            lifetime,
-            Rc::clone(&callback),
-        )
-    });
-    // Release factory captures only after initial registry/provider cleanup.
-    drop(callback);
-    Ok(AfterCompletionRegistration { claim: claim? })
+    register_initial(callback, start, |registry, lifetime, callback| {
+        registry.register_after_completion_with_callback(identity, cadence, lifetime, callback)
+    })
+    .map(|claim| AfterCompletionRegistration { claim })
 }
 
 /// Register one synchronous pre-armed watchdog callback with its initial schedule.
@@ -129,31 +120,31 @@ where
     F: FnMut(WatchdogContext) -> WatchdogRunResult + 'static,
 {
     let callback = erase_watchdog_callback(callback);
-    let claim = register_initial(start, |registry, lifetime| {
-        registry.register_watchdog_with_callback(identity, cadence, lifetime, Rc::clone(&callback))
-    });
-    // Release factory captures only after initial registry/provider cleanup.
-    drop(callback);
-    Ok(WatchdogRegistration { claim: claim? })
+    register_initial(callback, start, |registry, lifetime, callback| {
+        registry.register_watchdog_with_callback(identity, cadence, lifetime, callback)
+    })
+    .map(|claim| WatchdogRegistration { claim })
 }
 
-/// Finish creation before exposing a claim. The callback factory retains its
-/// captures until this returns, including through rejected provider binding.
-fn register_initial(
+/// Resolve the initial schedule before allocating a declaration.
+fn register_initial<Callback: ?Sized>(
+    callback: Rc<Callback>,
     start: TimerStart,
     register: impl FnOnce(
         &mut TimerRegistry,
         DeclarationLifetime,
+        Rc<Callback>,
     ) -> Result<RegistrationClaim, RegisterError>,
 ) -> Result<RegistrationClaim, TimerError> {
     let (lifetime, initial) = start.into_parts();
     register_initialized(
-        |registry| {
+        callback,
+        |registry, callback| {
             let now_ns = platform::time_ns();
             let requested = initial
                 .map(|schedule| schedule.resolve(now_ns))
                 .transpose()?;
-            Ok((register(registry, lifetime)?, (requested, now_ns)))
+            Ok((register(registry, lifetime, callback)?, (requested, now_ns)))
         },
         |registry, claim, (requested, now_ns)| {
             requested
@@ -171,8 +162,14 @@ fn register_initial(
 
 /// Allocate and initialize under one borrow; publish authority only after effects.
 /// Fresh initialization failures share direct registration's retirement owner.
-fn register_initialized<Prepared>(
-    register: impl FnOnce(&mut TimerRegistry) -> Result<(RegistrationClaim, Prepared), TimerError>,
+/// Retain callback captures until registry/provider cleanup finishes, then release
+/// them outside the borrow, including on validation and admission errors.
+fn register_initialized<Callback: ?Sized, Prepared>(
+    callback: Rc<Callback>,
+    register: impl FnOnce(
+        &mut TimerRegistry,
+        Rc<Callback>,
+    ) -> Result<(RegistrationClaim, Prepared), TimerError>,
     initialize: impl FnOnce(
         &mut TimerRegistry,
         &RegistrationClaim,
@@ -180,7 +177,7 @@ fn register_initialized<Prepared>(
     ) -> Result<Option<(RegistryTransition, ProviderHandles)>, TimerError>,
 ) -> Result<RegistrationClaim, TimerError> {
     let (claim, initialized) = with_registry_mut(|registry| {
-        let (claim, prepared) = register(registry)?;
+        let (claim, prepared) = register(registry, Rc::clone(&callback))?;
         let initialized = initialize(registry, &claim, prepared);
         Ok((claim, initialized))
     })?;
@@ -189,20 +186,25 @@ fn register_initialized<Prepared>(
             finish_transition(transition, handles)
         })
     });
-    applied.map_err(|error| cleanup_creation_error(&claim, error))?;
-    Ok(claim)
+    let result = applied
+        .map_err(|error| cleanup_creation_error(&claim, error))
+        .map(|()| claim);
+    drop(callback);
+    result
 }
 
 /// Fresh lifecycle declarations use the same initialization transaction for all policies.
-fn register_reconciled(
-    register: impl FnOnce(&mut TimerRegistry) -> Result<RegistrationClaim, RegisterError>,
+fn register_reconciled<Callback: ?Sized>(
+    callback: Rc<Callback>,
+    register: impl FnOnce(&mut TimerRegistry, Rc<Callback>) -> Result<RegistrationClaim, RegisterError>,
     reconcile: impl FnOnce(
         &mut TimerRegistry,
         &RegistrationClaim,
     ) -> Result<RegistryTransition, RegistryError>,
 ) -> Result<RegistrationClaim, TimerError> {
     register_initialized(
-        |registry| Ok((register(registry)?, ())),
+        callback,
+        |registry, callback| Ok((register(registry, callback)?, ())),
         |registry, claim, ()| {
             registry
                 .transition_claim(claim, |registry| reconcile(registry, claim))
@@ -268,18 +270,18 @@ where
         || {
             let callback =
                 erase_ordinary_callback(callback, OnceContext::new, OrdinaryRunResult::from);
-            let claim = register_reconciled(
-                |registry| {
+            register_reconciled(
+                callback,
+                |registry, callback| {
                     registry.register_once_with_callback(
                         identity.clone(),
                         DeclarationLifetime::Retained,
-                        Rc::clone(&callback),
+                        callback,
                     )
                 },
                 reconcile,
-            );
-            drop(callback);
-            Ok(OnceRegistration { claim: claim? })
+            )
+            .map(|claim| OnceRegistration { claim })
         },
         |registration| {
             apply_claim_transition(Declared(&registration.claim), |registry, claim| {
@@ -345,19 +347,19 @@ where
                 AfterCompletionContext::new,
                 OrdinaryRunResult::from,
             );
-            let claim = register_reconciled(
-                |registry| {
+            register_reconciled(
+                callback,
+                |registry, callback| {
                     registry.register_after_completion_with_callback(
                         identity.clone(),
                         cadence,
                         DeclarationLifetime::Retained,
-                        Rc::clone(&callback),
+                        callback,
                     )
                 },
                 reconcile,
-            );
-            drop(callback);
-            Ok(AfterCompletionRegistration { claim: claim? })
+            )
+            .map(|claim| AfterCompletionRegistration { claim })
         },
         |registration| {
             apply_claim_transition(Declared(&registration.claim), |registry, claim| {
@@ -417,19 +419,19 @@ where
         |current: &WatchdogRegistration| &current.claim,
         || {
             let callback = erase_watchdog_callback(callback);
-            let claim = register_reconciled(
-                |registry| {
+            register_reconciled(
+                callback,
+                |registry, callback| {
                     registry.register_watchdog_with_callback(
                         identity.clone(),
                         cadence,
                         DeclarationLifetime::Retained,
-                        Rc::clone(&callback),
+                        callback,
                     )
                 },
                 reconcile,
-            );
-            drop(callback);
-            Ok(WatchdogRegistration { claim: claim? })
+            )
+            .map(|claim| WatchdogRegistration { claim })
         },
         |registration| {
             apply_claim_transition(Declared(&registration.claim), |registry, claim| {

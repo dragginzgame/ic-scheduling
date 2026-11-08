@@ -30,7 +30,7 @@ ic-platform-types = { workspace = true, features = ["principal-external"] }
 ic-testkit = { workspace = true, features = ["wire"] }
 ic-timers-test-protocol.workspace = true
 ic-wire.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "rt"] }
 
 [lints.rust]
 unsafe_code = "forbid"

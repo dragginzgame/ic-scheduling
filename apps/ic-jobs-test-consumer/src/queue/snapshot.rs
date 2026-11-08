@@ -35,7 +35,7 @@ pub(super) struct Snapshot<J = JobRecord> {
 }
 
 impl<J> Snapshot<J> {
-    pub(super) fn check_header(&self) -> Result<(), Error> {
+    fn check_header(&self) -> Result<(), Error> {
         if self.jobs.len() > MAX_JOBS || self.receipts.len() > MAX_JOBS || self.next_id == 0 {
             return Err(Error::InvalidStorage);
         }
@@ -43,12 +43,7 @@ impl<J> Snapshot<J> {
     }
 }
 
-pub(super) fn check_entry(
-    id: JobId,
-    task: &Task,
-    next_id: u64,
-    previous: &mut u128,
-) -> Result<(), Error> {
+fn check_entry(id: JobId, task: &Task, next_id: u64, previous: &mut u128) -> Result<(), Error> {
     if id.0 <= *previous || id.0 >= u128::from(next_id) || !task_valid(task) {
         return Err(Error::InvalidStorage);
     }
@@ -56,7 +51,7 @@ pub(super) fn check_entry(
     Ok(())
 }
 
-pub(super) fn check_receipts(receipts: &[Delivery]) -> Result<(), Error> {
+fn check_receipts(receipts: &[Delivery]) -> Result<(), Error> {
     for (index, receipt) in receipts.iter().enumerate() {
         if !delivery_valid(receipt)
             || receipts[..index]
@@ -100,6 +95,22 @@ impl Snapshot {
 }
 
 impl Snapshot<Job> {
+    // Records came from validated Jobs and maintained public transitions.
+    // Borrow collection metadata without serializing or restoring it again.
+    pub(super) fn check_collection(&self) -> Result<(), Error> {
+        self.check_header()?;
+        let mut previous = 0;
+        for entry in &self.jobs {
+            check_entry(
+                entry.job.record().id,
+                &entry.task,
+                self.next_id,
+                &mut previous,
+            )?;
+        }
+        check_receipts(&self.receipts)
+    }
+
     pub(super) fn next_due_ns(&self) -> Option<u64> {
         next_due_ns(self.jobs.iter().map(|entry| &entry.job))
     }

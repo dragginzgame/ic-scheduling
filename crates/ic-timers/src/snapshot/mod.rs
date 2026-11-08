@@ -101,6 +101,31 @@ impl TimerInventorySnapshot {
     }
 }
 
+/// Scheduling observations travel together from registry entry to snapshot.
+/// Requested and confirmed arm delays retain their separate meanings.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SchedulingObservation {
+    pub(crate) mode: TimerSchedulingMode,
+    pub(crate) latest_directive: Option<TimerDirectiveSnapshot>,
+    pub(crate) latest_requested_delay_ns: Option<u64>,
+    pub(crate) latest_armed_delay_ns: Option<u64>,
+}
+
+impl SchedulingObservation {
+    pub(crate) const fn new(policy: TimerPolicy) -> Self {
+        Self {
+            mode: match policy {
+                TimerPolicy::Once => TimerSchedulingMode::Once,
+                TimerPolicy::AfterCompletion { .. } => TimerSchedulingMode::AfterCompletion,
+                TimerPolicy::Watchdog { .. } => TimerSchedulingMode::Watchdog,
+            },
+            latest_directive: None,
+            latest_requested_delay_ns: None,
+            latest_armed_delay_ns: None,
+        }
+    }
+}
+
 /// Canonical provider-neutral operator snapshot for one logical timer.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TimerSnapshot {
@@ -109,28 +134,18 @@ pub struct TimerSnapshot {
     policy: TimerPolicy,
     lifetime: DeclarationLifetime,
     state: TimerRuntimeStateSnapshot,
-    scheduling_mode: TimerSchedulingMode,
-    latest_directive: Option<TimerDirectiveSnapshot>,
-    latest_requested_delay_ns: Option<u64>,
-    latest_armed_delay_ns: Option<u64>,
+    scheduling: SchedulingObservation,
     observability: TimerObservabilitySnapshot,
 }
 
 impl TimerSnapshot {
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "Registry-only constructor keeps one coherent boundary."
-    )]
     pub(crate) const fn new(
         identity: TimerIdentity,
         registration_id: TimerRegistrationId,
         policy: TimerPolicy,
         lifetime: DeclarationLifetime,
         state: TimerRuntimeStateSnapshot,
-        scheduling_mode: TimerSchedulingMode,
-        latest_directive: Option<TimerDirectiveSnapshot>,
-        latest_requested_delay_ns: Option<u64>,
-        latest_armed_delay_ns: Option<u64>,
+        scheduling: SchedulingObservation,
         observability: &TimerObservabilitySnapshot,
     ) -> Self {
         Self {
@@ -139,10 +154,7 @@ impl TimerSnapshot {
             policy,
             lifetime,
             state,
-            scheduling_mode,
-            latest_directive,
-            latest_requested_delay_ns,
-            latest_armed_delay_ns,
+            scheduling,
             observability: *observability,
         }
     }
@@ -189,7 +201,7 @@ impl TimerSnapshot {
     /// the declaration becomes inactive.
     #[must_use]
     pub const fn scheduling_mode(&self) -> TimerSchedulingMode {
-        self.scheduling_mode
+        self.scheduling.mode
     }
 
     /// Return the latest effective ordinary directive at completion.
@@ -199,19 +211,19 @@ impl TimerSnapshot {
     /// explicit invariant failure project `Stop`.
     #[must_use]
     pub const fn latest_directive(&self) -> Option<TimerDirectiveSnapshot> {
-        self.latest_directive
+        self.scheduling.latest_directive
     }
 
     /// Return the latest requested relative delay.
     #[must_use]
     pub const fn latest_requested_delay_ns(&self) -> Option<u64> {
-        self.latest_requested_delay_ns
+        self.scheduling.latest_requested_delay_ns
     }
 
     /// Return the latest relative delay whose provider arm committed.
     #[must_use]
     pub const fn latest_armed_delay_ns(&self) -> Option<u64> {
-        self.latest_armed_delay_ns
+        self.scheduling.latest_armed_delay_ns
     }
 
     /// Return the next authoritative absolute deadline.

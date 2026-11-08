@@ -388,20 +388,7 @@ async fn freeze_between_scheduler_and_work_resumes_after_top_up_only() {
 async fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    // Raise the real freezing reserve above the existing balance without burning
-    // all cycles or uninstalling the canister. Derive it from this instance's
-    // storage charge before making work due: management observation must not
-    // silently consume the scheduler/work gap being qualified.
-    let status = pic.canister_status(canister_id, None).await.unwrap();
-    let balance = pic
-        .cycle_balance(canister_id)
-        .await
-        .expect("read canister cycles");
-    let idle_per_day: u128 = status.idle_cycles_burned_per_day.0.try_into().unwrap();
-    assert!(idle_per_day > 0);
-    let freezing_seconds = u64::try_from((balance * 4 * 86_400).div_ceil(idle_per_day))
-        .expect("fixture freezing threshold fits u64");
-    let freezing_reserve = idle_per_day * u128::from(freezing_seconds) / 86_400;
+    let budget = freezing_budget(pic, canister_id).await;
     assert!(update_bool(pic, canister_id, Method::Start).await);
     let armed = snapshot(pic, canister_id).await;
     assert_eq!(armed.scheduler_started.total, 0);
@@ -427,7 +414,7 @@ async fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     let deadline = before
         .next_deadline_ns
         .expect("committed watchdog deadline");
-    freeze_for_five_minutes(pic, canister_id, freezing_seconds, freezing_reserve).await;
+    freeze_for_five_minutes(pic, canister_id, budget.seconds, budget.reserve).await;
     assert!(
         pic.get_time()
             .await
@@ -437,7 +424,7 @@ async fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     );
     // No ensure/reconcile call, threshold reset, raw timer write or upgrade can
     // repair the wakeup here. A top-up and replica rounds must suffice.
-    pic.add_cycles(canister_id, balance * 16)
+    pic.add_cycles(canister_id, budget.balance * 16)
         .await
         .expect("fund canister cycles");
     // Read-only observation before another round proves the frozen interval
@@ -510,8 +497,8 @@ async fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
         u128::from(settled_count + 1)
     );
     let after = pic.canister_status(canister_id, None).await.unwrap();
-    assert_eq!(after.module_hash, status.module_hash);
-    assert_eq!(after.settings.freezing_threshold, freezing_seconds);
+    assert_eq!(after.module_hash, budget.module_hash);
+    assert_eq!(after.settings.freezing_threshold, budget.seconds);
 
     owned
         .close()

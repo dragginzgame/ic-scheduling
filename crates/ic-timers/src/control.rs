@@ -5,8 +5,11 @@
 //! completion planning live here; the registry owns authorization and effects.
 
 use crate::{
+    callback::OrdinaryRunResult,
     schedule::{OrdinaryDirective, ResolvedSchedule, TimerCadence},
-    snapshot::{InactiveReason, TimerControlFailure, TimerDirectiveSnapshot},
+    snapshot::{
+        InactiveReason, TimerCompletionOutcome, TimerControlFailure, TimerDirectiveSnapshot,
+    },
 };
 
 /// A command selected during ordinary work after registry authorization.
@@ -192,9 +195,35 @@ impl TimerControl {
         }
     }
 
+    /// Select the winning command and apply its completion state after the
+    /// registry checks running authority. Invariant failures override commands.
+    /// Selection or generation failures leave running state unchanged.
+    pub(crate) fn complete(
+        &mut self,
+        result: OrdinaryRunResult,
+        now_ns: u64,
+        cadence: Option<TimerCadence>,
+    ) -> Result<OrdinaryCompletion, TimerControlFailure> {
+        let completion =
+            if result.completion().outcome() == TimerCompletionOutcome::InvariantFailure {
+                OrdinaryCompletion::Stop(InactiveReason::InvariantFailure)
+            } else {
+                prepare_ordinary_completion(self.pending(), result.directive(), now_ns, cadence)?
+            };
+        match completion {
+            OrdinaryCompletion::Schedule { requested, .. } => {
+                self.arm_deadline(requested.deadline_ns)?;
+            }
+            OrdinaryCompletion::Stop(reason) => {
+                self.terminate(reason);
+            }
+        }
+        Ok(completion)
+    }
+
     /// Install a selected deadline after request eligibility or exact running
     /// work authorization. Check allocation before replacing the current state.
-    pub(crate) fn arm_deadline(&mut self, deadline_ns: u64) -> Result<(), TimerControlFailure> {
+    fn arm_deadline(&mut self, deadline_ns: u64) -> Result<(), TimerControlFailure> {
         let generation = self
             .generation
             .checked_add(1)
@@ -212,30 +241,31 @@ pub enum OrdinaryCompletion {
         requested: ResolvedSchedule,
         directive: TimerDirectiveSnapshot,
     },
-    Stop,
-    Cancel,
+    Stop(InactiveReason),
 }
 
 impl OrdinaryCompletion {
     pub(crate) const fn directive(&self) -> TimerDirectiveSnapshot {
         match self {
             Self::Schedule { directive, .. } => *directive,
-            Self::Stop | Self::Cancel => TimerDirectiveSnapshot::Stop,
+            Self::Stop(_) => TimerDirectiveSnapshot::Stop,
         }
     }
 }
 
 // Select authoritative commands before validating a callback proposal they discard.
-pub fn prepare_ordinary_completion(
+fn prepare_ordinary_completion(
     pending: Option<OrdinaryPending>,
     directive: OrdinaryDirective,
     now_ns: u64,
     cadence: Option<TimerCadence>,
 ) -> Result<OrdinaryCompletion, TimerControlFailure> {
     match pending {
-        Some(OrdinaryPending::ReconcileInactive) => Ok(OrdinaryCompletion::Stop),
+        Some(OrdinaryPending::ReconcileInactive) => {
+            Ok(OrdinaryCompletion::Stop(InactiveReason::Stopped))
+        }
         Some(OrdinaryPending::Cancel | OrdinaryPending::Unregister) => {
-            Ok(OrdinaryCompletion::Cancel)
+            Ok(OrdinaryCompletion::Stop(InactiveReason::Cancelled))
         }
         Some(OrdinaryPending::Reconcile(requested)) => Ok(OrdinaryCompletion::Schedule {
             requested,
@@ -253,12 +283,13 @@ pub fn prepare_ordinary_completion(
             } else {
                 callback
             };
-            Ok(selected.map_or(OrdinaryCompletion::Stop, |requested| {
-                OrdinaryCompletion::Schedule {
+            Ok(selected.map_or(
+                OrdinaryCompletion::Stop(InactiveReason::Stopped),
+                |requested| OrdinaryCompletion::Schedule {
                     requested,
                     directive,
-                }
-            }))
+                },
+            ))
         }
     }
 }

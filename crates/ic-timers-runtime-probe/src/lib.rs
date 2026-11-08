@@ -41,13 +41,16 @@ thread_local! {
     static REGISTRATION: RefCell<Option<WatchdogRegistration>> = const { RefCell::new(None) };
     static SECONDARY_REGISTRATION: RefCell<Option<WatchdogRegistration>> = const { RefCell::new(None) };
     static NEXT_EXTRA_NAME: Cell<u64> = const { Cell::new(0) };
-    static COMPLETED_WORK: Cell<u64> = const { Cell::new(0) };
-    static SECONDARY_COMPLETED_WORK: Cell<u64> = const { Cell::new(0) };
+    // Retained facts share the checkpoint shape; volatile capabilities stay separate.
+    static CHECKPOINT: RefCell<RuntimeCheckpoint> = const { RefCell::new(RuntimeCheckpoint {
+        desired_scheduled: false,
+        secondary_desired_scheduled: false,
+        completed_work: 0,
+        secondary_completed_work: 0,
+    }) };
     static TRAP_WINDOW: Cell<Option<(u64, u64)>> = const { Cell::new(None) };
     static EXHAUST_WINDOW: Cell<Option<(u64, u64)>> = const { Cell::new(None) };
     static NEXT_WORK_DECISION: Cell<WatchdogDecision> = const { Cell::new(WatchdogDecision::Continue) };
-    static DESIRED_SCHEDULED: Cell<bool> = const { Cell::new(false) };
-    static SECONDARY_DESIRED_SCHEDULED: Cell<bool> = const { Cell::new(false) };
     static POST_UPGRADE_RECONSTRUCTED: Cell<bool> = const { Cell::new(false) };
 }
 
@@ -60,22 +63,14 @@ fn init() {
 
 #[ic_platform_runtime::cdk::pre_upgrade]
 fn pre_upgrade() {
-    let state = RuntimeCheckpoint {
-        desired_scheduled: DESIRED_SCHEDULED.with(Cell::get),
-        secondary_desired_scheduled: SECONDARY_DESIRED_SCHEDULED.with(Cell::get),
-        completed_work: COMPLETED_WORK.with(Cell::get),
-        secondary_completed_work: SECONDARY_COMPLETED_WORK.with(Cell::get),
-    };
+    let state = CHECKPOINT.with_borrow(|state| *state);
     checkpoint::save(&state);
 }
 
 #[ic_platform_runtime::cdk::post_upgrade]
 fn post_upgrade() {
     let state = checkpoint::load();
-    DESIRED_SCHEDULED.with(|desired| desired.set(state.desired_scheduled));
-    SECONDARY_DESIRED_SCHEDULED.with(|desired| desired.set(state.secondary_desired_scheduled));
-    COMPLETED_WORK.with(|completed| completed.set(state.completed_work));
-    SECONDARY_COMPLETED_WORK.with(|completed| completed.set(state.secondary_completed_work));
+    CHECKPOINT.with_borrow_mut(|current| *current = state);
     if initialize_runtime().is_err() {
         ic_platform_runtime::cdk::api::trap("post-upgrade runtime initialization failed");
     }
@@ -101,7 +96,7 @@ fn post_upgrade() {
     response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn start() -> bool {
-    DESIRED_SCHEDULED.with(|desired| desired.set(true));
+    CHECKPOINT.with_borrow_mut(|state| state.desired_scheduled = true);
     install_watchdog()
 }
 
@@ -111,7 +106,7 @@ fn start() -> bool {
     response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn start_immediately() -> bool {
-    DESIRED_SCHEDULED.with(|desired| desired.set(true));
+    CHECKPOINT.with_borrow_mut(|state| state.desired_scheduled = true);
     install_watchdog_with_initial_schedule(true)
 }
 
@@ -141,7 +136,9 @@ fn install_watchdog_with_initial_schedule(immediate: bool) -> bool {
                     }
                     watchdog::exhaust_message_instructions();
                 }
-                COMPLETED_WORK.with(|completed| completed.set(completed.get().saturating_add(1)));
+                CHECKPOINT.with_borrow_mut(|state| {
+                    state.completed_work = state.completed_work.saturating_add(1);
+                });
                 let decision = take_work_decision();
                 WatchdogRunResult::new(TimerCompletion::success(1), decision)
             },
@@ -155,7 +152,7 @@ fn take_work_decision() -> WatchdogDecision {
     let decision =
         NEXT_WORK_DECISION.with(|requested| requested.replace(WatchdogDecision::Continue));
     if decision == WatchdogDecision::Stop {
-        DESIRED_SCHEDULED.with(|desired| desired.set(false));
+        CHECKPOINT.with_borrow_mut(|state| state.desired_scheduled = false);
     }
     decision
 }
@@ -221,15 +218,15 @@ fn replace_registration() {
     response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn start_secondary() -> bool {
-    SECONDARY_DESIRED_SCHEDULED.with(|desired| desired.set(true));
+    CHECKPOINT.with_borrow_mut(|state| state.secondary_desired_scheduled = true);
     install_secondary_watchdog()
 }
 
 fn install_secondary_watchdog() -> bool {
     SECONDARY_REGISTRATION.with_borrow_mut(|slot| {
         watchdog::install(slot, secondary_identity(), CADENCE_NS, |_context| {
-            SECONDARY_COMPLETED_WORK.with(|completed| {
-                completed.set(completed.get().saturating_add(1));
+            CHECKPOINT.with_borrow_mut(|state| {
+                state.secondary_completed_work = state.secondary_completed_work.saturating_add(1);
             });
             WatchdogRunResult::new(TimerCompletion::success(1), WatchdogDecision::Continue)
         })
@@ -283,7 +280,7 @@ fn stop_on_next_work() {
     response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn stop() {
-    DESIRED_SCHEDULED.with(|desired| desired.set(false));
+    CHECKPOINT.with_borrow_mut(|state| state.desired_scheduled = false);
     REGISTRATION.with_borrow(|slot| {
         if let Some(registration) = slot.as_ref()
             && registration.cancel().is_err()
@@ -299,7 +296,7 @@ fn stop() {
     response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
 )]
 fn ensure_from_returned_error() -> bool {
-    DESIRED_SCHEDULED.with(|desired| desired.set(true));
+    CHECKPOINT.with_borrow_mut(|state| state.desired_scheduled = true);
     REGISTRATION.with_borrow(|slot| {
         let Some(registration) = slot.as_ref() else {
             ic_platform_runtime::cdk::api::trap("watchdog registration is absent");
@@ -383,7 +380,7 @@ fn inventory_measurement() -> (u64, u64, bool) {
 )]
 fn snapshot() -> ProbeSnapshot {
     let registered = REGISTRATION.with_borrow(Option::is_some);
-    let completed_work = COMPLETED_WORK.with(Cell::get);
+    let completed_work = CHECKPOINT.with_borrow(|state| state.completed_work);
     let snapshot = timer_snapshot(&probe_identity())
         .unwrap_or_else(|_| ic_platform_runtime::cdk::api::trap("snapshot lookup failed"));
     let observed = ProbeSnapshot {
@@ -391,7 +388,7 @@ fn snapshot() -> ProbeSnapshot {
         completed_work,
         post_upgrade_reconstructed: POST_UPGRADE_RECONSTRUCTED.with(Cell::get),
         secondary_registered: SECONDARY_REGISTRATION.with_borrow(Option::is_some),
-        secondary_completed_work: SECONDARY_COMPLETED_WORK.with(Cell::get),
+        secondary_completed_work: CHECKPOINT.with_borrow(|state| state.secondary_completed_work),
         ..ProbeSnapshot::default()
     };
     let Some(snapshot) = snapshot else {

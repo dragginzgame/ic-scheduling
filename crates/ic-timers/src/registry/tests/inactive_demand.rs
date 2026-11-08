@@ -114,10 +114,25 @@ fn inactive_demand_waits_for_running_work_and_preserves_removal() {
     }
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum Command {
+    Clear,
+    Cancel,
+    Schedule,
+    Unregister,
+    Invariant,
+}
+
 #[test]
 fn inactive_demand_preserves_command_order_and_invariant_failure_priority() {
     for recurring in [false, true] {
-        for command in ["clear", "cancel", "schedule", "unregister", "invariant"] {
+        for command in [
+            Command::Clear,
+            Command::Cancel,
+            Command::Schedule,
+            Command::Unregister,
+            Command::Invariant,
+        ] {
             let mut registry = registry();
             let timer = identity("inactive-command-order");
             let claim = if recurring {
@@ -137,25 +152,25 @@ fn inactive_demand_preserves_command_order_and_invariant_failure_priority() {
             confirm(&mut registry, &scheduled);
             let (token, _) = arm(scheduled);
             registry.begin_ordinary(&token).unwrap();
-            if command == "clear" {
+            if command == Command::Clear {
                 registry.cancel(&claim).unwrap();
             }
-            if command == "unregister" {
+            if command == Command::Unregister {
                 registry.unregister(&claim).unwrap();
             }
             registry.reconcile_ordinary(&claim, 2, None).unwrap();
             match command {
-                "cancel" => {
+                Command::Cancel => {
                     registry.cancel(&claim).unwrap();
                 }
-                "schedule" => {
+                Command::Schedule => {
                     registry
                         .reconcile_ordinary(&claim, 2, Some(TimerSchedule::At(20)))
                         .unwrap();
                 }
-                _ => {}
+                Command::Clear | Command::Unregister | Command::Invariant => {}
             }
-            let completion = if command == "invariant" {
+            let completion = if command == Command::Invariant {
                 TimerCompletion::invariant_failure(1)
             } else {
                 TimerCompletion::success(1)
@@ -172,7 +187,7 @@ fn inactive_demand_preserves_command_order_and_invariant_failure_priority() {
                 .unwrap();
             assert_eq!(finished.failure(), None);
             confirm(&mut registry, &finished);
-            if command == "unregister" {
+            if command == Command::Unregister {
                 assert!(registry.snapshot(&timer).is_none());
                 continue;
             }
@@ -185,15 +200,17 @@ fn inactive_demand_preserves_command_order_and_invariant_failure_priority() {
                     .cancelled()
                     .exact_total()
                     .unwrap(),
-                u128::from(command == "cancel")
+                u128::from(command == Command::Cancel)
             );
-            if command == "schedule" {
+            if command == Command::Schedule {
                 assert_eq!(current.next_deadline_ns(), Some(20));
             } else {
                 let reason = match command {
-                    "cancel" => InactiveReason::Cancelled,
-                    "invariant" => InactiveReason::InvariantFailure,
-                    _ => InactiveReason::Stopped,
+                    Command::Cancel => InactiveReason::Cancelled,
+                    Command::Invariant => InactiveReason::InvariantFailure,
+                    Command::Clear | Command::Schedule | Command::Unregister => {
+                        InactiveReason::Stopped
+                    }
                 };
                 assert_eq!(
                     current.state(),

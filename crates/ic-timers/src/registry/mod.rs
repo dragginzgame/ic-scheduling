@@ -20,15 +20,14 @@ use crate::{
     callback::OrdinaryRunResult,
     control::{
         OrdinaryCompletion, OrdinaryPending, OrdinaryRequest, OrdinaryStop, TimerControl,
-        TimerRegistration, WakeupArm, prepare_ordinary_completion,
+        TimerRegistration, WakeupArm,
     },
     platform::TimerHandle,
     schedule::{ResolvedSchedule, ScheduleError, TimerCadence, TimerSchedule},
     snapshot::{
         DeclarationLifetime, InactiveReason, MemoryPageExtent, MemoryPageSample, TimerCompletion,
-        TimerCompletionOutcome, TimerControlFailure, TimerDirectiveSnapshot, TimerEpoch,
-        TimerIdentity, TimerInventorySnapshot, TimerPolicy, TimerSchedulingMode, TimerSnapshot,
-        WatchdogRunResult,
+        TimerControlFailure, TimerDirectiveSnapshot, TimerEpoch, TimerIdentity,
+        TimerInventorySnapshot, TimerPolicy, TimerSchedulingMode, TimerSnapshot, WatchdogRunResult,
     },
 };
 use std::{cell::RefCell, collections::BTreeMap, fmt, future::Future, pin::Pin, rc::Rc};
@@ -501,7 +500,7 @@ impl TimerRegistry {
             return Err(RegistryError::PolicyMismatch { actual });
         };
         entry.observability.counters_mut().record_schedule_request();
-        entry.latest_requested_delay_ns = requested.requested_delay_ns;
+        entry.scheduling.latest_requested_delay_ns = requested.requested_delay_ns;
 
         let arm = control.request(requested, request);
 
@@ -521,7 +520,7 @@ impl TimerRegistry {
         };
 
         if arm.is_some() || matches!(request, OrdinaryRequest::Reconcile) {
-            entry.scheduling_mode = requested.mode;
+            entry.scheduling.mode = requested.mode;
         }
 
         let Some(arm) = arm else {
@@ -553,7 +552,7 @@ impl TimerRegistry {
         if matches!(transition.effect(), RegistryEffect::ArmWakeup { .. })
             && matches!(control.state(), WatchdogState::Scheduled { .. })
         {
-            entry.scheduling_mode = requested.mode;
+            entry.scheduling.mode = requested.mode;
         }
         if matches!(
             (transition.effect(), transition.failure()),
@@ -562,7 +561,7 @@ impl TimerRegistry {
             entry.observability.counters_mut().record_coalesced();
         }
         entry.observability.counters_mut().record_schedule_request();
-        entry.latest_requested_delay_ns = requested.requested_delay_ns;
+        entry.scheduling.latest_requested_delay_ns = requested.requested_delay_ns;
         let remove = entry.remove_on_failure(&transition);
         Ok(remove_after(
             &mut self.entries,
@@ -674,24 +673,22 @@ impl TimerRegistry {
     pub(crate) fn begin_ordinary(&mut self, token: &CallbackToken) -> Option<OrdinaryCallback> {
         let entry = self.entries.get_mut(token.identity())?;
         entry.consume_provider_handle(token);
-        if token.role != CallbackRole::OrdinaryWork || !entry.owns_token_claim(token) {
-            entry.observability.counters_mut().record_stale_wakeup();
-            return None;
-        }
-        let EntryKind::Ordinary {
-            control, callback, ..
-        } = &mut entry.kind
-        else {
-            entry.observability.counters_mut().record_stale_wakeup();
-            return None;
+        let owns_work = token.role == CallbackRole::OrdinaryWork && entry.owns_token_claim(token);
+        let callback = match &mut entry.kind {
+            EntryKind::Ordinary {
+                control, callback, ..
+            } if owns_work => control
+                .begin(token.callback_generation)
+                .then(|| Rc::clone(callback)),
+            _ => None,
         };
-        if control.begin(token.callback_generation) {
-            entry.observability.counters_mut().record_work_started();
-            Some(Rc::clone(callback))
+        let counters = entry.observability.counters_mut();
+        if callback.is_some() {
+            counters.record_work_started();
         } else {
-            entry.observability.counters_mut().record_stale_wakeup();
-            None
+            counters.record_stale_wakeup();
         }
+        callback
     }
 
     pub(crate) fn complete_ordinary(
@@ -709,64 +706,47 @@ impl TimerRegistry {
             else {
                 return Err(RegistryError::StaleCallback);
             };
-            let cadence = *cadence;
             let completion = result.completion();
             let pending_command = control.pending();
             let remove_on_stop = matches!(pending_command, Some(OrdinaryPending::Unregister))
                 || matches!(entry.lifetime, DeclarationLifetime::RemoveWhenStopped);
-            if completion.outcome() == TimerCompletionOutcome::InvariantFailure {
-                let transition = stop_ordinary_completion(entry, completion, now_ns, None);
-                (transition, remove_on_stop)
-            } else {
-                let prepared = prepare_ordinary_completion(
-                    pending_command,
-                    result.directive(),
-                    now_ns,
-                    cadence,
-                )
-                .and_then(|prepared| {
-                    if let OrdinaryCompletion::Schedule { requested, .. } = prepared {
-                        control.arm_deadline(requested.deadline_ns)?;
-                    }
-                    Ok(prepared)
-                });
-                match prepared {
-                    Err(failure) => (
-                        stop_ordinary_completion(entry, completion, now_ns, Some(failure)),
+            match control.complete(result, now_ns, *cadence) {
+                Err(failure) => {
+                    control.terminate(InactiveReason::ControlFailure(failure));
+                    entry.scheduling.latest_directive = Some(TimerDirectiveSnapshot::Stop);
+                    entry.observability.record_completion(
+                        TimerCompletion::invariant_failure(completion.work_count()),
+                        now_ns,
+                    );
+                    (
+                        RegistryTransition::terminal(RegistryEffect::None, failure),
                         remove_on_stop,
-                    ),
-                    Ok(prepared) => {
-                        entry.latest_directive = Some(prepared.directive());
-                        entry.observability.record_completion(completion, now_ns);
+                    )
+                }
+                Ok(prepared) => {
+                    entry.scheduling.latest_directive = Some(prepared.directive());
+                    entry.observability.record_completion(completion, now_ns);
 
-                        let remove = !matches!(prepared, OrdinaryCompletion::Schedule { .. })
-                            && remove_on_stop;
-                        let transition = match prepared {
-                            OrdinaryCompletion::Schedule { requested, .. } => {
-                                entry.scheduling_mode = requested.mode;
-                                entry.latest_requested_delay_ns = requested.requested_delay_ns;
-                                RegistryTransition::normal(RegistryEffect::ArmWakeup {
-                                    token: WakeupToken::ordinary(
-                                        token.claim(),
-                                        control.generation(),
-                                    ),
-                                    delay_ns: requested.deadline_ns.saturating_sub(now_ns),
-                                    arm: WakeupArm::Initial,
-                                })
+                    let remove = matches!(prepared, OrdinaryCompletion::Stop(_)) && remove_on_stop;
+                    let effect = match prepared {
+                        OrdinaryCompletion::Schedule { requested, .. } => {
+                            entry.scheduling.mode = requested.mode;
+                            entry.scheduling.latest_requested_delay_ns =
+                                requested.requested_delay_ns;
+                            RegistryEffect::ArmWakeup {
+                                token: WakeupToken::ordinary(token.claim(), control.generation()),
+                                delay_ns: requested.deadline_ns.saturating_sub(now_ns),
+                                arm: WakeupArm::Initial,
                             }
-                            OrdinaryCompletion::Stop | OrdinaryCompletion::Cancel => {
-                                let reason = if matches!(prepared, OrdinaryCompletion::Cancel) {
-                                    entry.observability.counters_mut().record_cancellation();
-                                    InactiveReason::Cancelled
-                                } else {
-                                    InactiveReason::Stopped
-                                };
-                                control.terminate(reason);
-                                RegistryTransition::normal(RegistryEffect::None)
+                        }
+                        OrdinaryCompletion::Stop(reason) => {
+                            if reason == InactiveReason::Cancelled {
+                                entry.observability.counters_mut().record_cancellation();
                             }
-                        };
-                        (transition, remove)
-                    }
+                            RegistryEffect::None
+                        }
+                    };
+                    (RegistryTransition::normal(effect), remove)
                 }
             }
         };
@@ -873,23 +853,20 @@ impl TimerRegistry {
         let Some(entry) = self.entries.get_mut(token.identity()) else {
             return RegistryTransition::normal(RegistryEffect::None);
         };
-        if token.role != CallbackRole::WatchdogScheduler || !entry.owns_token_claim(token) {
-            entry.observability.counters_mut().record_stale_wakeup();
-            return RegistryTransition::normal(RegistryEffect::None);
-        }
-        let EntryKind::Watchdog {
-            cadence, control, ..
-        } = &mut entry.kind
-        else {
+        let owns_scheduler =
+            token.role == CallbackRole::WatchdogScheduler && entry.owns_token_claim(token);
+        let scheduler = match &mut entry.kind {
+            EntryKind::Watchdog {
+                cadence, control, ..
+            } if owns_scheduler && control.accepts_scheduler(token.callback_generation) => {
+                Some((*cadence, control))
+            }
+            _ => None,
+        };
+        let Some((cadence, control)) = scheduler else {
             entry.observability.counters_mut().record_stale_wakeup();
             return RegistryTransition::normal(RegistryEffect::None);
         };
-        let cadence = *cadence;
-
-        if !control.accepts_scheduler(token.callback_generation) {
-            entry.observability.counters_mut().record_stale_wakeup();
-            return RegistryTransition::normal(RegistryEffect::None);
-        }
 
         entry
             .observability
@@ -903,7 +880,7 @@ impl TimerRegistry {
             let remove = entry.remove_on_failure(&transition);
             return remove_after(&mut self.entries, token.identity(), transition, remove);
         }
-        entry.scheduling_mode = TimerSchedulingMode::Watchdog;
+        entry.scheduling.mode = TimerSchedulingMode::Watchdog;
         transition
     }
 
@@ -915,24 +892,22 @@ impl TimerRegistry {
     ) -> Option<WatchdogCallback> {
         let entry = self.entries.get_mut(token.identity())?;
         entry.consume_provider_handle(token);
-        if token.role != CallbackRole::WatchdogWork || !entry.owns_token_claim(token) {
-            entry.observability.counters_mut().record_stale_work();
-            return None;
-        }
-        let EntryKind::Watchdog {
-            control, callback, ..
-        } = &mut entry.kind
-        else {
-            entry.observability.counters_mut().record_stale_work();
-            return None;
+        let owns_work = token.role == CallbackRole::WatchdogWork && entry.owns_token_claim(token);
+        let callback = match &mut entry.kind {
+            EntryKind::Watchdog {
+                control, callback, ..
+            } if owns_work => control
+                .begin_work(token.callback_generation)
+                .then(|| Rc::clone(callback)),
+            _ => None,
         };
-        if control.begin_work(token.callback_generation) {
-            entry.observability.counters_mut().record_work_started();
-            Some(Rc::clone(callback))
+        let counters = entry.observability.counters_mut();
+        if callback.is_some() {
+            counters.record_work_started();
         } else {
-            entry.observability.counters_mut().record_stale_work();
-            None
+            counters.record_stale_work();
         }
+        callback
     }
 
     pub(crate) fn complete_watchdog_work(
@@ -971,8 +946,8 @@ impl TimerRegistry {
             );
             match &prepared {
                 WatchdogCompletion::Schedule { requested, .. } => {
-                    entry.scheduling_mode = requested.mode;
-                    entry.latest_requested_delay_ns = requested.requested_delay_ns;
+                    entry.scheduling.mode = requested.mode;
+                    entry.scheduling.latest_requested_delay_ns = requested.requested_delay_ns;
                 }
                 WatchdogCompletion::Stop(InactiveReason::Cancelled) => {
                     entry.observability.counters_mut().record_cancellation();
@@ -1240,39 +1215,6 @@ const fn clear_wakeup_if(clear_wakeup: bool) -> RegistryEffect {
     } else {
         RegistryEffect::None
     }
-}
-
-// Callers have validated the exact running generation. Checked completion
-// failures leave that state unchanged before this shared stop finalization.
-fn stop_ordinary_completion(
-    entry: &mut Entry,
-    completion: TimerCompletion,
-    now_ns: u64,
-    failure: Option<TimerControlFailure>,
-) -> RegistryTransition {
-    let (reason, completion, transition) = failure.map_or_else(
-        || {
-            (
-                InactiveReason::InvariantFailure,
-                completion,
-                RegistryTransition::normal(RegistryEffect::None),
-            )
-        },
-        |failure| {
-            (
-                InactiveReason::ControlFailure(failure),
-                TimerCompletion::invariant_failure(completion.work_count()),
-                RegistryTransition::terminal(RegistryEffect::None, failure),
-            )
-        },
-    );
-    let EntryKind::Ordinary { control, .. } = &mut entry.kind else {
-        return transition;
-    };
-    control.terminate(reason);
-    entry.latest_directive = Some(TimerDirectiveSnapshot::Stop);
-    entry.observability.record_completion(completion, now_ns);
-    transition
 }
 
 fn remove_after(

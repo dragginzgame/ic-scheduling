@@ -4,6 +4,22 @@ This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
 `ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
 
+## [0.34.14]
+
+### 🧹 Cleanup
+
+- Keep queue collection validation with its snapshot owner, preserving validated
+  restore and commit-before-effect boundaries.
+
+### 🧪 Testing
+
+- Adopt Testkit 0.93 for native recovery and queue qualification, using its
+  client-owned CBOR failure categories and Platform 0.25 codecs. Request budgets,
+  server cleanup, public Jobs APIs and retained formats are unchanged.
+- Scope Tokio runtime macros and principal self-authentication to development
+  consumers, keeping the optional native harness graph smaller and the default
+  artifact-capture binary lightweight.
+
 ## [0.34.13] - 2026-11-07
 
 ### 🧪 Testing

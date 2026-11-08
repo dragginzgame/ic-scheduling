@@ -5,12 +5,12 @@ use ic_timers::{
     AfterCompletionRunResult, InactiveReason, OnceContext, OnceDecision, OnceRegistration,
     OnceRunResult, TimerCadence, TimerCompletion, TimerError, TimerIdentity, TimerReconcileState,
     TimerRegistrationStatus, TimerRuntimeStateSnapshot, TimerSchedule, TimerStart,
-    WatchdogDecision, WatchdogReconcileState, WatchdogRunResult, reconcile_after_completion,
-    reconcile_once, reconcile_watchdog, register_after_completion, register_once,
-    register_watchdog, timer_inventory, timer_snapshot,
+    WatchdogDecision, WatchdogReconcileState, WatchdogRegistration, WatchdogRunResult,
+    reconcile_after_completion, reconcile_once, reconcile_watchdog, register_after_completion,
+    register_once, register_watchdog, timer_inventory, timer_snapshot,
 };
 use ic_timers_test_protocol::{
-    OrdinaryObservation,
+    OrdinaryObservation, OrdinaryTermination,
     rpc::{OrdinaryPolicy, ProbeLifetime, ProbePolicy},
 };
 use std::{
@@ -97,6 +97,45 @@ fn watchdog_callback(
     move |_| {
         std::hint::black_box(&captured);
         WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Stop)
+    }
+}
+
+// The removal and initial-admission subjects share capture retention and typed
+// creation. Fresh reconciliation keeps its separate owner-slot admission proof.
+enum CapturedRegistration {
+    Once(OnceRegistration),
+    AfterCompletion(AfterCompletionRegistration),
+    Watchdog(WatchdogRegistration),
+}
+
+impl CapturedRegistration {
+    fn register(policy: ProbePolicy, start: TimerStart) -> Result<Self, TimerError> {
+        let captured = CapturedState;
+        let cadence = TimerCadence::from_nanos(super::CADENCE_NS).expect("fixed cadence");
+        match policy {
+            ProbePolicy::Once => {
+                register_once(identity(), start, once_callback(captured)).map(Self::Once)
+            }
+            ProbePolicy::AfterCompletion => register_after_completion(
+                identity(),
+                cadence,
+                start,
+                after_completion_callback(captured),
+            )
+            .map(Self::AfterCompletion),
+            ProbePolicy::Watchdog => {
+                register_watchdog(identity(), cadence, start, watchdog_callback(captured))
+                    .map(Self::Watchdog)
+            }
+        }
+    }
+
+    fn remove(self) -> Result<(), TimerError> {
+        match self {
+            Self::Once(timer) => timer.unregister(),
+            Self::AfterCompletion(timer) => timer.cancel(), // Exercise transient cancellation.
+            Self::Watchdog(timer) => timer.unregister(),
+        }
     }
 }
 
@@ -405,10 +444,13 @@ fn ordinary_observation() -> OrdinaryObservation {
             .aggregate()
             .samples();
         if let TimerRuntimeStateSnapshot::Inactive { reason } = snapshot.state() {
-            observation.abandoned = reason == InactiveReason::Abandoned;
-            observation.stopped = reason == InactiveReason::Stopped;
-            observation.cancelled = reason == InactiveReason::Cancelled;
-            observation.invariant_failure = reason == InactiveReason::InvariantFailure;
+            observation.termination = match reason {
+                InactiveReason::Abandoned => Some(OrdinaryTermination::Abandoned),
+                InactiveReason::Stopped => Some(OrdinaryTermination::Stopped),
+                InactiveReason::Cancelled => Some(OrdinaryTermination::Cancelled),
+                InactiveReason::InvariantFailure => Some(OrdinaryTermination::InvariantFailure),
+                InactiveReason::NeverScheduled | InactiveReason::ControlFailure(_) => None,
+            };
         }
     }
     observation
@@ -424,44 +466,18 @@ fn remove_armed_callback((policy,): (ProbePolicy,)) {
     let deadline = ic_platform_runtime::cdk::api::time()
         .checked_add(super::CADENCE_NS)
         .expect("fixture deadline");
-    let captured = CapturedState;
-    match policy {
-        ProbePolicy::Once => {
-            let timer = register_once(
-                identity(),
-                TimerStart::Retained {
-                    initial: Some(TimerSchedule::At(deadline)),
-                },
-                once_callback(captured),
-            )
-            .expect("register Once");
-            timer.unregister().expect("unregister Once");
+    let initial = TimerSchedule::At(deadline);
+    let start = if policy == ProbePolicy::AfterCompletion {
+        TimerStart::RemoveWhenStopped { initial }
+    } else {
+        TimerStart::Retained {
+            initial: Some(initial),
         }
-        ProbePolicy::AfterCompletion => {
-            let timer = register_after_completion(
-                identity(),
-                TimerCadence::from_nanos(super::CADENCE_NS).expect("cadence"),
-                TimerStart::RemoveWhenStopped {
-                    initial: TimerSchedule::At(deadline),
-                },
-                after_completion_callback(captured),
-            )
-            .expect("register after-completion");
-            timer.cancel().expect("cancel transient");
-        }
-        ProbePolicy::Watchdog => {
-            let timer = register_watchdog(
-                identity(),
-                TimerCadence::from_nanos(super::CADENCE_NS).expect("cadence"),
-                TimerStart::Retained {
-                    initial: Some(TimerSchedule::At(deadline)),
-                },
-                watchdog_callback(captured),
-            )
-            .expect("register Watchdog");
-            timer.unregister().expect("unregister Watchdog");
-        }
-    }
+    };
+    CapturedRegistration::register(policy, start)
+        .expect("register captured callback")
+        .remove()
+        .expect("remove captured callback");
 }
 
 /// A rejected initial request must not leave callback authority in the IC heap.
@@ -481,24 +497,7 @@ fn reject_initial_schedule((policy, lifetime): (ProbePolicy, ProbeLifetime)) -> 
             initial: Some(initial),
         }
     };
-    let captured = CapturedState;
-    let result = match policy {
-        ProbePolicy::Once => register_once(identity(), start, once_callback(captured)).map(|_| ()),
-        ProbePolicy::AfterCompletion => register_after_completion(
-            identity(),
-            TimerCadence::from_nanos(super::CADENCE_NS).expect("cadence"),
-            start,
-            after_completion_callback(captured),
-        )
-        .map(|_| ()),
-        ProbePolicy::Watchdog => register_watchdog(
-            identity(),
-            TimerCadence::from_nanos(super::CADENCE_NS).expect("cadence"),
-            start,
-            watchdog_callback(captured),
-        )
-        .map(|_| ()),
-    };
+    let result = CapturedRegistration::register(policy, start);
     let rejected = matches!(
         result,
         Err(TimerError::Schedule(

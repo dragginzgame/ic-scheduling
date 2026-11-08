@@ -11,9 +11,9 @@ use crate::{
     platform::TimerHandle,
     schedule::TimerCadence,
     snapshot::{
-        DeclarationLifetime, OrdinaryRuntimeStateSnapshot, TimerDirectiveSnapshot, TimerEpoch,
+        DeclarationLifetime, OrdinaryRuntimeStateSnapshot, SchedulingObservation, TimerEpoch,
         TimerIdentity, TimerObservabilitySnapshot, TimerPolicy, TimerRegistrationId,
-        TimerRuntimeStateSnapshot, TimerSchedulingMode, TimerSnapshot, WatchdogAttemptStatus,
+        TimerRuntimeStateSnapshot, TimerSnapshot, WatchdogAttemptStatus,
         WatchdogRuntimeStateSnapshot,
     },
 };
@@ -96,10 +96,7 @@ pub(super) struct Entry {
     pub(super) claim_generation: u64,
     pub(super) lifetime: DeclarationLifetime,
     pub(super) kind: EntryKind,
-    pub(super) scheduling_mode: TimerSchedulingMode,
-    pub(super) latest_directive: Option<TimerDirectiveSnapshot>,
-    pub(super) latest_requested_delay_ns: Option<u64>,
-    latest_armed_delay_ns: Option<u64>,
+    pub(super) scheduling: SchedulingObservation,
     pub(super) confirmed_wakeup_generation: Option<u64>,
     pub(super) wakeup: Option<OwnedProviderHandle>,
     pub(super) work: Option<OwnedProviderHandle>,
@@ -112,20 +109,11 @@ impl Entry {
         kind: EntryKind,
         lifetime: DeclarationLifetime,
     ) -> Self {
-        let scheduling_mode = match kind.policy() {
-            TimerPolicy::Once => TimerSchedulingMode::Once,
-            TimerPolicy::AfterCompletion { .. } => TimerSchedulingMode::AfterCompletion,
-            TimerPolicy::Watchdog { .. } => TimerSchedulingMode::Watchdog,
-        };
-
         Self {
             claim_generation,
             lifetime,
+            scheduling: SchedulingObservation::new(kind.policy()),
             kind,
-            scheduling_mode,
-            latest_directive: None,
-            latest_requested_delay_ns: None,
-            latest_armed_delay_ns: None,
             confirmed_wakeup_generation: None,
             wakeup: None,
             work: None,
@@ -168,7 +156,7 @@ impl Entry {
             return;
         }
         self.confirmed_wakeup_generation = Some(token.callback_generation);
-        self.latest_armed_delay_ns = Some(delay_ns);
+        self.scheduling.latest_armed_delay_ns = Some(delay_ns);
         let counters = self.observability.counters_mut();
         counters.record_wakeup_armed();
         if token.role == CallbackRole::WatchdogWork {
@@ -228,10 +216,7 @@ impl Entry {
             self.kind.policy(),
             self.lifetime,
             state,
-            self.scheduling_mode,
-            self.latest_directive,
-            self.latest_requested_delay_ns,
-            self.latest_armed_delay_ns,
+            self.scheduling,
             &self.observability,
         )
     }

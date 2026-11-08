@@ -101,3 +101,35 @@ fn checkpoint_round_trip_preserves_flags_and_wide_values() {
 fn native_checkpoint(state: &impl serde::Serialize) -> Vec<u8> {
     ic_wire::native::encode_request(super::rpc::CHECKPOINT_ID, state, REQUEST_LIMITS).unwrap()
 }
+
+#[test]
+fn ordinary_termination_round_trip_uses_the_current_method_identity() {
+    use super::{OrdinaryObservation, OrdinaryTermination};
+    for termination in [
+        None,
+        Some(OrdinaryTermination::Abandoned),
+        Some(OrdinaryTermination::Stopped),
+        Some(OrdinaryTermination::Cancelled),
+        Some(OrdinaryTermination::InvariantFailure),
+    ] {
+        let observed = OrdinaryObservation {
+            termination,
+            ..OrdinaryObservation::default()
+        };
+        let encoded = encode_response(
+            Method::OrdinaryObservation as u64,
+            &observed,
+            RESPONSE_LIMITS,
+        )
+        .expect("encode enum termination");
+        let decoded: OrdinaryObservation = decode_response(
+            Method::OrdinaryObservation as u64,
+            &encoded,
+            RESPONSE_LIMITS,
+        )
+        .expect("decode enum termination");
+        assert_eq!(decoded.termination, termination);
+        // A retained caller of the four-boolean contract cannot interpret this layout.
+        assert!(decode_response::<OrdinaryObservation>(22, &encoded, RESPONSE_LIMITS).is_err());
+    }
+}

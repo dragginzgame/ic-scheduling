@@ -40,7 +40,7 @@ canister graphs must still exclude older providers that lack that key.
 | Wasm compilation and artifact-cache custody | `ic-build`, with explicit child custody from `ic-host-process` | `crates/ic-timers-pocketic/src/build/mod.rs` selects packages, profile, features and artifact lifetime |
 | Native report alias admission and atomic publication | `ic-host-fs` | The qualification driver protects its reviewed baseline and selects report schema, path and permissions |
 | PocketIC client types and raw call transport | `ic-testkit::pocket_ic`; canonical identities from `ic-platform-types` | Native tests retain bounded Wire requests |
-| PocketIC server selection, admission, lifecycle and bounded progress | `ic-testkit` | `scripts/dev/testkit-server.sh` selects the root-lock CLI; the native harness supplies instance configuration |
+| PocketIC server selection, admission, lifecycle and bounded progress | `ic-testkit` | `scripts/dev/testkit-tool.sh` selects the root-lock CLI; the native harness supplies instance configuration |
 | Controlled probe codecs | Published `ic-wire::native` and Serde; Testkit owns native typed call handling | The unpublished protocol owns method identities/limits; Wire Endpoint binds canister entrypoints; the native harness selects the protocol and caller |
 | Common tools, fixture dependency closure, evidence transport and release mechanics | Reviewed Shared Tooling snapshot | Local Make selections, product release/source policy and evidence identity; see [adoption boundaries](development.md) |
 
@@ -69,7 +69,7 @@ Runtime owns the maintained IC0 bindings and executor. The root catalog disables
 default Runtime features. The library selects only `executor` and `ic0`; the two
 canister probes select `cdk` for entrypoint contexts,
 protected calls/spawning, traps, cycle burning and stable byte I/O. The native
-harness selects Testkit 0.92's async-only `pocket_ic` module for clients and
+harness selects Testkit 0.93's async-only `pocket_ic` module for clients and
 `ic-platform-types` 0.18 with `principal-external` for canonical identities.
 Clients select a 60-second request budget independently of server startup limits.
 The protocol package selects Wire and Serde without a direct Runtime dependency.

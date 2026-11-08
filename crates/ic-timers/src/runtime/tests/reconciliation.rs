@@ -20,15 +20,21 @@ fn assert_original_callback_completes(calls: &Cell<u64>, now_ns: u64) {
     assert_eq!(timer_count(), 0);
 }
 
-#[test]
-fn once_reconciliation_rejects_identity_mismatch_without_disturbing_live_work() {
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum Conflict {
+    Identity,
+    Lifetime,
+    Cadence,
+}
+
+fn assert_conflict_keeps_original_work(conflict: Conflict) {
     let _fixture = setup();
-    let timer = identity("reconcile-once-identity");
-    let other = identity("reconcile-once-other");
+    let timer = identity("reconciliation-conflict");
+    let cadence = TimerCadence::from_nanos(5).unwrap();
     let calls = Rc::new(Cell::new(0_u64));
     let callback_calls = Rc::clone(&calls);
-    let mut registration = Some(
-        register_once(
+    let mut slot = if conflict == Conflict::Identity {
+        let registration = register_once(
             timer.clone(),
             TimerStart::Retained { initial: None },
             move |_| {
@@ -36,124 +42,87 @@ fn once_reconciliation_rejects_identity_mismatch_without_disturbing_live_work() 
                 async { OnceRunResult::new(TimerCompletion::success(1), OnceDecision::Stop) }
             },
         )
-        .unwrap(),
-    );
-    registration
-        .as_ref()
-        .unwrap()
-        .ensure_scheduled(TimerSchedule::At(20))
         .unwrap();
+        registration
+            .ensure_scheduled(TimerSchedule::At(20))
+            .unwrap();
+        ReconciliationSlot::Once(Some(registration))
+    } else {
+        let start = if conflict == Conflict::Lifetime {
+            TimerStart::RemoveWhenStopped {
+                initial: TimerSchedule::After(Duration::from_nanos(5)),
+            }
+        } else {
+            TimerStart::Retained { initial: None }
+        };
+        let registration = register_after_completion(timer.clone(), cadence, start, move |_| {
+            callback_calls.set(callback_calls.get() + 1);
+            async {
+                AfterCompletionRunResult::new(
+                    TimerCompletion::success(1),
+                    AfterCompletionDecision::Stop,
+                )
+            }
+        })
+        .unwrap();
+        if conflict == Conflict::Cadence {
+            registration.ensure_scheduled().unwrap();
+        }
+        ReconciliationSlot::AfterCompletion(Some(registration))
+    };
     let before = timer_inventory().unwrap();
-
-    let rejected = reconcile_once(&mut registration, &other, None, |_| async {
-        OnceRunResult::new(TimerCompletion::invariant_failure(0), OnceDecision::Stop)
-    });
+    let requested_identity = if conflict == Conflict::Identity {
+        identity("other-owner")
+    } else {
+        timer.clone()
+    };
+    let requested_cadence = if conflict == Conflict::Cadence {
+        TimerCadence::from_nanos(6).unwrap()
+    } else {
+        cadence
+    };
+    let ignored_calls = Rc::new(Cell::new(0));
+    let rejected = slot.reconcile(
+        &requested_identity,
+        requested_cadence,
+        false,
+        (),
+        Rc::clone(&ignored_calls),
+    );
     assert_reconciliation_conflict_preserves_runtime(&rejected, &before);
-    let original = registration.as_ref().unwrap();
+    let original = slot.claim().unwrap();
     assert_eq!(original.identity(), &timer);
-    assert!(original.has_armed_wakeup().unwrap());
+    assert!(has_armed_wakeup_claim(original).unwrap());
+    set_time(14);
+    assert!(!run_next_due());
+    assert_eq!(calls.get(), 0);
+    assert_original_callback_completes(
+        &calls,
+        if conflict == Conflict::Identity {
+            20
+        } else {
+            15
+        },
+    );
+    assert_eq!(ignored_calls.get(), 0);
+    if conflict == Conflict::Lifetime {
+        assert!(timer_snapshot(&timer).unwrap().is_none());
+    }
+}
 
-    assert_original_callback_completes(&calls, 20);
+#[test]
+fn once_reconciliation_rejects_identity_mismatch_without_disturbing_live_work() {
+    assert_conflict_keeps_original_work(Conflict::Identity);
 }
 
 #[test]
 fn after_completion_reconciliation_rejects_transient_lifetime_without_cancelling_work() {
-    let _fixture = setup();
-    let timer = identity("reconcile-after-lifetime");
-    let cadence = TimerCadence::from_nanos(5).unwrap();
-    let calls = Rc::new(Cell::new(0_u64));
-    let callback_calls = Rc::clone(&calls);
-    let mut registration = Some(
-        register_after_completion(
-            timer.clone(),
-            cadence,
-            TimerStart::RemoveWhenStopped {
-                initial: TimerSchedule::After(Duration::from_nanos(5)),
-            },
-            move |_| {
-                callback_calls.set(callback_calls.get() + 1);
-                async {
-                    AfterCompletionRunResult::new(
-                        TimerCompletion::success(1),
-                        AfterCompletionDecision::Stop,
-                    )
-                }
-            },
-        )
-        .unwrap(),
-    );
-    let before = timer_inventory().unwrap();
-
-    let rejected = reconcile_after_completion(
-        &mut registration,
-        &timer,
-        cadence,
-        TimerReconcileState::Inactive,
-        |_| async {
-            AfterCompletionRunResult::new(
-                TimerCompletion::invariant_failure(0),
-                AfterCompletionDecision::Stop,
-            )
-        },
-    );
-    assert_reconciliation_conflict_preserves_runtime(&rejected, &before);
-    let original = registration.as_ref().unwrap();
-    assert_eq!(original.identity(), &timer);
-    assert!(original.has_armed_wakeup().unwrap());
-
-    assert_original_callback_completes(&calls, 15);
-    assert!(timer_snapshot(&timer).unwrap().is_none());
+    assert_conflict_keeps_original_work(Conflict::Lifetime);
 }
 
 #[test]
 fn after_completion_reconciliation_rejects_cadence_mismatch_without_disturbing_live_work() {
-    let _fixture = setup();
-    let timer = identity("reconcile-after-cadence");
-    let cadence = TimerCadence::from_nanos(5).unwrap();
-    let other_cadence = TimerCadence::from_nanos(6).unwrap();
-    let calls = Rc::new(Cell::new(0_u64));
-    let callback_calls = Rc::clone(&calls);
-    let mut registration = Some(
-        register_after_completion(
-            timer.clone(),
-            cadence,
-            TimerStart::Retained { initial: None },
-            move |_| {
-                callback_calls.set(callback_calls.get() + 1);
-                async {
-                    AfterCompletionRunResult::new(
-                        TimerCompletion::success(1),
-                        AfterCompletionDecision::Stop,
-                    )
-                }
-            },
-        )
-        .unwrap(),
-    );
-    registration.as_ref().unwrap().ensure_scheduled().unwrap();
-    let before = timer_inventory().unwrap();
-
-    let rejected = reconcile_after_completion(
-        &mut registration,
-        &timer,
-        other_cadence,
-        TimerReconcileState::Inactive,
-        |_| async {
-            AfterCompletionRunResult::new(
-                TimerCompletion::invariant_failure(0),
-                AfterCompletionDecision::Stop,
-            )
-        },
-    );
-    assert_reconciliation_conflict_preserves_runtime(&rejected, &before);
-    let original = registration.as_ref().unwrap();
-    assert_eq!(original.identity(), &timer);
-    assert!(original.has_armed_wakeup().unwrap());
-
-    set_time(14);
-    assert!(!run_next_due());
-    assert_eq!(calls.get(), 0);
-    assert_original_callback_completes(&calls, 15);
+    assert_conflict_keeps_original_work(Conflict::Cadence);
 }
 
 #[test]
