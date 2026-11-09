@@ -1,7 +1,7 @@
 # Native artifact capture with an explicitly enabled recovery harness.
 [package]
 name = "ic-jobs-canister-tests"
-version = "0.34.15"
+version = "0.34.16"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
