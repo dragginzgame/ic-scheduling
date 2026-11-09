@@ -314,7 +314,11 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                 .into_iter()
                 .filter(|fault| !abandon || *fault == ProviderFault::None)
                 {
-                    for word in 0..COMMANDS.len().pow(3) {
+                    // Keep isolated commands as well as interleavings: repeated
+                    // idempotent requests do not replace a single-request proof.
+                    for (steps, word) in [1, 3].into_iter().flat_map(|steps| {
+                        (0..COMMANDS.len().pow(steps)).map(move |word| (steps, word))
+                    }) {
                         let _fixture = setup();
                         let timer = identity("suspended-sequence");
                         let gate = SuspendedWork::default();
@@ -336,7 +340,7 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                         let mut commands = word;
                         let mut expected_deadline: Option<u64> = None;
                         let mut unregistered = false;
-                        for _ in 0..3 {
+                        for _ in 0..steps {
                             let command = COMMANDS[commands % COMMANDS.len()];
                             if !unregistered {
                                 match command {
@@ -376,6 +380,8 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                         fault.inject();
                         gate.resume();
                         if abandon {
+                            // Abandon a resumed continuation after IC time has advanced.
+                            set_time(20);
                             assert!(discard_next_due());
                         } else {
                             assert!(run_next_due());
@@ -393,7 +399,7 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                         assert_eq!(
                             snapshot.is_none(),
                             removed,
-                            "declaration: {word}/{recurring}/{abandon}/{fault:?}"
+                            "declaration: {steps}/{word}/{recurring}/{abandon}/{fault:?}"
                         );
                         assert_eq!(timer_count(), usize::from(expected_deadline.is_some()));
                         if let Some(snapshot) = snapshot {
@@ -414,13 +420,32 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                                 );
                             }
                             assert_eq!(
-                                snapshot.observability().counters().work_completed().total(),
+                                snapshot
+                                    .observability()
+                                    .counters()
+                                    .work_completed()
+                                    .exact_total()
+                                    .unwrap(),
                                 u128::from(!abandon)
                             );
                             assert_eq!(
-                                snapshot.observability().counters().unacknowledged().total(),
+                                snapshot
+                                    .observability()
+                                    .counters()
+                                    .unacknowledged()
+                                    .exact_total()
+                                    .unwrap(),
                                 u128::from(abandon)
                             );
+                            if abandon {
+                                assert_eq!(
+                                    snapshot
+                                        .observability()
+                                        .outcomes()
+                                        .last_unacknowledged_at_ns(),
+                                    Some(20)
+                                );
+                            }
                         }
 
                         assert!(
@@ -428,7 +453,7 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                                 cancel_claim(Executing(&token)),
                                 Err(TimerError::RegistrationExpired)
                             ),
-                            "stale context: recurring={recurring} lifetime={lifetime:?} abandon={abandon} fault={fault:?} word={word}"
+                            "stale context: recurring={recurring} lifetime={lifetime:?} abandon={abandon} fault={fault:?} steps={steps} word={word}"
                         );
                         if timer_snapshot(&timer).unwrap().is_some() {
                             unregister_claim(&claim).unwrap();

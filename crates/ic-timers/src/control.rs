@@ -126,6 +126,15 @@ impl TimerControl {
         }
     }
 
+    /// Defer removal until the running callback completes or is abandoned.
+    pub(crate) const fn defer_unregister(&mut self) -> bool {
+        if let TimerRegistration::Running { pending } = &mut self.registration {
+            *pending = Some(OrdinaryPending::Unregister);
+            return true;
+        }
+        false
+    }
+
     /// Stop ordinary control with the registry-selected inactive reason.
     ///
     /// Returns whether a scheduled wake-up must be cleared. A running callback

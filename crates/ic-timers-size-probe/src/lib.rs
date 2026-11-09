@@ -62,126 +62,112 @@ fn init() {
     }
 }
 
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::CohortStart as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn cohort_start() -> OperationMeasurement {
-    let (changed, instructions) = measure(start_inner);
-    OperationMeasurement {
-        changed,
-        instructions,
+ic_timers_test_protocol::probe_endpoints! {
+    #[endpoint(update, CohortStart)]
+    fn cohort_start() -> OperationMeasurement {
+        let (changed, instructions) = measure(start_inner);
+        OperationMeasurement {
+            changed,
+            instructions,
+        }
+    }
+
+    #[endpoint(update, EnsureAgain)]
+    fn ensure_again() -> OperationMeasurement {
+        let (changed, instructions) = measure(ensure_again_inner);
+        OperationMeasurement {
+            changed,
+            instructions,
+        }
+    }
+
+    #[endpoint(update, Cancel)]
+    fn cancel() -> OperationMeasurement {
+        let (changed, instructions) = measure(cancel_inner);
+        OperationMeasurement {
+            changed,
+            instructions,
+        }
+    }
+
+    #[endpoint(update, MemorySamplingOverhead)]
+    /// Isolate the raw instruction cost of the start/end page reads used by one
+    /// normally completed callback. This probe-only endpoint does not alter the
+    /// runtime's callback instruction aggregate.
+    fn memory_sampling_overhead() -> MemorySamplingMeasurement {
+        let ((), empty_bracket_instructions) = measure(|| {
+            std::hint::black_box((0_u64, 0_u64));
+            std::hint::black_box((0_u64, 0_u64));
+        });
+        let ((), sampled_bracket_instructions) = measure(|| {
+            std::hint::black_box(memory_page_extents());
+            std::hint::black_box(memory_page_extents());
+        });
+        MemorySamplingMeasurement {
+            empty_bracket_instructions,
+            sampled_bracket_instructions,
+        }
     }
 }
 
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::EnsureAgain as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn ensure_again() -> OperationMeasurement {
-    let (changed, instructions) = measure(ensure_again_inner);
-    OperationMeasurement {
-        changed,
-        instructions,
-    }
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::Cancel as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn cancel() -> OperationMeasurement {
-    let (changed, instructions) = measure(cancel_inner);
-    OperationMeasurement {
-        changed,
-        instructions,
-    }
-}
-
-/// Isolate the raw instruction cost of the start/end page reads used by one
-/// normally completed callback. This probe-only endpoint does not alter the
-/// runtime's callback instruction aggregate.
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::MemorySamplingOverhead as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn memory_sampling_overhead() -> MemorySamplingMeasurement {
-    let ((), empty_bracket_instructions) = measure(|| {
-        std::hint::black_box((0_u64, 0_u64));
-        std::hint::black_box((0_u64, 0_u64));
-    });
-    let ((), sampled_bracket_instructions) = measure(|| {
-        std::hint::black_box(memory_page_extents());
-        std::hint::black_box(memory_page_extents());
-    });
-    MemorySamplingMeasurement {
-        empty_bracket_instructions,
-        sampled_bracket_instructions,
-    }
-}
-
-/// Select a bounded non-trivial callback body for the probe's next Watchdog
-/// registration. This endpoint exists only in the Watchdog test canister.
 #[cfg(feature = "watchdog")]
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::UseRepresentativeWatchdogWork as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn use_representative_watchdog_work() {
-    REPRESENTATIVE_WATCHDOG_WORK.with(|enabled| enabled.set(true));
+ic_timers_test_protocol::probe_endpoints! {
+    #[endpoint(update, UseRepresentativeWatchdogWork)]
+    /// Select a bounded non-trivial callback body for the probe's next Watchdog
+    /// registration. This endpoint exists only in the Watchdog test canister.
+    fn use_representative_watchdog_work() {
+        REPRESENTATIVE_WATCHDOG_WORK.with(|enabled| enabled.set(true));
+    }
+
 }
 
-#[ic_wire_endpoint::query(
-    id = ic_timers_test_protocol::rpc::Method::Observe as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn observe() -> CohortObservation<&'static str> {
-    let snapshot_before = ic_platform_runtime::ic0::performance_counter(1);
-    let snapshot = timer_snapshot(&cohort_identity())
-        .unwrap_or_else(|_| ic_platform_runtime::cdk::api::trap("size-probe snapshot failed"));
-    let snapshot_instructions =
-        ic_platform_runtime::ic0::performance_counter(1).saturating_sub(snapshot_before);
-    let inventory_before = ic_platform_runtime::ic0::performance_counter(1);
-    let inventory = timer_inventory()
-        .unwrap_or_else(|_| ic_platform_runtime::cdk::api::trap("size-probe inventory failed"));
-    let inventory_instructions =
-        ic_platform_runtime::ic0::performance_counter(1).saturating_sub(inventory_before);
-    let registered = registration_present();
-    let callbacks = CALLBACKS.with(Cell::get);
-    let observed = CohortObservation {
-        cohort: cohort_name(),
-        registered,
-        callbacks,
-        snapshot_instructions,
-        inventory_len: inventory.len() as u64,
-        inventory_instructions,
-        ..CohortObservation::default()
-    };
-    let Some(snapshot) = snapshot else {
-        return observed;
-    };
-    let counters = snapshot.observability().counters();
-    let performance = snapshot.observability().performance();
-    CohortObservation {
-        next_deadline_ns: snapshot.next_deadline_ns(),
-        schedule_requests: counter_observation(counters.schedule_requests()),
-        wakeups_armed: counter_observation(counters.wakeups_armed()),
-        work_dispatched: counter_observation(counters.work_dispatched()),
-        scheduler_started: counter_observation(counters.scheduler_started()),
-        work_started: counter_observation(counters.work_started()),
-        work_completed: counter_observation(counters.work_completed()),
-        coalesced: counter_observation(counters.coalesced()),
-        scheduler_instruction_samples: performance.scheduler_instructions().aggregate().samples(),
-        scheduler_instruction_total: performance.scheduler_instructions().aggregate().total(),
-        work_instruction_samples: performance.work_instructions().aggregate().samples(),
-        work_instruction_total: performance.work_instructions().aggregate().total(),
-        ..observed
+ic_timers_test_protocol::probe_endpoints! {
+    #[endpoint(query, Observe)]
+    fn observe() -> CohortObservation<&'static str> {
+        let snapshot_before = ic_platform_runtime::ic0::performance_counter(1);
+        let snapshot = timer_snapshot(&cohort_identity())
+            .unwrap_or_else(|_| ic_platform_runtime::cdk::api::trap("size-probe snapshot failed"));
+        let snapshot_instructions =
+            ic_platform_runtime::ic0::performance_counter(1).saturating_sub(snapshot_before);
+        let inventory_before = ic_platform_runtime::ic0::performance_counter(1);
+        let inventory = timer_inventory()
+            .unwrap_or_else(|_| ic_platform_runtime::cdk::api::trap("size-probe inventory failed"));
+        let inventory_instructions =
+            ic_platform_runtime::ic0::performance_counter(1).saturating_sub(inventory_before);
+        let registered = registration_present();
+        let callbacks = CALLBACKS.with(Cell::get);
+        let observed = CohortObservation {
+            cohort: cohort_name(),
+            registered,
+            callbacks,
+            snapshot_instructions,
+            inventory_len: inventory.len() as u64,
+            inventory_instructions,
+            ..CohortObservation::default()
+        };
+        let Some(snapshot) = snapshot else {
+            return observed;
+        };
+        let counters = snapshot.observability().counters();
+        let performance = snapshot.observability().performance();
+        CohortObservation {
+            next_deadline_ns: snapshot.next_deadline_ns(),
+            schedule_requests: counter_observation(counters.schedule_requests()),
+            wakeups_armed: counter_observation(counters.wakeups_armed()),
+            work_dispatched: counter_observation(counters.work_dispatched()),
+            scheduler_started: counter_observation(counters.scheduler_started()),
+            work_started: counter_observation(counters.work_started()),
+            work_completed: counter_observation(counters.work_completed()),
+            coalesced: counter_observation(counters.coalesced()),
+            scheduler_instruction_samples: performance
+                .scheduler_instructions()
+                .aggregate()
+                .samples(),
+            scheduler_instruction_total: performance.scheduler_instructions().aggregate().total(),
+            work_instruction_samples: performance.work_instructions().aggregate().samples(),
+            work_instruction_total: performance.work_instructions().aggregate().total(),
+            ..observed
+        }
     }
 }
 

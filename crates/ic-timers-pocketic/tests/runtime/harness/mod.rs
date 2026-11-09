@@ -52,7 +52,7 @@ pub async fn install_probe(pic: &PocketIc, wasm: Vec<u8>) -> ExternalPrincipal {
 /// The caller awaits explicit instance deletion before the managed server stops.
 /// Startup has its own deadline. A five-minute hard TTL also covers each server
 /// while the driver bounds the worker, including asynchronous instance deletion.
-pub async fn fresh_pocket_ic() -> PocketIcInstance<PocketIc> {
+pub async fn fresh_pocket_ic() -> PocketIcInstance {
     let binary = env::var_os("POCKET_IC_BIN")
         .filter(|path| !path.is_empty())
         .map(PathBuf::from)
@@ -80,7 +80,7 @@ pub async fn fresh_pocket_ic() -> PocketIcInstance<PocketIc> {
 }
 
 /// Consume the instance and await deletion while its managed server is alive.
-pub async fn close_instance(owned: PocketIcInstance<PocketIc>) {
+pub async fn close_instance(owned: PocketIcInstance) {
     owned
         .close()
         .await

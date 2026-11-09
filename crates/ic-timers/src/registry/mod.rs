@@ -19,8 +19,8 @@ use watchdog::{
 use crate::{
     callback::OrdinaryRunResult,
     control::{
-        OrdinaryCompletion, OrdinaryPending, OrdinaryRequest, OrdinaryStop, TimerControl,
-        TimerRegistration, WakeupArm,
+        OrdinaryCompletion, OrdinaryPending, OrdinaryRequest, OrdinaryStop, TimerRegistration,
+        WakeupArm,
     },
     platform::TimerHandle,
     schedule::{ResolvedSchedule, ScheduleError, TimerCadence, TimerSchedule},
@@ -646,19 +646,8 @@ impl TimerRegistry {
         let identity = claim.identity();
         let entry = self.entry_mut(claim)?;
         let deferred = match &mut entry.kind {
-            EntryKind::Ordinary {
-                control:
-                    TimerControl {
-                        registration: TimerRegistration::Running { pending },
-                        ..
-                    },
-                ..
-            } => {
-                *pending = Some(OrdinaryPending::Unregister);
-                true
-            }
+            EntryKind::Ordinary { control, .. } => control.defer_unregister(),
             EntryKind::Watchdog { control, .. } => control.defer_unregister(),
-            EntryKind::Ordinary { .. } => false,
         };
         if deferred {
             Ok(RegistryTransition::normal(RegistryEffect::None))

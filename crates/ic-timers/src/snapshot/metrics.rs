@@ -1,7 +1,7 @@
 //! Registration-local Metrics counters and bounded callback measurements.
 
 use super::{TimerCompletion, TimerCompletionOutcome, TimerOutcomeSnapshot};
-use ic_metrics::{MeasurementCounter, MeasurementSummary};
+use ic_metrics::{MeasurementAggregate, MeasurementCounter, MeasurementSummary};
 
 // Each named event declares its storage, zero value and public observation once.
 // The registry classifies events; Metrics owns arithmetic. Recording stays explicit below.
@@ -226,40 +226,46 @@ impl MemoryPageSample {
 /// Absolute page extents are retained only for the latest normal completion;
 /// they are never totaled. Maximums describe observed start-to-end page
 /// growth, which is not exclusive allocation attribution for async work.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq)]
 pub struct MemoryPageSummary {
-    samples: u64,
     latest: MemoryPageSample,
-    maximum_wasm_growth: u64,
-    maximum_stable_growth: u64,
+    wasm_growth: MeasurementAggregate,
+    stable_growth: MeasurementAggregate,
+}
+
+impl PartialEq for MemoryPageSummary {
+    fn eq(&self, other: &Self) -> bool {
+        // Compare the exposed summary, excluding Metrics' unexposed totals/flags.
+        self.samples() == other.samples()
+            && self.latest() == other.latest()
+            && self.maximum_wasm_growth_pages() == other.maximum_wasm_growth_pages()
+            && self.maximum_stable_growth_pages() == other.maximum_stable_growth_pages()
+    }
 }
 
 impl MemoryPageSummary {
     const EMPTY: Self = Self {
-        samples: 0,
         latest: MemoryPageSample::EMPTY,
-        maximum_wasm_growth: 0,
-        maximum_stable_growth: 0,
+        wasm_growth: MeasurementAggregate::EMPTY,
+        stable_growth: MeasurementAggregate::EMPTY,
     };
 
     const fn record(&mut self, sample: MemoryPageSample) {
-        self.samples = self.samples.saturating_add(1);
         self.latest = sample;
-        self.maximum_wasm_growth = max_u64(self.maximum_wasm_growth, sample.wasm_growth_pages());
-        self.maximum_stable_growth =
-            max_u64(self.maximum_stable_growth, sample.stable_growth_pages());
+        self.wasm_growth.record(sample.wasm_growth_pages());
+        self.stable_growth.record(sample.stable_growth_pages());
     }
 
     /// Return the number of normally completed callback samples.
     #[must_use]
     pub const fn samples(self) -> u64 {
-        self.samples
+        self.wasm_growth.samples()
     }
 
     /// Return start/end page extents for the latest normal completion.
     #[must_use]
     pub const fn latest(self) -> Option<MemoryPageSample> {
-        if self.samples == 0 {
+        if self.samples() == 0 {
             None
         } else {
             Some(self.latest)
@@ -269,26 +275,14 @@ impl MemoryPageSummary {
     /// Return the largest observed Wasm-memory page growth in one sample.
     #[must_use]
     pub const fn maximum_wasm_growth_pages(self) -> Option<u64> {
-        if self.samples == 0 {
-            None
-        } else {
-            Some(self.maximum_wasm_growth)
-        }
+        self.wasm_growth.maximum()
     }
 
     /// Return the largest observed stable-memory page growth in one sample.
     #[must_use]
     pub const fn maximum_stable_growth_pages(self) -> Option<u64> {
-        if self.samples == 0 {
-            None
-        } else {
-            Some(self.maximum_stable_growth)
-        }
+        self.stable_growth.maximum()
     }
-}
-
-const fn max_u64(left: u64, right: u64) -> u64 {
-    if left > right { left } else { right }
 }
 
 /// Completed instruction and memory-page measurements split by callback role.

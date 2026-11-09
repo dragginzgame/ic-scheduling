@@ -128,8 +128,9 @@ fn missing_or_incomplete_candidate_never_replaces_a_previous_report() {
     assert!(incomplete.complete(Measurements::default()).is_err());
     fs::write(&output, &previous).unwrap();
     assert!(Report::read_candidate(&candidate, &expected).is_err());
-    // Exercise the on-disk boundary, including fields now required by the types.
-    for pointer in [
+    // Keep every required-field omission at the on-disk boundary. Wrong-type
+    // representatives cover map, object, string and numeric shapes below.
+    let omissions = [
         "/measurements",
         "/measurements/watchdog-calibration-minimal",
         "/measurements/once",
@@ -142,32 +143,38 @@ fn missing_or_incomplete_candidate_never_replaces_a_previous_report() {
         "/artifacts/once/input_digest",
         "/artifacts/once/recipe_identity",
         "/artifacts/once/feature",
-    ] {
-        let value: serde_json::Value = serde_json::from_slice(&previous).unwrap();
-        for replacement in [
-            None,
-            Some(serde_json::Value::Null),
-            Some(serde_json::json!({})),
-        ] {
-            let mut changed = value.clone();
-            let (parent, key) = pointer.rsplit_once('/').unwrap();
-            let object = changed
-                .pointer_mut(parent)
-                .unwrap()
-                .as_object_mut()
-                .unwrap();
-            if let Some(replacement) = replacement {
-                object.insert(key.into(), replacement);
-            } else {
-                object.remove(key);
-            }
-            fs::write(&candidate, serde_json::to_vec(&changed).unwrap()).unwrap();
-            assert!(
-                Report::read_candidate(&candidate, &expected).is_err(),
-                "{pointer}"
-            );
-            assert_eq!(fs::read(&output).unwrap(), previous);
+    ]
+    .into_iter()
+    .map(|pointer| (pointer, None));
+    let wrong_types = [
+        "/measurements",
+        "/artifacts/once",
+        "/context/rustc",
+        "/measurements/once/wasm_bytes",
+    ]
+    .into_iter()
+    .flat_map(|pointer| {
+        [serde_json::Value::Null, serde_json::json!({})].map(|value| (pointer, Some(value)))
+    });
+    for (pointer, replacement) in omissions.chain(wrong_types) {
+        let mut changed: serde_json::Value = serde_json::from_slice(&previous).unwrap();
+        let (parent, key) = pointer.rsplit_once('/').unwrap();
+        let object = changed
+            .pointer_mut(parent)
+            .unwrap()
+            .as_object_mut()
+            .unwrap();
+        if let Some(replacement) = replacement {
+            object.insert(key.into(), replacement);
+        } else {
+            object.remove(key);
         }
+        fs::write(&candidate, serde_json::to_vec(&changed).unwrap()).unwrap();
+        assert!(
+            Report::read_candidate(&candidate, &expected).is_err(),
+            "{pointer}"
+        );
+        assert_eq!(fs::read(&output).unwrap(), previous);
     }
     for pointer in [
         "",

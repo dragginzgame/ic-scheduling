@@ -7,6 +7,57 @@ is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
 
+## [0.41.5] - Unreleased
+
+### 🧹 Cleanup
+
+- Consolidate ordinary abandonment commands in bounded sequence tests, retaining
+  isolated requests, delayed drops, exact accounting and expired authority checks.
+  Reuse inactive-capacity setup across rearming, rejection and capture cleanup.
+- Share three-policy registration fixtures while retaining public typed creation,
+  scheduling, cancellation and wakeup-liveness coverage for each policy.
+- Retire the separate startup probe and its private RPC surface. The main probe
+  now qualifies volatile Watchdog/after-completion coexistence with existing fault
+  controls. Keep trap/exhaustion recovery, overdue coalescing and upgrade-reset
+  proofs. Rebuild private probes and decoders together for snapshot method 69;
+  the four-field checkpoint and published Timers API remain unchanged.
+- Bind private probe endpoints through one declaration helper using the existing
+  protocol methods and budgets. Preserve export names, signatures and feature
+  gates. Pair mixed-probe callback observations and share fault-recovery
+  assertions while retaining trap, exhaustion and upgrade-reset subjects.
+- Consolidate wide-counter forwarding and identity ownership tests, and reduce
+  repeated report-admission representations while retaining every required-field
+  omission, strict decoding and previous-report preservation check. Share registry
+  directive, terminal-result and Watchdog precedence scenario bodies while keeping
+  their sequential state, effect, outcome and counter checks. Consolidate native
+  Watchdog continuation/liveness subjects, retaining separate scheduler/work turns,
+  successor ownership, cancellation, generation invalidation and rearming checks.
+- Delegate memory-growth sample counts and maxima to Metrics' canonical
+  aggregate. Retain Timers' paired page extents, callback-role attribution,
+  saturated public counts and summary equality behavior.
+- Keep deferred ordinary unregistration with its pure control owner and share
+  successful retained Watchdog fixture setup. Command precedence, declaration
+  removal and callback cleanup retain their existing behavior.
+
+### 📦 Dependencies
+
+- Adopt Wire 0.18, Endpoint 0.9 and Testkit 0.95 together for native and Wasm
+  qualification, retaining one Wire type identity and the concrete Testkit
+  instance owner. Adopt Build 0.81 and Host Artifacts/FS/Process 0.76.1 for probe
+  artifacts and release metadata. The published Timers API, checkpoint bytes
+  and runtime ownership remain unchanged.
+
+### 🛠️ Tooling
+
+- Share publication lint selection between dry runs and uploads. Qualified
+  Jobs-only proof selects its combined-consumer lint; Timers, shared or unavailable
+  proof retains complete fresh lint. Re-admit sealed evidence and prepared
+  metadata, and refuse clean-source changes during lint before publication.
+- Adopt published Toko Tooling 0.36 through one exact root Cargo pin inherited
+  by every workspace package. Remove the metadata selector and separate tooling
+  lock. Resolve pin changes with Cargo, then install explicitly; CI/release and
+  publication admission check the member declarations, lock and snapshot together.
+
 ## [0.41.4] - 2026-11-08
 
 ### 🧹 Cleanup

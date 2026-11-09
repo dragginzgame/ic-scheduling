@@ -61,8 +61,6 @@ methods! {
     JobMetrics = 0x4a4f42534d470014 => "job_metrics",
     /// Reset diagnostics without changing durable job state.
     ResetJobMetrics = 0x4a4f42534d470015 => "reset_job_metrics",
-    /// Scan consumer-owned heap transition history.
-    JobLogs = 0x4a4f42534d470016 => "job_logs",
 }
 
 /// Complete request frame and traversal allowances, including installation.

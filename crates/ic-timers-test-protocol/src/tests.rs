@@ -49,6 +49,13 @@ fn snapshot_round_trip_preserves_wide_totals_and_optional_memory() {
     let observed = ProbeSnapshot {
         registration_id: Some((7, 11, 13)),
         registered: true,
+        completed_at_ns: Some(u64::MAX),
+        application_registered: true,
+        application_completed: CounterObservation {
+            total: u128::MAX,
+            total_overflowed: false,
+        },
+        application_completed_at_ns: Some(u64::MAX),
         schedule_requests: CounterObservation {
             total: u128::from(u64::MAX) + 1,
             total_overflowed: false,

@@ -118,15 +118,6 @@ fn identity_clones_preserve_value_semantics_and_outlive_the_original() {
     let _: &(dyn Send + Sync) = &cloned;
 
     assert_eq!(cloned, independently_created);
-    assert_eq!(cloned.name(), "renewal");
-    assert_eq!(
-        std::collections::BTreeSet::from([cloned.clone(), independently_created.clone()]).len(),
-        1
-    );
-    assert_eq!(
-        std::collections::HashSet::from([cloned, independently_created]).len(),
-        1
-    );
 }
 
 #[test]

@@ -10,6 +10,9 @@ repository.workspace = true
 publish = ["crates-io"]
 readme = "README.md"
 
+[package.metadata.cargo-machete]
+ignored = ["toko-tooling"]
+
 # Keep the published scheduling model platform-neutral: Serde only, with no
 # Candid, CDK, Memory or Timers dependency. Consumers own those integrations.
 [dependencies]
@@ -18,6 +21,7 @@ serde = { workspace = true, features = ["derive"] }
 [dev-dependencies]
 serde_json.workspace = true
 serde_test.workspace = true
+toko-tooling.workspace = true
 
 [lints]
 workspace = true

@@ -156,75 +156,72 @@ thread_local! {
 
 // Deliberately violates the consumer destructor contract to exercise an actual
 // dispatch response trap and its IC cleanup callback, without backend hooks.
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::TrapOrdinaryCaptureDrop as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn trap_ordinary_capture_drop((enabled,): (bool,)) {
-    TRAP_CAPTURE_DROP.set(enabled);
+ic_timers_test_protocol::probe_endpoints! {
+    #[endpoint(update, TrapOrdinaryCaptureDrop)]
+    fn trap_ordinary_capture_drop((enabled,): (bool,)) {
+        TRAP_CAPTURE_DROP.set(enabled);
+    }
 }
 
 fn identity() -> TimerIdentity {
     TimerIdentity::try_new("ic-timers", "await-probe", "ordinary").expect("fixed identity")
 }
 
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::StartOrdinary as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn start_ordinary((policy, lifetime): (OrdinaryPolicy, ProbeLifetime)) {
-    let initial = TimerSchedule::At(ic_platform_runtime::cdk::api::time());
-    let start = if lifetime == ProbeLifetime::RemoveWhenStopped {
-        TimerStart::RemoveWhenStopped { initial }
-    } else {
-        TimerStart::Retained {
-            initial: Some(initial),
-        }
-    };
-    REGISTRATION.with_borrow_mut(|slot| {
-        assert!(slot.is_none(), "one probe registration");
-        let captured = Rc::new(CapturedState);
-        let registration = if policy == OrdinaryPolicy::AfterCompletion {
-            Registration::AfterCompletion(
-                register_after_completion(
-                    identity(),
-                    TimerCadence::from_nanos(super::CADENCE_NS).expect("fixed cadence"),
-                    start,
-                    move |context| {
-                        WORK_CONTEXT.with_borrow_mut(|slot| {
-                            *slot = Some(WorkContext::AfterCompletion(context))
-                        });
+ic_timers_test_protocol::probe_endpoints! {
+    #[endpoint(update, StartOrdinary)]
+    fn start_ordinary((policy, lifetime): (OrdinaryPolicy, ProbeLifetime)) {
+        let initial = TimerSchedule::At(ic_platform_runtime::cdk::api::time());
+        let start = if lifetime == ProbeLifetime::RemoveWhenStopped {
+            TimerStart::RemoveWhenStopped { initial }
+        } else {
+            TimerStart::Retained {
+                initial: Some(initial),
+            }
+        };
+        REGISTRATION.with_borrow_mut(|slot| {
+            assert!(slot.is_none(), "one probe registration");
+            let captured = Rc::new(CapturedState);
+            let registration = if policy == OrdinaryPolicy::AfterCompletion {
+                Registration::AfterCompletion(
+                    register_after_completion(
+                        identity(),
+                        TimerCadence::from_nanos(super::CADENCE_NS).expect("fixed cadence"),
+                        start,
+                        move |context| {
+                            WORK_CONTEXT.with_borrow_mut(|slot| {
+                                *slot = Some(WorkContext::AfterCompletion(context))
+                            });
+                            let captured = Rc::clone(&captured);
+                            async move {
+                                let completion = work().await;
+                                std::hint::black_box(captured);
+                                AfterCompletionRunResult::new(
+                                    completion,
+                                    AfterCompletionDecision::RecurAfterCompletion,
+                                )
+                            }
+                        },
+                    )
+                    .expect("register after-completion"),
+                )
+            } else {
+                Registration::Once(
+                    register_once(identity(), start, move |context| {
+                        WORK_CONTEXT
+                            .with_borrow_mut(|slot| *slot = Some(WorkContext::Once(context)));
                         let captured = Rc::clone(&captured);
                         async move {
                             let completion = work().await;
                             std::hint::black_box(captured);
-                            AfterCompletionRunResult::new(
-                                completion,
-                                AfterCompletionDecision::RecurAfterCompletion,
-                            )
+                            OnceRunResult::new(completion, OnceDecision::Stop)
                         }
-                    },
+                    })
+                    .expect("register Once"),
                 )
-                .expect("register after-completion"),
-            )
-        } else {
-            Registration::Once(
-                register_once(identity(), start, move |context| {
-                    WORK_CONTEXT.with_borrow_mut(|slot| *slot = Some(WorkContext::Once(context)));
-                    let captured = Rc::clone(&captured);
-                    async move {
-                        let completion = work().await;
-                        std::hint::black_box(captured);
-                        OnceRunResult::new(completion, OnceDecision::Stop)
-                    }
-                })
-                .expect("register Once"),
-            )
-        };
-        *slot = Some(registration);
-    });
+            };
+            *slot = Some(registration);
+        });
+    }
 }
 
 async fn work() -> TimerCompletion {
@@ -260,321 +257,270 @@ async fn work() -> TimerCompletion {
     TimerCompletion::success(1)
 }
 
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::OrdinaryGate as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn ordinary_gate() -> bool {
-    assert_eq!(
-        ic_platform_runtime::cdk::api::msg_caller(),
-        ic_platform_runtime::cdk::api::canister_self(),
-        "self-call gate"
-    );
-    GATE_OPEN.with(Cell::get)
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::ReleaseOrdinaryWork as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn release_ordinary_work() {
-    GATE_OPEN.with(|open| open.set(true));
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::TrapOrdinaryWork as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn trap_ordinary_work((before_await,): (bool,)) {
-    TRAP_POINT.with(|point| {
-        point.set(if before_await {
-            TrapPoint::BeforeAwait
-        } else {
-            TrapPoint::AfterAwait
-        })
-    });
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::ClearOrdinaryTrap as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn clear_ordinary_trap() {
-    TRAP_POINT.with(|point| point.set(TrapPoint::None));
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::ExpiredOrdinaryContextRejected as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn expired_ordinary_context_rejected() -> bool {
-    WORK_CONTEXT.with_borrow(|slot| {
-        let result = match slot.as_ref().expect("committed work context") {
-            WorkContext::Once(context) => context.cancel(),
-            WorkContext::AfterCompletion(context) => context.cancel(),
-        };
-        matches!(result, Err(TimerError::RegistrationExpired))
-    })
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::DiscardExpiredOrdinaryClaim as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn discard_expired_ordinary_claim() {
-    REGISTRATION.with_borrow_mut(|slot| {
-        let result = slot
-            .as_ref()
-            .expect("expired registration")
-            .has_armed_wakeup();
-        assert!(matches!(result, Err(TimerError::RegistrationExpired)));
-        *slot = None;
-    });
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::ReconcileOrdinaryAt as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn reconcile_ordinary_at((deadline_ns,): (u64,)) {
-    REGISTRATION.with_borrow(|slot| {
-        slot.as_ref()
-            .expect("registered")
-            .reconcile(Some(TimerSchedule::At(deadline_ns)))
-    });
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::CancelOrdinary as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn cancel_ordinary() {
-    REGISTRATION
-        .with_borrow(|slot| match slot.as_ref().expect("registered") {
-            Registration::Once(timer) => timer.cancel(),
-            Registration::AfterCompletion(timer) => timer.cancel(),
-        })
-        .expect("explicit ordinary cancellation");
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::ReconcileOrdinaryInactive as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn reconcile_ordinary_inactive() {
-    REGISTRATION.with_borrow(|slot| slot.as_ref().expect("registered").reconcile(None));
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::UnregisterOrdinary as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn unregister_ordinary() {
-    let registration = REGISTRATION
-        .with_borrow_mut(Option::take)
-        .expect("registered");
-    match registration {
-        Registration::Once(timer) => timer.unregister(),
-        Registration::AfterCompletion(timer) => timer.unregister(),
+ic_timers_test_protocol::probe_endpoints! {
+    #[endpoint(update, OrdinaryGate)]
+    fn ordinary_gate() -> bool {
+        assert_eq!(
+            ic_platform_runtime::cdk::api::msg_caller(),
+            ic_platform_runtime::cdk::api::canister_self(),
+            "self-call gate"
+        );
+        GATE_OPEN.with(Cell::get)
     }
-    .expect("ordinary unregister");
-}
 
-#[ic_wire_endpoint::query(
-    id = ic_timers_test_protocol::rpc::Method::OrdinaryObservation as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn ordinary_observation() -> OrdinaryObservation {
-    let snapshot = timer_snapshot(&identity()).expect("ordinary snapshot");
-    let armed = REGISTRATION.with_borrow(|slot| {
-        let Some(registration) = slot.as_ref() else {
-            return false;
-        };
-        match registration.has_armed_wakeup() {
-            Ok(armed) => armed,
-            Err(TimerError::RegistrationExpired) => false,
-            Err(error) => panic!("ordinary ownership observation failed: {error}"),
-        }
-    });
-    let mut observation = OrdinaryObservation {
-        waiting: GATE_WAITING.with(Cell::get),
-        gate_replies: GATE_REPLIES.with(Cell::get),
-        gate_error: GATE_ERROR.with_borrow(Clone::clone),
-        completed: COMPLETIONS.with(Cell::get),
-        completed_at_ns: COMPLETED_AT_NS.with(Cell::get),
-        armed,
-        captures_dropped: CAPTURES_DROPPED.with(Cell::get),
-        capture_registry_accessible: CAPTURE_REGISTRY_ACCESSIBLE.with(Cell::get),
-        inventory_len: timer_inventory()
-            .expect("ordinary inventory")
-            .timers()
-            .len() as u64,
-        ..OrdinaryObservation::default()
-    };
-    if let Some(snapshot) = snapshot {
-        let id = snapshot.registration_id();
-        let counters = snapshot.observability().counters();
-        observation.registration_id = Some((
-            id.epoch().canister_version(),
-            id.epoch().started_at_ns(),
-            id.sequence(),
-        ));
-        observation.declared = true;
-        observation.running = snapshot.registration_status() == TimerRegistrationStatus::Running;
-        observation.next_deadline_ns = snapshot.next_deadline_ns();
-        observation.work_started = super::counter_observation(counters.work_started());
-        observation.work_completed = super::counter_observation(counters.work_completed());
-        observation.cancellations = super::counter_observation(counters.cancelled());
-        observation.unacknowledged = super::counter_observation(counters.unacknowledged());
-        observation.instruction_samples = snapshot
-            .observability()
-            .performance()
-            .work_instructions()
-            .aggregate()
-            .samples();
-        if let TimerRuntimeStateSnapshot::Inactive { reason } = snapshot.state() {
-            observation.termination = match reason {
-                InactiveReason::Abandoned => Some(OrdinaryTermination::Abandoned),
-                InactiveReason::Stopped => Some(OrdinaryTermination::Stopped),
-                InactiveReason::Cancelled => Some(OrdinaryTermination::Cancelled),
-                InactiveReason::InvariantFailure => Some(OrdinaryTermination::InvariantFailure),
-                InactiveReason::NeverScheduled | InactiveReason::ControlFailure(_) => None,
+    #[endpoint(update, ReleaseOrdinaryWork)]
+    fn release_ordinary_work() {
+        GATE_OPEN.with(|open| open.set(true));
+    }
+
+    #[endpoint(update, TrapOrdinaryWork)]
+    fn trap_ordinary_work((before_await,): (bool,)) {
+        TRAP_POINT.with(|point| {
+            point.set(if before_await {
+                TrapPoint::BeforeAwait
+            } else {
+                TrapPoint::AfterAwait
+            })
+        });
+    }
+
+    #[endpoint(update, ClearOrdinaryTrap)]
+    fn clear_ordinary_trap() {
+        TRAP_POINT.with(|point| point.set(TrapPoint::None));
+    }
+
+    #[endpoint(update, ExpiredOrdinaryContextRejected)]
+    fn expired_ordinary_context_rejected() -> bool {
+        WORK_CONTEXT.with_borrow(|slot| {
+            let result = match slot.as_ref().expect("committed work context") {
+                WorkContext::Once(context) => context.cancel(),
+                WorkContext::AfterCompletion(context) => context.cancel(),
             };
-        }
+            matches!(result, Err(TimerError::RegistrationExpired))
+        })
     }
-    observation
-}
 
-/// Remove armed authority in one message before any consumer work can start.
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::RemoveArmedCallback as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn remove_armed_callback((policy,): (ProbePolicy,)) {
-    let deadline = ic_platform_runtime::cdk::api::time()
-        .checked_add(super::CADENCE_NS)
-        .expect("fixture deadline");
-    let initial = TimerSchedule::At(deadline);
-    let start = if policy == ProbePolicy::AfterCompletion {
-        TimerStart::RemoveWhenStopped { initial }
-    } else {
-        TimerStart::Retained {
-            initial: Some(initial),
-        }
-    };
-    CapturedRegistration::register(policy, start)
-        .expect("register captured callback")
-        .remove()
-        .expect("remove captured callback");
-}
+    #[endpoint(update, DiscardExpiredOrdinaryClaim)]
+    fn discard_expired_ordinary_claim() {
+        REGISTRATION.with_borrow_mut(|slot| {
+            let result = slot
+                .as_ref()
+                .expect("expired registration")
+                .has_armed_wakeup();
+            assert!(matches!(result, Err(TimerError::RegistrationExpired)));
+            *slot = None;
+        });
+    }
 
-/// A rejected initial request must not leave callback authority in the IC heap.
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::RejectInitialSchedule as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn reject_initial_schedule((policy, lifetime): (ProbePolicy, ProbeLifetime)) -> (bool, u64, bool) {
-    let before = timer_inventory().expect("initial inventory");
-    let dropped_before = CAPTURES_DROPPED.with(Cell::get);
-    let initial = TimerSchedule::After(std::time::Duration::MAX);
-    let start = if lifetime == ProbeLifetime::RemoveWhenStopped {
-        TimerStart::RemoveWhenStopped { initial }
-    } else {
-        TimerStart::Retained {
-            initial: Some(initial),
-        }
-    };
-    let result = CapturedRegistration::register(policy, start);
-    let rejected = matches!(
-        result,
-        Err(TimerError::Schedule(
-            ic_timers::ScheduleError::DelayOutOfRange
-        ))
-    );
-    assert!(rejected, "typed initial rejection");
-    (
-        timer_inventory().expect("rejected inventory") == before,
-        CAPTURES_DROPPED.with(Cell::get) - dropped_before,
-        CAPTURE_REGISTRY_ACCESSIBLE.with(Cell::get),
-    )
-}
+    #[endpoint(update, ReconcileOrdinaryAt)]
+    fn reconcile_ordinary_at((deadline_ns,): (u64,)) {
+        REGISTRATION.with_borrow(|slot| {
+            slot.as_ref()
+                .expect("registered")
+                .reconcile(Some(TimerSchedule::At(deadline_ns)))
+        });
+    }
 
-/// A rejected first lifecycle reconciliation must leave its owner slot empty.
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::RejectInitialReconciliation as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn reject_initial_reconciliation((policy,): (ProbePolicy,)) -> (bool, bool, u64, bool) {
-    let before = timer_inventory().expect("initial inventory");
-    let dropped_before = CAPTURES_DROPPED.with(Cell::get);
-    let captured = CapturedState;
-    let cadence = TimerCadence::from_nanos(u64::MAX).expect("positive cadence");
-    let (result, empty) = match policy {
-        ProbePolicy::Once => {
-            let mut slot = None;
-            let result = reconcile_once(
-                &mut slot,
-                &identity(),
-                Some(TimerSchedule::After(std::time::Duration::MAX)),
-                once_callback(captured),
-            );
-            (result, slot.is_none())
+    #[endpoint(update, CancelOrdinary)]
+    fn cancel_ordinary() {
+        REGISTRATION
+            .with_borrow(|slot| match slot.as_ref().expect("registered") {
+                Registration::Once(timer) => timer.cancel(),
+                Registration::AfterCompletion(timer) => timer.cancel(),
+            })
+            .expect("explicit ordinary cancellation");
+    }
+
+    #[endpoint(update, ReconcileOrdinaryInactive)]
+    fn reconcile_ordinary_inactive() {
+        REGISTRATION.with_borrow(|slot| slot.as_ref().expect("registered").reconcile(None));
+    }
+
+    #[endpoint(update, UnregisterOrdinary)]
+    fn unregister_ordinary() {
+        let registration = REGISTRATION
+            .with_borrow_mut(Option::take)
+            .expect("registered");
+        match registration {
+            Registration::Once(timer) => timer.unregister(),
+            Registration::AfterCompletion(timer) => timer.unregister(),
         }
-        ProbePolicy::AfterCompletion => {
-            let mut slot = None;
-            let result = reconcile_after_completion(
-                &mut slot,
-                &identity(),
-                cadence,
-                TimerReconcileState::Scheduled,
-                after_completion_callback(captured),
-            );
-            (result, slot.is_none())
+        .expect("ordinary unregister");
+    }
+
+    #[endpoint(query, OrdinaryObservation)]
+    fn ordinary_observation() -> OrdinaryObservation {
+        let snapshot = timer_snapshot(&identity()).expect("ordinary snapshot");
+        let armed = REGISTRATION.with_borrow(|slot| {
+            let Some(registration) = slot.as_ref() else {
+                return false;
+            };
+            match registration.has_armed_wakeup() {
+                Ok(armed) => armed,
+                Err(TimerError::RegistrationExpired) => false,
+                Err(error) => panic!("ordinary ownership observation failed: {error}"),
+            }
+        });
+        let mut observation = OrdinaryObservation {
+            waiting: GATE_WAITING.with(Cell::get),
+            gate_replies: GATE_REPLIES.with(Cell::get),
+            gate_error: GATE_ERROR.with_borrow(Clone::clone),
+            completed: COMPLETIONS.with(Cell::get),
+            completed_at_ns: COMPLETED_AT_NS.with(Cell::get),
+            armed,
+            captures_dropped: CAPTURES_DROPPED.with(Cell::get),
+            capture_registry_accessible: CAPTURE_REGISTRY_ACCESSIBLE.with(Cell::get),
+            inventory_len: timer_inventory()
+                .expect("ordinary inventory")
+                .timers()
+                .len() as u64,
+            ..OrdinaryObservation::default()
+        };
+        if let Some(snapshot) = snapshot {
+            let id = snapshot.registration_id();
+            let counters = snapshot.observability().counters();
+            observation.registration_id = Some((
+                id.epoch().canister_version(),
+                id.epoch().started_at_ns(),
+                id.sequence(),
+            ));
+            observation.declared = true;
+            observation.running =
+                snapshot.registration_status() == TimerRegistrationStatus::Running;
+            observation.next_deadline_ns = snapshot.next_deadline_ns();
+            observation.work_started = super::counter_observation(counters.work_started());
+            observation.work_completed = super::counter_observation(counters.work_completed());
+            observation.cancellations = super::counter_observation(counters.cancelled());
+            observation.unacknowledged = super::counter_observation(counters.unacknowledged());
+            observation.instruction_samples = snapshot
+                .observability()
+                .performance()
+                .work_instructions()
+                .aggregate()
+                .samples();
+            if let TimerRuntimeStateSnapshot::Inactive { reason } = snapshot.state() {
+                observation.termination = match reason {
+                    InactiveReason::Abandoned => Some(OrdinaryTermination::Abandoned),
+                    InactiveReason::Stopped => Some(OrdinaryTermination::Stopped),
+                    InactiveReason::Cancelled => Some(OrdinaryTermination::Cancelled),
+                    InactiveReason::InvariantFailure => Some(OrdinaryTermination::InvariantFailure),
+                    InactiveReason::NeverScheduled | InactiveReason::ControlFailure(_) => None,
+                };
+            }
         }
-        ProbePolicy::Watchdog => {
-            let mut slot = None;
-            let result = reconcile_watchdog(
-                &mut slot,
-                &identity(),
-                cadence,
-                WatchdogReconcileState::Scheduled,
-                watchdog_callback(captured),
-            );
-            (result, slot.is_none())
-        }
-    };
-    let rejected = matches!(
-        (policy, result),
-        (
-            ProbePolicy::Once,
+        observation
+    }
+
+    #[endpoint(update, RemoveArmedCallback)]
+    /// Remove armed authority in one message before any consumer work can start.
+    fn remove_armed_callback((policy,): (ProbePolicy,)) {
+        let deadline = ic_platform_runtime::cdk::api::time()
+            .checked_add(super::CADENCE_NS)
+            .expect("fixture deadline");
+        let initial = TimerSchedule::At(deadline);
+        let start = if policy == ProbePolicy::AfterCompletion {
+            TimerStart::RemoveWhenStopped { initial }
+        } else {
+            TimerStart::Retained {
+                initial: Some(initial),
+            }
+        };
+        CapturedRegistration::register(policy, start)
+            .expect("register captured callback")
+            .remove()
+            .expect("remove captured callback");
+    }
+
+    #[endpoint(update, RejectInitialSchedule)]
+    /// A rejected initial request must not leave callback authority in the IC heap.
+    fn reject_initial_schedule(
+        (policy, lifetime): (ProbePolicy, ProbeLifetime),
+    ) -> (bool, u64, bool) {
+        let before = timer_inventory().expect("initial inventory");
+        let dropped_before = CAPTURES_DROPPED.with(Cell::get);
+        let initial = TimerSchedule::After(std::time::Duration::MAX);
+        let start = if lifetime == ProbeLifetime::RemoveWhenStopped {
+            TimerStart::RemoveWhenStopped { initial }
+        } else {
+            TimerStart::Retained {
+                initial: Some(initial),
+            }
+        };
+        let result = CapturedRegistration::register(policy, start);
+        let rejected = matches!(
+            result,
             Err(TimerError::Schedule(
                 ic_timers::ScheduleError::DelayOutOfRange
             ))
-        ) | (
-            ProbePolicy::AfterCompletion | ProbePolicy::Watchdog,
-            Err(TimerError::Schedule(
-                ic_timers::ScheduleError::DeadlineOverflow
-            ))
+        );
+        assert!(rejected, "typed initial rejection");
+        (
+            timer_inventory().expect("rejected inventory") == before,
+            CAPTURES_DROPPED.with(Cell::get) - dropped_before,
+            CAPTURE_REGISTRY_ACCESSIBLE.with(Cell::get),
         )
-    );
-    (
-        empty && rejected,
-        timer_inventory().expect("rejected inventory") == before,
-        CAPTURES_DROPPED.with(Cell::get) - dropped_before,
-        CAPTURE_REGISTRY_ACCESSIBLE.with(Cell::get),
-    )
+    }
+
+    #[endpoint(update, RejectInitialReconciliation)]
+    /// A rejected first lifecycle reconciliation must leave its owner slot empty.
+    fn reject_initial_reconciliation((policy,): (ProbePolicy,)) -> (bool, bool, u64, bool) {
+        let before = timer_inventory().expect("initial inventory");
+        let dropped_before = CAPTURES_DROPPED.with(Cell::get);
+        let captured = CapturedState;
+        let cadence = TimerCadence::from_nanos(u64::MAX).expect("positive cadence");
+        let (result, empty) = match policy {
+            ProbePolicy::Once => {
+                let mut slot = None;
+                let result = reconcile_once(
+                    &mut slot,
+                    &identity(),
+                    Some(TimerSchedule::After(std::time::Duration::MAX)),
+                    once_callback(captured),
+                );
+                (result, slot.is_none())
+            }
+            ProbePolicy::AfterCompletion => {
+                let mut slot = None;
+                let result = reconcile_after_completion(
+                    &mut slot,
+                    &identity(),
+                    cadence,
+                    TimerReconcileState::Scheduled,
+                    after_completion_callback(captured),
+                );
+                (result, slot.is_none())
+            }
+            ProbePolicy::Watchdog => {
+                let mut slot = None;
+                let result = reconcile_watchdog(
+                    &mut slot,
+                    &identity(),
+                    cadence,
+                    WatchdogReconcileState::Scheduled,
+                    watchdog_callback(captured),
+                );
+                (result, slot.is_none())
+            }
+        };
+        let rejected = matches!(
+            (policy, result),
+            (
+                ProbePolicy::Once,
+                Err(TimerError::Schedule(
+                    ic_timers::ScheduleError::DelayOutOfRange
+                ))
+            ) | (
+                ProbePolicy::AfterCompletion | ProbePolicy::Watchdog,
+                Err(TimerError::Schedule(
+                    ic_timers::ScheduleError::DeadlineOverflow
+                ))
+            )
+        );
+        (
+            empty && rejected,
+            timer_inventory().expect("rejected inventory") == before,
+            CAPTURES_DROPPED.with(Cell::get) - dropped_before,
+            CAPTURE_REGISTRY_ACCESSIBLE.with(Cell::get),
+        )
+    }
 }

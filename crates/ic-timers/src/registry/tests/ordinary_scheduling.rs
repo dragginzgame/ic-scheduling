@@ -215,24 +215,9 @@ fn exact_ordinary_reconciliation_discards_invalid_callback_proposals() {
                     deadline_ns: u64::MAX
                 })
             );
-            assert_eq!(
-                snapshot
-                    .observability()
-                    .counters()
-                    .succeeded()
-                    .exact_total()
-                    .unwrap(),
-                1
-            );
-            assert_eq!(
-                snapshot
-                    .observability()
-                    .counters()
-                    .invariant_failure()
-                    .exact_total()
-                    .unwrap(),
-                0
-            );
+            let counters = snapshot.observability().counters();
+            assert_eq!(counters.succeeded().exact_total().unwrap(), 1);
+            assert_eq!(counters.invariant_failure().exact_total().unwrap(), 0);
         }
     }
 }
@@ -462,77 +447,49 @@ fn ordinary_directive_matrix_preserves_mode_and_checked_deadline() {
         .ensure_once(&claim, 0, TimerSchedule::At(1))
         .expect("ensure should succeed");
     confirm(&mut registry, &initial);
-    let (first, _) = arm(initial);
-    assert!(registry.begin_ordinary(&first).is_some());
+    let (mut token, _) = arm(initial);
+    assert!(registry.begin_ordinary(&token).is_some());
 
-    let immediate = registry
-        .complete_ordinary(
-            &first,
+    // Each completion consumes the preceding case's confirmed successor.
+    for (now_ns, completion, directive, deadline_ns, mode) in [
+        (
             10,
-            OrdinaryRunResult::new(
-                TimerCompletion::success(1),
-                OrdinaryDirective::ContinueImmediately,
-            ),
-        )
-        .expect("immediate continuation should succeed");
-    confirm(&mut registry, &immediate);
-    let (second, _) = arm(immediate);
-    let deadline = scheduled_deadline(&registry, &second);
-    assert_eq!(deadline, 10);
-    assert_eq!(
-        registry
-            .snapshot(&timer)
-            .map(|value| value.scheduling_mode()),
-        Some(TimerSchedulingMode::Continuation)
-    );
-    assert!(registry.begin_ordinary(&second).is_some());
-
-    let retry = registry
-        .complete_ordinary(
-            &second,
+            TimerCompletion::success(1),
+            OrdinaryDirective::ContinueImmediately,
+            10,
+            TimerSchedulingMode::Continuation,
+        ),
+        (
             20,
-            OrdinaryRunResult::new(
-                TimerCompletion::retryable_failure(0),
-                OrdinaryDirective::RetryAfter(Duration::from_nanos(5)),
-            ),
-        )
-        .expect("retry should succeed");
-    confirm(&mut registry, &retry);
-    let (third, _) = arm(retry);
-    let deadline = scheduled_deadline(&registry, &third);
-    assert_eq!(deadline, 25);
-    assert_eq!(
-        registry
-            .snapshot(&timer)
-            .map(|value| value.scheduling_mode()),
-        Some(crate::TimerSchedulingMode::Retry)
-    );
-    assert!(registry.begin_ordinary(&third).is_some());
-
-    let absolute = registry
-        .complete_ordinary(
-            &third,
+            TimerCompletion::retryable_failure(0),
+            OrdinaryDirective::RetryAfter(Duration::from_nanos(5)),
+            25,
+            TimerSchedulingMode::Retry,
+        ),
+        (
             30,
-            OrdinaryRunResult::new(
-                TimerCompletion::success(1),
-                OrdinaryDirective::ScheduleAt(40),
-            ),
-        )
-        .expect("absolute scheduling should succeed");
-    confirm(&mut registry, &absolute);
-    let (fourth, _) = arm(absolute);
-    let deadline = scheduled_deadline(&registry, &fourth);
-    assert_eq!(deadline, 40);
-    assert_eq!(
-        registry
-            .snapshot(&timer)
-            .map(|value| value.scheduling_mode()),
-        Some(TimerSchedulingMode::Deadline)
-    );
-    assert!(registry.begin_ordinary(&fourth).is_some());
+            TimerCompletion::success(1),
+            OrdinaryDirective::ScheduleAt(40),
+            40,
+            TimerSchedulingMode::Deadline,
+        ),
+    ] {
+        let transition = registry
+            .complete_ordinary(
+                &token,
+                now_ns,
+                OrdinaryRunResult::new(completion, directive),
+            )
+            .expect("directive should schedule its successor");
+        confirm(&mut registry, &transition);
+        (token, _) = arm(transition);
+        assert_eq!(scheduled_deadline(&registry, &token), deadline_ns);
+        assert_eq!(registry.snapshot(&timer).unwrap().scheduling_mode(), mode);
+        assert!(registry.begin_ordinary(&token).is_some());
+    }
     registry
         .complete_ordinary(
-            &fourth,
+            &token,
             41,
             OrdinaryRunResult::new(TimerCompletion::no_work(), OrdinaryDirective::Stop),
         )
@@ -584,33 +541,10 @@ fn recurring_duplicate_ensure_is_idempotent_without_deadline_recalculation() {
             snapshot.latest_armed_delay_ns(),
             before.latest_armed_delay_ns()
         );
-        assert_eq!(
-            snapshot
-                .observability()
-                .counters()
-                .schedule_requests()
-                .exact_total()
-                .unwrap(),
-            2
-        );
-        assert_eq!(
-            snapshot
-                .observability()
-                .counters()
-                .wakeups_armed()
-                .exact_total()
-                .unwrap(),
-            1
-        );
-        assert_eq!(
-            snapshot
-                .observability()
-                .counters()
-                .coalesced()
-                .exact_total()
-                .unwrap(),
-            1
-        );
+        let counters = snapshot.observability().counters();
+        assert_eq!(counters.schedule_requests().exact_total().unwrap(), 2);
+        assert_eq!(counters.wakeups_armed().exact_total().unwrap(), 1);
+        assert_eq!(counters.coalesced().exact_total().unwrap(), 1);
         let (token, _) = arm(initial);
         assert_eq!(token.callback_generation(), u64::MAX);
         assert!(registry.begin_ordinary(&token).is_some());
@@ -619,67 +553,48 @@ fn recurring_duplicate_ensure_is_idempotent_without_deadline_recalculation() {
 
 #[test]
 fn erased_policy_mismatch_and_invariant_result_stop_truthfully() {
-    // Inject a private erased-policy mismatch. Public Once results cannot
-    // express recurrence; the registry still guards its internal boundary.
     let mut registry = registry();
-    let illegal_id = identity("illegal");
-    let illegal = registry
-        .register_once(illegal_id.clone(), DeclarationLifetime::Retained)
-        .expect("claim should succeed");
-    let (token, _) = arm(registry
-        .ensure_once(&illegal, 0, TimerSchedule::At(1))
-        .expect("ensure should succeed"));
-    assert!(registry.begin_ordinary(&token).is_some());
-    let transition = registry
-        .complete_ordinary(
-            &token,
-            2,
-            OrdinaryRunResult::new(
-                TimerCompletion::success(1),
-                OrdinaryDirective::RecurAfterCompletion,
-            ),
-        )
-        .expect("illegal directive becomes a terminal transition");
-    assert_eq!(
-        transition.failure(),
-        Some(TimerControlFailure::DirectiveNotAllowed)
-    );
-    let snapshot = registry
-        .snapshot(&illegal_id)
-        .expect("snapshot should exist");
-    assert_eq!(
-        snapshot.state(),
-        TimerRuntimeStateSnapshot::Inactive {
-            reason: InactiveReason::ControlFailure(TimerControlFailure::DirectiveNotAllowed,),
-        }
-    );
-    let invariant_id = identity("invariant");
-    let invariant = registry
-        .register_once(invariant_id.clone(), DeclarationLifetime::Retained)
-        .expect("claim should succeed");
-    let (token, _) = arm(registry
-        .ensure_once(&invariant, 0, TimerSchedule::At(1))
-        .expect("ensure should succeed"));
-    assert!(registry.begin_ordinary(&token).is_some());
-    let raw = OrdinaryRunResult::new(
-        TimerCompletion::invariant_failure(3),
-        OrdinaryDirective::ContinueImmediately,
-    );
-    assert_eq!(raw.directive(), OrdinaryDirective::ContinueImmediately);
-    let transition = registry
-        .complete_ordinary(&token, 2, raw)
-        .expect("invariant completion should stop normally");
-    assert_eq!(transition.failure(), None);
-    assert_eq!(
-        registry.snapshot(&invariant_id).map(|value| value.state()),
-        Some(TimerRuntimeStateSnapshot::Inactive {
-            reason: InactiveReason::InvariantFailure,
-        })
-    );
-    for (timer, work_count) in [(illegal_id, 1), (invariant_id, 3)] {
+    // Public Once results cannot express recurrence. Keep the private erased
+    // boundary distinct from an explicit invariant completion.
+    for (name, completion, directive, failure, reason, work_count) in [
+        (
+            "illegal",
+            TimerCompletion::success(1),
+            OrdinaryDirective::RecurAfterCompletion,
+            Some(TimerControlFailure::DirectiveNotAllowed),
+            InactiveReason::ControlFailure(TimerControlFailure::DirectiveNotAllowed),
+            1,
+        ),
+        (
+            "invariant",
+            TimerCompletion::invariant_failure(3),
+            OrdinaryDirective::ContinueImmediately,
+            None,
+            InactiveReason::InvariantFailure,
+            3,
+        ),
+    ] {
+        let timer = identity(name);
+        let claim = registry
+            .register_once(timer.clone(), DeclarationLifetime::Retained)
+            .expect("claim should succeed");
+        let (token, _) = arm(registry
+            .ensure_once(&claim, 0, TimerSchedule::At(1))
+            .expect("ensure should succeed"));
+        assert!(registry.begin_ordinary(&token).is_some());
+        let raw = OrdinaryRunResult::new(completion, directive);
+        assert_eq!(raw.directive(), directive);
+        let transition = registry
+            .complete_ordinary(&token, 2, raw)
+            .expect("terminal completion should succeed");
+        assert_eq!(transition.failure(), failure);
         let snapshot = registry
             .snapshot(&timer)
             .expect("retained declaration should exist");
+        assert_eq!(
+            snapshot.state(),
+            TimerRuntimeStateSnapshot::Inactive { reason }
+        );
         assert_eq!(
             snapshot.latest_directive(),
             Some(TimerDirectiveSnapshot::Stop)

@@ -568,17 +568,7 @@ fn backend_admission_failure_retires_initial_claim_before_capture_drop() {
 #[test]
 fn initial_capacity_rejection_preserves_existing_declarations_and_releases_factory() {
     let _fixture = setup();
-    let mut registrations = Vec::new();
-    for index in 0..crate::MAX_TIMER_REGISTRATIONS {
-        registrations.push(
-            register_once(
-                identity(&format!("initial-capacity-{index}")),
-                TimerStart::Retained { initial: None },
-                stopping_once(|| {}),
-            )
-            .unwrap(),
-        );
-    }
+    let registrations = fill_registry();
     let before = timer_inventory().unwrap();
     let captured = Rc::new(());
     let weak = Rc::downgrade(&captured);

@@ -4,7 +4,7 @@ use std::io;
 
 const MAX_SNAPSHOT_BYTES: usize = 4096;
 
-// Both fixture applications have tiny, bounded snapshots. Storage is not a Jobs
+// The effect and maintenance fixtures have tiny, bounded snapshots. Storage is not a Jobs
 // trait, and a failed write keeps the previously committed bytes unchanged.
 pub(crate) struct Store {
     pub(crate) bytes: Vec<u8>,

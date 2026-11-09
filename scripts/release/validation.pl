@@ -15,9 +15,9 @@ use POSIX qw(uname);
 # Scheduling owns product scope, configuration, source custody and metadata
 # projection. Shared owns roster/baseline observation and run-evidence parsing.
 my ($operation, $directory) = @ARGV;
-defined($operation) && $operation =~ /\A(?:roster|ci-stages|release-stages|select|seal|check|identity)\z/
+defined($operation) && $operation =~ /\A(?:roster|ci-stages|release-stages|select|seal|check|identity|publication)\z/
     && @ARGV == ($operation =~ /\A(?:roster|ci-stages|release-stages)\z/ ? 1 : 2)
-    or die "usage: validation.pl roster|ci-stages|release-stages | select|seal|check|identity DIRECTORY\n";
+    or die "usage: validation.pl roster|ci-stages|release-stages | select|seal|check|identity|publication DIRECTORY\n";
 my $root = abs_path("$RealBin/../..");
 chdir $root or die "enter release root: $!\n";
 my $policy_path = 'ci/release-validation.json';
@@ -301,7 +301,7 @@ if ($operation eq 'select') {
     $value->{files} = evidence_inventory($directory);
     write_json("$directory/execution.json", $value);
 } else {
-    if ($operation eq 'identity') {
+    if ($operation eq 'identity' || $operation eq 'publication') {
         my $name = read_bytes("$directory/validation-evidence");
         $name =~ /\A(validation\.[A-Za-z0-9]+)\n\z/ or die "invalid validation evidence pointer\n";
         $directory .= "/$1";
@@ -313,6 +313,9 @@ if ($operation eq 'select') {
     my $value = admission($directory, read_json("$directory/shared-proof.json"));
     $value->{files} = $saved->{files};
     json($value) eq json($saved) or die "retained validation admission changed\n";
-    print "scheduling-group-validation-v3\n", hash_file("$directory/execution.json"), "\n"
-        if $operation eq 'identity';
+    my $identity = "scheduling-group-validation-v3\n" . hash_file("$directory/execution.json") . "\n";
+    print $identity if $operation eq 'identity';
+    print json({identity=>$identity, lint_target=>
+        $group eq 'jobs' && $value->{scope} eq 'group' ? 'clippy-jobs' : 'clippy'})
+        if $operation eq 'publication';
 }

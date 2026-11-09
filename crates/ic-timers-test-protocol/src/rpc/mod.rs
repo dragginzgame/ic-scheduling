@@ -144,7 +144,10 @@ methods! {
     ScheduleAt = 36 => "schedule_at",
     SchedulerPressureCompleted = 62 => "scheduler_pressure_completed",
     SchedulingTrace = 38 => "scheduling_trace",
-    Snapshot = 39 => "snapshot",
+    // Snapshot 39 and startup-probe methods 47..51 are retired.
+    Snapshot = 69 => "snapshot",
+    StartVolatilePair = 67 => "start_volatile_pair",
+    StopVolatilePair = 68 => "stop_volatile_pair",
     Start = 40 => "start",
     StartDispatchBatch = 41 => "start_dispatch_batch",
     StartImmediateChurn = 42 => "start_immediate_churn",
@@ -153,14 +156,28 @@ methods! {
     StartSchedulerPressure = 61 => "start_scheduler_pressure",
     StartSchedulingTrace = 45 => "start_scheduling_trace",
     StartSecondary = 46 => "start_secondary",
-    StartupTimerProbeArmExhaustion = 47 => "startup_timer_probe_arm_exhaustion",
-    StartupTimerProbeArmTrap = 48 => "startup_timer_probe_arm_trap",
-    StartupTimerProbeSnapshot = 49 => "startup_timer_probe_snapshot",
-    StartupTimerProbeStart = 50 => "startup_timer_probe_start",
-    StartupTimerProbeStop = 51 => "startup_timer_probe_stop",
     Stop = 52 => "stop",
     TrapOrdinaryCaptureDrop = 54 => "trap_ordinary_capture_drop",
     TrapOrdinaryWork = 55 => "trap_ordinary_work",
     UnregisterOrdinary = 56 => "unregister_ordinary",
     UseRepresentativeWatchdogWork = 57 => "use_representative_watchdog_work",
+}
+
+/// Bind unpublished probe functions to this protocol's methods and budgets.
+///
+/// Each `#[endpoint(update, Method)]` or `#[endpoint(query, Method)]` declaration
+/// retains its function body and static export name. Wire owns decoding/export
+/// generation; callers depend on ic-wire-endpoint. No runtime registry is added.
+#[macro_export]
+macro_rules! probe_endpoints {
+    ($(#[endpoint($kind:ident, $method:ident)] $endpoint:item)+) => {
+        $(
+            #[ic_wire_endpoint::$kind(
+                id = $crate::rpc::Method::$method as u64,
+                request = $crate::rpc::REQUEST_LIMITS,
+                response = $crate::rpc::RESPONSE_LIMITS
+            )]
+            $endpoint
+        )+
+    };
 }

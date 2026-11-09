@@ -187,14 +187,18 @@ while IFS= read -r path; do
 done < ci/docs-only-paths.txt
 docs_head="$(git rev-parse HEAD)"
 
-for kind in code mixed policy workflow packaged tooling-lock; do
+for kind in code mixed policy workflow packaged manifest lock private-manifest; do
     git checkout -q --detach "$base"
     case "$kind" in
         code|mixed) printf 'fn changed() {}\n' > code.rs ;;
         policy) printf '\n# Policy review changes require full CI.\n' >> ci/docs-only-paths.txt ;;
         workflow) mkdir -p .github/workflows; cp "$root/.github/workflows/ci.yml" .github/workflows/ci.yml ;;
         packaged) mkdir -p crates/ic-jobs; printf '# Embedded library docs\n' > crates/ic-jobs/README.md ;;
-        tooling-lock) cp "$root/toko-tooling.lock" toko-tooling.lock ;;
+        manifest) cp "$root/Cargo.toml" Cargo.toml ;;
+        lock) cp "$root/Cargo.lock" Cargo.lock ;;
+        private-manifest)
+            mkdir -p crates/ic-timers-size-probe
+            cp "$root/crates/ic-timers-size-probe/Cargo.toml" crates/ic-timers-size-probe/Cargo.toml ;;
     esac
     [[ "$kind" != mixed ]] || printf '\nProse alongside code.\n' >> README.md
     git add -- .

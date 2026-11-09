@@ -20,86 +20,76 @@ thread_local! {
     static COMPLETED: Cell<u64> = const { Cell::new(0) };
 }
 
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::StartSchedulerPressure as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn start_scheduler_pressure((successor,): (bool,)) {
-    let delay = if successor {
-        let deadline = ic_timers::timer_snapshot(&super::probe_identity())
-            .unwrap()
-            .unwrap()
-            .next_deadline_ns()
-            .unwrap();
-        Duration::from_nanos(
-            deadline
-                .checked_sub(ic_platform_runtime::ic0::time())
+ic_timers_test_protocol::probe_endpoints! {
+    #[endpoint(update, StartSchedulerPressure)]
+    fn start_scheduler_pressure((successor,): (bool,)) {
+        let delay = if successor {
+            let deadline = ic_timers::timer_snapshot(&super::probe_identity())
                 .unwrap()
-                - 1,
-        )
-    } else {
-        Duration::from_secs(1)
-    };
-    PRESSURE.with_borrow_mut(|registrations| {
-        assert!(registrations.is_empty());
-        for index in 0..PRESSURE_TIMERS {
-            registrations.push(
-                register_once(
-                    TimerIdentity::try_new("fixture", "round-pressure", format!("{index}"))
-                        .unwrap(),
-                    TimerStart::Retained {
-                        initial: Some(TimerSchedule::After(delay)),
-                    },
-                    |_| async {
-                        let end = ic_platform_runtime::ic0::performance_counter(0)
-                            + PRESSURE_INSTRUCTIONS;
-                        while ic_platform_runtime::ic0::performance_counter(0) < end {
-                            std::hint::black_box(());
-                        }
-                        COMPLETED.set(COMPLETED.get() + 1);
-                        OnceRunResult::new(TimerCompletion::success(1), OnceDecision::Stop)
-                    },
-                )
-                .unwrap(),
-            );
+                .unwrap()
+                .next_deadline_ns()
+                .unwrap();
+            Duration::from_nanos(
+                deadline
+                    .checked_sub(ic_platform_runtime::ic0::time())
+                    .unwrap()
+                    - 1,
+            )
+        } else {
+            Duration::from_secs(1)
+        };
+        PRESSURE.with_borrow_mut(|registrations| {
+            assert!(registrations.is_empty());
+            for index in 0..PRESSURE_TIMERS {
+                registrations.push(
+                    register_once(
+                        TimerIdentity::try_new("fixture", "round-pressure", format!("{index}"))
+                            .unwrap(),
+                        TimerStart::Retained {
+                            initial: Some(TimerSchedule::After(delay)),
+                        },
+                        |_| async {
+                            let end = ic_platform_runtime::ic0::performance_counter(0)
+                                + PRESSURE_INSTRUCTIONS;
+                            while ic_platform_runtime::ic0::performance_counter(0) < end {
+                                std::hint::black_box(());
+                            }
+                            COMPLETED.set(COMPLETED.get() + 1);
+                            OnceRunResult::new(TimerCompletion::success(1), OnceDecision::Stop)
+                        },
+                    )
+                    .unwrap(),
+                );
+            }
+        });
+        if !successor {
+            assert!(super::start());
         }
-    });
-    if !successor {
-        assert!(super::start());
     }
-}
 
-#[ic_wire_endpoint::query(
-    id = ic_timers_test_protocol::rpc::Method::SchedulerPressureCompleted as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn scheduler_pressure_completed() -> u64 {
-    COMPLETED.get()
-}
+    #[endpoint(query, SchedulerPressureCompleted)]
+    fn scheduler_pressure_completed() -> u64 {
+        COMPLETED.get()
+    }
 
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::ReconcileSchedulerPressure as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn reconcile_scheduler_pressure((mode, deadline): (SchedulerReconcileMode, u64)) -> bool {
-    let desired = match mode {
-        SchedulerReconcileMode::Scheduled => WatchdogReconcileState::Scheduled,
-        SchedulerReconcileMode::ScheduledImmediately => {
-            WatchdogReconcileState::ScheduledImmediately
-        }
-        SchedulerReconcileMode::ScheduledAt => WatchdogReconcileState::ScheduledAt(deadline),
-    };
-    super::REGISTRATION.with_borrow_mut(|slot| {
-        reconcile_watchdog(
-            slot,
-            &super::probe_identity(),
-            TimerCadence::from_nanos(super::CADENCE_NS).unwrap(),
-            desired,
-            |_| panic!("retained callback must not be replaced"),
-        )
-        .is_ok()
-    })
+    #[endpoint(update, ReconcileSchedulerPressure)]
+    fn reconcile_scheduler_pressure((mode, deadline): (SchedulerReconcileMode, u64)) -> bool {
+        let desired = match mode {
+            SchedulerReconcileMode::Scheduled => WatchdogReconcileState::Scheduled,
+            SchedulerReconcileMode::ScheduledImmediately => {
+                WatchdogReconcileState::ScheduledImmediately
+            }
+            SchedulerReconcileMode::ScheduledAt => WatchdogReconcileState::ScheduledAt(deadline),
+        };
+        super::REGISTRATION.with_borrow_mut(|slot| {
+            reconcile_watchdog(
+                slot,
+                &super::probe_identity(),
+                TimerCadence::from_nanos(super::CADENCE_NS).unwrap(),
+                desired,
+                |_| panic!("retained callback must not be replaced"),
+            )
+            .is_ok()
+        })
+    }
 }

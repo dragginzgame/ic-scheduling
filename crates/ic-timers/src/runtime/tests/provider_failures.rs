@@ -103,13 +103,7 @@ fn immediate_watchdog_provider_replacement_failure_traps_for_message_rollback() 
 fn public_immediate_watchdog_replacement_failure_retires_false_scheduled_state() {
     let _fixture = setup();
     let timer = identity("watchdog-public-immediate-provider-fault");
-    let registration = register_watchdog(
-        timer.clone(),
-        test_cadence(5),
-        TimerStart::Retained { initial: None },
-        stopping_watchdog(|| {}),
-    )
-    .expect("watchdog registration should succeed");
+    let registration = retained_watchdog(timer.clone(), || {});
     registration
         .ensure_scheduled()
         .expect("cadence scheduler should arm");
@@ -127,13 +121,7 @@ fn public_immediate_watchdog_replacement_failure_retires_false_scheduled_state()
 fn provider_cleanup_borrow_failure_is_returned_instead_of_discarded() {
     let _fixture = setup();
     let timer = identity("provider-cleanup-fault");
-    let registration = register_watchdog(
-        timer.clone(),
-        test_cadence(5),
-        TimerStart::Retained { initial: None },
-        stopping_watchdog(|| {}),
-    )
-    .expect("watchdog registration should succeed");
+    let registration = retained_watchdog(timer.clone(), || {});
     registration
         .ensure_scheduled()
         .expect("initial scheduler should arm");

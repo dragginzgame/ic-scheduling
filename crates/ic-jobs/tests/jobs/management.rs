@@ -4,7 +4,7 @@ use ic_jobs::{
     RetryPolicy, Schedule, next_due_ns, start_next,
 };
 
-use super::support::{recurring_schedules, roundtrip};
+use super::support::{non_catchup_schedules, recurring_schedules, roundtrip};
 
 fn recurring(missed: MissedRunPolicy) -> Job {
     Job::new(
@@ -372,17 +372,7 @@ fn restore_rejects_cancelled_retry_with_impossible_completion() {
 
 #[test]
 fn restore_checks_retained_successor_after_cancellation_or_dispatch() {
-    for schedule in [
-        Schedule::AfterCompletion {
-            first_at_ns: 100,
-            every_ns: std::num::NonZeroU64::new(10).unwrap(),
-        },
-        Schedule::FixedRate {
-            first_at_ns: 100,
-            every_ns: std::num::NonZeroU64::new(10).unwrap(),
-            missed: MissedRunPolicy::Skip,
-        },
-    ] {
+    for schedule in non_catchup_schedules(100, 10) {
         for running in [false, true] {
             let mut job = Job::new(JobId(8), schedule, RetryPolicy::NONE);
             let first = job.start(100).unwrap();

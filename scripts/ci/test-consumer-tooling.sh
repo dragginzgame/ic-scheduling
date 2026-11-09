@@ -41,7 +41,7 @@ prepare_phase() {
     cp "$root/scripts/ci/read-cargo-workspace-rust-version.sh" "$fixture/scripts/ci/"
     cp "$root/Cargo.toml" "$root/rust-toolchain.toml" "$fixture/"
     cp "$root/scripts/ci/"{verify-file-checksum,test-canister,fixture-lifecycle}.sh "$fixture/scripts/ci/"
-    cp "$root/"{Cargo.lock,toko-tooling.lock} "$fixture/"
+    cp "$root/Cargo.lock" "$fixture/"
     export JOBS_CONSUMER_TOOLING_EVENTS="$fixture/events"
     : > "$fixture/events"
 }
@@ -78,8 +78,8 @@ local fixture
 trap - EXIT
 prepare_phase tooling-admission
 cp "$root/.shared-tooling.snapshot" "$fixture/"
-# Exercise this consumer's actual receipt and entrypoints, without registry,
-# compiler or product effects. Copy every receipt-owned file for a valid baseline.
+# Admit the actual member manifests and receipt, without compiling product code.
+cp -R "$root/crates" "$root/apps" "$fixture/"
 while IFS=$'\t' read -r kind _ _ path; do
     [[ "$kind" == file ]] || continue
     [[ "$path" != */* ]] || mkdir -p "$fixture/${path%/*}"
@@ -88,7 +88,21 @@ done < "$root/.shared-tooling.snapshot"
 mkdir -p "$fixture/scripts/release"
 cp "$root/scripts/release/"{group,publish}.sh "$fixture/scripts/release/"
 make --no-print-directory -C "$fixture" shared-tooling-check > "$fixture/admitted.log" 2>&1
-for tool in cargo git curl rustc; do
+# Cargo metadata is a required read for member admission. Refuse compilation,
+# resolution, Git and network effects through the actual consumer entrypoints.
+local -x JOBS_CONSUMER_REAL_CARGO
+JOBS_CONSUMER_REAL_CARGO="$(command -v cargo)"
+cat > "$fixture/.tools/rust/common/bin/cargo" <<'CARGO'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == metadata && " $* " == *' --locked '* && " $* " == *' --offline '* && " $* " == *' --no-deps '* ]]; then
+    exec "$JOBS_CONSUMER_REAL_CARGO" "$@"
+fi
+printf 'cargo %s\n' "$*" >> "$JOBS_CONSUMER_TOOLING_EVENTS"
+exit 49
+CARGO
+chmod +x "$fixture/.tools/rust/common/bin/cargo"
+for tool in git curl rustc; do
     cat > "$fixture/.tools/rust/common/bin/$tool" <<'EFFECT'
 #!/usr/bin/env bash
 printf '%s\n' "${0##*/} $*" >> "$JOBS_CONSUMER_TOOLING_EVENTS"
@@ -96,21 +110,23 @@ exit 49
 EFFECT
     chmod +x "$fixture/.tools/rust/common/bin/$tool"
 done
-# Application graph damage must not affect the independent tooling selection.
-printf 'unavailable application graph\n' > "$fixture/Cargo.lock"
-PATH="$fixture/.tools/rust/common/bin:$PATH" make --no-print-directory -C "$fixture" shared-tooling-check > "$fixture/independent.log" 2>&1
+PATH="$fixture/.tools/rust/common/bin:$PATH" make --no-print-directory -C "$fixture" shared-tooling-check > "$fixture/admitted-with-effect-guards.log" 2>&1
 [[ ! -s "$fixture/events" ]]
-for invalid in missing-lock version-drift checksum-drift; do
-    cp "$root/"{Cargo.toml,toko-tooling.lock} "$fixture/"
+for invalid in missing-lock version-drift checksum-drift missing-member independent-member; do
+    cp "$root/"{Cargo.toml,Cargo.lock} "$fixture/"
+    cp "$root/crates/ic-timers-size-probe/Cargo.toml" "$fixture/crates/ic-timers-size-probe/Cargo.toml"
     case "$invalid" in
-        missing-lock) rm "$fixture/toko-tooling.lock" ;;
+        missing-lock) rm "$fixture/Cargo.lock" ;;
         version-drift)
-            perl -0pi -e 's/(\[workspace\.metadata\.toko-tooling\]\nversion = )"[^"]+"/${1}"0.0.0"/' "$fixture/Cargo.toml" ;;
+            perl -0pi -e 's/(toko-tooling = ")=[^"]+/${1}=0.0.0/' "$fixture/Cargo.toml" ;;
         checksum-drift)
-            jq '.checksum = ("0" * 64)' "$fixture/toko-tooling.lock" > "$fixture/changed.lock"
-            mv "$fixture/changed.lock" "$fixture/toko-tooling.lock" ;;
+            perl -0pi -e 's/(name = "toko-tooling"\nversion = "[^"]+"\nsource = "[^"]+"\nchecksum = )"[^"]+"/${1}"0000000000000000000000000000000000000000000000000000000000000000"/' "$fixture/Cargo.lock" ;;
+        missing-member)
+            perl -0pi -e 's/^toko-tooling\.workspace = true\n//m' "$fixture/crates/ic-timers-size-probe/Cargo.toml" ;;
+        independent-member)
+            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.36.0"/' "$fixture/crates/ic-timers-size-probe/Cargo.toml" ;;
     esac
-    for target in ci release-patch release-preflight publish publish-check; do
+    for target in ci release-patch release-preflight publish publish-check clean-empty-source-dirs; do
         status=0
         PATH="$fixture/.tools/rust/common/bin:$PATH" RELEASE_GROUP="jobs" make --no-print-directory -C "$fixture" "$target" \
             > "$fixture/$invalid-$target.log" 2>&1 || status=$?
@@ -123,7 +139,7 @@ for invalid in missing-lock version-drift checksum-drift; do
     [[ "$status" != 0 && ! -s "$fixture/events" ]] || exit 1
     grep -F 'shared-tooling-check' "$fixture/$invalid-direct-publish.log" > /dev/null
 done
-echo 'Root tooling admission is application-lock independent; actual CI/release/publication callers refuse drift before Cargo, Git or network effects'
+echo 'Cargo-owned Tooling admission rejects lock/pin/receipt drift and non-default member omissions/overrides before compiler, Git or network effects (35 actual caller routes)'
 )
 
 phase_cli_admission() (
@@ -430,7 +446,7 @@ trap - EXIT
 prepare_phase ci-admission
 # These local release inputs are part of Make's common checkpoint inventory.
 mkdir -p "$fixture/scripts/release"
-cp "$root/scripts/release/"{validation.pl,verify.sh,ci.sh,candidate-setup.sh,source-lock.sh} "$fixture/scripts/release/"
+cp "$root/scripts/release/"{validation.pl,verify.sh,ci.sh,candidate-setup.sh,source-lock.sh,metadata.sh,publish.sh,publication-lint.sh} "$fixture/scripts/release/"
 cp "$root/scripts/ci/"{ValidationPlan.pm,validation-evidence.pl} "$fixture/scripts/ci/"
 # Run Jobs' actual CI route only through its first admission stage. Substitute
 # tool effects and mutate a selected input there; the logger must block all
@@ -476,13 +492,14 @@ CARGO
 chmod +x "$fixture/.tools/rust/common/bin/cargo"
 # Shared's pinned test-validation-target-runner.sh owns input mutation/deletion,
 # observation failures, checkpoint files and timing format. Retain this actual
-# Jobs Make/CI wiring proof: changing the lock, CLI selection or docs policy
+# Jobs Make/CI wiring proof: changing the Cargo manifest/lock, CLI selection or docs policy
 # during admission stops checks before product Cargo effects.
-for input in Cargo.lock toko-tooling.lock scripts/dev/testkit-tool.sh ci/docs-only-paths.txt; do
+for input in Cargo.toml Cargo.lock scripts/dev/testkit-tool.sh ci/docs-only-paths.txt scripts/release/publication-lint.sh; do
     cp "$root/Cargo.lock" "$fixture/Cargo.lock"
-    cp "$root/toko-tooling.lock" "$fixture/toko-tooling.lock"
+    cp "$root/Cargo.toml" "$fixture/Cargo.toml"
     cp "$root/scripts/dev/testkit-tool.sh" "$fixture/scripts/dev/testkit-tool.sh"
     cp "$root/ci/docs-only-paths.txt" "$fixture/ci/docs-only-paths.txt"
+    cp "$root/scripts/release/publication-lint.sh" "$fixture/scripts/release/publication-lint.sh"
     : > "$fixture/events"
     status=0
     JOBS_CONSUMER_MUTATION_INPUT="$input" VALIDATION_LOG_DIR="$fixture/drift-logs-${input##*/}" \
@@ -495,7 +512,7 @@ for input in Cargo.lock toko-tooling.lock scripts/dev/testkit-tool.sh ci/docs-on
     grep -F "validation input changed: $input" \
         "$fixture/drift-failures-${input##*/}/latest.log" > /dev/null
 done
-echo 'Changed lock, CLI selection or docs policy stops Jobs CI after admission (actual Make route; substitute tool effects; no product validation)'
+echo 'Changed Cargo manifest/lock, CLI selection, docs or publication policy stops Jobs CI after admission (actual Make route; substitute tool effects; no product validation)'
 )
 
 phase_rust_policy() (

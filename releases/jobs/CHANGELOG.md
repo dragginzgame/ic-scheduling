@@ -6,18 +6,48 @@ and [coordinated history through 0.33.1](../history.md).
 
 ## [0.34.16] - Unreleased
 
+### 🧹 Cleanup
+
+- Share recurring schedule fixtures while preserving each restore test's
+  state-specific corruption and refusal assertions.
+- Share management endpoint budgets and native Wire call plumbing, preserving
+  method identities, authorization and malformed-frame rejection. Reuse frozen
+  storage decoding and blocked-effect assertions while retaining every historical
+  image and its independent physical-storage refusal checks.
+- Replace the native notification queue and receiver simulation with one durable
+  effect fixture. Keep failed intent/result/resolution commits, exact rejection
+  evidence and two-store cold reopening; qualify collection ordering and retained
+  retry payloads against the actual consumer Queue instead.
+
+### 🛠️ Tooling
+
+- Share publication lint selection between dry runs and uploads. Qualified
+  Jobs-only proof selects its combined-consumer lint; shared or unavailable proof
+  retains complete fresh lint. Re-admit sealed evidence and prepared metadata,
+  and refuse clean-source changes during lint before publication.
+- Adopt published Toko Tooling 0.36 through one exact root Cargo pin inherited
+  by every workspace package. Remove the metadata selector and separate tooling
+  lock. Resolve pin changes with Cargo, then install explicitly; CI/release and
+  publication admission check the member declarations, lock and snapshot together.
+
 ### 🗑️ Removed
 
+- Remove the unpublished consumer's log-browsing API, Logging adapter and direct
+  dependency. Keep Metrics, committed-transition counting and server failure
+  diagnostics; stage batch counts without allocating diagnostic events.
+- Retire the cache-maintenance simulation. Minimal local-effect transactions
+  preserve atomicity, partial-commit recovery and two-store composition proofs.
 - Retire the interactive queue demo, its launcher, Make targets and dedicated
   parser/process/live tests. Remove the unused Ctrl+C dependency. Artifact
   capture, the native management harness and installed recovery tests remain.
 
 ### 📦 Dependencies
 
-- Refresh the qualification graph to Storage 0.69.1, Testkit 0.94 and its
-  Platform 0.27 adapter. Use Testkit's inherent install/diagnostics methods;
-  stored images and the published Jobs API remain unchanged.
-- Adopt Build 0.80 and Host Artifacts/FS/Process 0.76 for artifact capture and
+- Refresh the qualification graph to Storage 0.70, Wire 0.18, Endpoint 0.9 and
+  Testkit 0.95 with its Platform 0.27 adapter. Use Testkit's inherent
+  install/diagnostics methods and concrete instance owner; stored images,
+  frame bytes and the published Jobs API remain unchanged.
+- Adopt Build 0.81 and Host Artifacts/FS/Process 0.76.1 for artifact capture and
   release metadata; retain the lock-selected CLI setup and admission flow.
 
 ## [0.34.15] - 2026-11-08

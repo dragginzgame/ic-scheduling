@@ -7,6 +7,9 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[package.metadata.cargo-machete]
+ignored = ["toko-tooling"]
+
 [package.metadata.shared-tooling.loc]
 category = "build_tooling"
 
@@ -42,6 +45,7 @@ ic-host-fs = { workspace = true, features = ["test-support"] }
 ic-host-process = { workspace = true, features = ["test-support"] }
 ic-platform-types = { workspace = true, features = ["principal-self-authenticating"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+toko-tooling.workspace = true
 
 [[test]]
 name = "recovery"

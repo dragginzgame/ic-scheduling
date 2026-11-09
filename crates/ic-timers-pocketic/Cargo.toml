@@ -6,6 +6,9 @@ version = "0.41.4"
 publish = false
 license.workspace = true
 
+[package.metadata.cargo-machete]
+ignored = ["toko-tooling"]
+
 [package.metadata.shared-tooling.loc]
 category = "build_tooling"
 
@@ -31,6 +34,7 @@ ic-testkit = { workspace = true, features = ["wire"] }
 ic-timers-test-protocol.workspace = true
 ic-wire.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
+toko-tooling.workspace = true
 
 [lints.rust]
 unsafe_code = "forbid"

@@ -9,8 +9,8 @@ use ic_jobs_test_consumer::{
 use ic_platform_types::principal::ExternalPrincipal;
 use ic_testkit::pic::{
     CanisterDiagnosticsRequest, CanisterInstallError, CanisterLogRenderLimits, InstallSpec,
-    PocketIcInstance, PocketIcStartupConfig, RetryPolicy, WireCallError, advance_and_tick,
-    query_wire, tick_until,
+    PocketIcInstance, PocketIcStartupConfig, RetryPolicy, WireCallError, WireCallSpec,
+    advance_and_tick, query_wire, tick_until,
 };
 use ic_testkit::pocket_ic::{ClientError, ErrorCode, PocketIc, PocketIcBuilder, RejectResponse};
 use ic_wire::native;
@@ -20,7 +20,7 @@ use std::{convert::Infallible, path::PathBuf, task::Poll, time::Duration};
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 
 struct Fixture {
-    pic: PocketIcInstance<PocketIc>,
+    pic: PocketIcInstance,
     wasm: Vec<u8>,
     manager: ExternalPrincipal,
     sender: ExternalPrincipal,
@@ -164,6 +164,43 @@ impl Fixture {
             caller,
         }
     }
+    // Raw frames deliberately bypass typed request admission in rejection tests.
+    async fn raw_update(
+        &self,
+        canister: ExternalPrincipal,
+        caller: ExternalPrincipal,
+        method: &str,
+        bytes: Vec<u8>,
+    ) -> Result<Vec<u8>, ClientError> {
+        self.pic
+            .instance()
+            .update_call(canister, caller, method, bytes)
+            .await
+    }
+
+    async fn delivery<T: DeserializeOwned>(
+        &self,
+        canister: ExternalPrincipal,
+        caller: ExternalPrincipal,
+        (method, method_id): (&'static str, u64),
+        delivery: &Delivery,
+    ) -> T {
+        ic_testkit::pic::update_wire(
+            self.pic.instance(),
+            canister,
+            caller,
+            WireCallSpec {
+                method,
+                method_id,
+                request_limits: REQUEST_LIMITS,
+                response_limits: RESPONSE_LIMITS,
+            },
+            delivery,
+        )
+        .await
+        .expect("PocketIC delivery Wire call")
+    }
+
     async fn stopped<T>(
         &self,
         canister: ExternalPrincipal,
@@ -297,8 +334,7 @@ async fn management_wire_refuses_retired_and_invalid_unit_requests() {
         assert!(matches!(error, CanisterInstallError::InstallCode { .. }));
     }
     let id = Method::DispatchDue as u64;
-    let valid = native::encode_request(id, &(), control::REQUEST_LIMITS).unwrap();
-    let mut trailing = valid;
+    let mut trailing = native::encode_request(id, &(), control::REQUEST_LIMITS).unwrap();
     trailing.push(0);
     for bytes in [
         include_bytes!(
@@ -309,12 +345,11 @@ async fn management_wire_refuses_retired_and_invalid_unit_requests() {
         native::encode_request(Method::Summary as u64, &(), control::REQUEST_LIMITS).unwrap(),
         native::encode_response(id, &(), control::RESPONSE_LIMITS).unwrap(),
         trailing,
+        vec![0; control::REQUEST_LIMITS.bytes + 1],
     ] {
         assert_canister_trap(
             fixture
-                .pic
-                .instance()
-                .update_call(
+                .raw_update(
                     fixture.sender,
                     fixture.manager,
                     Method::DispatchDue.name(),
@@ -325,19 +360,6 @@ async fn management_wire_refuses_retired_and_invalid_unit_requests() {
         );
         assert_eq!(fixture.summary(fixture.sender).await, before);
     }
-    let error = fixture
-        .pic
-        .instance()
-        .update_call(
-            fixture.sender,
-            fixture.manager,
-            Method::DispatchDue.name(),
-            vec![0; control::REQUEST_LIMITS.bytes + 1],
-        )
-        .await
-        .unwrap_err();
-    assert_canister_trap(error);
-    assert_eq!(fixture.summary(fixture.sender).await, before);
 
     fixture.close().await;
 }
@@ -356,9 +378,11 @@ async fn delivery_wire_endpoints_refuse_candid_and_preserve_authorized_receipts(
             message: "x".repeat(256),
         },
     };
+    let receive = ("receive_delivery", RECEIVE_ID);
+    let receipt = ("delivery_receipt", RECEIPT_ID);
     for (method, id, other) in [
-        ("receive_delivery", RECEIVE_ID, RECEIPT_ID),
-        ("delivery_receipt", RECEIPT_ID, RECEIVE_ID),
+        (receive.0, receive.1, receipt.1),
+        (receipt.0, receipt.1, receive.1),
     ] {
         for bytes in [
             include_bytes!(
@@ -367,82 +391,48 @@ async fn delivery_wire_endpoints_refuse_candid_and_preserve_authorized_receipts(
             .to_vec(),
             native::encode_request(other, &delivery, REQUEST_LIMITS).unwrap(),
             native::encode_response(id, &delivery, REQUEST_LIMITS).unwrap(),
+            vec![0; REQUEST_LIMITS.bytes + 1],
         ] {
-            let error = fixture
-                .pic
-                .instance()
-                .update_call(receiver, fixture.sender, method, bytes)
-                .await
-                .unwrap_err();
-            assert_canister_trap(error);
+            assert_canister_trap(
+                fixture
+                    .raw_update(receiver, fixture.sender, method, bytes)
+                    .await
+                    .unwrap_err(),
+            );
             assert_eq!(fixture.summary(receiver).await.receipts, 0);
         }
-        let error = fixture
-            .pic
-            .instance()
-            .update_call(
-                receiver,
-                fixture.sender,
-                method,
-                vec![0; REQUEST_LIMITS.bytes + 1],
-            )
-            .await
-            .unwrap_err();
-        assert_canister_trap(error);
-        assert_eq!(fixture.summary(receiver).await.receipts, 0);
     }
-    let request = native::encode_request(RECEIVE_ID, &delivery, REQUEST_LIMITS).unwrap();
-    let bytes = fixture
-        .pic
-        .instance()
-        .update_call(
-            receiver,
-            ExternalPrincipal::anonymous(),
-            "receive_delivery",
-            request.clone(),
-        )
-        .await
-        .unwrap();
     assert_eq!(
-        native::decode_response::<Result<Delivery, Error>>(RECEIVE_ID, &bytes, RESPONSE_LIMITS)
-            .unwrap(),
+        fixture
+            .delivery::<Result<Delivery, Error>>(
+                receiver,
+                ExternalPrincipal::anonymous(),
+                receive,
+                &delivery,
+            )
+            .await,
         Err(Error::Unauthorized)
     );
     assert_eq!(fixture.summary(receiver).await.receipts, 0);
     for _ in 0..2 {
-        let bytes = fixture
-            .pic
-            .instance()
-            .update_call(
-                receiver,
-                fixture.sender,
-                "receive_delivery",
-                request.clone(),
-            )
-            .await
-            .unwrap();
         assert_eq!(
-            native::decode_response::<Result<Delivery, Error>>(RECEIVE_ID, &bytes, RESPONSE_LIMITS)
-                .unwrap(),
+            fixture
+                .delivery::<Result<Delivery, Error>>(receiver, fixture.sender, receive, &delivery,)
+                .await,
             Ok(delivery.clone())
         );
         assert_eq!(fixture.summary(receiver).await.receipts, 1);
     }
     fixture.upgrade(receiver).await.unwrap();
-    let request = native::encode_request(RECEIPT_ID, &delivery, REQUEST_LIMITS).unwrap();
-    let bytes = fixture
-        .pic
-        .instance()
-        .update_call(receiver, fixture.sender, "delivery_receipt", request)
-        .await
-        .unwrap();
     assert_eq!(
-        native::decode_response::<Result<Option<Delivery>, Error>>(
-            RECEIPT_ID,
-            &bytes,
-            RESPONSE_LIMITS
-        )
-        .unwrap(),
+        fixture
+            .delivery::<Result<Option<Delivery>, Error>>(
+                receiver,
+                fixture.sender,
+                receipt,
+                &delivery,
+            )
+            .await,
         Ok(Some(delivery))
     );
     assert_eq!(fixture.summary(receiver).await.receipts, 1);
@@ -633,19 +623,6 @@ async fn watchdog_batch_trap_rolls_back_then_recovers_without_repeating_local_ef
     assert_eq!(fixture.view(failed).await, failed_before);
     let rolled_back = fixture.summary(fixture.sender).await;
     assert_eq!(rolled_back.counter, 0);
-    let logs: ic_jobs_test_consumer::api::JobLogPage = fixture
-        .query(
-            fixture.sender,
-            Method::JobLogs,
-            ic_jobs_test_consumer::api::JobLogRequest {
-                before: None,
-                min_level: None,
-                limit: 8,
-            },
-        )
-        .await
-        .unwrap();
-    assert!(logs.entries.is_empty());
     let metrics: ic_jobs_test_consumer::api::JobMetrics = fixture
         .query(fixture.sender, Method::JobMetrics, ())
         .await
@@ -1084,69 +1061,6 @@ async fn job_metrics_are_authorized_resettable_and_restart_on_upgrade() {
     assert!(reopened.canister_version > completed.canister_version);
     assert_eq!(reopened.dispatched.total, 0);
     assert_eq!(reopened.reset_sequence, Some(0));
-    assert_eq!(fixture.view(id).await, job);
-
-    fixture.close().await;
-}
-
-#[tokio::test]
-#[ignore = "explicit local canister qualification: make test-canister"]
-async fn job_logs_are_manager_only_and_restart_without_changing_jobs() {
-    use ic_jobs_test_consumer::api::{JobLogPage, JobLogRequest, JobMetrics};
-    let fixture = Fixture::new().await;
-    let request = JobLogRequest {
-        before: None,
-        min_level: None,
-        limit: 8,
-    };
-    let initial: JobLogPage = fixture
-        .query(fixture.sender, Method::JobLogs, request)
-        .await
-        .unwrap();
-    assert!(initial.entries.is_empty());
-    let unauthorized: Result<JobLogPage, Error> = query_wire(
-        fixture.pic.instance(),
-        fixture.sender,
-        ExternalPrincipal::anonymous(),
-        harness::control(Method::JobLogs),
-        &request,
-    )
-    .await
-    .unwrap();
-    assert_eq!(unauthorized, Err(Error::Unauthorized));
-    let id: u64 = fixture
-        .update(Method::Create, (increment(0, 1),))
-        .await
-        .unwrap();
-    fixture
-        .update::<(), _>(Method::DispatchDue, ())
-        .await
-        .unwrap();
-    let completed: JobLogPage = fixture
-        .query(fixture.sender, Method::JobLogs, request)
-        .await
-        .unwrap();
-    assert_eq!(completed.entries.len(), 2);
-    assert_eq!(completed.entries[0].topic, "outcome");
-    assert_eq!(completed.entries[1].topic, "dispatch");
-    let job = fixture.view(id).await;
-    fixture
-        .update::<JobMetrics, _>(Method::ResetJobMetrics, ())
-        .await
-        .unwrap();
-    let after_reset: JobLogPage = fixture
-        .query(fixture.sender, Method::JobLogs, request)
-        .await
-        .unwrap();
-    assert_eq!(after_reset.entries, completed.entries);
-    fixture.upgrade(fixture.sender).await.unwrap();
-    let reopened: JobLogPage = fixture
-        .query(fixture.sender, Method::JobLogs, request)
-        .await
-        .unwrap();
-    assert!(reopened.entries.is_empty());
-    assert_eq!(reopened.omitted.total, 0);
-    assert!(reopened.canister_version > completed.canister_version);
     assert_eq!(fixture.view(id).await, job);
 
     fixture.close().await;

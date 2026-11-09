@@ -1,19 +1,5 @@
 use super::*;
 
-fn fill_registry() -> Vec<OnceRegistration> {
-    let existing = timer_inventory().unwrap().len();
-    (existing..crate::MAX_TIMER_REGISTRATIONS)
-        .map(|index| {
-            register_once(
-                identity(&format!("inactive-filler-{index}")),
-                TimerStart::Retained { initial: None },
-                stopping_once(|| panic!("inactive filler must never execute")),
-            )
-            .unwrap()
-        })
-        .collect()
-}
-
 fn assert_same_registrations(before: &TimerInventorySnapshot) {
     let after = timer_inventory().unwrap();
     assert_eq!(after.len(), crate::MAX_TIMER_REGISTRATIONS);
@@ -125,13 +111,9 @@ fn retained_watchdog_rearms_at_full_registry_capacity() {
     let _fixture = setup();
     let calls = Rc::new(Cell::new(0));
     let callback_calls = Rc::clone(&calls);
-    let registration = register_watchdog(
-        identity("retained-watchdog"),
-        test_cadence(5),
-        TimerStart::Retained { initial: None },
-        stopping_watchdog(move || callback_calls.set(callback_calls.get() + 1)),
-    )
-    .unwrap();
+    let registration = retained_watchdog(identity("retained-watchdog"), move || {
+        callback_calls.set(callback_calls.get() + 1);
+    });
     assert_full_capacity_rearming(
         &calls,
         |_| {

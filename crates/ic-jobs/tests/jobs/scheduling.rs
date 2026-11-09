@@ -4,7 +4,7 @@ use ic_jobs::{
     next_due_ns, start_next,
 };
 
-use super::support::{recurring_schedules, roundtrip};
+use super::support::{non_catchup_schedules, recurring_schedules, roundtrip};
 
 fn retry() -> RetryPolicy {
     RetryPolicy::new(4, 10, 15).unwrap()
@@ -487,17 +487,7 @@ fn restore_rejects_retry_completion_before_the_occurrence_deadline() {
 
 #[test]
 fn restore_keeps_the_first_occurrence_at_its_original_deadline() {
-    for schedule in [
-        Schedule::AfterCompletion {
-            first_at_ns: 100,
-            every_ns: std::num::NonZeroU64::new(10).unwrap(),
-        },
-        Schedule::FixedRate {
-            first_at_ns: 100,
-            every_ns: std::num::NonZeroU64::new(10).unwrap(),
-            missed: MissedRunPolicy::Skip,
-        },
-    ] {
+    for schedule in non_catchup_schedules(100, 10) {
         let mut job = Job::new(JobId(7), schedule, retry());
         let attempt = job.start(200).unwrap();
         let running = roundtrip(&job).record();
@@ -561,17 +551,7 @@ fn recurring_recovery_preserves_zero_and_maximum_deadlines() {
 
 #[test]
 fn restore_checks_successor_deadlines_against_the_recorded_completion() {
-    for schedule in [
-        Schedule::AfterCompletion {
-            first_at_ns: 100,
-            every_ns: std::num::NonZeroU64::new(10).unwrap(),
-        },
-        Schedule::FixedRate {
-            first_at_ns: 100,
-            every_ns: std::num::NonZeroU64::new(10).unwrap(),
-            missed: MissedRunPolicy::Skip,
-        },
-    ] {
+    for schedule in non_catchup_schedules(100, 10) {
         let mut job = Job::new(JobId(7), schedule, retry());
         let attempt = job.start(100).unwrap();
         job.finish(attempt, 200, Outcome::Success).unwrap();

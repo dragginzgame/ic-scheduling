@@ -151,42 +151,49 @@ async fn rejected_initial_reconciliation_preserves_ic_inventory_and_releases_cap
     close_instance(owned).await;
 }
 
-async fn mixed_snapshot(pic: &PocketIc, canister_id: ExternalPrincipal) -> TimerProbeSnapshot {
-    query_wire(
-        pic,
-        canister_id,
-        ExternalPrincipal::anonymous(),
-        Method::StartupTimerProbeSnapshot,
-        (),
-    )
-    .await
-    .expect("mixed timer snapshot")
-}
-
-async fn advance_mixed_round(pic: &PocketIc, duration: Duration) {
-    advance(pic, duration, 2).await;
+// Both faults must isolate the Watchdog without stopping the application timer.
+async fn assert_pair_fault_recovers(
+    pic: &PocketIc,
+    canister_id: ExternalPrincipal,
+    fault_at: u64,
+    exhaust: bool,
+) {
+    advance(pic, Duration::from_secs(1), 2).await;
+    if exhaust {
+        // Finish deterministic execution slices without advancing IC time.
+        advance(pic, Duration::ZERO, 24).await;
+    }
+    let failed = snapshot(pic, canister_id).await;
+    assert_eq!(failed.scheduler_started.total, 1);
+    assert_eq!(failed.work_dispatched.total, 1);
+    assert_eq!(failed.work_completed.total, 0);
+    assert_eq!(failed.application_completed.total, 1);
+    advance(pic, Duration::from_secs(1), 2).await;
+    let recovered = snapshot(pic, canister_id).await;
+    assert_eq!(recovered.work_completed.total, 1);
+    assert_eq!(recovered.application_completed.total, 2);
+    let resumed_at = recovered.completed_at_ns.expect("watchdog completion time");
+    assert!(resumed_at > fault_at);
+    assert!(resumed_at <= fault_at.saturating_add(1_000_000_100));
+    let first_application = failed
+        .application_completed_at_ns
+        .expect("first application completion");
+    let second_application = recovered
+        .application_completed_at_ns
+        .expect("second application completion");
+    assert!(first_application >= fault_at);
+    assert!(first_application <= fault_at.saturating_add(100));
+    assert!(second_application > first_application);
+    assert!(second_application <= first_application.saturating_add(1_000_000_100));
 }
 
 #[tokio::test]
 async fn shared_watchdog_survives_instruction_exhaustion() {
     let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    assert!(update_bool(pic, canister_id, Method::StartupTimerProbeStart).await);
-    let exhaust_at = update_u64(pic, canister_id, Method::StartupTimerProbeArmExhaustion).await;
-    advance_mixed_round(pic, Duration::from_secs(1)).await;
-    // Finish deterministic execution slices without advancing IC time.
-    advance(pic, Duration::ZERO, 24).await;
-    let exhausted = mixed_snapshot(pic, canister_id).await;
-    assert_eq!(exhausted.exhaust_at, Some(exhaust_at));
-    assert_eq!(exhausted.watchdog_callbacks, 0);
-    assert_eq!(exhausted.application_callbacks, 1);
-    advance_mixed_round(pic, Duration::from_secs(1)).await;
-    let recovered = mixed_snapshot(pic, canister_id).await;
-    assert_eq!(recovered.watchdog_callbacks, 1);
-    assert_eq!(recovered.application_callbacks, 2);
-    let resumed_at = recovered.watchdog_times[0];
-    assert!(resumed_at > exhaust_at);
-    assert!(resumed_at <= exhaust_at.saturating_add(1_000_000_100));
+    assert!(update_bool(pic, canister_id, Method::StartVolatilePair).await);
+    let exhaust_at = update_u64(pic, canister_id, Method::ArmExhaustion).await;
+    assert_pair_fault_recovers(pic, canister_id, exhaust_at, true).await;
 
     close_instance(owned).await;
 }
@@ -195,9 +202,9 @@ async fn shared_watchdog_survives_instruction_exhaustion() {
 async fn shared_watchdog_survives_trap_and_upgrade() {
     let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    assert!(update_bool(pic, canister_id, Method::StartupTimerProbeStart).await);
-    assert!(!update_bool(pic, canister_id, Method::StartupTimerProbeStart).await);
-    let before_external = mixed_snapshot(pic, canister_id).await;
+    assert!(update_bool(pic, canister_id, Method::StartVolatilePair).await);
+    assert!(!update_bool(pic, canister_id, Method::StartVolatilePair).await);
+    let before_external = snapshot(pic, canister_id).await;
     let external = pic
         .update_call(
             canister_id,
@@ -213,43 +220,25 @@ async fn shared_watchdog_survives_trap_and_upgrade() {
         ),
         "the timer backend must reject external ingress: {external:?}"
     );
-    assert_eq!(mixed_snapshot(pic, canister_id).await, before_external);
-    let trap_at = update_u64(pic, canister_id, Method::StartupTimerProbeArmTrap).await;
-    advance_mixed_round(pic, Duration::from_secs(1)).await;
-    let trapped = mixed_snapshot(pic, canister_id).await;
-    assert_eq!(trapped.trap_at, Some(trap_at));
-    assert_eq!(trapped.watchdog_callbacks, 0);
-    assert_eq!(trapped.application_callbacks, 1);
-    advance_mixed_round(pic, Duration::from_secs(1)).await;
-    let recovered = mixed_snapshot(pic, canister_id).await;
-    assert_eq!(recovered.watchdog_callbacks, 1);
-    assert_eq!(recovered.application_callbacks, 2);
-    let resumed_at = recovered.watchdog_times[0];
-    assert!(resumed_at > trap_at);
-    assert!(resumed_at <= trap_at.saturating_add(1_000_000_100));
-    assert!(recovered.application_times[0] >= trap_at);
-    assert!(recovered.application_times[0] <= trap_at.saturating_add(100));
-    assert!(recovered.application_times[1] > recovered.application_times[0]);
-    assert!(
-        recovered.application_times[1]
-            <= recovered.application_times[0].saturating_add(1_000_000_100)
-    );
+    assert_eq!(snapshot(pic, canister_id).await, before_external);
+    let trap_at = update_u64(pic, canister_id, Method::ArmTrap).await;
+    assert_pair_fault_recovers(pic, canister_id, trap_at, false).await;
     pic.upgrade_canister(canister_id, probe_wasm(), Vec::new(), None)
         .await
         .expect("upgrade without durable mixed-timer intent");
-    let upgraded = mixed_snapshot(pic, canister_id).await;
-    assert!(!upgraded.watchdog_registered);
+    let upgraded = snapshot(pic, canister_id).await;
+    assert!(!upgraded.registered);
     assert!(!upgraded.application_registered);
-    assert_eq!(upgraded.watchdog_callbacks, 0);
-    assert_eq!(upgraded.application_callbacks, 0);
-    assert!(update_bool(pic, canister_id, Method::StartupTimerProbeStart).await);
-    advance_mixed_round(pic, Duration::from_secs(1)).await;
-    let reregistered = mixed_snapshot(pic, canister_id).await;
-    assert_eq!(reregistered.watchdog_callbacks, 1);
-    assert_eq!(reregistered.application_callbacks, 1);
-    update_unit(pic, canister_id, Method::StartupTimerProbeStop).await;
-    let stopped = mixed_snapshot(pic, canister_id).await;
-    assert!(!stopped.watchdog_registered);
+    assert_eq!(upgraded.work_completed.total, 0);
+    assert_eq!(upgraded.application_completed.total, 0);
+    assert!(update_bool(pic, canister_id, Method::StartVolatilePair).await);
+    advance(pic, Duration::from_secs(1), 2).await;
+    let reregistered = snapshot(pic, canister_id).await;
+    assert_eq!(reregistered.work_completed.total, 1);
+    assert_eq!(reregistered.application_completed.total, 1);
+    update_unit(pic, canister_id, Method::StopVolatilePair).await;
+    let stopped = snapshot(pic, canister_id).await;
+    assert!(!stopped.registered);
     assert!(!stopped.application_registered);
 
     close_instance(owned).await;
@@ -259,19 +248,20 @@ async fn shared_watchdog_survives_trap_and_upgrade() {
 async fn overdue_shared_timers_coalesce_to_bounded_work() {
     let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
-    assert!(update_bool(pic, canister_id, Method::StartupTimerProbeStart).await);
-    advance_mixed_round(pic, Duration::from_secs(300)).await;
-    let overdue = mixed_snapshot(pic, canister_id).await;
+    assert!(update_bool(pic, canister_id, Method::StartVolatilePair).await);
+    advance(pic, Duration::from_secs(300), 2).await;
+    let overdue = snapshot(pic, canister_id).await;
     let delivered = overdue
-        .watchdog_callbacks
-        .saturating_add(overdue.application_callbacks);
+        .work_completed
+        .total
+        .saturating_add(overdue.application_completed.total);
     assert!(delivered > 0);
     assert!(
         delivered <= 2,
         "one overdue round coalesces to one callback per timer"
     );
-    assert!(overdue.watchdog_callbacks > 0);
-    assert!(overdue.application_callbacks > 0);
+    assert!(overdue.work_completed.total > 0);
+    assert!(overdue.application_completed.total > 0);
 
     close_instance(owned).await;
 }

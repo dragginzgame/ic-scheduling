@@ -1,7 +1,7 @@
 use ic_jobs::{Job, JobRecord};
 
 mod schedules;
-pub(crate) use schedules::recurring_schedules;
+pub(crate) use schedules::{non_catchup_schedules, recurring_schedules};
 
 pub(crate) fn roundtrip(job: &Job) -> Job {
     let bytes = serde_json::to_vec(job).unwrap();

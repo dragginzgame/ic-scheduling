@@ -25,7 +25,7 @@ package="$(bash "$root/scripts/release/group.sh" package)"
 tag="refs/tags/$RELEASE_GROUP-v$version"
 tag_object="$(git rev-parse --verify "$tag")"
 bash "$root/scripts/release/check-publication.sh" "$remote"
-"${RELEASE_MAKE:-make}" --no-print-directory -C "$root" clippy
+bash "$root/scripts/release/publication-lint.sh"
 current_commit="$(git rev-parse --verify HEAD)"
 current_version="$(bash "$root/scripts/release/group.sh" version)"
 current_tag="$(git rev-parse --verify "$tag")"

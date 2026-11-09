@@ -78,12 +78,11 @@ fn authoritative_reconciliation_can_move_scheduled_deadline_later() {
 #[test]
 fn running_requests_preserve_pending_unregistration() {
     let mut control = TimerControl::default();
+    assert!(!control.defer_unregister());
     let generation = arm(&mut control, 100);
+    assert!(!control.defer_unregister());
     assert!(control.begin(generation));
-    let TimerRegistration::Running { pending } = &mut control.registration else {
-        panic!("accepted fixture should be running");
-    };
-    *pending = Some(OrdinaryPending::Unregister);
+    assert!(control.defer_unregister());
     assert_eq!(
         control.request(schedule(300), OrdinaryRequest::Reconcile),
         Ok(None)

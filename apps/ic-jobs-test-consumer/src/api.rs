@@ -160,64 +160,6 @@ pub struct JobMetrics {
     pub reconciliations: CounterMetric,
 }
 
-/// Ordered severity for the consumer's protected diagnostic history.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub enum JobLogLevel {
-    /// Development detail.
-    Debug,
-    /// Dispatch observation.
-    Info,
-    /// Successful outcome.
-    Ok,
-    /// Retryable or uncertain outcome.
-    Warn,
-    /// Permanent failure.
-    Error,
-}
-
-/// One bounded newest-first scan; keep the same filter across cursor pages.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct JobLogRequest {
-    /// Exclusive heap-local sequence cursor; absent starts at the newest event.
-    pub before: Option<u64>,
-    /// Include this severity and higher when present.
-    pub min_level: Option<JobLogLevel>,
-    /// Matching rows to return, from one through eight.
-    pub limit: u8,
-}
-
-/// Redacted observation of a committed transition, never proof of a remote effect.
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct JobLogEntry {
-    /// Monotonic identity within this volatile history.
-    pub sequence: u64,
-    /// Whole IC seconds supplied by the transition owner.
-    pub created_at_secs: u64,
-    /// Observed severity.
-    pub level: JobLogLevel,
-    /// Fixed consumer topic: dispatch, outcome or reconciliation.
-    pub topic: String,
-    /// Bounded job/occurrence/attempt context; excludes principals and payloads.
-    pub message: String,
-    /// Whether the engine truncated the original message.
-    pub truncated: bool,
-}
-
-/// Manager-only heap history, independently bounded from durable jobs and metrics.
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct JobLogPage {
-    /// Host-supplied IC version; history is discarded on reconstruction.
-    pub canister_version: u64,
-    /// Newest matching observations first, at most eight.
-    pub entries: Vec<JobLogEntry>,
-    /// Rows examined, at most 32; not the total number of matches.
-    pub scanned: u64,
-    /// Continue even after an empty filtered page; absent means the scan is done.
-    pub next_before: Option<u64>,
-    /// Refused appends, including timestamp regression; excludes count eviction.
-    pub omitted: CounterMetric,
-}
-
 /// Refused management, storage or execution boundary.
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum Error {

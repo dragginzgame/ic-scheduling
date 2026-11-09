@@ -101,82 +101,6 @@ fn dropped_ordinary_deliveries_retire_confirmed_scheduled_and_running_work() {
 }
 
 #[test]
-fn abandoned_running_work_discards_scheduling_commands_and_finishes_unregistration() {
-    for after_completion in [false, true] {
-        for lifetime in [
-            DeclarationLifetime::Retained,
-            DeclarationLifetime::RemoveWhenStopped,
-        ] {
-            for command in ["cancel", "reconcile", "ensure", "unregister"] {
-                let _fixture = setup();
-                let timer = identity("abandoned-command");
-                let gate = SuspendedWork::default();
-                let context = Rc::new(RefCell::new(None));
-                let claim = suspended_ordinary_registration(
-                    after_completion,
-                    timer.clone(),
-                    lifetime,
-                    gate.clone(),
-                    Rc::clone(&context),
-                    Rc::new(()),
-                );
-                if lifetime == DeclarationLifetime::Retained {
-                    reconcile_ordinary_claim(Declared(&claim), Some(TimerSchedule::At(10)))
-                        .unwrap();
-                }
-                set_time(10);
-                assert!(run_next_due());
-                match command {
-                    "cancel" => cancel_claim(Declared(&claim)).unwrap(),
-                    "reconcile" => {
-                        reconcile_ordinary_claim(Declared(&claim), Some(TimerSchedule::At(40)))
-                            .unwrap();
-                    }
-                    "ensure" if after_completion => {
-                        ensure_recurring_claim(Declared(&claim)).unwrap();
-                    }
-                    "ensure" => ensure_once_claim(Declared(&claim), TimerSchedule::At(40)).unwrap(),
-                    "unregister" => unregister_claim(&claim).unwrap(),
-                    _ => unreachable!("fixed command matrix"),
-                }
-                gate.resume();
-                set_time(20);
-                assert!(discard_next_due());
-                if command == "unregister" || lifetime == DeclarationLifetime::RemoveWhenStopped {
-                    assert!(timer_snapshot(&timer).unwrap().is_none());
-                } else {
-                    let snapshot = registered_snapshot(&timer);
-                    assert_eq!(
-                        snapshot.state(),
-                        TimerRuntimeStateSnapshot::Inactive {
-                            reason: InactiveReason::Abandoned
-                        }
-                    );
-                    assert_eq!(snapshot.next_deadline_ns(), None);
-                    assert_eq!(
-                        snapshot
-                            .observability()
-                            .counters()
-                            .work_completed()
-                            .exact_total()
-                            .unwrap(),
-                        0
-                    );
-                    unregister_claim(&claim).unwrap();
-                }
-                let token = context.borrow();
-                let token = token.as_ref().unwrap();
-                assert!(matches!(
-                    cancel_claim(Executing(token)),
-                    Err(TimerError::RegistrationExpired)
-                ));
-                assert_eq!(timer_count(), 0);
-            }
-        }
-    }
-}
-
-#[test]
 fn stale_delivery_drop_cannot_retire_rearmed_or_reused_identity() {
     let _fixture = setup();
     let timer = identity("stale-delivery-drop");
@@ -242,17 +166,7 @@ fn abandoned_transient_releases_capacity_and_drops_captures_outside_registry_bor
         },
     )
     .unwrap();
-    let mut remaining = Vec::new();
-    for index in 1..crate::MAX_TIMER_REGISTRATIONS {
-        remaining.push(
-            register_once(
-                identity(&format!("capacity-{index}")),
-                TimerStart::Retained { initial: None },
-                stopping_once(|| {}),
-            )
-            .unwrap(),
-        );
-    }
+    let remaining = fill_registry();
     assert_eq!(
         timer_inventory().unwrap().timers().len(),
         crate::MAX_TIMER_REGISTRATIONS

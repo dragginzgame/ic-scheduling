@@ -1,65 +1,67 @@
 use super::*;
 
 #[test]
-fn all_counters_saturate() {
-    let mut exact_cap = MeasurementCounter::ZERO;
-    exact_cap.add(u128::MAX);
-    let mut counters = TimerCounters {
-        schedule_requests: exact_cap,
-        wakeups_armed: exact_cap,
-        work_dispatched: exact_cap,
-        scheduler_started: exact_cap,
-        work_started: exact_cap,
-        succeeded: exact_cap,
-        no_work: exact_cap,
-        retryable_failure: exact_cap,
-        invariant_failure: exact_cap,
-        cancelled: exact_cap,
-        stale_wakeups: exact_cap,
-        stale_work: exact_cap,
-        coalesced: exact_cap,
-        unacknowledged: exact_cap,
-    };
-    assert!(!counters.schedule_requests().total_overflowed());
-    counters.record_schedule_request();
-    counters.record_wakeup_armed();
-    counters.record_work_dispatched();
-    counters.record_scheduler_started();
-    counters.record_work_started();
-    for outcome in [
-        TimerCompletionOutcome::Success,
-        TimerCompletionOutcome::NoWork,
-        TimerCompletionOutcome::RetryableFailure,
-        TimerCompletionOutcome::InvariantFailure,
-    ] {
-        counters.record_completion(outcome);
-    }
-    counters.record_cancellation();
-    counters.record_stale_wakeup();
-    counters.record_stale_work();
-    counters.record_coalesced();
-    counters.record_unacknowledged();
+fn all_events_forward_wide_and_saturating_counters() {
+    for total in [u128::from(u64::MAX), u128::MAX] {
+        let mut exact_cap = MeasurementCounter::ZERO;
+        exact_cap.add(total);
+        let mut counters = TimerCounters {
+            schedule_requests: exact_cap,
+            wakeups_armed: exact_cap,
+            work_dispatched: exact_cap,
+            scheduler_started: exact_cap,
+            work_started: exact_cap,
+            succeeded: exact_cap,
+            no_work: exact_cap,
+            retryable_failure: exact_cap,
+            invariant_failure: exact_cap,
+            cancelled: exact_cap,
+            stale_wakeups: exact_cap,
+            stale_work: exact_cap,
+            coalesced: exact_cap,
+            unacknowledged: exact_cap,
+        };
+        assert!(!counters.schedule_requests().total_overflowed());
+        counters.record_schedule_request();
+        counters.record_wakeup_armed();
+        counters.record_work_dispatched();
+        counters.record_scheduler_started();
+        counters.record_work_started();
+        for outcome in [
+            TimerCompletionOutcome::Success,
+            TimerCompletionOutcome::NoWork,
+            TimerCompletionOutcome::RetryableFailure,
+            TimerCompletionOutcome::InvariantFailure,
+        ] {
+            counters.record_completion(outcome);
+        }
+        counters.record_cancellation();
+        counters.record_stale_wakeup();
+        counters.record_stale_work();
+        counters.record_coalesced();
+        counters.record_unacknowledged();
 
-    // Metrics owns overflow arithmetic; each event must forward to its counter.
-    let mut expected = exact_cap;
-    expected.add(1);
-    for observed in [
-        counters.schedule_requests(),
-        counters.wakeups_armed(),
-        counters.work_dispatched(),
-        counters.scheduler_started(),
-        counters.work_started(),
-        counters.succeeded(),
-        counters.no_work(),
-        counters.retryable_failure(),
-        counters.invariant_failure(),
-        counters.cancelled(),
-        counters.stale_wakeups(),
-        counters.stale_work(),
-        counters.coalesced(),
-        counters.unacknowledged(),
-    ] {
-        assert_eq!(observed, expected);
+        // Metrics owns overflow arithmetic; each event must forward to its counter.
+        let mut expected = exact_cap;
+        expected.add(1);
+        for observed in [
+            counters.schedule_requests(),
+            counters.wakeups_armed(),
+            counters.work_dispatched(),
+            counters.scheduler_started(),
+            counters.work_started(),
+            counters.succeeded(),
+            counters.no_work(),
+            counters.retryable_failure(),
+            counters.invariant_failure(),
+            counters.cancelled(),
+            counters.stale_wakeups(),
+            counters.stale_work(),
+            counters.coalesced(),
+            counters.unacknowledged(),
+        ] {
+            assert_eq!(observed, expected);
+        }
     }
 }
 
@@ -103,28 +105,6 @@ fn completion_totals_follow_classifications_and_saturate_across_outcomes() {
         ..TimerCounters::EMPTY
     };
     assert!(counters.work_completed().total_overflowed());
-}
-
-#[test]
-fn counter_copies_cross_the_old_cap_without_mutating_registration_state() {
-    let mut old_cap = MeasurementCounter::ZERO;
-    old_cap.add(u128::from(u64::MAX));
-    let mut counters = TimerCounters {
-        schedule_requests: old_cap,
-        ..TimerCounters::EMPTY
-    };
-    let previous = counters.schedule_requests();
-    counters.record_schedule_request();
-    assert_eq!(
-        counters.schedule_requests().exact_total(),
-        Ok(u128::from(u64::MAX) + 1)
-    );
-    assert_eq!(previous.exact_total(), Ok(u128::from(u64::MAX)));
-    let observed = counters.schedule_requests();
-    let mut copied = counters.schedule_requests();
-    copied.add(10);
-    assert_eq!(counters.schedule_requests(), observed);
-    assert_ne!(copied, observed);
 }
 
 #[test]
@@ -204,11 +184,16 @@ fn instruction_summaries_keep_empty_zero_and_role_boundaries() {
 
 #[test]
 fn memory_sample_count_saturates_while_latest_and_maximum_continue() {
+    let mut growth = MeasurementAggregate::EMPTY;
+    growth.record(1);
+    for _ in 0..63 {
+        growth.merge(growth);
+        growth.record(1);
+    }
     let mut summary = MemoryPageSummary {
-        samples: u64::MAX,
         latest: MemoryPageSample::EMPTY,
-        maximum_wasm_growth: 1,
-        maximum_stable_growth: 1,
+        wasm_growth: growth,
+        stable_growth: growth,
     };
     let sample =
         MemoryPageSample::new(MemoryPageExtent::new(10, 20), MemoryPageExtent::new(13, 25));
@@ -219,4 +204,43 @@ fn memory_sample_count_saturates_while_latest_and_maximum_continue() {
     assert_eq!(summary.latest(), Some(sample));
     assert_eq!(summary.maximum_wasm_growth_pages(), Some(3));
     assert_eq!(summary.maximum_stable_growth_pages(), Some(5));
+}
+
+#[test]
+fn memory_growth_distinguishes_empty_zero_and_decreasing_extents() {
+    let mut summary = MemoryPageSummary::EMPTY;
+    assert_eq!(summary.samples(), 0);
+    assert_eq!(summary.latest(), None);
+    assert_eq!(summary.maximum_wasm_growth_pages(), None);
+    assert_eq!(summary.maximum_stable_growth_pages(), None);
+
+    for (start, end) in [((10, 20), (10, 20)), ((10, 20), (9, 19))] {
+        let sample = MemoryPageSample::new(
+            MemoryPageExtent::new(start.0, start.1),
+            MemoryPageExtent::new(end.0, end.1),
+        );
+        summary.record(sample);
+        assert_eq!(summary.latest(), Some(sample));
+        assert_eq!(sample.wasm_growth_pages(), 0);
+        assert_eq!(sample.stable_growth_pages(), 0);
+        assert_eq!(summary.maximum_wasm_growth_pages(), Some(0));
+        assert_eq!(summary.maximum_stable_growth_pages(), Some(0));
+    }
+    assert_eq!(summary.samples(), 2);
+}
+
+#[test]
+fn memory_summary_equality_uses_observed_count_latest_and_maxima() {
+    let mut left = MemoryPageSummary::EMPTY;
+    let mut right = MemoryPageSummary::EMPTY;
+    for (left_growth, right_growth) in [(1, 2), (3, 3), (0, 0)] {
+        for (summary, growth) in [(&mut left, left_growth), (&mut right, right_growth)] {
+            summary.record(MemoryPageSample::new(
+                MemoryPageExtent::EMPTY,
+                MemoryPageExtent::new(growth, growth),
+            ));
+        }
+    }
+    // Different historical growth totals do not change this public summary.
+    assert_eq!(left, right);
 }

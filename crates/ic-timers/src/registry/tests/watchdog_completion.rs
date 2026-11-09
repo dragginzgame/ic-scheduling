@@ -57,132 +57,87 @@ fn running_watchdog_unregistration_clears_its_committed_successor() {
 }
 
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "One precedence matrix over three independent declarations."
-)]
 fn watchdog_completion_arbitrates_immediate_cancellation_and_unregistration() {
+    #[derive(Clone, Copy, Debug)]
+    enum Pending {
+        None,
+        Cancel,
+        Unregister,
+    }
+
     let mut registry = registry();
-    let continue_timer = identity("watchdog-decision-immediate");
-    let continue_claim = registry
-        .register_watchdog(continue_timer, cadence(5), DeclarationLifetime::Retained)
-        .expect("continue claim should succeed");
-    let (scheduler, _) = arm(registry
-        .ensure_recurring(&continue_claim, 10)
-        .expect("continue ensure should succeed"));
-    let (cadence_successor, work) = dispatch(registry.begin_watchdog_scheduler(&scheduler, 20));
-    assert!(registry.begin_watchdog_work(&work).is_some());
-    let immediate = registry
-        .complete_watchdog_work(
-            &work,
-            21,
-            WatchdogRunResult::new(
-                TimerCompletion::success(1),
-                WatchdogDecision::ContinueImmediately,
-            ),
-        )
-        .expect("immediate decision should succeed");
-    assert!(matches!(
-        immediate.effect(),
-        RegistryEffect::ArmWakeup {
-            delay_ns: 0,
-            arm: WakeupArm::Replacement,
-            ..
+    for pending in [Pending::None, Pending::Cancel, Pending::Unregister] {
+        let timer = identity(&format!("watchdog-precedence-{pending:?}"));
+        let claim = registry
+            .register_watchdog(timer.clone(), cadence(5), DeclarationLifetime::Retained)
+            .expect("claim should succeed");
+        let (scheduler, _) = arm(registry
+            .ensure_recurring(&claim, 10)
+            .expect("ensure should succeed"));
+        let (cadence_successor, work) = dispatch(registry.begin_watchdog_scheduler(&scheduler, 20));
+        assert!(registry.begin_watchdog_work(&work).is_some());
+        if !matches!(pending, Pending::None) {
+            registry.ensure_watchdog_immediately(&claim, 21).unwrap();
         }
-    ));
-    let (immediate_successor, _) = arm(immediate);
-    let deadline = scheduled_deadline(&registry, &immediate_successor);
-    assert_eq!(deadline, 21);
-    assert_ne!(
-        immediate_successor.callback_generation(),
-        cadence_successor.callback_generation()
-    );
-
-    let cancel_timer = identity("watchdog-immediate-then-cancel");
-    let cancel_claim = registry
-        .register_watchdog(
-            cancel_timer.clone(),
-            cadence(5),
-            DeclarationLifetime::Retained,
-        )
-        .expect("cancel claim should succeed");
-    let (scheduler, _) = arm(registry
-        .ensure_recurring(&cancel_claim, 10)
-        .expect("cancel ensure should succeed"));
-    let (_successor, work) = dispatch(registry.begin_watchdog_scheduler(&scheduler, 20));
-    assert!(registry.begin_watchdog_work(&work).is_some());
-    registry
-        .ensure_watchdog_immediately(&cancel_claim, 21)
-        .expect("immediate request should pend");
-    registry
-        .cancel(&cancel_claim)
-        .expect("later cancellation should pend");
-    let cancelled = registry
-        .complete_watchdog_work(
-            &work,
-            21,
-            WatchdogRunResult::new(
-                TimerCompletion::success(1),
-                WatchdogDecision::ContinueImmediately,
-            ),
-        )
-        .expect("cancellation should override continuation");
-    assert!(matches!(
-        cancelled.effect(),
-        RegistryEffect::ClearCallbacks {
-            handles: CallbacksToClear::Wakeup,
-            ..
+        match pending {
+            Pending::None => {}
+            Pending::Cancel => {
+                registry.cancel(&claim).unwrap();
+            }
+            Pending::Unregister => {
+                registry.unregister(&claim).unwrap();
+                registry
+                    .ensure_watchdog_immediately(&claim, 21)
+                    .expect("unregistration should remain sticky");
+            }
         }
-    ));
-    assert_eq!(
-        registry
-            .snapshot(&cancel_timer)
-            .map(|snapshot| snapshot.state()),
-        Some(TimerRuntimeStateSnapshot::Inactive {
-            reason: InactiveReason::Cancelled,
-        })
-    );
-
-    let unregister_timer = identity("watchdog-immediate-then-unregister");
-    let unregister_claim = registry
-        .register_watchdog(
-            unregister_timer.clone(),
-            cadence(5),
-            DeclarationLifetime::Retained,
-        )
-        .expect("unregister claim should succeed");
-    let (scheduler, _) = arm(registry
-        .ensure_recurring(&unregister_claim, 10)
-        .expect("unregister ensure should succeed"));
-    let (_successor, work) = dispatch(registry.begin_watchdog_scheduler(&scheduler, 20));
-    assert!(registry.begin_watchdog_work(&work).is_some());
-    registry
-        .ensure_watchdog_immediately(&unregister_claim, 21)
-        .expect("immediate request should pend");
-    registry
-        .unregister(&unregister_claim)
-        .expect("unregistration should pend");
-    registry
-        .ensure_watchdog_immediately(&unregister_claim, 21)
-        .expect("unregistration should remain sticky");
-    let unregistered = registry
-        .complete_watchdog_work(
-            &work,
-            21,
-            WatchdogRunResult::new(
-                TimerCompletion::success(1),
-                WatchdogDecision::ContinueImmediately,
-            ),
-        )
-        .expect("unregistration should override every continuation");
-    assert!(matches!(
-        unregistered.effect(),
-        RegistryEffect::ClearCallbacks {
-            handles: CallbacksToClear::Wakeup,
-            ..
+        let completed = registry
+            .complete_watchdog_work(
+                &work,
+                21,
+                WatchdogRunResult::new(
+                    TimerCompletion::success(1),
+                    WatchdogDecision::ContinueImmediately,
+                ),
+            )
+            .expect("pending control should arbitrate continuation");
+        match pending {
+            Pending::None => {
+                assert!(matches!(
+                    completed.effect(),
+                    RegistryEffect::ArmWakeup {
+                        delay_ns: 0,
+                        arm: WakeupArm::Replacement,
+                        ..
+                    }
+                ));
+                let (successor, _) = arm(completed);
+                assert_eq!(scheduled_deadline(&registry, &successor), 21);
+                assert_ne!(
+                    successor.callback_generation(),
+                    cadence_successor.callback_generation()
+                );
+            }
+            Pending::Cancel | Pending::Unregister => {
+                assert!(matches!(
+                    completed.effect(),
+                    RegistryEffect::ClearCallbacks {
+                        handles: CallbacksToClear::Wakeup,
+                        ..
+                    }
+                ));
+                let expected = matches!(pending, Pending::Cancel).then_some(
+                    TimerRuntimeStateSnapshot::Inactive {
+                        reason: InactiveReason::Cancelled,
+                    },
+                );
+                assert_eq!(
+                    registry.snapshot(&timer).map(|snapshot| snapshot.state()),
+                    expected
+                );
+            }
         }
-    ));
-    assert!(registry.snapshot(&unregister_timer).is_none());
+    }
 }
 
 #[test]
@@ -233,33 +188,10 @@ fn watchdog_terminal_cancellation_makes_queued_callbacks_stale() {
         snapshot.registration_status(),
         TimerRegistrationStatus::Unregistered
     );
-    assert_eq!(
-        snapshot
-            .observability()
-            .counters()
-            .cancelled()
-            .exact_total()
-            .unwrap(),
-        1
-    );
-    assert_eq!(
-        snapshot
-            .observability()
-            .counters()
-            .stale_work()
-            .exact_total()
-            .unwrap(),
-        1
-    );
-    assert_eq!(
-        snapshot
-            .observability()
-            .counters()
-            .stale_wakeups()
-            .exact_total()
-            .unwrap(),
-        1
-    );
+    let counters = snapshot.observability().counters();
+    assert_eq!(counters.cancelled().exact_total().unwrap(), 1);
+    assert_eq!(counters.stale_work().exact_total().unwrap(), 1);
+    assert_eq!(counters.stale_wakeups().exact_total().unwrap(), 1);
 
     let (rearmed, _) = arm(registry.ensure_recurring(&claim, 20).unwrap());
     assert_eq!(

@@ -1,40 +1,6 @@
 use super::*;
 
 #[test]
-fn watchdog_claim_observes_the_prearmed_successor_not_queued_work() {
-    let _fixture = setup();
-    let watchdog = register_watchdog(
-        identity("liveness-watchdog-successor"),
-        test_cadence(5),
-        TimerStart::Retained { initial: None },
-        |_context| WatchdogRunResult::new(TimerCompletion::no_work(), WatchdogDecision::Continue),
-    )
-    .expect("watchdog registration should succeed");
-    watchdog
-        .ensure_scheduled()
-        .expect("watchdog wake-up should arm");
-
-    set_time(15);
-    assert!(run_next_due(), "scheduler callback should execute");
-    assert_eq!(timer_count(), 2, "successor and work should both be queued");
-    assert!(
-        watchdog
-            .has_armed_wakeup()
-            .expect("successor ownership should be readable")
-    );
-
-    watchdog
-        .cancel()
-        .expect("cancellation should clear successor and work");
-    assert!(
-        !watchdog
-            .has_armed_wakeup()
-            .expect("retained claim should remain readable")
-    );
-    assert_eq!(timer_count(), 0);
-}
-
-#[test]
 fn immediate_watchdog_reconciliation_arms_one_zero_delay_scheduler() {
     let _fixture = setup();
     let timer = identity("watchdog-immediate-reconcile");
@@ -81,13 +47,7 @@ fn immediate_watchdog_reconciliation_arms_one_zero_delay_scheduler() {
 fn immediate_watchdog_ensure_moves_cadence_earlier_and_repeats_idempotently() {
     let _fixture = setup();
     let timer = identity("watchdog-immediate-ensure");
-    let registration = register_watchdog(
-        timer.clone(),
-        test_cadence(5),
-        TimerStart::Retained { initial: None },
-        stopping_watchdog(|| {}),
-    )
-    .expect("watchdog registration should succeed");
+    let registration = retained_watchdog(timer.clone(), || {});
     registration
         .ensure_scheduled()
         .expect("cadence scheduler should arm");
@@ -123,13 +83,7 @@ fn immediate_watchdog_ensure_moves_cadence_earlier_and_repeats_idempotently() {
 fn immediate_watchdog_ensure_coalesces_an_overdue_cadence_wakeup() {
     let _fixture = setup();
     let timer = identity("watchdog-immediate-overdue-cadence");
-    let registration = register_watchdog(
-        timer.clone(),
-        test_cadence(5),
-        TimerStart::Retained { initial: None },
-        stopping_watchdog(|| {}),
-    )
-    .expect("watchdog registration should succeed");
+    let registration = retained_watchdog(timer.clone(), || {});
     registration
         .ensure_scheduled()
         .expect("cadence scheduler should arm");
@@ -157,134 +111,89 @@ fn immediate_watchdog_ensure_coalesces_an_overdue_cadence_wakeup() {
 }
 
 #[test]
-fn watchdog_scheduler_prearms_successor_before_synchronous_work() {
-    let _fixture = setup();
-    let timer = identity("watchdog-prearm");
-    let calls = Rc::new(Cell::new(0_u64));
-    let callback_calls = Rc::clone(&calls);
-    let registration = register_watchdog(
-        timer.clone(),
-        test_cadence(5),
-        TimerStart::Retained { initial: None },
-        move |_context| {
-            let call = callback_calls.get() + 1;
-            callback_calls.set(call);
-            assert_eq!(timer_count(), 1, "successor must exist during work");
-            let decision = if call == 1 {
-                WatchdogDecision::Continue
-            } else {
-                WatchdogDecision::Stop
-            };
-            WatchdogRunResult::new(TimerCompletion::success(1), decision)
-        },
-    )
-    .expect("watchdog registration should succeed");
-    registration
-        .ensure_scheduled()
-        .expect("initial scheduler should arm");
-    assert_eq!(timer_count(), 1);
+fn watchdog_continuations_keep_prearming_and_separate_scheduler_from_work() {
+    for (decision, deadline, mode, delay, armed) in [
+        (
+            WatchdogDecision::Continue,
+            20,
+            TimerSchedulingMode::Watchdog,
+            5,
+            2,
+        ),
+        (
+            WatchdogDecision::ContinueImmediately,
+            15,
+            TimerSchedulingMode::Continuation,
+            0,
+            3,
+        ),
+    ] {
+        let _fixture = setup();
+        let timer = identity("watchdog-continuation");
+        let calls = Rc::new(Cell::new(0_u64));
+        let callback_calls = Rc::clone(&calls);
+        let registration = register_watchdog(
+            timer.clone(),
+            test_cadence(5),
+            TimerStart::Retained { initial: None },
+            move |_context| {
+                let call = callback_calls.get() + 1;
+                callback_calls.set(call);
+                assert_eq!(timer_count(), 1, "successor must exist during work");
+                WatchdogRunResult::new(
+                    TimerCompletion::success(1),
+                    if call == 1 {
+                        decision
+                    } else {
+                        WatchdogDecision::Stop
+                    },
+                )
+            },
+        )
+        .expect("watchdog registration should succeed");
+        registration
+            .ensure_scheduled()
+            .expect("initial scheduler should arm");
+        assert_eq!(timer_count(), 1);
 
-    set_time(15);
-    assert!(run_next_due());
-    assert_eq!(calls.get(), 0, "scheduler must not invoke consumer work");
-    assert_eq!(timer_count(), 2, "successor and work must both be owned");
-    let dispatched = registered_snapshot(&timer);
-    let dispatched_counters = dispatched.observability().counters();
-    assert!(matches!(
-        dispatched.state(),
-        TimerRuntimeStateSnapshot::Watchdog(WatchdogRuntimeStateSnapshot::AwaitingWork { .. })
-    ));
-    assert_eq!(
-        dispatched_counters
-            .scheduler_started()
-            .exact_total()
-            .unwrap(),
-        1
-    );
-    assert_eq!(
-        dispatched_counters.wakeups_armed().exact_total().unwrap(),
-        2
-    );
-    assert_eq!(
-        dispatched_counters.work_dispatched().exact_total().unwrap(),
-        1
-    );
+        set_time(15);
+        assert!(run_next_due(), "scheduler should pre-arm cadence safety");
+        assert_eq!(calls.get(), 0, "scheduler must not invoke work inline");
+        assert_eq!(timer_count(), 2, "successor and work must both be owned");
+        let dispatched = registered_snapshot(&timer);
+        assert!(matches!(
+            dispatched.state(),
+            TimerRuntimeStateSnapshot::Watchdog(WatchdogRuntimeStateSnapshot::AwaitingWork { .. })
+        ));
+        let counters = dispatched.observability().counters();
+        assert_eq!(counters.scheduler_started().exact_total().unwrap(), 1);
+        assert_eq!(counters.wakeups_armed().exact_total().unwrap(), 2);
+        assert_eq!(counters.work_dispatched().exact_total().unwrap(), 1);
 
-    assert!(run_next_due());
-    assert_eq!(calls.get(), 1);
-    assert_eq!(timer_count(), 1);
-    set_time(20);
-    assert!(run_next_due());
-    assert_eq!(calls.get(), 1);
-    assert_eq!(timer_count(), 2);
-    assert!(run_next_due());
-    assert_eq!(calls.get(), 2);
-    assert_eq!(timer_count(), 0);
-}
+        assert!(run_next_due(), "first separate work callback should run");
+        assert_eq!(calls.get(), 1);
+        assert_eq!(
+            timer_count(),
+            1,
+            "continuation must retain exactly one successor"
+        );
+        let continued = registered_snapshot(&timer);
+        assert_eq!(continued.next_deadline_ns(), Some(deadline));
+        assert_eq!(continued.scheduling_mode(), mode);
+        assert_eq!(continued.latest_requested_delay_ns(), Some(delay));
+        assert_eq!(continued.latest_armed_delay_ns(), Some(delay));
+        let counters = continued.observability().counters();
+        assert_eq!(counters.wakeups_armed().exact_total().unwrap(), armed);
+        assert_eq!(counters.work_dispatched().exact_total().unwrap(), 1);
 
-#[test]
-fn watchdog_immediate_decision_replaces_successor_without_synchronous_recursion() {
-    let _fixture = setup();
-    let timer = identity("watchdog-immediate-decision");
-    let calls = Rc::new(Cell::new(0_u64));
-    let callback_calls = Rc::clone(&calls);
-    let registration = register_watchdog(
-        timer.clone(),
-        test_cadence(5),
-        TimerStart::Retained { initial: None },
-        move |_context| {
-            let call = callback_calls.get().saturating_add(1);
-            callback_calls.set(call);
-            WatchdogRunResult::new(
-                TimerCompletion::success(1),
-                if call == 1 {
-                    WatchdogDecision::ContinueImmediately
-                } else {
-                    WatchdogDecision::Stop
-                },
-            )
-        },
-    )
-    .expect("watchdog registration should succeed");
-    registration
-        .ensure_scheduled()
-        .expect("initial scheduler should arm");
-
-    set_time(15);
-    assert!(run_next_due(), "scheduler should pre-arm cadence safety");
-    assert_eq!(timer_count(), 2);
-    assert!(run_next_due(), "first work callback should run");
-    assert_eq!(calls.get(), 1);
-    assert_eq!(
-        timer_count(),
-        1,
-        "cadence successor must be replaced, not added to"
-    );
-    let immediate = registered_snapshot(&timer);
-    assert_eq!(immediate.next_deadline_ns(), Some(15));
-    assert_eq!(
-        immediate.scheduling_mode(),
-        TimerSchedulingMode::Continuation
-    );
-    assert_eq!(immediate.latest_requested_delay_ns(), Some(0));
-    assert_eq!(immediate.latest_armed_delay_ns(), Some(0));
-    let counters = immediate.observability().counters();
-    assert_eq!(counters.wakeups_armed().exact_total().unwrap(), 3);
-    assert_eq!(counters.work_dispatched().exact_total().unwrap(), 1);
-
-    assert!(
-        run_next_due(),
-        "replacement scheduler should be a later message"
-    );
-    assert_eq!(
-        calls.get(),
-        1,
-        "scheduler still must not invoke consumer work"
-    );
-    assert_eq!(timer_count(), 2);
-    assert!(run_next_due(), "second separate work callback should run");
-    assert_eq!(calls.get(), 2);
-    assert_eq!(timer_count(), 0);
+        set_time(deadline);
+        assert!(run_next_due(), "successor scheduler is a later message");
+        assert_eq!(calls.get(), 1, "scheduler still must not invoke work");
+        assert_eq!(timer_count(), 2);
+        assert!(run_next_due(), "second separate work callback should run");
+        assert_eq!(calls.get(), 2);
+        assert_eq!(timer_count(), 0);
+    }
 }
 
 #[test]
@@ -348,17 +257,23 @@ fn watchdog_cancellation_clears_successor_and_queued_work() {
         },
     )
     .expect("watchdog registration should succeed");
+    assert!(!registration.has_armed_wakeup().unwrap());
     registration
         .ensure_scheduled()
         .expect("initial scheduler should arm");
     set_time(15);
     assert!(run_next_due());
     assert_eq!(timer_count(), 2);
+    assert!(
+        registration.has_armed_wakeup().unwrap(),
+        "liveness observes the successor, not queued work"
+    );
     let cancelled_generation = registered_snapshot(&timer).generation().unwrap();
 
     registration
         .cancel()
         .expect("cancellation should clear both handles");
+    assert!(!registration.has_armed_wakeup().unwrap());
     assert_eq!(timer_count(), 0);
     assert!(!run_next_due());
     assert_eq!(calls.get(), 0);

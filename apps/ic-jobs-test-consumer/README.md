@@ -1,25 +1,25 @@
 # Jobs test consumer
 
-This package also owns the native notification/maintenance composition harness
+This package also owns the native effect/transaction composition harness
 in `tests/composition.rs`, plus stored-record Wire checks in `tests/stored_wire.rs`.
 `make test-consumers` aggregates both targets and the packaged adapter example;
 `check-msrv` qualifies core and consumer targets separately on Rust 1.99.1. Storage and
 Timers integration dependencies belong here, outside the core package tests.
 
 Ordinary native library builds expose `api` DTOs and management/delivery identities/limits,
-and depend on Platform's Principal, Wire and Serde. Jobs, Storage and Timers are
-selected only for Wasm builds and native tests; JSON is native-test-only. The
+and depend on Platform's Principal, Wire and Serde. Jobs, Storage and Metrics are
+selected only for Wasm builds and native tests; Timers is selected for Wasm, and
+JSON is native-test-only. The
 recovery harness can share the DTOs without
 pulling in the consumer's storage or timer implementation. The existing native
 normal/build graph check enforces this boundary.
 
-IC Logging is likewise selected only for consumer Wasm and native tests. The
-published Jobs library and normal native DTO/codec graph do not depend on it.
-
-Native notification snapshots serialize validated jobs directly. Maintenance
-keeps its validated job, cache entries and effect counter in one snapshot,
-committing after each completed occurrence. Both readers decode records and
-enter through `Job::restore`; serialized metadata keeps its canonical shape.
+The native single-effect fixture serializes one validated job and immutable
+payload. A minimal local-effect transaction writes its job and counter together,
+retaining failed-commit and partial-commit recovery proofs. Every restored record
+crosses `Job::restore`. Collection and receiver behavior use the actual Queue
+tests. The former cache-maintenance simulation and log-browsing feature are
+retired. Committed Metrics observations and PocketIC failure diagnostics remain.
 
 This unpublished canister is an application-owned consumer of Jobs, Storage and
 Timers. It is a qualification fixture with deliberate fault endpoints, and must
@@ -32,8 +32,9 @@ can normalize inputs. Current RPC DTOs use ordered records, enums, sequences,
 strings and Principals; receipt reconciliation compares every typed delivery
 field, rather than re-encoded bytes or a hash. Request/reply budgets remain
 explicit and apply independently to encoding and decoding. Nonminimal integers
-are refused as malformed. Rebuild the fixture and harness together; method IDs,
-emitted RPC layouts are unchanged. The queue format cut below is separate.
+are refused as malformed. Rebuild the fixture and harness together; retained management/delivery layouts
+are unchanged, and the log-browsing method is retired. The queue format cut
+below is separate.
 Future exact-frame retries or signatures must retain the original immutable
 frame bytes.
 
@@ -441,52 +442,3 @@ that dispatch, success and permanent-failure observations roll back with a trapp
 watchdog message. The [handoff](../../docs/status/current.md) binds that observation
 to its source/graph and original/optimized Wasm. IC instruction/cycle costs remain
 unmeasured; other hosts retain their own qualification.
-
-## Committed transition logs
-
-The consumer uses IC Logging 0.24.5 for a heap-only history of the most recent
-128 events. Each retained message is at most 192 UTF-8 bytes and labels are at
-most 32 bytes. The combined retained source/topic/message budget is 32 KiB,
-derived as `128 * (192 + 2 * 32)` so every individually admitted row retains
-the existing count-based capacity. This is a text-payload bound, excluding row
-metadata, spare capacity and transient buffers; it is not a complete heap cap.
-Count eviction bounds history; there is no age-retention timer.
-Queue reconstruction starts an empty history and zero omitted count, without
-backfilling durable jobs. `reset_job_metrics` does not clear history or reuse its
-sequence IDs. A sequence belongs only to this heap instance; never carry a cursor
-across reconstruction or use canister version alone as a durable log generation.
-
-After a successful stable commit, dispatch records its job, occurrence, attempt
-and retry classification. Local and remote outcomes record their admitted
-classification, distinguishing explicit reconciliation from ordinary completion.
-An uncertain result stays uncertain. Messages contain neither delivery payloads
-nor caller/destination principals. Idle work, stale/mismatched completions and
-failed stable writes add no events. A diagnostic append refusal increments a
-wide, overflow-aware omitted counter without changing committed work or retry
-authority. Every append refusal, including the typed total-text refusal, follows
-that same omitted-counter path. Successful append receipts retain their sequence
-and truncation in the engine's rows; their normal eviction count is not an append
-refusal and is not added to omitted observations. Paging explicitly selects
-`TopicMatch::Any`, preserving the endpoint's existing all-topic behavior without
-adding a topic selector. The host converts its
-explicit transition timestamp from nanoseconds to whole seconds.
-
-The adapter does not persist Logging checkpoints. The 0.18 checkpoint contract
-therefore changes no retained queue format or durable log bytes here; the normal
-heap-history reset on reconstruction remains. Consumer qualification for
-[#79 — Adopt ic-logging 0.18 in the job-consumer logging adapter](https://github.com/dragginzgame/ic-jobs/issues/79)
-covers the byte budget, retained truncation, omission accounting and existing
-job/receipt separation; its source/graph is recorded in the handoff.
-
-Manager-only `job_logs` takes `JobLogRequest { before, min_level, limit }` through
-the existing management Wire budgets. Limits from one through eight are admitted;
-every query scans at most 32 rows, newest first. Follow `next_before` even when a
-filtered page has no matches, keeping the same filter. `scanned` is work examined,
-not a matching total. Queries copy bounded DTOs and do not mutate history.
-Canister version accompanies the response as host context. This history is
-diagnostic evidence only; durable jobs and exact receipts own effect/retry state.
-Heap observations share IC message rollback; installed trap/upgrade behaviour
-requires the explicitly selected live qualification.
-
-Use `next_before` from the preceding page in the next typed Wire request;
-keep the same severity filter throughout pagination.

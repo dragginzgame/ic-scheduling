@@ -270,13 +270,14 @@ installed registry archive checksum, entrypoints and payload digests. The
 snapshot checks and release routing. Jobs retains product checks, dependency
 selections and release/publication policy.
 
-Root `[workspace.metadata.toko-tooling]` selects exact version `0.34.0`.
-[`toko-tooling.lock`](toko-tooling.lock) owns the registry archive checksum;
-tooling is independent of application Cargo.lock and has no Cargo dependency.
-After changing the declared version, use `make shared-tooling-update` to resolve
-and install it. `make shared-tooling-install` reinstalls the existing tooling
-lock. CI, release and publication entrypoints require `make shared-tooling-check`
-to admit the declaration, lock and installed files before effects. See the
+Root `[workspace.dependencies]` pins `toko-tooling = "=0.36.0"`; every real
+member inherits it as a dev-dependency with an intentional cargo-machete exemption.
+Cargo.lock selects its registry checksum, and `.shared-tooling.snapshot` records
+the authenticated installed files. After editing the root pin, run
+`cargo update -p toko-tooling`, then `make shared-tooling-update`.
+`make shared-tooling-install` installs the existing Cargo selection; neither
+installation command edits Cargo.lock. CI, release and publication entrypoints
+require `make shared-tooling-check` before effects. See the
 [installation guide](docs/consuming-snapshots.md#cargo-selection-and-installation).
 
 Run `make install-tools` to prepare common host/Rust tools and Jobs' selected IC

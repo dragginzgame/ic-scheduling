@@ -15,10 +15,16 @@ readme = "README.md"
 publish = true
 links = "ic-timers-global-timer"
 
+[package.metadata.cargo-machete]
+ignored = ["toko-tooling"]
+
 [dependencies]
 ic-metrics.workspace = true
 ic-platform-runtime = { workspace = true, features = ["executor", "ic0"] }
 thiserror.workspace = true
+
+[dev-dependencies]
+toko-tooling.workspace = true
 
 [lints.rust]
 missing_docs = "warn"
@@ -35,4 +41,3 @@ redundant_clone = "warn"
 semicolon_if_nothing_returned = "warn"
 uninlined_format_args = "warn"
 use_self = "warn"
-

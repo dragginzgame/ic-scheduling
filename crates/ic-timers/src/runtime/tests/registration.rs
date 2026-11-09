@@ -129,36 +129,20 @@ fn initialization_is_required_and_idempotent() {
 #[test]
 fn fresh_inactive_reconciliation_reserves_complete_retained_inventory() {
     let _fixture = setup();
-    let once_identity = identity("built-in-once");
-    let after_identity = identity("built-in-after");
-    let watchdog_identity = identity("built-in-watchdog");
     let cadence = test_cadence(5);
-    let mut once = None;
-    let mut after = None;
-    let mut watchdog = None;
-
-    reconcile_once(&mut once, &once_identity, None, stopping_once(|| {}))
-        .expect("fresh inactive once declaration should be retained");
-    reconcile_after_completion(
-        &mut after,
-        &after_identity,
-        cadence,
-        TimerReconcileState::Inactive,
-        stopping_after_completion(|| {}),
-    )
-    .expect("fresh inactive after-completion declaration should be retained");
-    reconcile_watchdog(
-        &mut watchdog,
-        &watchdog_identity,
-        cadence,
-        WatchdogReconcileState::Inactive,
-        stopping_watchdog(|| {}),
-    )
-    .expect("fresh inactive watchdog declaration should be retained");
-
-    assert!(once.is_some());
-    assert!(after.is_some());
-    assert!(watchdog.is_some());
+    let slots = TestPolicy::ALL.map(|policy| {
+        let mut slot = ReconciliationSlot::new(policy);
+        slot.reconcile(
+            &identity(&format!("built-in-{policy:?}")),
+            cadence,
+            false,
+            (),
+            Rc::new(Cell::new(0)),
+        )
+        .unwrap();
+        slot
+    });
+    assert!(slots.iter().all(|slot| slot.claim().is_some()));
     assert_eq!(timer_count(), 0);
     let inventory = timer_inventory().expect("inventory should be available");
     assert_eq!(inventory.epoch(), TimerEpoch::new(7, 10));
@@ -194,126 +178,55 @@ fn fresh_inactive_reconciliation_reserves_complete_retained_inventory() {
 #[test]
 fn fresh_transient_cancellation_expires_every_registration_policy() {
     let _fixture = setup();
-    let once_identity = identity("fresh-transient-once");
-    let after_identity = identity("fresh-transient-after");
-    let watchdog_identity = identity("fresh-transient-watchdog");
-    let cadence = test_cadence(5);
-
-    let once = register_once(
-        once_identity.clone(),
-        TimerStart::RemoveWhenStopped {
-            initial: TimerSchedule::At(15),
-        },
-        stopping_once(|| {}),
-    )
-    .expect("once registration should succeed");
-    let after = register_after_completion(
-        after_identity.clone(),
-        cadence,
-        TimerStart::RemoveWhenStopped {
-            initial: TimerSchedule::After(Duration::from_nanos(5)),
-        },
-        stopping_after_completion(|| {}),
-    )
-    .expect("after-completion registration should succeed");
-    let watchdog = register_watchdog(
-        watchdog_identity.clone(),
-        cadence,
-        TimerStart::RemoveWhenStopped {
-            initial: TimerSchedule::After(Duration::from_nanos(5)),
-        },
-        stopping_watchdog(|| {}),
-    )
-    .expect("watchdog registration should succeed");
-
-    once.cancel().expect("once cancellation should succeed");
-    after
-        .cancel()
-        .expect("after-completion cancellation should succeed");
-    watchdog
-        .cancel()
-        .expect("watchdog cancellation should succeed");
-
-    assert_eq!(timer_count(), 0);
-    for identity in [&once_identity, &after_identity, &watchdog_identity] {
-        assert!(
-            timer_snapshot(identity)
-                .expect("snapshot lookup should succeed")
-                .is_none(),
-            "transient cancellation should remove {identity:?}"
-        );
+    let registrations = TestPolicy::ALL.map(|policy| {
+        let initial = if policy == TestPolicy::Once {
+            TimerSchedule::At(15)
+        } else {
+            TimerSchedule::After(Duration::from_nanos(5))
+        };
+        ReconciliationSlot::register(
+            policy,
+            identity(&format!("fresh-transient-{policy:?}")),
+            TimerStart::RemoveWhenStopped { initial },
+        )
+    });
+    for registration in &registrations {
+        registration.cancel().unwrap();
     }
-    assert!(matches!(
-        once.has_armed_wakeup(),
-        Err(TimerError::RegistrationExpired)
-    ));
-    assert!(matches!(
-        after.has_armed_wakeup(),
-        Err(TimerError::RegistrationExpired)
-    ));
-    assert!(matches!(
-        watchdog.has_armed_wakeup(),
-        Err(TimerError::RegistrationExpired)
-    ));
+    assert_eq!(timer_count(), 0);
+    for registration in &registrations {
+        assert!(
+            timer_snapshot(registration.claim().unwrap().identity())
+                .unwrap()
+                .is_none()
+        );
+        assert!(matches!(
+            registration.has_armed_wakeup(),
+            Err(TimerError::RegistrationExpired)
+        ));
+    }
 }
 
 #[test]
 fn registration_claims_report_exact_provider_wakeup_ownership() {
     let _fixture = setup();
-    let once = retained_once(identity("liveness-once"), || {});
-    let after = register_after_completion(
-        identity("liveness-after"),
-        test_cadence(5),
-        TimerStart::Retained { initial: None },
-        stopping_after_completion(|| {}),
-    )
-    .expect("after-completion registration should succeed");
-    let watchdog = register_watchdog(
-        identity("liveness-watchdog"),
-        test_cadence(5),
-        TimerStart::Retained { initial: None },
-        stopping_watchdog(|| {}),
-    )
-    .expect("watchdog registration should succeed");
-
-    assert!(!once.has_armed_wakeup().expect("claim should be readable"));
-    assert!(!after.has_armed_wakeup().expect("claim should be readable"));
-    assert!(
-        !watchdog
-            .has_armed_wakeup()
-            .expect("claim should be readable")
-    );
-
-    once.ensure_scheduled(TimerSchedule::At(100))
-        .expect("once wake-up should arm");
-    after
-        .ensure_scheduled()
-        .expect("after-completion wake-up should arm");
-    watchdog
-        .ensure_scheduled()
-        .expect("watchdog wake-up should arm");
-    assert!(once.has_armed_wakeup().expect("claim should be readable"));
-    assert!(after.has_armed_wakeup().expect("claim should be readable"));
-    assert!(
-        watchdog
-            .has_armed_wakeup()
-            .expect("claim should be readable")
-    );
-
-    once.cancel().expect("once cancellation should succeed");
-    after
-        .cancel()
-        .expect("after-completion cancellation should succeed");
-    watchdog
-        .cancel()
-        .expect("watchdog cancellation should succeed");
-    assert!(!once.has_armed_wakeup().expect("claim should be readable"));
-    assert!(!after.has_armed_wakeup().expect("claim should be readable"));
-    assert!(
-        !watchdog
-            .has_armed_wakeup()
-            .expect("claim should be readable")
-    );
+    let registrations = TestPolicy::ALL.map(|policy| {
+        ReconciliationSlot::register(
+            policy,
+            identity(&format!("liveness-{policy:?}")),
+            TimerStart::Retained { initial: None },
+        )
+    });
+    for registration in &registrations {
+        assert!(!registration.has_armed_wakeup().unwrap());
+        registration.ensure_scheduled(100).unwrap();
+        assert!(registration.has_armed_wakeup().unwrap());
+    }
+    assert_eq!(timer_count(), 3);
+    for registration in &registrations {
+        registration.cancel().unwrap();
+        assert!(!registration.has_armed_wakeup().unwrap());
+    }
     assert_eq!(timer_count(), 0);
 }
 

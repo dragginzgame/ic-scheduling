@@ -121,6 +121,17 @@ fn stopping_watchdog(
     }
 }
 
+#[track_caller]
+fn retained_watchdog(timer: TimerIdentity, work: impl FnMut() + 'static) -> WatchdogRegistration {
+    register_watchdog(
+        timer,
+        test_cadence(5),
+        TimerStart::Retained { initial: None },
+        stopping_watchdog(work),
+    )
+    .expect("fixture registration should succeed")
+}
+
 #[derive(Clone, Default)]
 struct SuspendedWork {
     ready: Rc<Cell<bool>>,
@@ -214,6 +225,20 @@ fn suspended_ordinary_registration(
         .unwrap()
         .claim
     }
+}
+
+fn fill_registry() -> Vec<OnceRegistration> {
+    let existing = timer_inventory().unwrap().len();
+    (existing..crate::MAX_TIMER_REGISTRATIONS)
+        .map(|index| {
+            register_once(
+                identity(&format!("inactive-filler-{index}")),
+                TimerStart::Retained { initial: None },
+                stopping_once(|| panic!("inactive filler must never execute")),
+            )
+            .unwrap()
+        })
+        .collect()
 }
 
 fn identity(name: &str) -> TimerIdentity {

@@ -240,3 +240,87 @@ fn receipt_extraction_and_duplicate_acknowledgement_leave_storage_unchanged() {
     );
     assert_eq!(queue.cell.get().as_slice(), corrupt);
 }
+
+#[test]
+fn retained_retry_preserves_payload_and_rejects_late_results() {
+    let mut queue = fresh_queue(VectorMemory::default());
+    let id = queue
+        .create(Create {
+            timing: Timing::Once(100),
+            task: Task::Deliver(DeliveryPayload {
+                destination: manager(),
+                message: "report".into(),
+            }),
+        })
+        .unwrap()
+        .value;
+    // Creation defaults to no retries. Qualify an admitted retained job whose
+    // consumer previously selected a retry budget, without adding creation policy.
+    let mut loaded = queue.load().unwrap();
+    loaded.jobs[0].job = Job::new(
+        JobId(u128::from(id)),
+        Schedule::Once { at_ns: 100 },
+        RetryPolicy::new(2, 10, 10).unwrap(),
+    );
+    queue.commit(loaded, ()).unwrap();
+    let first = queue.dispatch(100).unwrap().value.deliveries.remove(0);
+    queue
+        .finish(&first, 101, Outcome::RetryableFailure)
+        .unwrap();
+    assert_eq!(queue.summary().unwrap().next_due_ns, Some(111));
+    assert_eq!(queue.dispatch(110).unwrap(), local_batch(0, Some(111)));
+    let second = queue.dispatch(111).unwrap().value.deliveries.remove(0);
+    assert_eq!(first.job, second.job);
+    assert_eq!(first.occurrence, second.occurrence);
+    assert_ne!(first.sequence, second.sequence);
+    assert_eq!(first.payload, second.payload);
+    let before = queue.cell.get().as_slice().to_vec();
+    assert_eq!(
+        queue.finish(&first, 112, Outcome::Success),
+        Err(Error::ReceiptMismatch)
+    );
+    assert_eq!(queue.cell.get().as_slice(), before);
+    queue.finish(&second, 112, Outcome::Success).unwrap();
+    assert_eq!(queue.inspect(id).unwrap().status, Status::Completed);
+    assert_eq!(queue.dispatch(1000).unwrap(), local_batch(0, None));
+}
+
+#[test]
+fn queue_order_and_cancellation_progress_past_unresolved_delivery() {
+    let backing = VectorMemory::default();
+    let mut queue = fresh_queue(backing.clone());
+    for at in [100, 90, 95, 90] {
+        queue
+            .create(Create {
+                timing: Timing::Once(at),
+                task: Task::Deliver(DeliveryPayload {
+                    destination: manager(),
+                    message: format!("report-{at}"),
+                }),
+            })
+            .unwrap();
+    }
+    assert_eq!(queue.dispatch(89).unwrap(), local_batch(0, Some(90)));
+    let deliveries = queue.dispatch(90).unwrap().value.deliveries;
+    assert_eq!(
+        deliveries.iter().map(|d| d.job).collect::<Vec<_>>(),
+        vec![2, 4]
+    );
+    drop(queue);
+    let mut queue = Queue::open(backing, None).unwrap().0;
+    queue
+        .finish(&deliveries[0], 91, Outcome::Uncertain)
+        .unwrap();
+    queue.finish(&deliveries[1], 91, Outcome::Success).unwrap();
+    assert_eq!(queue.summary().unwrap().next_due_ns, Some(95));
+    let before = queue.cell.get().as_slice().to_vec();
+    assert!(queue.cancel(2, 91).is_err());
+    assert_eq!(queue.cell.get().as_slice(), before);
+    queue.cancel(3, 91).unwrap();
+    assert_eq!(queue.dispatch(99).unwrap(), local_batch(0, Some(100)));
+    let last = queue.dispatch(100).unwrap().value.deliveries.remove(0);
+    assert_eq!(last.job, 1);
+    queue.finish(&last, 101, Outcome::Success).unwrap();
+    assert_eq!(queue.dispatch(1000).unwrap(), local_batch(0, None));
+    assert_eq!(queue.outstanding(2).unwrap(), deliveries[0]);
+}

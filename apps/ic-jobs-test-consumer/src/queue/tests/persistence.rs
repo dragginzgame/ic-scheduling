@@ -109,6 +109,42 @@ struct FrozenMemory {
     queue_hex: Option<String>,
 }
 
+impl FrozenMemory {
+    fn snapshot(&self) -> Snapshot<Job> {
+        serde_json::from_str::<Snapshot>(&self.snapshot)
+            .unwrap()
+            .admit()
+            .unwrap()
+    }
+}
+
+fn unhex(hex: &str) -> Vec<u8> {
+    assert_eq!(hex.len() % 2, 0);
+    hex.as_bytes()
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
+        .collect()
+}
+
+// Each two-effect fixture retains ordered identities and matching evidence.
+// Decoding and physical-image refusal remain distinct boundary proofs below.
+fn assert_blocked_receipts(snapshot: &Snapshot<Job>, started_ns: u64) {
+    assert_eq!(snapshot.jobs.len(), 2);
+    assert_eq!(snapshot.receipts.len(), 2);
+    assert_eq!(
+        snapshot.jobs[0].job.record().state,
+        JobState::Uncertain { started_ns }
+    );
+    assert_eq!(snapshot.jobs[1].job.record().state, JobState::Running);
+    assert_eq!(snapshot.next_due_ns(), None);
+    for (index, entry) in snapshot.jobs.iter().enumerate() {
+        assert_eq!(entry.job.record().id, JobId(index as u128 + 1));
+        assert_eq!(entry.delivery().unwrap(), snapshot.receipts[index]);
+    }
+}
+
 // Expand only the bounded, checked-in historical backing fixtures. This raw
 // construction precedes all Storage custody and is never a runtime reader.
 fn frozen_backing(frozen: &FrozenMemory, maximum_pages: u64) -> VectorMemory {
@@ -122,12 +158,7 @@ fn frozen_backing(frozen: &FrozenMemory, maximum_pages: u64) -> VectorMemory {
         let start = usize::try_from(*offset).unwrap();
         let end = start.checked_add(run.len() / 2).unwrap();
         assert!(start >= previous_end && end <= bytes.len());
-        for (byte, hex) in bytes[start..end]
-            .iter_mut()
-            .zip(run.as_bytes().as_chunks::<2>().0.iter())
-        {
-            *byte = u8::from_str_radix(std::str::from_utf8(hex).unwrap(), 16).unwrap();
-        }
+        bytes[start..end].copy_from_slice(&unhex(run));
         previous_end = end;
     }
     drop(bytes);
@@ -184,10 +215,7 @@ fn memory_wire_cut_refuses_cbor_without_releasing_blocked_work() {
     );
     // Frozen producer metadata still establishes the unresolved obligation.
     // Neither retired JSON nor the outer CBOR ledger is a current reader path.
-    let snapshot = serde_json::from_str::<Snapshot>(&frozen.snapshot)
-        .unwrap()
-        .admit()
-        .unwrap();
+    let snapshot = frozen.snapshot();
     assert_eq!(snapshot.jobs.len(), 1);
     assert_eq!(snapshot.jobs[0].job.record().state, JobState::Running);
     assert_eq!(snapshot.next_due_ns(), None);
@@ -208,23 +236,8 @@ fn json_queue_cut_preserves_retired_backing_and_outstanding_effect_evidence() {
     );
     // Only this frozen-fixture assertion reads the old format. The old producer
     // cold-opened both outstanding attempts blocked before capturing these bytes.
-    let snapshot = serde_json::from_str::<Snapshot>(&frozen.snapshot)
-        .unwrap()
-        .admit()
-        .unwrap();
-    assert_eq!(
-        snapshot.jobs[0].job.record().state,
-        JobState::Uncertain { started_ns: 10 }
-    );
-    assert_eq!(snapshot.jobs[1].job.record().state, JobState::Running);
-    assert_eq!(snapshot.receipts.len(), 2);
-    for entry in &snapshot.jobs {
-        assert_eq!(
-            entry.delivery().unwrap(),
-            snapshot.receipts[entry.job.record().id.0 as usize - 1]
-        );
-    }
-    assert_eq!(snapshot.next_due_ns(), None);
+    let snapshot = frozen.snapshot();
+    assert_blocked_receipts(&snapshot, 10);
     assert!(matches!(
         decode(frozen.snapshot.as_bytes()),
         Err(Error::InvalidStorage)
@@ -242,15 +255,7 @@ fn storage_064_refuses_the_previous_wire_installation_without_releasing_effects(
             .producer
             .contains("ic-memory 0.63.0 / ic-storage 0.63.0")
     );
-    let hex = frozen.queue_hex.as_ref().unwrap();
-    assert_eq!(hex.len() % 2, 0);
-    let bytes: Vec<_> = hex
-        .as_bytes()
-        .as_chunks::<2>()
-        .0
-        .iter()
-        .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
-        .collect();
+    let bytes = unhex(frozen.queue_hex.as_ref().unwrap());
     // The application Wire schema still admits the exact old payload and keeps
     // both outstanding effects blocked. Its retired physical image cannot open.
     let snapshot = decode(&bytes).unwrap();
@@ -258,16 +263,7 @@ fn storage_064_refuses_the_previous_wire_installation_without_releasing_effects(
         serde_json::to_value(&snapshot).unwrap(),
         serde_json::from_str::<serde_json::Value>(&frozen.snapshot).unwrap()
     );
-    assert_eq!(
-        snapshot.jobs[0].job.record().state,
-        JobState::Uncertain { started_ns: 100 }
-    );
-    assert_eq!(snapshot.jobs[1].job.record().state, JobState::Running);
-    assert_eq!(snapshot.next_due_ns(), None);
-    assert_eq!(snapshot.receipts.len(), 2);
-    for (entry, receipt) in snapshot.jobs.iter().zip(&snapshot.receipts) {
-        assert_eq!(entry.delivery().unwrap(), *receipt);
-    }
+    assert_blocked_receipts(&snapshot, 100);
     assert_frozen_memory_refused(&frozen);
 }
 
@@ -280,22 +276,8 @@ fn storage_068_refuses_previous_cells_without_releasing_effects_or_writing() {
             .producer
             .contains("ic-storage 0.64.0 / Runtime 0.17.1")
     );
-    let expected = serde_json::from_str::<Snapshot>(&frozen.snapshot)
-        .unwrap()
-        .admit()
-        .unwrap();
-    assert_eq!(expected.jobs.len(), 2);
-    assert_eq!(expected.receipts.len(), 2);
-    assert_eq!(
-        expected.jobs[0].job.record().state,
-        JobState::Uncertain { started_ns: 100 }
-    );
-    assert_eq!(expected.jobs[1].job.record().state, JobState::Running);
-    assert_eq!(expected.next_due_ns(), None);
-    for entry in &expected.jobs {
-        let delivery = entry.delivery().unwrap();
-        assert!(expected.receipts.contains(&delivery));
-    }
+    let expected = frozen.snapshot();
+    assert_blocked_receipts(&expected, 100);
     // The frozen metadata retains the outstanding obligations. Storage 0.68
     // refuses this prior Cell framing; no production reader or reset is added.
     let backing = frozen_backing(&frozen, 4);

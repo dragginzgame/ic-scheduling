@@ -61,6 +61,23 @@ only after an admitted Jobs release baseline contains those changes; no baseline
 is advanced automatically to obtain omissions. Dependency graph admission remains
 mandatory.
 
+## Publication lint
+
+`publish-check` and actual publication use the same consumer lint adapter.
+An annotated tag must identify clean HEAD before narrowing. Shared's public
+release-plan reader admits the matching group/version journal; the existing
+metadata adapter re-admits its sealed validation evidence, source/compiler/host
+configuration and exact prepared metadata. The admitted Jobs-only plan selects
+`clippy-jobs`, including its combined consumer. Timers and workspace plans use
+complete `clippy`; missing, stale or invalid proof also retains complete fresh lint.
+Group selection alone does not narrow lint, and no prior lint PASS is reused.
+
+Lint failures stop both callers before Cargo publication. Initially clean source
+must remain clean at the same HEAD after lint, including dry runs. An initially
+dirty dry run retains its existing `--allow-dirty` behavior with complete lint.
+Actual upload still requires its clean source, matching pushed annotated tag and
+fresh registry/archive admission. This does not change the release stage roster.
+
 ## Execution and recovery
 
 `make RELEASE_GROUP=jobs release-verify` uses the same shared runner's `--plan`
@@ -112,8 +129,9 @@ is performed by this adoption.
 
 ## Shared release batch contract
 
-The installed tooling is crates.io `toko-tooling` 0.34.0, selected by root
-workspace metadata and `toko-tooling.lock`, independently of application Cargo.lock.
+The installed tooling is crates.io `toko-tooling` 0.36.0, selected by one exact
+root Cargo dependency pin inherited as a dev-dependency by all eight members.
+The normal Cargo.lock owns its archive checksum.
 Its installed archive checksum is recorded in `.shared-tooling.snapshot`.
 The batch interface introduced at 0.31.0
 remains in use; its receipt schema is independent of the Scheduling group

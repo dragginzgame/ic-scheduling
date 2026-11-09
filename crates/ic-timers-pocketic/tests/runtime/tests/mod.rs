@@ -13,7 +13,7 @@ use ic_timers_test_protocol::rpc::{
 };
 use ic_timers_test_protocol::{
     ChurnObservation, DispatchBatchObservation, OrdinaryObservation, OrdinaryTermination,
-    ProbeMemorySummary, ProbeSnapshot, TimerProbeSnapshot,
+    ProbeMemorySummary, ProbeSnapshot,
 };
 use std::{env, fs, path::PathBuf, time::Duration};
 
@@ -27,7 +27,7 @@ mod watchdog;
 
 // Each invocation owns a fresh server, IC instance and funded canister.
 // Returning the owner keeps it alive until the caller finishes its assertions.
-async fn installed_probe() -> (PocketIcInstance<PocketIc>, ExternalPrincipal) {
+async fn installed_probe() -> (PocketIcInstance, ExternalPrincipal) {
     let owned = fresh_pocket_ic().await;
     let canister_id = install_probe(owned.instance(), probe_wasm()).await;
     (owned, canister_id)
@@ -140,6 +140,7 @@ async fn snapshot(pic: &PocketIc, canister_id: ExternalPrincipal) -> ProbeSnapsh
         observed.work_completed,
         observed.coalesced,
         observed.unacknowledged,
+        observed.application_completed,
     ]);
     observed
 }

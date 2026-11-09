@@ -3,6 +3,8 @@
 //! Rebuild private probes and host decoders together: ordinary termination uses
 //! an enum and a fresh method identity. Upgrade checkpoint field order is retained.
 //! Next-work decisions share one typed method; the three former setters are retired.
+//! The main snapshot also observes the volatile policy pair under a fresh method
+//! identity; the separate startup-probe protocol is retired.
 
 use serde::{Deserialize, Serialize};
 
@@ -67,6 +69,10 @@ pub struct ProbeSnapshot {
     pub post_upgrade_reconstructed: bool,
     pub secondary_registered: bool,
     pub secondary_completed_work: u64,
+    pub completed_at_ns: Option<u64>,
+    pub application_registered: bool,
+    pub application_completed: CounterObservation,
+    pub application_completed_at_ns: Option<u64>,
 }
 
 /// Mutually exclusive terminal reasons reported by ordinary recovery subjects.
@@ -147,19 +153,6 @@ pub struct CohortObservation<Label = String> {
     pub snapshot_instructions: u64,
     pub inventory_len: u64,
     pub inventory_instructions: u64,
-}
-
-/// Mixed Watchdog/after-completion isolation and volatile upgrade observations.
-#[derive(Serialize, Clone, Debug, Deserialize, Eq, PartialEq)]
-pub struct TimerProbeSnapshot {
-    pub watchdog_registered: bool,
-    pub application_registered: bool,
-    pub watchdog_callbacks: u32,
-    pub application_callbacks: u32,
-    pub watchdog_times: Vec<u64>,
-    pub application_times: Vec<u64>,
-    pub trap_at: Option<u64>,
-    pub exhaust_at: Option<u64>,
 }
 
 /// Per-callback counts for a maximum-capacity batch with suspended work.

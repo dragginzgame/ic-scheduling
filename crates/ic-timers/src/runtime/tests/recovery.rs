@@ -140,13 +140,7 @@ fn abandoned_successor_repair_keeps_queued_work_and_pending_reconciliation() {
 fn watchdog_successor_retires_an_unacknowledged_dispatched_attempt() {
     let _fixture = setup();
     let timer = identity("watchdog-unacknowledged");
-    let registration = register_watchdog(
-        timer.clone(),
-        test_cadence(5),
-        TimerStart::Retained { initial: None },
-        stopping_watchdog(|| {}),
-    )
-    .expect("watchdog registration should succeed");
+    let registration = retained_watchdog(timer.clone(), || {});
     registration
         .ensure_scheduled()
         .expect("initial scheduler should arm");

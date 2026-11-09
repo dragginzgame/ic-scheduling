@@ -20,7 +20,7 @@ if [[ -z "$GROUP_TEST_REAL_EDITOR" && "$fixture_mode" != frozen && "$fixture_mod
     GROUP_TEST_REAL_EDITOR="$(make --silent --no-print-directory -C "$root" release-tools-check)"
 fi
 mkdir "$fixture_suite/source" "$fixture_suite/bin"
-cp "$root"/{Cargo.toml,Cargo.lock,toko-tooling.lock,CHANGELOG.md,README.md,LICENSE,Makefile,.gitignore,.shared-tooling.snapshot,rust-toolchain.toml,DRAGGINZGAME.md,AGENTS.md} "$fixture_suite/source/"
+cp "$root"/{Cargo.toml,Cargo.lock,CHANGELOG.md,README.md,LICENSE,Makefile,.gitignore,.shared-tooling.snapshot,rust-toolchain.toml,DRAGGINZGAME.md,AGENTS.md} "$fixture_suite/source/"
 cp -R "$root"/{crates,apps,scripts,make,ci,docs,releases,.github,rules,audits,tasks} "$fixture_suite/source/"
 cp -R "$root/.githooks" "$fixture_suite/source/"
 if [[ "$fixture_mode" == frozen ]]; then
@@ -45,6 +45,14 @@ cat > "$fixture_suite/bin/make" <<'MAKE'
 set -euo pipefail
 for arg in "$@"; do
     case "$arg" in
+        clippy|clippy-jobs|clippy-timers)
+            printf '%s\n' "$arg" >> "$GROUP_TEST_LINTS"
+            [[ "${GROUP_TEST_LINT_FAILURE:-0}" == 0 ]] || exit 37
+            "$GROUP_TEST_REAL_MAKE" "$@"
+            if [[ "${GROUP_TEST_LINT_DRIFT:-0}" == 1 ]]; then
+                printf '// drift during lint\n' >> crates/ic-jobs/src/lib.rs
+            fi
+            exit 0 ;;
         RELEASE_SOURCE=*|RELEASE_PREVIOUS=*|RELEASE_VERSION=*|RELEASE_DATE=*|RELEASE_REMOTE=*|RELEASE_BRANCH=*|RELEASE_COMMIT=*|RELEASE_GROUP=*|RELEASE_PREPARATION_SOURCE=*) export "$arg" ;;
     esac
 done
@@ -124,11 +132,14 @@ interrupt_release() (
 
 resume_release() (
     local suite="$1" selected="$2" other_group="$3" candidate="$4" base="$5"
-    local path
+    local path before
     # Resume must not accept another group's saved intent.
+    before="$(git rev-parse HEAD)"
     cp ".git/release-state/$selected-$candidate.plan" ".git/release-state/$other_group-$candidate.plan"
     if make release-resume RELEASE_GROUP="$other_group" VERSION="$candidate" RELEASE_MAKE="$suite/bin/make" > "$suite/$selected-wrong-resume.log" 2>&1; then exit 1; fi
-    grep -F 'release group changed' "$suite/$selected-wrong-resume.log" > /dev/null
+    [[ "$(git rev-parse HEAD)" == "$before" ]]
+    git diff --quiet HEAD --
+    cmp ".git/release-state/$selected-$candidate.plan" ".git/release-state/$other_group-$candidate.plan"
     rm ".git/release-state/$other_group-$candidate.plan"
     make release-resume VERSION="$candidate" RELEASE_MAKE="$suite/bin/make" > "$suite/$selected-resume.log" 2>&1
     [[ "$(cat "$GROUP_TEST_EVENTS")" == "$selected" ]]
@@ -169,11 +180,45 @@ REGISTRY
     if bash scripts/release/check-publication.sh origin > "$suite/$selected-dirty-publication.log" 2>&1; then exit 1; fi
     rm unexpected-source
     bash scripts/release/check-publication.sh origin
+    : > "$GROUP_TEST_LINTS"
     bash scripts/release/publish.sh origin
+    [[ "$(cat "$GROUP_TEST_LINTS")" == "$GROUP_TEST_EXPECTED_LINT" ]]
     [[ "$(cat "$GROUP_TEST_UPLOADS")" == "publish -p $package --all-features --locked --registry crates-io" ]]
     : > "$GROUP_TEST_UPLOADS"
+    : > "$GROUP_TEST_LINTS"
     make publish-check > "$suite/$selected-publish-check.log" 2>&1
+    [[ "$(cat "$GROUP_TEST_LINTS")" == "$GROUP_TEST_EXPECTED_LINT" ]]
     [[ "$(cat "$GROUP_TEST_UPLOADS")" == "publish -p $package --all-features --locked --registry crates-io --allow-dirty --dry-run" ]]
+    # Both actual entrypoints stop before Cargo publication on failed lint or
+    # clean-source drift. The dirty dry-run contract still retains full lint.
+    local command fault
+    for command in publish publish-check; do
+        for fault in GROUP_TEST_LINT_FAILURE GROUP_TEST_LINT_DRIFT; do
+            : > "$GROUP_TEST_UPLOADS"
+            if env "$fault=1" "$GROUP_TEST_REAL_MAKE" --no-print-directory "$command" > "$suite/$selected-$command-$fault.log" 2>&1; then exit 1; fi
+            [[ ! -s "$GROUP_TEST_UPLOADS" ]]
+            git checkout -- crates/ic-jobs/src/lib.rs
+        done
+    done
+    # Missing/stale evidence may only broaden; never trust a scope field without
+    # its sealed source/configuration and exact prepared metadata.
+    local state journal proof
+    state=".git/release-state/$selected-$candidate.receipts"
+    journal=".git/release-state/$selected-$candidate.plan"
+    for proof in "$journal" "$state/validated" "$state/prepared" "$state/validation-evidence"; do
+        [[ -f "$proof" ]] || continue
+        cp "$proof" "$suite/saved-proof"
+        if [[ "$proof" == "$journal" ]]; then rm "$proof"; else printf 'tampered\n' >> "$proof"; fi
+        : > "$GROUP_TEST_LINTS"; : > "$GROUP_TEST_UPLOADS"
+        make publish-check > "$suite/$selected-fallback-$(basename "$proof").log" 2>&1
+        [[ "$(cat "$GROUP_TEST_LINTS")" == clippy ]]
+        cp "$suite/saved-proof" "$proof"
+    done
+    touch unexpected-source
+    : > "$GROUP_TEST_LINTS"; : > "$GROUP_TEST_UPLOADS"
+    make publish-check > "$suite/$selected-dirty-dry-run.log" 2>&1
+    [[ "$(cat "$GROUP_TEST_LINTS")" == clippy ]]
+    rm unexpected-source
 )
 
 # Exercise public refusal before any tool, gate, journal or metadata effect.
@@ -225,6 +270,8 @@ qualify_group() (
     # separately qualifies outer batch capture and candidate hooks.
     export RELEASE_BATCH_ACTIVE=1 RELEASE_GROUP="$selected" RELEASE_MAKE="$suite/bin/make"
     export GROUP_TEST_EVENTS="$suite/$selected-gates" GROUP_TEST_UPLOADS="$suite/$selected-uploads"
+    export GROUP_TEST_LINTS="$suite/$selected-lints" GROUP_TEST_EXPECTED_LINT=clippy
+    [[ "$selected" != jobs || "$mode" == publication-admission ]] || GROUP_TEST_EXPECTED_LINT=clippy-jobs
     : > "$GROUP_TEST_EVENTS"; : > "$GROUP_TEST_UPLOADS"
     ledger=releases/jobs/CHANGELOG.md; other_ledger=releases/timers/CHANGELOG.md; package=ic-jobs; other=ic-timers
     if [[ "$selected" == timers ]]; then

@@ -49,86 +49,64 @@ fn install(index: usize, counter: usize) -> OnceRegistration {
     .expect("batch registration")
 }
 
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::StartDispatchBatch as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn start_dispatch_batch() {
-    assert!(REGISTRATIONS.with_borrow(Vec::is_empty), "fresh batch");
-    super::transport::start_pressure();
-    REGISTRATIONS.with_borrow_mut(|slots| {
-        for index in 0..MAX_TIMER_REGISTRATIONS {
-            slots.push(Some(install(index, index)));
+ic_timers_test_protocol::probe_endpoints! {
+    #[endpoint(update, StartDispatchBatch)]
+    fn start_dispatch_batch() {
+        assert!(REGISTRATIONS.with_borrow(Vec::is_empty), "fresh batch");
+        super::transport::start_pressure();
+        REGISTRATIONS.with_borrow_mut(|slots| {
+            for index in 0..MAX_TIMER_REGISTRATIONS {
+                slots.push(Some(install(index, index)));
+            }
+        });
+    }
+
+    #[endpoint(update, ChangePendingDispatchBatch)]
+    fn change_pending_dispatch_batch() {
+        REGISTRATIONS.with_borrow_mut(|slots| {
+            slots[0]
+                .as_ref()
+                .expect("first registration")
+                .cancel()
+                .expect("cancel pending timer");
+            slots[1]
+                .take()
+                .expect("second registration")
+                .unregister()
+                .expect("remove pending timer");
+            slots[1] = Some(install(1, MAX_TIMER_REGISTRATIONS));
+        });
+    }
+
+    #[endpoint(update, RearmCancelledDispatchBatchTimer)]
+    fn rearm_cancelled_dispatch_batch_timer() {
+        REGISTRATIONS.with_borrow(|slots| {
+            slots[0]
+                .as_ref()
+                .expect("cancelled registration retained")
+                .ensure_scheduled(TimerSchedule::After(Duration::ZERO))
+                .expect("rearm after batch drains");
+        });
+    }
+
+    #[endpoint(update, ReleaseDispatchBatch)]
+    fn release_dispatch_batch() {
+        RELEASED.set(true);
+    }
+
+    #[endpoint(update, DispatchBatchGate)]
+    fn dispatch_batch_gate() -> bool {
+        RELEASED.get()
+    }
+
+    #[endpoint(query, DispatchBatchObservation)]
+    fn dispatch_batch_observation() -> DispatchBatchObservation {
+        DispatchBatchObservation {
+            starts: STARTS.with_borrow(|counts| counts.to_vec()),
+            completions: COMPLETIONS.with_borrow(|counts| counts.to_vec()),
+            active: ACTIVE.get(),
+            peak_active: PEAK_ACTIVE.get(),
+            inventory_len: timer_inventory().expect("batch inventory").len() as u64,
         }
-    });
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::ChangePendingDispatchBatch as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn change_pending_dispatch_batch() {
-    REGISTRATIONS.with_borrow_mut(|slots| {
-        slots[0]
-            .as_ref()
-            .expect("first registration")
-            .cancel()
-            .expect("cancel pending timer");
-        slots[1]
-            .take()
-            .expect("second registration")
-            .unregister()
-            .expect("remove pending timer");
-        slots[1] = Some(install(1, MAX_TIMER_REGISTRATIONS));
-    });
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::RearmCancelledDispatchBatchTimer as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn rearm_cancelled_dispatch_batch_timer() {
-    REGISTRATIONS.with_borrow(|slots| {
-        slots[0]
-            .as_ref()
-            .expect("cancelled registration retained")
-            .ensure_scheduled(TimerSchedule::After(Duration::ZERO))
-            .expect("rearm after batch drains");
-    });
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::ReleaseDispatchBatch as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn release_dispatch_batch() {
-    RELEASED.set(true);
-}
-
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::DispatchBatchGate as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn dispatch_batch_gate() -> bool {
-    RELEASED.get()
-}
-
-#[ic_wire_endpoint::query(
-    id = ic_timers_test_protocol::rpc::Method::DispatchBatchObservation as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn dispatch_batch_observation() -> DispatchBatchObservation {
-    DispatchBatchObservation {
-        starts: STARTS.with_borrow(|counts| counts.to_vec()),
-        completions: COMPLETIONS.with_borrow(|counts| counts.to_vec()),
-        active: ACTIVE.get(),
-        peak_active: PEAK_ACTIVE.get(),
-        inventory_len: timer_inventory().expect("batch inventory").len() as u64,
     }
 }

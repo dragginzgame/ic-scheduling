@@ -62,3 +62,16 @@ publication requires its separate authorization.
 Historical receipts under `evidence/`, `audits/` and `changelog/` describe their
 original checkouts and cannot qualify this migration. Original sibling source
 remains available for rollback and provenance.
+
+### Volatile mixed-policy qualification
+
+The main runtime probe owns the Watchdog fault controls and observations.
+`StartVolatilePair` adds a heap-only after-completion registration alongside that
+Watchdog without setting retained readiness; `StopVolatilePair` removes both.
+The separate startup-probe module, methods and snapshot DTO are retired.
+The main snapshot carries completion counts/timestamps for both policies under
+fresh method identity 69; rebuild the unpublished probe and host decoder together.
+The four-field upgrade checkpoint and the published Timers API are unchanged.
+Exact lifecycle subjects retain trap/exhaustion isolation, overdue coalescing and
+absence of implicit reconstruction after upgrade. The retained-Watchdog upgrade
+subject separately qualifies reconstruction from explicitly stored readiness.

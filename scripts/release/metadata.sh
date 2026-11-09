@@ -26,9 +26,14 @@ read_version() { bash "$root/scripts/release/group.sh" version; }
 source "$root/scripts/ci/release-receipts.sh"
 # shellcheck source=scripts/release/source-lock.sh
 source "$root/scripts/release/source-lock.sh"
+publication_selection=''
 validation_identity() {
     release_receipt_identity || return
-    perl "$root/scripts/release/validation.pl" identity "$receipt_state"
+    if [[ -n "$publication_selection" ]]; then
+        printf '%s\n' "$publication_selection" | jq -jr .identity
+    else
+        perl "$root/scripts/release/validation.pl" identity "$receipt_state"
+    fi
 }
 [[ "${RELEASE_VERSION:-}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || exit 2
 receipt_state="$(git rev-parse --git-path release-state)/$RELEASE_GROUP-$RELEASE_VERSION.receipts"
@@ -110,16 +115,24 @@ case "$operation" in
         bash "$root/scripts/ci/cargo-release-metadata.sh" prepare "$primary"
         release_receipt_write "$receipt_state/prepared" release_receipt_payload '' "${release_files[@]}"
         ;;
-    check|commit-check)
+    check|commit-check|publication-lint)
+        if [[ "$operation" == publication-lint ]]; then
+            # One proof admission carries both its receipt identity and lint
+            # decision; never reread an unverified scope field afterward.
+            publication_selection="$(perl "$root/scripts/release/validation.pl" publication "$receipt_state")"
+        fi
         release_receipt_check "$receipt_state/validated" validation_identity
         # Shared owns selected-tree metadata checks and retained failure custody.
-        bash "$root/scripts/ci/cargo-release-metadata.sh" check "$primary" --manifest-order-grouped
+        bash "$root/scripts/ci/cargo-release-metadata.sh" check "$primary" --manifest-order-grouped >&2
         release_receipt_check "$receipt_state/prepared" release_receipt_payload "${RELEASE_COMMIT:-}" "${release_files[@]}"
         admit_files
         if [[ "$operation" == commit-check ]]; then
             [[ -z "${RELEASE_COMMIT:-}" ]] || exit 1
             git diff --quiet -- "${release_files[@]}"
         fi
+        if [[ "$operation" == publication-lint ]]; then
+            printf '%s\n' "$publication_selection" | jq -er .lint_target
+        fi
         ;;
-    *) echo 'usage: metadata.sh version|validated|preflight|prepare|check|commit-check' >&2; exit 2 ;;
+    *) echo 'usage: metadata.sh version|validated|preflight|prepare|check|commit-check|publication-lint' >&2; exit 2 ;;
 esac

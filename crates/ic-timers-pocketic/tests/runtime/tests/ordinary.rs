@@ -348,7 +348,7 @@ async fn trapping_ordinary_probe(
     policy: OrdinaryPolicy,
     lifetime: ProbeLifetime,
     before_await: bool,
-) -> (PocketIcInstance<PocketIc>, ExternalPrincipal) {
+) -> (PocketIcInstance, ExternalPrincipal) {
     let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
     update_wire::<(), _>(

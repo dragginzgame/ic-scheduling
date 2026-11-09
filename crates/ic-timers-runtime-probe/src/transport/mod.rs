@@ -8,14 +8,12 @@ thread_local! {
     static ENABLED: Cell<bool> = const { Cell::new(true) };
 }
 
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::PressureAndStart as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn pressure_and_start() {
-    start_pressure();
-    assert!(super::start_immediately());
+ic_timers_test_protocol::probe_endpoints! {
+    #[endpoint(update, PressureAndStart)]
+    fn pressure_and_start() {
+        start_pressure();
+        assert!(super::start_immediately());
+    }
 }
 
 pub(super) fn start_pressure() {
@@ -56,27 +54,21 @@ fn send_pressure() {
     });
 }
 
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::ReleasePressure as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn release_pressure() {
-    ENABLED.set(false);
+ic_timers_test_protocol::probe_endpoints! {
+    #[endpoint(update, ReleasePressure)]
+    fn release_pressure() {
+        ENABLED.set(false);
+    }
 }
 
-#[ic_wire_endpoint::update(
-    id = ic_timers_test_protocol::rpc::Method::PressureReply as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn pressure_reply() {}
+ic_timers_test_protocol::probe_endpoints! {
+    #[endpoint(update, PressureReply)]
+    fn pressure_reply() {}
+}
 
-#[ic_wire_endpoint::query(
-    id = ic_timers_test_protocol::rpc::Method::PressureObservation as u64,
-    request = ic_timers_test_protocol::rpc::REQUEST_LIMITS,
-    response = ic_timers_test_protocol::rpc::RESPONSE_LIMITS
-)]
-fn pressure_observation() -> (u64, u64) {
-    (SUBMISSION_FAILURES.get(), REPLIES.get())
+ic_timers_test_protocol::probe_endpoints! {
+    #[endpoint(query, PressureObservation)]
+    fn pressure_observation() -> (u64, u64) {
+        (SUBMISSION_FAILURES.get(), REPLIES.get())
+    }
 }

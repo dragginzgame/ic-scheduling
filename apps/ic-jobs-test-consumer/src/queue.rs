@@ -15,7 +15,7 @@ use ic_storage::{
 };
 
 use crate::api::{Create, Delivery, Error, Init, Task, Timing, View};
-use crate::observations::{Event, Observations};
+use crate::metrics::{Counts, JobWindow};
 
 pub(crate) const BATCH: usize = 2;
 const KEY: &str = "test.jobs.consumer.management.v1";
@@ -47,7 +47,7 @@ pub(crate) struct QueueTotals {
 pub(crate) struct Queue<M: Memory> {
     cell: StableCell<Vec<u8>, M>,
     init: Init,
-    observations: Observations,
+    metrics: JobWindow,
 }
 
 fn job_error(error: ic_jobs::JobError) -> Error {
@@ -139,7 +139,7 @@ impl<M: Memory> Queue<M> {
             Self {
                 cell,
                 init: snapshot.init,
-                observations: Observations::new(),
+                metrics: JobWindow::new(Counts::EMPTY),
             },
             next_due_ns,
         ))
@@ -155,19 +155,14 @@ impl<M: Memory> Queue<M> {
     // Management entrypoints authorize before projecting heap diagnostics, just
     // as they do before ordinary queue operations. These reads need no reload.
     pub(crate) fn job_metrics(&self, version: u64) -> crate::api::JobMetrics {
-        self.observations.metrics(version)
+        self.metrics
+            .state()
+            .snapshot(self.metrics.sequence(), version)
     }
 
     pub(crate) fn reset_job_metrics(&mut self, version: u64) -> crate::api::JobMetrics {
-        self.observations.reset_metrics(version)
-    }
-
-    pub(crate) fn job_logs(
-        &self,
-        request: crate::api::JobLogRequest,
-        version: u64,
-    ) -> Result<crate::api::JobLogPage, Error> {
-        self.observations.logs(request, version)
+        self.metrics.reset(Counts::EMPTY);
+        self.job_metrics(version)
     }
 
     fn load(&self) -> Result<Snapshot<Job>, Error> {
@@ -273,7 +268,8 @@ impl<M: Memory> Queue<M> {
         let mut snapshot = self.load()?;
         let mut deliveries = vec![];
         let mut work = 0;
-        let mut events = Vec::with_capacity(BATCH * 2);
+        // Stage counts with the batch; publish them only after its durable commit.
+        let mut metrics = *self.metrics.state();
         for _ in 0..BATCH {
             let Some((index, attempt)) =
                 start_next(snapshot.jobs.iter_mut().map(|entry| &mut entry.job), now)
@@ -283,7 +279,7 @@ impl<M: Memory> Queue<M> {
             };
             work += 1;
             let retry = snapshot.jobs[index].job.record().attempts > 1;
-            events.push(Event::Dispatch { attempt, retry });
+            metrics.dispatch(retry);
             match &snapshot.jobs[index].task {
                 Task::Increment(amount) => {
                     // Known local failure has no effect; dispose of this job
@@ -298,11 +294,7 @@ impl<M: Memory> Queue<M> {
                         .job
                         .finish(attempt, now, outcome)
                         .map_err(job_error)?;
-                    events.push(Event::Outcome {
-                        attempt,
-                        outcome,
-                        reconciled: false,
-                    });
+                    metrics.outcome(outcome, false);
                 }
                 Task::Deliver(_) => deliveries.push(snapshot.jobs[index].delivery()?),
             }
@@ -310,9 +302,7 @@ impl<M: Memory> Queue<M> {
         if work > 0 {
             // Commit the complete batch before delivery envelopes escape.
             let committed = self.commit(snapshot, DispatchBatch { deliveries, work })?;
-            for event in events {
-                self.observations.record(now, event);
-            }
+            *self.metrics.state_mut() = metrics;
             Ok(committed)
         } else {
             // Idle batches project existing durable state without writing it.
@@ -363,14 +353,7 @@ impl<M: Memory> Queue<M> {
             job.finish(attempt, now, outcome).map_err(job_error)?;
         }
         let committed = self.commit(snapshot, ())?;
-        self.observations.record(
-            now,
-            Event::Outcome {
-                attempt,
-                outcome,
-                reconciled,
-            },
-        );
+        self.metrics.state_mut().outcome(outcome, reconciled);
         Ok(committed)
     }
 
