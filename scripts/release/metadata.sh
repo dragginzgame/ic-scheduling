@@ -47,7 +47,7 @@ admit_files() {
 # selects its admitted source lock without granting setup authority here.
 select_release_tools() {
     local plan source
-    export RELEASE_METADATA_LOCKFILE="$root/Cargo.lock"
+    export RELEASE_METADATA_LOCKFILE="$root/qualification/Cargo.lock"
     prepare_tools=1
     plan="$(git rev-parse --git-path "release-state/$RELEASE_GROUP-${RELEASE_VERSION:?}.plan")"
     if [[ -e "$plan" || -L "$plan" ]]; then

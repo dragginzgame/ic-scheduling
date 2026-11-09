@@ -329,5 +329,5 @@ The snapshot-owned assertion probe replaces Jobs' local rewrite block.
 GitHub owns current issue/PR status. No workflow was dispatched during this review.
 
 See the [package migration guide](../../crates/ic-jobs/README.md#011-api-cut),
-[safety contract](../../SAFETY.md), [consumer qualification](../../apps/ic-jobs-test-consumer/README.md)
+[safety contract](../../SAFETY.md), [consumer qualification](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/apps/ic-jobs-test-consumer/README.md)
 and [delivery procedure](../releasing.md).

@@ -5,9 +5,21 @@ Independent versions should not force unrelated release checks. A consumer may
 qualify a complete gate for one release group, including its affected integration
 boundaries, while keeping repository-wide CI. Until that mapping is qualified,
 release adapters retain their existing full gate. This is the opt-in contract for
-[#345](https://github.com/dragginzgame/shared-tooling/issues/345).
+[#345](https://github.com/dragginzgame/toko-tooling/issues/345).
 
 ## Ownership and selection
+
+Release groups contain product-workspace packages only. Separate qualification
+packages live in the independent `qualification/` workspace, with meaningful
+nested grouping permitted, and belong
+to no product release group. A validation plan may select one qualification
+package for several groups without aligning its version or creating another
+release ledger. See the
+[workspace relationship rule](../rules/rust-workspaces.md#qualification-and-release-group-relationships).
+Required qualification is still required; workspace separation is not a gate
+omission. Select its actual workspace manifest, package, targets and features at
+the leaf command, and bind both product and qualification lock/source identities
+to the evidence. An unqualified selection retains the existing complete gate.
 
 The consumer owns the exhaustive stage roster and a reviewed product selector. Shared
 admits the resulting plan and runs its targets through the existing
@@ -98,7 +110,7 @@ admission; do not fork the dispatcher or copy its generic regression suite.
 
 The [shared adoption interfaces](group-validation-adoption.md) provide run-evidence
 verification, roster consistency and conservative baseline observation under
-[Shared #349](https://github.com/dragginzgame/shared-tooling/issues/349).
+[Shared #349](https://github.com/dragginzgame/toko-tooling/issues/349).
 Until the shared implementation is qualified and adopted in a consumer, retain its existing admission
 checks and full-gate fallback. Do not delete checks merely to reduce local code,
 or start another general evidence parser to work around the missing capability.

@@ -1,6 +1,6 @@
 # IC Scheduling
 
-One Rust workspace for durable jobs and observable timer primitives on the
+A product workspace for durable jobs and observable timer primitives on the
 Internet Computer. Jobs and Timers have independent release versions within one
 dependency catalog, lockfile, toolchain and CI.
 
@@ -29,7 +29,7 @@ and [acceptance checklist](docs/test-consumers.md#adapter-acceptance-checklist)
 describe the host obligations. The [Canic integration guide](docs/canic-integration.md)
 maps those obligations to the proposed adapter; it does not advertise an existing
 Canic API. Jobs depends only on Serde, so Canic owns its integration dependency
-versions. The unpublished [canister consumer](apps/ic-jobs-test-consumer/README.md)
+versions. The unpublished [canister consumer](qualification/ic-jobs-test-consumer/README.md)
 demonstrates application-owned storage, management and lifecycle integration.
 Its PocketIC harness is compiled by CI; live qualification is explicitly selected.
 
@@ -42,7 +42,7 @@ It supplies no global queue, database, lifecycle exports or exactly-once effects
 | Boundary | Owner and entry point |
 | --- | --- |
 | Validated records, attempts, transitions and due-time selection | Published `ic-jobs`: `Job::restore`, `Job` methods, `next_due_ns` and `start_next`; Serde is its only runtime dependency |
-| Payloads, authorization, stable queue and lifecycle endpoints | Consumer applications; the unpublished `apps/ic-jobs-test-consumer` demonstrates this integration |
+| Payloads, authorization, stable queue and lifecycle endpoints | Consumer applications; the unpublished `qualification/ic-jobs-test-consumer` demonstrates this integration |
 | Stable allocation and fixture Cell admission | IC Storage supplies checked allocation leases and bounded Cell framing; the consumer validates its queue payload |
 | Volatile wakeups and watchdog recovery | IC Timers, called directly by the consumer |
 | Principal and explicit-codec canister runtime | Published IC Platform; Jobs retains endpoints, schemas, limits and error policy |
@@ -50,7 +50,7 @@ It supplies no global queue, database, lifecycle exports or exactly-once effects
 | PocketIC transport and startup | IC Testkit; Jobs supplies Wire frames and retains scenario policy |
 | Shared native management client | Feature-gated `ic-jobs-canister-tests::harness`, used by the recovery tests |
 | Artifact retention and native filesystem/process mechanics | IC Build and IC Host; Jobs retains optimizer flags and evidence naming |
-| Common setup, formatting and release mechanics | Reviewed Shared Tooling snapshot; Jobs owns its gates, direct-delivery policy and package upload admission |
+| Common setup, formatting and release mechanics | Reviewed Toko Tooling snapshot; Jobs owns its gates, direct-delivery policy and package upload admission |
 
 ## Dependency exposure
 
@@ -67,11 +67,13 @@ qualification dependencies out of the libraries.
 | `ic-timers-size-probe` | Separate minimal Wasm builds measuring each timer policy's size |
 | `ic-timers-test-protocol` | Wire types shared by the native runner and Wasm probes |
 
-Root `[workspace.dependencies]` entries select versions; each member opts into
-them. Their presence in the root catalog does not put them in every build.
-The Jobs and Timers blocks list all eight members with full versions and paths,
-including unused private qualification entries; group policy rosters keep those
-real requirements aligned during releases.
+Each workspace catalog selects its direct dependencies; members inherit only
+what they use. The product root contains Jobs and Timers and their release groups.
+Six private packages belong to [qualification/Cargo.toml](qualification/Cargo.toml),
+with an independent lock and unchanged private versions. They are validation
+obligations, not product release-group members. Product packages never depend
+on qualification. `make cloc` reports products; `make cloc-qualification` reports
+the private workspace with its existing LOC categories.
 The catalog labels `Production dependencies` and `Tests and tooling only`
 describe use here, independently of registry publication. Serde is shared by
 production and tests, so it belongs to production. The qualification Wasm and
@@ -95,8 +97,8 @@ application's selected target graph and source rather than counting manifests.
 For example, inspect the qualification Wasm's paths with:
 
 ```sh
-cargo tree -p ic-jobs-test-consumer --target wasm32-unknown-unknown --edges normal,build --invert ic-platform-runtime --locked --offline
-cargo tree -p ic-jobs-test-consumer --target wasm32-unknown-unknown --edges normal,build --invert ic-platform-runtime-guard --locked --offline
+cargo tree --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer --target wasm32-unknown-unknown --edges normal,build --invert ic-platform-runtime --locked --offline
+cargo tree --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer --target wasm32-unknown-unknown --edges normal,build --invert ic-platform-runtime-guard --locked --offline
 ```
 
 The selected published boundary is IC Platform, with defaults disabled.
@@ -107,22 +109,29 @@ The qualification app selects Runtime's `cdk` feature only on Wasm. Native
 consumer builds select canonical Types directly for Serde DTOs
 and Wire contracts. Jobs, Storage and Timers remain Wasm/test dependencies; JSON
 is limited to native fixtures and tooling. Parser, Agent,
-certification and crypto features are not selected. Runtime 0.20 owns the
-deployed executor, IC0 adapters and generator shared with Timers, Storage 0.68
-and Wire Endpoint 0.8. The qualification Wasm
+certification and crypto features are not selected. Runtime 0.21 owns the
+deployed executor, IC0 adapters and generator shared with Timers, Storage 0.71
+and Wire Endpoint 0.10. The qualification Wasm
 selects neither Candid nor full `ic-cdk`.
 Owned native DTO principals exclude external Principal and SHA-2 dependencies.
-The Wasm application selects neither principal conversion nor SHA-2 hashing.
+The Wasm application selects neither registry Principal conversion nor SHA-2 hashing.
 Storage supplies native IO metering under its test-support feature.
 Native tests select `principal-self-authenticating` explicitly;
-the native harness selects `principal-external` and Testkit 0.93's async-only
+DTOs select Types 0.19 without the retired `principal-external` feature. The
+native harness uses canonical Types Principal and Testkit 0.96's async-only
 `ic_testkit::pocket_ic` client. Callers own their Tokio runtime and await explicit
 instance closure. Each client uses an explicit 60-second request budget, separate
 from its server startup deadline. Testkit does not install a global subscriber or
 file log sink; application logging remains caller-owned.
 Managed `PocketIcStartupConfig::build_instance` supplies its
 explicit server endpoint and retains server custody. The deployed
-graph has one Runtime 0.20 owner and exact matching executor guard.
+graph has one Runtime 0.21 owner and exact matching executor guard.
+Runtime, Endpoint, DTOs and native Testkit now share canonical Types 0.19.
+The composed graphs require one identity without principal-byte projections.
+The native host graph requires one Types identity and rejects registry management
+DTOs. Native DTO-only graphs stay free of
+registry Principal, Candid and runtime dependencies. No conversion alias or
+compatibility endpoint is added; stored identities and Wire frames are unchanged.
 
 Installation, management, fixture controls and delivery use IC Wire native Serde
 frames. Consumer-owned method identities and request/reply budgets live in
@@ -138,10 +147,11 @@ This is an unpublished fixture protocol cut. Quiesce management/delivery activit
 dispose of outstanding old management requests and rebuild the fixture and native
 harness together. Delivery identities remain unchanged. The queue now stores
 bounded Wire under `JQW\x01`; retained JSON refuses without conversion or reset.
-Storage 0.68 also refuses previous Cell images; its adoption adds no migration or reset.
+Storage 0.71 requires fresh whole-store backing. It rejects earlier physical
+images without writes or growth; no automatic migration or reset is added.
 Use fresh qualification state after explicitly retiring the old installation;
 resolve its Running/Uncertain effects with the old binary and exact evidence first.
-The [consumer guide](apps/ic-jobs-test-consumer/README.md) describes the boundaries, and the
+The [consumer guide](qualification/ic-jobs-test-consumer/README.md) describes the boundaries, and the
 [handoff](docs/status/current.md) records qualification by source. Native Testkit
 uses its published Platform facade for external simulator interfaces. The
 harness keeps the upstream Principal for PocketIC calls and converts to its
@@ -153,7 +163,7 @@ every tests/tooling-only catalog dependency (apart from the selected root itself
 The qualification Wasm intentionally includes its test integrations above; those
 cannot be prohibited there using the production library's exclusion list.
 
-`make check-candid-boundary` scans first-party Rust under `crates/` and `apps/`
+`make check-candid-boundary` scans first-party Rust under `crates/`
 with the [shared lexical boundary check](docs/candid-boundary.md), its CBOR mode
 and [empty Candid/CBOR allowance policy](ci/candid-boundary.json). Owned application
 DTOs use Wire; external types and CBOR codecs stay with Platform. This runs once as a prerequisite
@@ -167,9 +177,9 @@ with [local bans](ci/cargo-dependency-boundaries.json) on direct generator and
 retired decoder dependencies, including aliases,
 across member normal/build/dev/target declarations. It does not enforce feature
 selection, inspect unused root catalog
-entries or scan independent workspaces; this workspace has no maintained independent
-Cargo roots and its catalog and feature selections are reviewed separately.
-All eight members share the root manifest/lock; there are no browser roots or
+entries; Make explicitly checks both workspace roots and scans source from both
+trees. Their catalogs, locks and feature selections are reviewed separately.
+Cargo metadata verifies the explicit eight-member inventory; there are no browser roots or
 maintained generated Rust entrypoints. Macro expansion, generated strings and
 arbitrary cross-module aliases still need review. Historical CBOR backing images
 remain refusal fixtures; no application encoding or retained bytes change here.
@@ -181,7 +191,7 @@ host-only packages, JSON, Candid and full CDK. It requires one Timers, Platform 
 executor and IC0 packages are excluded. The application, Timers and Storage share one Runtime identity through the
 selected Platform owners. Storage owns its collections; the deployed graph
 excludes the retired Memory package and stable-structures substrate.
-The graph excludes application principal conversion and SHA-2.
+The graph excludes registry Principal conversion and SHA-2.
 A fourth context excludes Jobs, Memory, Storage, Timers, JSON and the IC runtime from
 ordinary native consumer builds, including the
 Platform `cdk` feature.
@@ -192,7 +202,7 @@ management and transport DTOs. Testkit owns no Candid codec adapter. Disabling
 dependency defaults
 cannot remove those required edges. Jobs-owned RPCs continue to use Wire.
 The policy lives in Make; Shared owns the [observation/checker](docs/cargo-graph-checks.md).
-The [snapshot manifest](.shared-tooling.snapshot) records the reviewed Shared
+The [snapshot manifest](.toko-tooling.snapshot) records the reviewed Shared
 Tooling version, registry archive checksum and payload digests. No sibling checkout is a
 runtime prerequisite.
 
@@ -210,19 +220,19 @@ snapshot check alone does not establish deployment admission.
 Wire conformance and the packaged adapter example on Rust 1.99.1. They cover commit
 failures, reconstruction, exact receipt reconciliation, stale continuations and
 bounded recurring work. The composition fixtures request IC Storage allocations
-through the [workspace-selected dependency](Cargo.toml); the host fixture reopens actual
+through the [qualification-selected dependency](qualification/Cargo.toml); the host fixture reopens actual
 stable cells. See [test consumers](docs/test-consumers.md) for their storage and
 timer boundaries.
 
 Choose checks for the affected caller. For native consumer storage/timer
-composition, use `bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-test-consumer --test composition
+composition, use `bash scripts/dev/minimum-rust.sh cargo test --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer --test composition
 --locked --offline`; for persisted Wire records, select `--test stored_wire`;
 for endpoint codecs, select `--test api_wire`. Run the packaged adapter example
 with `bash scripts/dev/minimum-rust.sh cargo run -p ic-jobs --example persisted_job --locked --offline`.
 Qualify the core Rust floor separately with `bash scripts/dev/minimum-rust.sh cargo check -p ic-jobs
 --lib --locked --offline`. For the consumer's Wasm floor, use `bash scripts/dev/minimum-rust.sh cargo
 check -p ic-jobs-test-consumer --lib --target wasm32-unknown-unknown --locked
---offline`. Lint the affected consumer with `cargo clippy -p ic-jobs-test-consumer
+--offline`. Lint the affected consumer with `cargo clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer
 --all-targets --locked --offline -- -D warnings`, or select the Wasm target
 when runtime integration changes.
 
@@ -264,20 +274,20 @@ do not establish IC message rollback or upgrade recovery.
 
 ## Repository setup
 
-The reviewed [Shared Tooling snapshot](.shared-tooling.snapshot) records the
+The reviewed [Toko Tooling snapshot](.toko-tooling.snapshot) records the
 installed registry archive checksum, entrypoints and payload digests. The
 [common Make interface](docs/make-interface.md) owns setup, formatting, hooks,
 snapshot checks and release routing. Jobs retains product checks, dependency
 selections and release/publication policy.
 
-Root `[workspace.dependencies]` pins `toko-tooling = "=0.36.0"`; every real
+Both workspace catalogs pin `toko-tooling = "=0.38.2"`; every real
 member inherits it as a dev-dependency with an intentional cargo-machete exemption.
-Cargo.lock selects its registry checksum, and `.shared-tooling.snapshot` records
+Cargo.lock selects its registry checksum, and `.toko-tooling.snapshot` records
 the authenticated installed files. After editing the root pin, run
-`cargo update -p toko-tooling`, then `make shared-tooling-update`.
-`make shared-tooling-install` installs the existing Cargo selection; neither
+`cargo update -p toko-tooling` in both workspaces, then `make toko-tooling-update`.
+`make toko-tooling-install` installs the existing Cargo selection; neither
 installation command edits Cargo.lock. CI, release and publication entrypoints
-require `make shared-tooling-check` before effects. See the
+require `make toko-tooling-check` before effects. See the
 [installation guide](docs/consuming-snapshots.md#cargo-selection-and-installation).
 
 Run `make install-tools` to prepare common host/Rust tools and Jobs' selected IC
@@ -287,7 +297,7 @@ Jobs has no Candid extractor caller and selects no extractor installation; older
 retained installations are preserved outside the newly selected common PATH.
 For an interactive shell, prepend
 `$PWD/.tools/host/bin:$PWD/.tools/ic/bin:$PWD/.tools/rust/common/bin` to PATH.
-Use the same `SHARED_TOOLING_STORE` for setup, checks and evidence collection;
+Use the same `TOKO_TOOLING_STORE` for setup, checks and evidence collection;
 see [local setup](docs/local-setup.md) for prerequisites, storage and reuse rules.
 `make help` lists check groups and points to focused selections.
 `make install-hooks` enables the reviewed formatting hook after tool preparation;
@@ -311,7 +321,7 @@ uncached, with failed formatter logs retained for diagnosis.
 The unpublished harness uses the [selected Testkit dependency](Cargo.toml) and
 its separately admitted CLI: run `make install-testkit-tools` and
 `make testkit-tools-check` when updating that selection. PocketIC setup/check and
-live execution remain separate; see [consumer qualification](apps/ic-jobs-test-consumer/README.md).
+live execution remain separate; see [consumer qualification](qualification/ic-jobs-test-consumer/README.md).
 Common setup and ordinary CI do not launch PocketIC.
 
 Release metadata qualification additionally selects IC Build's published
@@ -326,7 +336,10 @@ The public repository is [dragginzgame/ic-scheduling](https://github.com/draggin
 Select `RELEASE_GROUP=jobs` or `RELEASE_GROUP=timers`, or an explicit frozen roster
 such as `RELEASE_GROUPS=timers,jobs`. There is no default group or shared
 root version. Batch recovery selects the saved roster with `BATCH`.
-The [group policy](ci/cargo-release-groups.json) covers all eight members.
+The [group policy](ci/cargo-release-groups.json) covers the two products; private
+qualification packages keep independent versions and remain required by validation
+plans. Shared multi-lock preparation covers both manifests/locks with rollback;
+see [release validation and workspace-owned pin checks](docs/release-validation-groups.md).
 See the [Jobs ledger](releases/jobs/CHANGELOG.md), [Timers ledger](releases/timers/CHANGELOG.md)
 and [shared history through 0.33.1](releases/history.md).
 

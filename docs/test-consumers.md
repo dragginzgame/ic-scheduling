@@ -12,22 +12,22 @@ requirements without advertising an implemented adapter.
 
 | Required observation | Existing native reference |
 | --- | --- |
-| Failed intent commit exposes no delivery and preserves committed state | [notification_commit_failure_never_exposes_delivery](../apps/ic-jobs-test-consumer/tests/composition.rs) |
-| Lost replies, failed result commits and interrupted delivery preserve blocked intent until matching evidence permits reconciliation | [interrupted_delivery_and_failed_commits_reconcile_without_redelivery](../apps/ic-jobs-test-consumer/tests/composition.rs) |
-| A known safe retry keeps its payload and rejects old replies | [retained_retry_preserves_payload_and_rejects_late_results](../apps/ic-jobs-test-consumer/src/queue/tests/recovery.rs) |
-| Reconciliation requires exact payload/effect evidence | [reconciliation_requires_matching_payload_and_prefers_success_evidence](../apps/ic-jobs-test-consumer/tests/composition.rs) |
-| Invalid records refuse before effects, including records not currently due | [actual Queue admission](../apps/ic-jobs-test-consumer/src/queue/tests/admission.rs) |
-| Authorization preserves caller and job authority | [actual Queue management](../apps/ic-jobs-test-consumer/src/queue/tests/management.rs) and [installed endpoint recovery](../crates/ic-jobs-canister-tests/tests/recovery.rs) |
-| Failed metadata commits preserve the previous committed deadline | [failed_management_commits_preserve_committed_deadlines](../apps/ic-jobs-test-consumer/tests/composition.rs) |
-| Retained allocation bindings and blocked effects survive cold reopening | [host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects](../apps/ic-jobs-test-consumer/tests/composition.rs) |
-| Wire records retain states/attempts and still require validated restoration | [stored Wire conformance](../apps/ic-jobs-test-consumer/tests/stored_wire.rs) |
+| Failed intent commit exposes no delivery and preserves committed state | [notification_commit_failure_never_exposes_delivery](../qualification/ic-jobs-test-consumer/tests/composition.rs) |
+| Lost replies, failed result commits and interrupted delivery preserve blocked intent until matching evidence permits reconciliation | [interrupted_delivery_and_failed_commits_reconcile_without_redelivery](../qualification/ic-jobs-test-consumer/tests/composition.rs) |
+| A known safe retry keeps its payload and rejects old replies | [retained_retry_preserves_payload_and_rejects_late_results](../qualification/ic-jobs-test-consumer/src/queue/tests/recovery.rs) |
+| Reconciliation requires exact payload/effect evidence | [reconciliation_requires_matching_payload_and_prefers_success_evidence](../qualification/ic-jobs-test-consumer/tests/composition.rs) |
+| Invalid records refuse before effects, including records not currently due | [actual Queue admission](../qualification/ic-jobs-test-consumer/src/queue/tests/admission.rs) |
+| Authorization preserves caller and job authority | [actual Queue management](../qualification/ic-jobs-test-consumer/src/queue/tests/management.rs) and [installed endpoint recovery](../qualification/ic-jobs-canister-tests/tests/recovery.rs) |
+| Failed metadata commits preserve the previous committed deadline | [failed_management_commits_preserve_committed_deadlines](../qualification/ic-jobs-test-consumer/tests/composition.rs) |
+| Retained allocation bindings and blocked effects survive cold reopening | [host_pool_cells_reopen_committed_jobs_without_replaying_blocked_effects](../qualification/ic-jobs-test-consumer/tests/composition.rs) |
+| Wire records retain states/attempts and still require validated restoration | [stored Wire conformance](../qualification/ic-jobs-test-consumer/tests/stored_wire.rs) |
 | Duplicate receipts and late continuations cannot overwrite terminal/successor state | [packaged adapter example](../crates/ic-jobs/examples/persisted_job.rs) |
 | Completion preserves independent management edits made during delivery | [packaged adapter example](../crates/ic-jobs/examples/persisted_job.rs) |
 
 Native tests establish composition and refusal behavior. Installed acceptance
 must separately cover upgrade reconstruction, same-message rollback of storage
 and timer changes, and lost replies followed by receipt recovery. Existing
-[canister recovery cases](../crates/ic-jobs-canister-tests/tests/recovery.rs) include
+[canister recovery cases](../qualification/ic-jobs-canister-tests/tests/recovery.rs) include
 `management_upgrade_and_real_watchdog_delivery`,
 `synchronous_trap_rolls_back_storage_identity_and_timer_changes`,
 `invalid_restore_refuses_upgrade_and_preserves_the_controller_snapshot`, and
@@ -52,7 +52,7 @@ Historical runs and their exact graph boundaries are recorded in the
 earlier executions do not qualify a changed Storage format.
 
 `make test-consumers` aggregates the small effect and transaction fixtures in
-[the integration fixture](../apps/ic-jobs-test-consumer/tests/composition.rs), stored Wire
+[the integration fixture](../qualification/ic-jobs-test-consumer/tests/composition.rs), stored Wire
 conformance and the packaged adapter example on Rust 1.99.1, using the selected
 locked graph. Select `--test composition` or `--test stored_wire` directly for
 focused consumer work; run the example separately with
@@ -74,7 +74,7 @@ Lifecycle initialization retains its separate bounded decoder. The harness's ext
 interfaces retain required Candid; Testkit uses Platform's external Candid
 decoder limits/error types without a separate decoder dependency here.
 
-The [stored Wire target](../apps/ic-jobs-test-consumer/tests/stored_wire.rs) checks every
+The [stored Wire target](../qualification/ic-jobs-test-consumer/tests/stored_wire.rs) checks every
 job state, scheduling policy, safe-retry identity, wide job IDs and active attempt
 round-trips through `ic_wire::native`. It verifies that a decoded but inconsistent
 history still refuses at `Job::restore`, and rejects truncated/trailing input and
@@ -104,8 +104,8 @@ has its own receipt protocol and commit boundary.
 
 Collection admission, ordering, cancellation past blocked work, retry payload
 identity and stale-result rejection are exercised by the actual Queue's
-[admission](../apps/ic-jobs-test-consumer/src/queue/tests/admission.rs) and
-[recovery](../apps/ic-jobs-test-consumer/src/queue/tests/recovery.rs) tests.
+[admission](../qualification/ic-jobs-test-consumer/src/queue/tests/admission.rs) and
+[recovery](../qualification/ic-jobs-test-consumer/src/queue/tests/recovery.rs) tests.
 Those tests retain the complete snapshot's corruption checks, including future
 records, and the receiver's independent duplicate-receipt checks. The retry case
 uses an admitted retained job with a budget; creation still defaults to no retries.
@@ -140,8 +140,8 @@ no fixture assigns component memory IDs.
 
 ## Consumer memory requests
 
-The unpublished consumer selects IC Storage from the root workspace catalog;
-`Cargo.lock` records the exact release. Each fixture contributes one checked `MemoryRequest`
+The unpublished consumer selects IC Storage from the qualification workspace catalog;
+`qualification/Cargo.lock` records the exact release. Each fixture contributes one checked `MemoryRequest`
 with a distinct authority and permanent logical key: `test.notifications.queue.v1`
 for the single job and immutable delivery payload, and
 `test.local.effect.v1` for the local-effect job and counter.
@@ -159,22 +159,26 @@ The fault-injection consumers retain their bounded byte store. A separate native
 host fixture uses IC Storage allocation leases and cells: namespace grants admit the
 two namespaces without component ranges or numeric IDs; the host bootstraps once
 before component adoption/open. Stable cells persist the same bounded snapshot
-bytes. Cold reopens retain allocation IDs, payloads and pending deadlines; reads
+bytes. Same-format Storage 0.71 cold reopens retain allocation IDs, payloads and pending deadlines; reads
 restore through the existing `Job::restore` boundary. Running/Uncertain intent
 remains blocked while an independent local-job cancellation persists across a
 subsequent cold reopen, without changing the blocked effect bytes.
 Foreign-owner bootstrap fails without changing backing bytes or granting opens.
 This is actual Storage collection persistence on native VectorMemory, not an IC
 upgrade, message rollback, final Canic/IcyDB composition or live timer evidence.
+Storage 0.71 rejects earlier whole-store backing without writes/growth. The
+[consumer's installation boundary](../qualification/ic-jobs-test-consumer/README.md)
+requires fresh backing or explicit owner-authorized retirement, preserving
+unresolved effects and evidence; it supplies no automatic reset or migration.
 Canic/IcyDB composition needs those applications' own qualification. No old
 allocation API or fallback remains in Jobs' consumers. The current format and
 installation disposition are documented with the
-[canister consumer](../apps/ic-jobs-test-consumer/README.md); Jobs' library acquires no
+[canister consumer](../qualification/ic-jobs-test-consumer/README.md); Jobs' library acquires no
 storage dependency or lifecycle hook.
 
 ## Durable canister consumer
 
-The unpublished [application canister](../apps/ic-jobs-test-consumer/README.md) now
+The unpublished [application canister](../qualification/ic-jobs-test-consumer/README.md) now
 implements an authenticated management API, bounded stable queue, local counter
 tasks, external delivery receipts and lifecycle-owned timer reconstruction.
 All decoded records still cross `Job::restore`; restored Running/Uncertain work

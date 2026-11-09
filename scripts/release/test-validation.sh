@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+[[ $# == 0 || ( $# == 1 && "$1" == --scope-only ) ]] || { echo "usage: test-validation.sh [--scope-only]" >&2; exit 2; }
 root="$(cd -P "${BASH_SOURCE[0]%/*}/../.." && pwd -P)"
 export PATH="$root/.tools/host/bin:$PATH"
 # shellcheck source=scripts/ci/fixture-lifecycle.sh
@@ -11,7 +12,8 @@ trap 'fixture_finish "$?" "$fixture" "Group validation fixture retained"' EXIT
 unset MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 unset RELEASE_COMMIT RELEASE_VALIDATION_EVIDENCE
 mkdir -p "$fixture/scripts/release" "$fixture/scripts/ci" "$fixture/ci" \
-    "$fixture/crates/ic-jobs/src" "$fixture/crates/ic-timers/src" "$fixture/target"
+    "$fixture/crates/ic-jobs/src" "$fixture/crates/ic-timers/src" \
+    "$fixture/qualification/ic-jobs-test-consumer/src" "$fixture/target"
 cp "$root/scripts/release/"{validation.pl,ci.sh} "$fixture/scripts/release/"
 for name in run-validation-targets.sh check-make-execution.sh verify-file-checksum.sh validation-input-checkpoint.pl release-validation-plan.pl ValidationPlan.pm validation-evidence.pl; do
     cp "$root/scripts/ci/$name" "$fixture/scripts/ci/"
@@ -21,6 +23,7 @@ printf '/target/\n' > "$fixture/.gitignore"
 printf 'workspace fixture\n' > "$fixture/Cargo.toml"
 printf 'locked fixture\n' > "$fixture/Cargo.lock"
 printf 'fn jobs() {}\n' > "$fixture/crates/ic-jobs/src/lib.rs"
+printf 'fn consumer() {}\n' > "$fixture/qualification/ic-jobs-test-consumer/src/lib.rs"
 printf 'fn timers() {}\n' > "$fixture/crates/ic-timers/src/lib.rs"
 cat > "$fixture/scripts/release/group.sh" <<'GROUP'
 #!/usr/bin/env bash
@@ -84,6 +87,24 @@ refuse() {
 scope_is() { [[ "$(jq -r .scope "$attempt/plan.json")" == "$1" ]]; }
 full_events() { perl scripts/release/validation.pl roster > target/expected; cmp target/events target/expected; }
 start_case
+printf '// relocated consumer change\n' >> qualification/ic-jobs-test-consumer/src/lib.rs
+git add -- qualification/ic-jobs-test-consumer/src/lib.rs
+git commit -qm 'Relocated consumer-owned change'
+RELEASE_SOURCE="$(git rev-parse HEAD)"
+export RELEASE_SOURCE
+select_case; scope_is group
+if [[ "${1:-}" == --scope-only ]]; then
+    start_case
+    printf 'independent qualification lock change\n' > qualification/Cargo.lock
+    git add -- qualification/Cargo.lock; git commit -qm 'Qualification graph change'
+    RELEASE_SOURCE="$(git rev-parse HEAD)"; export RELEASE_SOURCE
+    select_case; scope_is workspace
+    jq -e 'all(.stages[]; .required)' "$attempt/plan.json" > /dev/null
+    echo 'Moved Jobs qualification source retains Jobs/consumer scope; qualification lock changes retain the complete gate (selection only, no product effects)'
+    fixture_complete=true
+    exit 0
+fi
+start_case
 started="$SECONDS"
 FAIL_STAGE=test-timer-watchdog run_case
 narrow_seconds="$((SECONDS - started))"
@@ -91,7 +112,7 @@ scope_is group
 # Independent product expectation: selected Jobs keeps real consumer/tooling and
 # graph boundaries, without standalone Timers or unchanged release self-tests.
 cat > target/expected <<'JOBS'
-shared-tooling-check
+toko-tooling-check
 validation-tools-check
 check-release-groups
 clippy-jobs
@@ -182,7 +203,7 @@ start_case
 FAIL_STAGE=validation-tools-check refuse run_case
 refuse perl scripts/release/validation.pl seal "$attempt"
 [[ ! -e "$attempt/execution.json" ]]
-printf 'shared-tooling-check\nvalidation-tools-check\n' > target/expected; cmp target/events target/expected
+printf 'toko-tooling-check\nvalidation-tools-check\n' > target/expected; cmp target/events target/expected
 start_case
 INTERRUPT_STAGE=validation-tools-check refuse run_case
 refuse perl scripts/release/validation.pl seal "$attempt"

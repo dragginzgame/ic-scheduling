@@ -7,7 +7,7 @@ normal-checkout `cargo update` writes affect the next release, not active delive
 Select a multi-group roster explicitly and execute release and publication
 from that captured source; do not mix candidate validation with live publication.
 
-Every `dragginzgame` repository, including Shared Tooling and repositories without
+Every `dragginzgame` repository, including Toko Tooling and repositories without
 a publishable package, must provide these Make targets:
 
 | Command | Version change | Example from `0.1.0` |
@@ -41,7 +41,7 @@ to direct delivery; this is executable behavior, not agent authorization to push
 [PR delivery](#pr-delivery) adds review and fresh merged-commit
 validation before tagging. A repository
 without package metadata may use a dedicated version file; otherwise it uses
-its latest finalized changelog version. Shared Tooling owns its current local
+its latest finalized changelog version. Toko Tooling owns its current local
 version in root `Cargo.toml` package.version, displayed by `make version`. Ordinary meaningful work
 runs `make prepare-work` to create or reuse an explicit `- Unreleased` entry and
 align package.version. `WORK_VERSION_KIND=minor` or `major` promotes the pending batch;
@@ -79,10 +79,11 @@ version selection; pending-file mode cannot be used with a Cargo release group.
 ## Decide whether publication is needed
 
 Group membership, qualification scope and publication impact are different
-decisions. A private test, benchmark or tooling member belongs to its declared
-group, but editing it does not automatically require bumping or publishing that
-group's public packages. Keep member versions aligned at their current value
-until an actual group release. Do not create a new group merely to avoid a bump.
+decisions. Product packages belong to product release groups. Separate private
+tests, benchmarks and qualification tools belong to the independent qualification
+workspace and no product group. A group's validation plan may require their
+checks without versioning or publishing them. Keep private qualification versions
+independent; do not create a release group merely to classify a test harness.
 
 Before selecting release commands, compare the proposed source with the last
 published source for each affected public group. Use existing Cargo metadata,
@@ -102,8 +103,11 @@ This is release planning, not a new gate on every development edit.
 
 Record the decision and comparison basis in the ordinary handoff or owning issue.
 If impact cannot be established, resolve that uncertainty before declaring the
-public packages unchanged. Retain meaningful private maintenance notes in the
-owning group's pending numbered changelog entry for its next actual release;
+public packages unchanged. Retain meaningful qualification maintenance notes in
+the affected product group's pending numbered entry when they explain its
+qualification, or in the existing owning issue for shared qualification work.
+That association does not create package membership or a qualification release.
+For product-group notes,
 do not date that entry or imply that its version has been published. A pending
 note is not an instruction to release. Routine notes may be omitted under the
 normal changelog rules.
@@ -151,7 +155,7 @@ The default `RELEASE_DELIVERY=direct` workflow is:
    gate. Rust consumers run their existing Clippy gate before expensive builds,
    tests and packaging, with failure stopping later stages even under parallel
    Make. The same ordering applies to Rust deployment entrypoints under the
-   [shared validation policy](../DRAGGINZGAME.md#validation-and-evidence).
+   [shared validation policy](../TOKO-TOOLING.md#validation-and-evidence).
    Stop before version mutation if validation fails; retain failure logs
    and build artifacts. Coordinated Rust crates with unchanged versions may use
    [local archive qualification](../rules/cargo-dependencies.md#qualifying-coordinated-package-archives-before-a-version-bump)
@@ -187,7 +191,7 @@ top of the changelog until subsequent work needs a new numbered, undated pending
 entry under the [automatic next-version rules](../rules/changelogs.md).
 
 Agents maintain that proposed changelog version during ordinary development.
-Shared Tooling maintains its root package.version alongside its pending changelog;
+Toko Tooling maintains its root package.version alongside its pending changelog;
 consumer release groups keep their existing owners. This does not execute a release. Select the
 matching release kind when invoking the explicitly authorized command; its computed
 candidate must agree with the pending heading and the complete batch's
@@ -225,7 +229,7 @@ command. A helper may remove its own disposable scratch files when they contain
 no retained artifacts or evidence and are not needed for recovery. A directory
 being named `tmp` or `cache` does not establish that it is safe to delete.
 
-Shared Tooling's own `release-verify` adapter runs `ci` through
+Toko Tooling's own `release-verify` adapter runs `ci` through
 `scripts/ci/run-validation-targets.sh`. Failed attempts retain unique raw logs
 under the Git directory's `release-state/validation-failures/`, outside tracked
 release inputs. Later attempts preserve those logs; `latest.log` is only a
@@ -302,13 +306,13 @@ help:
 
 ```
 
-Non-Rust repositories set `SHARED_TOOLING_RUST := 0` before the include.
+Non-Rust repositories set `TOKO_TOOLING_RUST := 0` before the include.
 The include preserves the default goal and supplies `release-resume VERSION=X.Y.Z`.
 Its adjacent `make/execution.mk` companion rejects Make ignore-errors and
-non-executing modes before recipes run, using the existing execution probe.
+non-executing modes before release recipes run, using a recipe-scoped probe.
 Keep both the Make companion and `scripts/ci/check-make-execution.sh` selected.
 Admission resolves its probe relative to the selected include, independently of
-`SHARED_TOOLING_ROOT`; a missing companion refuses without consulting another
+`TOKO_TOOLING_ROOT`; a missing companion refuses without consulting another
 snapshot. It probes the running GNU Make executable (`MAKE_COMMAND`), preserving
 the invocation's execution flags. A consumer's recursive `MAKE` command may carry
 arguments such as `-f Makefile -f overrides.mk`; those files and arguments never
@@ -318,7 +322,7 @@ or replacing `MAKEFLAGS` cannot hide an unsafe outer invocation. Leave `MFLAGS`
 generated by GNU Make: command-line and Makefile assignments to it are refused
 because they erase that independent evidence. Safe `MAKEFLAGS` selections,
 parallel execution and ordinary release variables remain supported.
-Set `SHARED_TOOLING_ROOT` for runtime runner routing to a nested reviewed snapshot;
+Set `TOKO_TOOLING_ROOT` for runtime runner routing to a nested reviewed snapshot;
 consumer target-specific overrides still apply to recipes.
 Keep supported delivery choices and metadata adapters local. A consumer that
 supports a subset of `direct`/`pr` sets `RELEASE_DELIVERY_POLICY` before the include
@@ -342,7 +346,7 @@ publish packages, or clean artifacts. Keep those contracts explicit. Include
 as a root input to `check-release-commands.sh`; its declared companion closure
 supplies the execution probe, delivery checker and other dependencies when testing
 an adopting Makefile with the runner at `scripts/ci/run-release.sh`. That smoke
-checker binds `SHARED_TOOLING_ROOT` to its disposable checkout, overriding parent
+checker binds `TOKO_TOOLING_ROOT` to its disposable checkout, overriding parent
 environment and ordinary Makefile assignments. It substitutes the root runner;
 nested snapshots need a caller fixture
 substituting their selected runner path, as the shared include tests do.
@@ -493,7 +497,7 @@ release effects.
 Qualify missing-cache preparation, explicit offline refusal and network failure
 before compilation, unchanged locks, and interrupted metadata recovery through
 the consumer's focused launcher fixture. Native support and adoption by other
-consumers remain separately evidenced. Shared Tooling owns this convention;
+consumers remain separately evidenced. Toko Tooling owns this convention;
 consumer launchers own their workspace/toolchain and recovery inputs.
 
 ### Selected executable tools before validation
@@ -538,7 +542,7 @@ explicit offline and network failures, changed selections, invalid receipts,
 installation locks and saved-release recovery. Qualify the consumer's actual
 ordering under parallel Make and on its supported native hosts. Shared contract
 and installer coverage do not establish consumer adoption; coordinate remaining
-adoption through [#96](https://github.com/dragginzgame/shared-tooling/issues/96).
+adoption through [#96](https://github.com/dragginzgame/toko-tooling/issues/96).
 
 ### Source admission diagnostics
 
@@ -552,7 +556,7 @@ Shell adapters can delegate to
 [`check-release-source.sh`](../scripts/ci/check-release-source.sh) from the
 checkout root. With no arguments it requires clean source. Repeat
 `--allow RELATIVE-PATH` for exact consumer-owned release metadata exceptions;
-these are literal paths, not globs. Shared Tooling allows `Cargo.toml` and
+these are literal paths, not globs. Toko Tooling allows `Cargo.toml` and
 `CHANGELOG.md`. The helper separately observes index, worktree and untracked
 paths without writing the index, and rejects observation failures before
 reporting admission. Existing native-language owners may implement the same
@@ -721,7 +725,7 @@ outside immutable shared snapshots until adopting a reviewed upstream revision.
 
 ### Fixture ownership
 
-Shared Tooling owns the canonical `scripts/ci/test-release-runner.sh` regression
+Toko Tooling owns the canonical `scripts/ci/test-release-runner.sh` regression
 suite. Consumers qualify their actual Make/metadata/logger wiring, source admission
 and evidence custody against the reviewed snapshot; they need not rerun the
 producer's exhaustive implementation suites in every ordinary CI run. The owner
@@ -731,7 +735,7 @@ fails the suite even if a negative case consumes its immediate failure status.
 
 `scripts/ci/test-release-tracking.sh` separately owns real-Git tracking and lock
 races in disposable repositories, including commits, tags and local bare pushes.
-The complete Shared Tooling portable suite runs both entrypoints on Linux and
+The complete Toko Tooling portable suite runs both entrypoints on Linux and
 both macOS hosts. Consumers whose fixture authority excludes those effects can
 select the simulation suite without vendoring or invoking the native suite.
 The PR and metadata owner fixtures also use real disposable Git histories; this
@@ -779,7 +783,7 @@ that boundary.
 
 Ordinary contributions follow the [PR rules](../rules/contributions.md). The
 runner defaults to direct delivery and supports explicit PR delivery under
-the contract above ([#42](https://github.com/dragginzgame/shared-tooling/issues/42)).
+the contract above ([#42](https://github.com/dragginzgame/toko-tooling/issues/42)).
 Neither policy bypasses branch protection or required reviews. Publication,
 deployment and cleanup remain separate effects.
 
@@ -866,7 +870,7 @@ partial-upload recovery, and release execution never invokes it implicitly.
 
 The Makefile pattern specifies a contract; adding this document does not install
 helpers or prove consumer adoption. Consumers implement or align their targets,
-vendor a clean reviewed Shared Tooling revision with this document,
+vendor a clean reviewed Toko Tooling revision with this document,
 `scripts/ci/run-release.sh`, `scripts/ci/validate-release-inputs.pl`, its
 `StableVersion.pm` companion and any selected
 changelog helper, together with `scripts/ci/check-make-execution.sh`, in the
@@ -892,7 +896,7 @@ Qualification must not publish a real release
 as a side effect of testing. Documentation review or a stub pass is not evidence
 of live package publication or a native host release.
 Supplement effect/interruption stubs with real Git index/tree checks at staging
-boundaries. Shared Tooling's metadata fixture reuses existing history without
+boundaries. Toko Tooling's metadata fixture reuses existing history without
 creating commits and exercises the actual adapter's failed-log retention.
 
 ## Cargo release candidate rendering
@@ -944,7 +948,7 @@ The Shared Cargo adapter delegates these operations using the selections above.
 
 The command uses TOML-owned literal spans and complete context admission. It
 preserves unrelated bytes, source-qualified lock references, saved-source
-identities and simple local requirement precision. Shared Tooling retains source
+identities and simple local requirement precision. Toko Tooling retains source
 admission, originals, changelog preparation, independent locked/offline Cargo
 graph checks and restoration on renderer or graph failure. Keep saved-byte
 comparison separate from parsed semantic equality at its owning boundary.
@@ -986,7 +990,7 @@ failure also refuses an otherwise successful check. Root input copies do not fre
 configuration in a live workspace. A selected committed-source check additionally
 retains its exported tree. Neither path retries Cargo or repairs the lockfile.
 
-IC Metrics adopts the corrected helper from committed Shared Tooling 0.11.1
+IC Metrics adopts the corrected helper from committed Toko Tooling 0.11.1
 through normal snapshot distribution, retaining its local policy in a thin adapter.
 Other Cargo consumers must retain their own file set, recovery and metadata policy
 when qualifying this adapter; it is not a fleet-wide automatic replacement.
@@ -1014,7 +1018,7 @@ An approved consumer declares `ci/cargo-release-groups.json`, for example:
       "name": "codec",
       "primary": "ic-wire",
       "version": "package",
-      "members": ["ic-wire", "ic-wire-derive", "ic-wire-benchmarks"],
+      "members": ["ic-wire", "ic-wire-derive"],
       "changelog": "releases/codec/CHANGELOG.md",
       "dependencies": ["ic-wire", "ic-wire-derive"]
     },
@@ -1031,8 +1035,9 @@ An approved consumer declares `ci/cargo-release-groups.json`, for example:
 ```
 
 This is an illustrative approved layout, not an instruction to create these
-packages or select their versions. Every actual workspace member, including
-private qualification packages, belongs to exactly one group. Names and ledgers
+packages or select their versions. Every actual product-workspace member belongs
+to exactly one group. Qualification-only packages are in the separate
+`qualification/` workspace and belong to none of these groups. Names and ledgers
 are unique. Every independent group uses `version: "package"`: literal
 `package.version` values in every member, all matching its primary member. The
 primary owns only that group's version; no group is the workspace master. No
@@ -1071,6 +1076,15 @@ its transaction on failure. The consumer owns their rendering, semantic checks
 and any recovery spanning its additional preparation steps; listing a file does
 not supply those checks or make the whole consumer adapter transactional.
 An unselected group's additional metadata remains outside the staging roster.
+
+The [product/qualification standard](../rules/rust-workspaces.md#qualification-and-release-group-relationships)
+requires affected product references and qualification locks to be prepared,
+validated and installed atomically with release metadata, without advancing
+qualification-package versions or unrelated suppliers. Shared qualification
+metadata is not a group-membership declaration. Use the shared
+[qualification release preparation](#qualification-release-preparation) below;
+consumers retain product-specific semantic checks and the mapping of groups to
+qualification commands. Additional-file declarations alone do not render locks.
 
 `dependencies` explicitly lists root `workspace.dependencies` aliases with both
 path and version that refer to members of that group, including renamed aliases
@@ -1175,6 +1189,62 @@ leaves Cargo's dependency ordering intact. Group release does not publish anothe
 group or waive any package's publication checks. No group is inferred and no
 second release runner is introduced.
 
+### Qualification release preparation
+
+From 0.38.1, declare `"qualification_workspace": "qualification"` at the top
+level of `ci/cargo-release-groups.json`. This selects the standard independent
+virtual workspace; it is not a second release group. Remove its manifest and
+lock from `shared_metadata_files` or group-local `metadata_files`: the shared
+helper now owns both paths and rejects duplicate ownership.
+
+Use `cargo-release-group.sh prepare GROUP` (or the existing
+`cargo-release-metadata.sh` dispatch with `RELEASE_GROUP`) and its `files`,
+`check` and `check-graph` operations. The admitted file plan automatically
+includes `qualification/Cargo.toml` and `qualification/Cargo.lock`. Keep the
+prepared IC Build editor and byte allowance described above. Delete consumer
+copies of group-manifest/lock rendering after qualifying this shared caller.
+No new editor installation belongs in ordinary setup or metadata checks.
+
+A coordinated product workspace can use one group with `version: "workspace"`,
+all product members and its existing `CHANGELOG.md`. This selects the same
+multi-lock implementation without creating independent product versions or
+changing private versions. Pass that group explicitly through the release
+adapter and consume its exact file plan; the unconfigured coordinated helper
+continues to handle one workspace only.
+
+Qualification members must be unpublished and consume product packages through
+their own `workspace.dependencies` catalog. Product aliases use local paths,
+optionally with the full current version and a bare, `^`, `~` or `=` requirement.
+Path-only aliases are supported. Members inherit those aliases; direct member
+requirements and stale bounds refuse. Every product alias is checked against
+its actual product member path, including unused aliases. A group need not be
+used by qualification: in that case its qualification lock stays unchanged.
+
+Preparation admits both locked/offline graphs, renders every candidate before
+installation, and validates both resulting graphs in one
+`release_metadata_prepare` transaction. Only selected product versions and their
+requirements change; private versions and unrelated package identities remain
+fixed. Editor lock projection preserves unrelated supplier selections and
+checksums. Product edges into qualification refuse. Commit-bound checks export
+and check both workspaces; optional manifest ordering checks both too.
+
+Here, atomic preparation means all-or-rollback for caught failures, not a
+filesystem-wide atomic rename or crash durability. Originals and candidates are
+retained on failure; an uncatchable interruption still requires the existing
+release reconciliation workflow. Do not adopt a changed file plan during an
+unfinished release attempt. Exclusive source custody remains the adapter's job.
+
+The shared qualification fixture covers versioned/renamed and path-only aliases,
+an unused group, private-version preservation, malformed inputs, committed-source
+checks, renderer failure and rollback after qualification graph failure.
+Consumers qualify only their actual wiring, required feature/target checks,
+file/receipt inventories and recovery integration. Resolver isolation should
+also be demonstrated locally: an incompatible qualification-only supplier must
+fail qualification without preventing product resolution. Do not copy the
+generic fixture suite into consumers or equate metadata admission with tests of
+the product. This completes the shared mechanics identified in
+[#369](https://github.com/dragginzgame/toko-tooling/issues/369).
+
 ### Pure release input admission
 
 `scripts/ci/validate-release-inputs.pl version X.Y.Z` accepts canonical stable
@@ -1274,4 +1344,4 @@ render, repair source or authorize release effects.
 Normal group plans still require successful full locked metadata and unchanged
 version/catalog admission. Qualify a consumer's actual scratch recovery before
 retiring its existing bootstrap code. See
-[#333 — Review a shared read-only observation boundary for grouped Cargo bootstrap](https://github.com/dragginzgame/shared-tooling/issues/333).
+[#333 — Review a shared read-only observation boundary for grouped Cargo bootstrap](https://github.com/dragginzgame/toko-tooling/issues/333).

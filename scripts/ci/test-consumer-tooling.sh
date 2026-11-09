@@ -4,11 +4,11 @@ set -euo pipefail
 # only their affected caller phases, without replaying installer/hosted suites.
 phases=("$@")
 if [[ $# == 0 ]]; then
-    phases=(candid-boundary fixture-scratch batch-commands tooling-admission cli-admission server-commands workflow-selection input-admission artifact-capture ci-admission rust-policy group-recipes)
+    phases=(workspace-inheritance candid-boundary fixture-scratch batch-commands tooling-admission cli-admission server-commands workflow-selection input-admission artifact-capture ci-admission rust-policy group-recipes)
 fi
 for phase in "${phases[@]}"; do
     case "$phase" in
-        candid-boundary|fixture-scratch|batch-commands|tooling-admission|cli-admission|server-commands|workflow-selection|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
+        workspace-inheritance|candid-boundary|fixture-scratch|batch-commands|tooling-admission|cli-admission|server-commands|workflow-selection|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
         *) echo "unknown consumer tooling phase: $phase" >&2; exit 2 ;;
     esac
 done
@@ -42,6 +42,9 @@ prepare_phase() {
     cp "$root/Cargo.toml" "$root/rust-toolchain.toml" "$fixture/"
     cp "$root/scripts/ci/"{verify-file-checksum,test-canister,fixture-lifecycle}.sh "$fixture/scripts/ci/"
     cp "$root/Cargo.lock" "$fixture/"
+    mkdir -p "$fixture/qualification"
+    cp "$root/qualification/"{Cargo.toml,Cargo.lock} "$fixture/qualification/"
+    cp "$root/scripts/ci/"{check-qualification-tooling,check-workspace-inheritance}.sh "$fixture/scripts/ci/"
     export JOBS_CONSUMER_TOOLING_EVENTS="$fixture/events"
     : > "$fixture/events"
 }
@@ -52,9 +55,9 @@ cat > "$fixture/scripts/dev/install-rust-tools.sh" <<'INSTALLER'
 #!/usr/bin/env bash
 set -euo pipefail
 case "$*" in
-    '--package ic-testkit --lockfile Cargo.lock --bin ic-testkit-server --profile release --features cli')
+    '--package ic-testkit --lockfile qualification/Cargo.lock --bin ic-testkit-server --profile release --features cli')
         printf 'setup\n' >> "$JOBS_CONSUMER_TOOLING_EVENTS" ;;
-    '--package ic-testkit --lockfile Cargo.lock --bin ic-testkit-server --profile release --features cli --check')
+    '--package ic-testkit --lockfile qualification/Cargo.lock --bin ic-testkit-server --profile release --features cli --check')
         printf 'admission\n' >> "$JOBS_CONSUMER_TOOLING_EVENTS"
         echo 'selected CLI admission diagnostic' >&2
         [[ "$JOBS_CONSUMER_ADMISSION_FAILURE" == 0 ]] || exit 37
@@ -73,21 +76,50 @@ CARGO
 chmod +x "$fixture/.tools/rust/common/bin/cargo"
 }
 
+phase_workspace_inheritance() (
+    prepare_phase workspace-inheritance
+    tar -C "$root" --exclude=target -cf - crates qualification | tar -C "$fixture" -xf -
+    mkdir -p "$fixture/releases/jobs" "$fixture/releases/timers"
+    cp "$root/releases/jobs/CHANGELOG.md" "$fixture/releases/jobs/"
+    cp "$root/releases/timers/CHANGELOG.md" "$fixture/releases/timers/"
+    bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" scripts/ci/check-workspace-inheritance.sh
+    bash "$fixture/scripts/ci/check-workspace-inheritance.sh" > "$fixture/valid.log" 2>&1
+    for invalid in product-version missing-private-version private-dependency target-dependency published-qualification; do
+        cp "$root/crates/ic-timers/Cargo.toml" "$fixture/crates/ic-timers/Cargo.toml"
+        cp "$root/qualification/ic-jobs-canister-tests/Cargo.toml" "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml"
+        case "$invalid" in
+            product-version) perl -pi -e 's/^version = "[^"]+"/version = "0.0.0"/' "$fixture/crates/ic-timers/Cargo.toml" ;;
+            missing-private-version) perl -ni -e 'print unless /^version = /' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
+            private-dependency) perl -pi -e 's/^toko-tooling.workspace = true/toko-tooling = "=0.38.2"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
+            target-dependency) printf '\n%s\n%s\n' "[target.'cfg(unix)'.dev-dependencies]" 'serde = "1.0"' >> "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
+            published-qualification) perl -pi -e 's/^publish = false/publish = ["crates-io"]/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
+        esac
+        if bash "$fixture/scripts/ci/check-workspace-inheritance.sh" > "$fixture/$invalid.log" 2>&1; then
+            echo "workspace inheritance admitted $invalid" >&2; exit 1
+        fi
+        [[ -s "$fixture/$invalid.log" ]]
+        case "$invalid" in
+            private-dependency|target-dependency) grep -F 'package dependencies must inherit workspace.dependencies' "$fixture/$invalid.log" >/dev/null ;;
+        esac
+    done
+    echo 'Actual shared inheritance caller admits independent private versions and refuses stale products, missing versions, independent/target dependencies and publishable qualification'
+)
+
 phase_tooling_admission() (
 local fixture
 trap - EXIT
 prepare_phase tooling-admission
-cp "$root/.shared-tooling.snapshot" "$fixture/"
+cp "$root/.toko-tooling.snapshot" "$fixture/"
 # Admit the actual member manifests and receipt, without compiling product code.
-cp -R "$root/crates" "$root/apps" "$fixture/"
+tar -C "$root" --exclude=target -cf - crates qualification | tar -C "$fixture" -xf -
 while IFS=$'\t' read -r kind _ _ path; do
     [[ "$kind" == file ]] || continue
     [[ "$path" != */* ]] || mkdir -p "$fixture/${path%/*}"
     cp -p "$root/$path" "$fixture/$path"
-done < "$root/.shared-tooling.snapshot"
+done < "$root/.toko-tooling.snapshot"
 mkdir -p "$fixture/scripts/release"
-cp "$root/scripts/release/"{group,publish}.sh "$fixture/scripts/release/"
-make --no-print-directory -C "$fixture" shared-tooling-check > "$fixture/admitted.log" 2>&1
+cp "$root/scripts/release/"{group,publish,candidate-setup,metadata}.sh "$fixture/scripts/release/"
+make --no-print-directory -C "$fixture" toko-tooling-check > "$fixture/admitted.log" 2>&1
 # Cargo metadata is a required read for member admission. Refuse compilation,
 # resolution, Git and network effects through the actual consumer entrypoints.
 local -x JOBS_CONSUMER_REAL_CARGO
@@ -110,36 +142,44 @@ exit 49
 EFFECT
     chmod +x "$fixture/.tools/rust/common/bin/$tool"
 done
-PATH="$fixture/.tools/rust/common/bin:$PATH" make --no-print-directory -C "$fixture" shared-tooling-check > "$fixture/admitted-with-effect-guards.log" 2>&1
+PATH="$fixture/.tools/rust/common/bin:$PATH" make --no-print-directory -C "$fixture" toko-tooling-check > "$fixture/admitted-with-effect-guards.log" 2>&1
 [[ ! -s "$fixture/events" ]]
-for invalid in missing-lock version-drift checksum-drift missing-member independent-member; do
+for invalid in missing-lock version-drift checksum-drift missing-member independent-member missing-product-member qualification-version-drift qualification-checksum-drift; do
     cp "$root/"{Cargo.toml,Cargo.lock} "$fixture/"
-    cp "$root/crates/ic-timers-size-probe/Cargo.toml" "$fixture/crates/ic-timers-size-probe/Cargo.toml"
+    cp "$root/qualification/"{Cargo.toml,Cargo.lock} "$fixture/qualification/"
+    cp "$root/crates/ic-jobs/Cargo.toml" "$fixture/crates/ic-jobs/Cargo.toml"
+    cp "$root/qualification/ic-timers-size-probe/Cargo.toml" "$fixture/qualification/ic-timers-size-probe/Cargo.toml"
     case "$invalid" in
+        missing-product-member)
+            perl -0pi -e 's/^toko-tooling\.workspace = true\n//m' "$fixture/crates/ic-jobs/Cargo.toml" ;;
+        qualification-version-drift)
+            perl -0pi -e 's/(toko-tooling = ")=[^"]+/${1}=0.0.0/' "$fixture/qualification/Cargo.toml" ;;
+        qualification-checksum-drift)
+            perl -0pi -e 's/(name = "toko-tooling"\nversion = "[^"]+"\nsource = "[^"]+"\nchecksum = )"[^"]+"/${1}"0000000000000000000000000000000000000000000000000000000000000000"/' "$fixture/qualification/Cargo.lock" ;;
         missing-lock) rm "$fixture/Cargo.lock" ;;
         version-drift)
             perl -0pi -e 's/(toko-tooling = ")=[^"]+/${1}=0.0.0/' "$fixture/Cargo.toml" ;;
         checksum-drift)
             perl -0pi -e 's/(name = "toko-tooling"\nversion = "[^"]+"\nsource = "[^"]+"\nchecksum = )"[^"]+"/${1}"0000000000000000000000000000000000000000000000000000000000000000"/' "$fixture/Cargo.lock" ;;
         missing-member)
-            perl -0pi -e 's/^toko-tooling\.workspace = true\n//m' "$fixture/crates/ic-timers-size-probe/Cargo.toml" ;;
+            perl -0pi -e 's/^toko-tooling\.workspace = true\n//m' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
         independent-member)
-            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.36.0"/' "$fixture/crates/ic-timers-size-probe/Cargo.toml" ;;
+            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.38.2"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
     esac
     for target in ci release-patch release-preflight publish publish-check clean-empty-source-dirs; do
         status=0
         PATH="$fixture/.tools/rust/common/bin:$PATH" RELEASE_GROUP="jobs" make --no-print-directory -C "$fixture" "$target" \
             > "$fixture/$invalid-$target.log" 2>&1 || status=$?
         [[ "$status" == 2 && ! -s "$fixture/events" ]] || exit 1
-        grep -F 'shared-tooling-check' "$fixture/$invalid-$target.log" > /dev/null
+        grep -E 'toko-tooling-check|check-qualification-tooling' "$fixture/$invalid-$target.log" > /dev/null
     done
     status=0
     PATH="$fixture/.tools/rust/common/bin:$PATH" RELEASE_GROUP="jobs" bash "$fixture/scripts/release/publish.sh" origin \
         > "$fixture/$invalid-direct-publish.log" 2>&1 || status=$?
     [[ "$status" != 0 && ! -s "$fixture/events" ]] || exit 1
-    grep -F 'shared-tooling-check' "$fixture/$invalid-direct-publish.log" > /dev/null
+    grep -E 'toko-tooling-check|check-qualification-tooling' "$fixture/$invalid-direct-publish.log" > /dev/null
 done
-echo 'Cargo-owned Tooling admission rejects lock/pin/receipt drift and non-default member omissions/overrides before compiler, Git or network effects (35 actual caller routes)'
+echo 'Cargo-owned Tooling admission rejects lock/pin/receipt drift and non-default member omissions/overrides before compiler, Git or network effects (56 actual caller routes across product and qualification)'
 )
 
 phase_cli_admission() (
@@ -150,7 +190,7 @@ prepare_phase cli-admission
 # the real installer/parser must refuse the isolated, unprepared source cache.
 mkdir -p "$fixture/compiler/bin"
 (umask 077; mkdir -p "$fixture/store/cargo-cache")
-export SHARED_TOOLING_STORE="$fixture/store" JOBS_CONSUMER_COMPILER="$fixture/compiler"
+export TOKO_TOOLING_STORE="$fixture/store" JOBS_CONSUMER_COMPILER="$fixture/compiler"
 export CARGO_NET_OFFLINE=true
 cat > "$fixture/.tools/rust/common/bin/rustc" <<'RUSTC'
 #!/usr/bin/env bash
@@ -174,7 +214,7 @@ cp "$fixture/.tools/rust/common/bin/"{cargo,rustc} "$fixture/compiler/bin/"
 # Both selections are deliberately unprepared; neither may fall back to a pin
 # or dispatch compilation/installation after offline admission fails.
 for version in 0.0.1 0.0.2; do
-    cat > "$fixture/Cargo.lock" <<LOCK
+    cat > "$fixture/qualification/Cargo.lock" <<LOCK
 version = 4
 
 [[package]]
@@ -182,7 +222,7 @@ name = "ic-testkit"
 version = "$version"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 LOCK
-    cp "$fixture/Cargo.lock" "$fixture/expected.lock"
+    cp "$fixture/qualification/Cargo.lock" "$fixture/expected.lock"
     for target in testkit-tools-check consumer-server-check test-canister test-canister-optimized; do
         status=0
         make --no-print-directory -j2 -C "$fixture" "$target" \
@@ -191,7 +231,7 @@ LOCK
         grep -F "ic-testkit $version" \
             "$fixture/$version-$target.log" > /dev/null
         [[ ! -s "$fixture/events" ]] || exit 1
-        cmp "$fixture/Cargo.lock" "$fixture/expected.lock"
+        cmp "$fixture/qualification/Cargo.lock" "$fixture/expected.lock"
     done
     for mode in original optimized; do
         args=()
@@ -204,7 +244,7 @@ LOCK
         grep -F "ic-testkit $version" \
             "$fixture/$version-wrapper-$mode.log" > /dev/null
         [[ ! -s "$fixture/events" ]] || exit 1
-        cmp "$fixture/Cargo.lock" "$fixture/expected.lock"
+        cmp "$fixture/qualification/Cargo.lock" "$fixture/expected.lock"
     done
 done
 echo 'Lock-selected consumer CLI refusal precedes Cargo/PocketIC effects (real caller/parser; substitute compiler identity; no installation)'
@@ -335,7 +375,7 @@ capture="$fixture/wasm/debug/jobs-capture-artifact"
 printf 'retained Wasm input\n' > "$fixture/input"
 # shellcheck disable=SC2030,SC2031 # Stub inputs intentionally stay inside this phase.
 local -x JOBS_CONSUMER_WASM_TARGET="$fixture/wasm"
-target="$(cargo "+$JOBS_CONSUMER_RUST_VERSION" metadata --format-version 1 --no-deps --locked --offline | jq -er .target_directory)"
+target="$(cargo "+$JOBS_CONSUMER_RUST_VERSION" metadata --manifest-path qualification/Cargo.toml --format-version 1 --no-deps --locked --offline | jq -er .target_directory)"
 cp "$target/debug/jobs-capture-artifact" "$capture"
 stub_target_directory
 # The real recovery wrapper must consume one frozen original even if the live
@@ -343,7 +383,7 @@ stub_target_directory
 # substituted; flags, paths, hashes, logs and all dispatch plumbing are real.
 mkdir -p "$fixture/selected/bin" "$fixture/ic-bin" "$fixture/.tools/ic"
 cp "$root/.tools/ic/"{pins.tsv,files.sha256} "$fixture/.tools/ic/"
-cp "$root/.shared-tooling.snapshot" "$fixture/"
+cp "$root/.toko-tooling.snapshot" "$fixture/"
 printf '{}\n' > "$fixture/selected/selection.json"
 # shellcheck disable=SC2030,SC2031 # Stub inputs intentionally stay inside this phase.
 local -x JOBS_CONSUMER_CLI="$fixture/selected/bin/ic-testkit-server"
@@ -381,7 +421,7 @@ variant="${5%/server.stdout}"; variant="${variant##*/}"
 printf 'server stdout\n' > "$5"
 printf 'server stderr\n' > "$7"
 shift 8
-[[ "$*" == 'bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --test recovery --features harness --locked --offline -- --ignored --test-threads=1 --nocapture' ]] || exit 49
+[[ "$*" == 'bash scripts/dev/minimum-rust.sh cargo test --manifest-path qualification/Cargo.toml -p ic-jobs-canister-tests --test recovery --features harness --locked --offline -- --ignored --test-threads=1 --nocapture' ]] || exit 49
 printf '%s\n' "$IC_JOBS_CONSUMER_WASM" >> "$JOBS_CONSUMER_CAPTURED/paths"
 cp "$IC_JOBS_CONSUMER_WASM" "$JOBS_CONSUMER_CAPTURED/$variant.wasm"
 printf 'replaced mutable producer\n' > "$JOBS_CONSUMER_PRODUCER"
@@ -451,8 +491,8 @@ cp "$root/scripts/ci/"{ValidationPlan.pm,validation-evidence.pl} "$fixture/scrip
 # Run Jobs' actual CI route only through its first admission stage. Substitute
 # tool effects and mutate a selected input there; the logger must block all
 # subsequent product checks without compilation, installation or server effects.
-cp "$root/"{Cargo.toml,.shared-tooling.snapshot,rust-toolchain.toml} "$fixture/"
-for member in crates/ic-jobs apps/ic-jobs-test-consumer crates/ic-jobs-canister-tests crates/ic-timers crates/ic-timers-pocketic crates/ic-timers-runtime-probe crates/ic-timers-size-probe crates/ic-timers-test-protocol; do
+cp "$root/"{Cargo.toml,.toko-tooling.snapshot,rust-toolchain.toml} "$fixture/"
+for member in crates/ic-jobs qualification/ic-jobs-test-consumer qualification/ic-jobs-canister-tests crates/ic-timers qualification/ic-timers-pocketic qualification/ic-timers-runtime-probe qualification/ic-timers-size-probe qualification/ic-timers-test-protocol; do
     mkdir -p "$fixture/$member"
     cp "$root/$member/Cargo.toml" "$fixture/$member/"
 done
@@ -460,10 +500,10 @@ cp "$root/scripts/ci/"{run-validation-targets,check-format-tools}.sh "$fixture/s
 cp "$root/scripts/ci/classify-ci-change.pl" "$fixture/scripts/ci/"
 mkdir -p "$fixture/.github/workflows"
 cp "$root/.github/workflows/"{ci,recovery}.yml "$fixture/.github/workflows/"
-cat > "$fixture/scripts/dev/shared-tooling.sh" <<'VERIFY'
+cat > "$fixture/scripts/dev/toko-tooling.sh" <<'VERIFY'
 #!/usr/bin/env bash
 # Snapshot admission is substituted here; this phase owns later input drift.
-[[ "$*" == "check --consumer $PWD --manifest .shared-tooling.snapshot" ]]
+[[ "$*" == "check --consumer $PWD --manifest .toko-tooling.snapshot" ]]
 VERIFY
 for toolset in host ic rust; do
     cat > "$fixture/scripts/dev/install-$toolset-tools.sh" <<'ADMISSION'
@@ -480,7 +520,7 @@ ADMISSION
 done
 # shellcheck disable=SC1091
 . "$root/ci/tool-versions.env"
-export JOBS_CONSUMER_SORT_VERSION="$SHARED_TOOLING_CARGO_SORT_VERSION"
+export JOBS_CONSUMER_SORT_VERSION="$TOKO_TOOLING_CARGO_SORT_VERSION"
 cat > "$fixture/.tools/rust/common/bin/cargo" <<'CARGO'
 #!/usr/bin/env bash
 case "$*" in
@@ -533,7 +573,7 @@ for selection in 1.92 1.92.3; do
     POLICY_PIN="$expected" perl -pi -e 's/^channel = "[^"]*"/channel = "$ENV{POLICY_PIN}"/' "$fixture/rust-toolchain.toml"
     : > "$fixture/events"
     make --no-print-directory -C "$fixture" build-consumer > "$fixture/$selection.log" 2>&1
-    printf '+%s build -p ic-jobs-test-consumer --release --target wasm32-unknown-unknown --locked --offline\n' \
+    printf '+%s build --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer --release --target wasm32-unknown-unknown --locked --offline\n' \
         "$expected" > "$fixture/expected"
     cmp "$fixture/expected" "$fixture/events"
 done
@@ -635,8 +675,8 @@ exec cargo "$@"
 POLICY
 cat > "$fixture/expected-jobs" <<'JOBS'
 clippy -p ic-jobs --all-targets --all-features --locked --offline -- -D warnings
-clippy -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline -- -D warnings
-clippy -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline -- -D warnings
+clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline -- -D warnings
+clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline -- -D warnings
 doc -p ic-jobs --all-features --locked --offline --no-deps
 test -p ic-jobs --doc --all-features --locked --offline
 package -p ic-jobs --all-features --locked --offline --allow-dirty
@@ -645,8 +685,8 @@ make --no-print-directory -C "$fixture" clippy-jobs docs-jobs package-jobs > "$f
 cmp "$fixture/events" "$fixture/expected-jobs"
 cat > "$fixture/expected-full" <<'FULL'
 clippy -p ic-jobs --all-targets --all-features --locked --offline -- -D warnings
-clippy -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline -- -D warnings
-clippy -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline -- -D warnings
+clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline -- -D warnings
+clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline -- -D warnings
 clippy -p ic-timers --all-targets --locked --offline -- -D warnings
 doc -p ic-jobs --all-features --locked --offline --no-deps
 test -p ic-jobs --doc --all-features --locked --offline
@@ -673,7 +713,7 @@ phase_batch_commands() (
     unset RELEASE_GROUP RELEASE_BATCH_ACTIVE RELEASE_GROUPS RELEASE_PUBLISH_TARGET
     # Exercise the actual consumer Make includes; lifecycle effects stay with
     # Shared's producer suite. This is routing proof, not frozen-hook qualification.
-    cat > "$fixture/scripts/dev/shared-tooling.sh" <<'ADMISSION'
+    cat > "$fixture/scripts/dev/toko-tooling.sh" <<'ADMISSION'
 #!/usr/bin/env bash
 [[ "${1:-}" == check ]]
 ADMISSION
@@ -731,17 +771,18 @@ RUNNER
 phase_candid_boundary() (
     prepare_phase candid-boundary
     bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" scripts/ci/check-candid-boundary.pl
-    mkdir -p "$fixture/crates/gate/src" "$fixture/apps/probe/src"
+    mkdir -p "$fixture/crates/gate/src" "$fixture/crates/probe/src" "$fixture/qualification/probe/src"
+    printf 'pub struct Qualification;\n' > "$fixture/qualification/probe/src/lib.rs"
     # Parser inputs only: these sample declarations are never compiled/injected.
     printf 'pub struct Owned;\nuse ic_platform::certification::cbor;\n' > "$fixture/crates/gate/src/lib.rs"
-    printf 'pub struct Probe;\n' > "$fixture/apps/probe/src/lib.rs"
+    printf 'pub struct Probe;\n' > "$fixture/crates/probe/src/lib.rs"
     cat > "$fixture/scripts/ci/check-cargo-dependency-boundaries.sh" <<'BOUNDARY'
 #!/usr/bin/env bash
 printf 'dependency admission\n' >> "$JOBS_CONSUMER_TOOLING_EVENTS"
 BOUNDARY
     make --no-print-directory -C "$fixture" check-dependency-boundaries > "$fixture/valid.log" 2>&1
-    [[ "$(cat "$fixture/events")" == 'dependency admission' ]]
-    for source in apps/probe/src/lib.rs crates/gate/src/lib.rs; do
+    [[ "$(cat "$fixture/events")" == $'dependency admission\ndependency admission' ]]
+    for source in crates/probe/src/lib.rs crates/gate/src/lib.rs; do
         for input in '#[derive(CandidType)] pub struct Owned;' 'pub use serde_cbor as packet_codec;'; do
             : > "$fixture/events"
             printf '%s\n' "$input" > "$fixture/$source"
@@ -767,7 +808,7 @@ MANIFEST
     printf '[{"dependency":"serde_cbor","allowed_packages":["boundary-probe"]}]\n' > "$fixture/ci/cargo-dependency-boundaries.json"
     if make --no-print-directory -C "$fixture" check-dependency-boundaries > "$fixture/cargo-rejected.log" 2>&1; then exit 1; fi
     grep -F 'boundary-probe -> serde_cbor' "$fixture/cargo-rejected.log" > /dev/null
-    echo 'Actual common boundary covers crates/apps Candid and CBOR source refusals before Cargo, then rejects a real aliased/optional/target CBOR declaration despite local permission'
+    echo 'Actual common boundary covers both first-party packages’ Candid and CBOR source refusals before Cargo, then rejects a real aliased/optional/target CBOR declaration despite local permission'
 )
 
 phase_fixture_scratch() (

@@ -1,7 +1,7 @@
 # Cargo dependency ownership
 <!-- Shared companions: ci/examples/platform-owner-boundaries.json rules/rust-workspaces.md rules/hashing.md -->
 
-These rules are part of the mandatory [engineering baseline](../DRAGGINZGAME.md).
+These rules are part of the mandatory [engineering baseline](../TOKO-TOOLING.md).
 The repository's root `Cargo.toml` is the authoritative catalog of direct
 dependencies and their version/source selections.
 The [workspace layout rules](rust-workspaces.md) require a virtual root, define
@@ -11,6 +11,10 @@ same owning root catalog regardless of its directory; package grouping does
 not authorize separate dependency selections.
 The [pinning rules](dependency-pinning.md) define compatible ranges, justified
 exact constraints, immutable Git revisions, lockfiles and external path inputs.
+Apply the baseline's
+[current dependency selection rule](../TOKO-TOOLING.md#current-dependencies-and-upstream-independence)
+when adding or updating dependencies. General-purpose selections are independent
+of older DFINITY transitive requirements; justified multiple versions are allowed.
 
 ## Shared boundary check
 
@@ -111,12 +115,13 @@ compile does not prove installed IC or macOS behavior.
   for the supported Cargo versions when centralizing declarations; inheritance
   must not silently enable features or raise MSRV.
 - Excluded packages, examples, integration harnesses and nested workspaces are
-  not implicit exemptions. An independently scoped child workspace requires a
-  documented boundary under the
-  [core and integration graph rule](rust-workspaces.md#core-and-integration-graph-boundary)
-  or a maintainer-approved exception. Name its authoritative root, scope and
-  reason in the local overlay so dependency ownership remains visible; each
-  independent workspace still owns its catalog and lockfile.
+  not exemptions from catalog inheritance. Separate qualification packages use
+  the standard independent `qualification/` workspace under the
+  [workspace rule](rust-workspaces.md#standard-layout), with their own catalog
+  and lockfile. Name each authoritative root and scope in the local overlay.
+  Additional nonstandard workspaces need a scoped maintainer exception. Product
+  packages must not declare normal, build or dev dependencies on qualification
+  packages; qualification consumes the products it checks.
 - Add or update the root catalog and affected inherited uses in the same batch.
   During manifest review, inspect every child dependency table, including target,
   development and build tables, for standalone version/source declarations.
@@ -135,6 +140,14 @@ Use the [CBOR source mode](../docs/candid-boundary.md#optional-cbor-source-enfor
 and [browser check](../docs/node-tools.md) alongside Cargo declarations.
 
 ## External IC dependency boundary
+
+The unpublished `ic-wire-benchmarks` package may select `candid` as an
+unconditional dev dependency solely for its independent codec oracle, including
+its Wasm measurement guest. This does not permit a production adapter, public
+package, normal/build edge, other SDK dependency or a replacement Platform
+codec mislabeled as Candid. Keep comparison inputs and admission changes explicit.
+Consumer policy may narrow this exception. Platform removed upstream Candid
+forwarding in 0.28; the oracle belongs to the comparison owner.
 
 The Tooling-owned `ic-testkit` native PocketIC implementation may select
 `candid`, `ic-certification`, `ic-management-canister-types` and
@@ -187,7 +200,7 @@ codec and fixture ownership follows the
 even when a CBOR package is not IC-specific. The native Testkit exception above
 does not include CBOR codecs.
 
-Apply the baseline's [IC application encoding policy](../DRAGGINZGAME.md#ic-application-encoding)
+Apply the baseline's [IC application encoding policy](../TOKO-TOOLING.md#ic-application-encoding)
 before adding or retaining a Candid dependency or requesting another Platform
 Candid facade. Owned application endpoints use `ic-wire`, including public
 endpoints with third-party callers. `ic-platform` supplies the explicit adapter
@@ -472,7 +485,7 @@ The root lists the complete direct dependency catalog; each child declares which
 entries it uses. Cargo's supported inheritance and feature rules are documented
 in [the Cargo Book](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#inheriting-a-dependency-from-a-workspace).
 
-## Shared Tooling during dependency updates
+## Toko Tooling during dependency updates
 
 Select Toko Tooling once in root `[workspace.dependencies]` with an exact
 `=X.Y.Z` crates.io pin. Every real workspace package must inherit it under
@@ -484,9 +497,9 @@ normal/build dependency or artificial Rust import is allowed. Merge an intention
 
 `cargo update -v` exposes newer releases without changing the exact pin. After
 editing that pin, update Cargo.lock with `cargo update -p toko-tooling` and run
-`make shared-tooling-update` to install the actual authenticated source bundle.
-`make shared-tooling-install` installs the existing lock. Offline
-`make shared-tooling-check` verifies every member, root pin, Cargo.lock checksum
+`make toko-tooling-update` to install the actual authenticated source bundle.
+`make toko-tooling-install` installs the existing lock. Offline
+`make toko-tooling-check` verifies every member, root pin, Cargo.lock checksum
 and installed snapshot before common CI/release effects. Custom deployment
 adapters must also admit tooling. No Cargo build or ordinary check installs it.
 

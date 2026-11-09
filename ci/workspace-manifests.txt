@@ -1,0 +1,8 @@
+crates/ic-jobs/Cargo.toml
+crates/ic-timers/Cargo.toml
+qualification/ic-jobs-canister-tests/Cargo.toml
+qualification/ic-jobs-test-consumer/Cargo.toml
+qualification/ic-timers-pocketic/Cargo.toml
+qualification/ic-timers-runtime-probe/Cargo.toml
+qualification/ic-timers-size-probe/Cargo.toml
+qualification/ic-timers-test-protocol/Cargo.toml

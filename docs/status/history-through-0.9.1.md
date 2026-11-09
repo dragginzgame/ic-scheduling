@@ -2729,7 +2729,7 @@ server stdout/stderr in a new attempt directory; tests read that retained copy.
 Each workflow host uploads source/graph/tool selections, test outcome/output,
 the tested Wasm and server logs for 14 days on success or failure. Failed setup
 also uses the canonical failure collector. Push/PR CI remains compile-only for
-the live harness. See the [consumer instructions](../../apps/ic-jobs-test-consumer/README.md)
+the live harness. See the [consumer instructions](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/apps/ic-jobs-test-consumer/README.md)
 for manual execution after delivery to `main`.
 
 The maintainer's delivered catalog selects Memory **0.35.0**, Timers **0.17.0**
@@ -2838,7 +2838,7 @@ qualification for [#14](https://github.com/dragginzgame/ic-jobs/issues/14).
 Registry publication was not independently checked.
 
 Pending compatible **0.4.7** adds the unpublished
-[consumer canister](../../apps/ic-jobs-test-consumer/README.md) and a separate Testkit
+[consumer canister](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/apps/ic-jobs-test-consumer/README.md) and a separate Testkit
 host harness for [#11](https://github.com/dragginzgame/ic-jobs/issues/11).
 The public Jobs API, stored JobRecord and Rust 1.88 floor remain unchanged.
 The new consumer owns its bounded stable snapshot, authenticated management,

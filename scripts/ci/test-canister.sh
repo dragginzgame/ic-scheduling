@@ -13,7 +13,7 @@ trap 'status=$?; fixture_completion_status "$status" "$complete" || status=$?; e
 # Caller explicitly selects this live gate. The canonical Cargo-tool checker and
 # Testkit own executable selection and PocketIC admission/lifecycle respectively.
 cli="$(bash scripts/dev/testkit-tool.sh --check)"
-target="$(bash scripts/dev/minimum-rust.sh cargo metadata --format-version 1 --no-deps --locked --offline | jq -er .target_directory)"
+target="$(bash scripts/dev/minimum-rust.sh cargo metadata --manifest-path qualification/Cargo.toml --format-version 1 --no-deps --locked --offline | jq -er .target_directory)"
 input="$target/wasm32-unknown-unknown/release/ic_jobs_test_consumer.wasm"
 [[ -f "$input" && ! -L "$input" ]] || exit 1
 capture="$target/debug/jobs-capture-artifact"
@@ -30,7 +30,9 @@ case "$evidence_parent" in *$'\r'*|*$'\n'*) echo 'evidence directory contains CR
 evidence="$(fixture_create "$evidence_parent/jobs-recovery.XXXXXX")"
 printf 'Live recovery evidence: %s\n' "$evidence"
 "$capture" "$input" "$evidence/ic_jobs_test_consumer.wasm"
-cp Cargo.lock .shared-tooling.snapshot "$evidence/"
+cp qualification/Cargo.lock "$evidence/Cargo.lock"
+cp Cargo.lock "$evidence/product-Cargo.lock"
+cp .toko-tooling.snapshot "$evidence/"
 cp "${cli%/bin/*}/selection.json" "$evidence/testkit-selection.json"
 {
     git rev-parse HEAD
@@ -61,7 +63,7 @@ for variant in "${variants[@]}"; do
     # Testkit's run command checks the prepared server bundle; it never downloads.
     "$cli" run --ttl 900 --server-stdout "$evidence/$variant/server.stdout" \
         --server-stderr "$evidence/$variant/server.stderr" \
-        -- bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests \
+        -- bash scripts/dev/minimum-rust.sh cargo test --manifest-path qualification/Cargo.toml -p ic-jobs-canister-tests \
         --test recovery --features harness --locked --offline -- --ignored --test-threads=1 --nocapture \
         2>&1 | tee "$evidence/$variant/test.log"
 done

@@ -20,8 +20,8 @@ if [[ -z "$GROUP_TEST_REAL_EDITOR" && "$fixture_mode" != frozen && "$fixture_mod
     GROUP_TEST_REAL_EDITOR="$(make --silent --no-print-directory -C "$root" release-tools-check)"
 fi
 mkdir "$fixture_suite/source" "$fixture_suite/bin"
-cp "$root"/{Cargo.toml,Cargo.lock,CHANGELOG.md,README.md,LICENSE,Makefile,.gitignore,.shared-tooling.snapshot,rust-toolchain.toml,DRAGGINZGAME.md,AGENTS.md} "$fixture_suite/source/"
-cp -R "$root"/{crates,apps,scripts,make,ci,docs,releases,.github,rules,audits,tasks} "$fixture_suite/source/"
+cp "$root"/{Cargo.toml,Cargo.lock,CHANGELOG.md,README.md,LICENSE,Makefile,.gitignore,.toko-tooling.snapshot,rust-toolchain.toml,TOKO-TOOLING.md,AGENTS.md} "$fixture_suite/source/"
+tar -C "$root" --exclude=target -cf - crates qualification scripts make ci docs releases .github rules audits tasks | tar -C "$fixture_suite/source" -xf -
 cp -R "$root/.githooks" "$fixture_suite/source/"
 if [[ "$fixture_mode" == frozen ]]; then
     # shellcheck source=scripts/release/test-frozen.sh
@@ -34,7 +34,8 @@ cat > "$fixture_suite/bin/editor" <<'EDITOR'
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ ( "${GROUP_TEST_EDITOR_FAILURE:-}" == manifest && "$*" == *group-manifest* ) ||
-      ( "${GROUP_TEST_EDITOR_FAILURE:-}" == lock && "$*" == *' lock '* ) ]]; then
+      ( "${GROUP_TEST_EDITOR_FAILURE:-}" == lock && "$*" == *' lock '* ) ||
+      ( "${GROUP_TEST_EDITOR_FAILURE:-}" == qualification-lock && "$*" == *' lock '* && "$*" == *'/qualification/Cargo.lock '* ) ]]; then
     echo 'partial invalid candidate'
     exit 37
 fi
@@ -107,7 +108,7 @@ check_metadata_rollback() (
     if bash scripts/release/metadata.sh prepare > "$suite/$selected-tampered-receipt.log" 2>&1; then exit 1; fi
     git diff --exit-code HEAD -- > /dev/null
     cp "$suite/$selected-valid-receipt" "$receipts/validated"
-    for failure in manifest lock; do
+    for failure in manifest lock qualification-lock; do
         status=0
         GROUP_TEST_EDITOR_FAILURE="$failure" RELEASE_PREVIOUS="$previous" RELEASE_VERSION="$candidate" RELEASE_DATE=2026-10-31 \
             RELEASE_PREPARATION_SOURCE="$base" bash scripts/release/metadata.sh prepare > "$suite/$selected-rollback-$failure.log" 2>&1 || status=$?
@@ -313,6 +314,8 @@ qualify_group() (
     cp CHANGELOG.md "$suite/$selected-index"
     cp releases/history.md "$suite/$selected-history"
     cargo metadata --locked --offline --format-version 1 > "$suite/$selected-before.json"
+    cargo metadata --manifest-path qualification/Cargo.toml --locked --offline --format-version 1 > "$suite/$selected-qualification-before.json"
+    yq -p toml -o json qualification/Cargo.lock | jq -S '[.package[] | select(.source != null)]' > "$suite/$selected-suppliers-before.json"
     requirement="$(yq -p toml -o yaml -r '.workspace.dependencies.ic-timers.version' Cargo.toml)"
     case "$mode" in
         all|metadata|retention)
@@ -335,6 +338,16 @@ qualify_group() (
     cmp CHANGELOG.md "$suite/$selected-index"
     cmp releases/history.md "$suite/$selected-history"
     cargo metadata --locked --offline --format-version 1 > "$suite/$selected-after.json"
+    cargo metadata --manifest-path qualification/Cargo.toml --locked --offline --format-version 1 > "$suite/$selected-qualification-after.json"
+    jq -n -e --slurpfile before "$suite/$selected-qualification-before.json" --slurpfile after "$suite/$selected-qualification-after.json" --arg selected "$package" --arg candidate "$candidate" '
+        def private($m): [$m.packages[] | select(.id as $id | $m.workspace_members | index($id)) | {name,version}] | sort_by(.name);
+        private($before[0]) == private($after[0]) and
+        any($after[0].packages[]; .name == $selected and .source == null and .version == $candidate)
+    ' >/dev/null
+    yq -p toml -o json qualification/Cargo.lock | jq -S '[.package[] | select(.source != null)]' > "$suite/$selected-suppliers-after.json"
+    cmp "$suite/$selected-suppliers-before.json" "$suite/$selected-suppliers-after.json"
+    grep -Fx 'qualification/Cargo.toml' "$suite/$selected-files" >/dev/null
+    grep -Fx 'qualification/Cargo.lock' "$suite/$selected-files" >/dev/null
     jq -e --arg other "$other" --arg version "$other_version" '.packages[] | select(.name == $other and .source == null) | .version == $version' "$suite/$selected-after.json" > /dev/null
     if [[ "$selected" == jobs ]]; then
         [[ "$(yq -p toml -o yaml -r '.workspace.dependencies.ic-timers.version' Cargo.toml)" == "$requirement" ]]

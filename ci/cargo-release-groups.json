@@ -6,15 +6,11 @@
       "primary": "ic-jobs",
       "version": "package",
       "members": [
-        "ic-jobs",
-        "ic-jobs-test-consumer",
-        "ic-jobs-canister-tests"
+        "ic-jobs"
       ],
       "changelog": "releases/jobs/CHANGELOG.md",
       "dependencies": [
-        "ic-jobs",
-        "ic-jobs-canister-tests",
-        "ic-jobs-test-consumer"
+        "ic-jobs"
       ]
     },
     {
@@ -22,20 +18,13 @@
       "primary": "ic-timers",
       "version": "package",
       "members": [
-        "ic-timers",
-        "ic-timers-pocketic",
-        "ic-timers-runtime-probe",
-        "ic-timers-size-probe",
-        "ic-timers-test-protocol"
+        "ic-timers"
       ],
       "changelog": "releases/timers/CHANGELOG.md",
       "dependencies": [
-        "ic-timers",
-        "ic-timers-pocketic",
-        "ic-timers-runtime-probe",
-        "ic-timers-size-probe",
-        "ic-timers-test-protocol"
+        "ic-timers"
       ]
     }
-  ]
+  ],
+  "qualification_workspace": "qualification"
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# Shared companions: scripts/ci/run-validation-stage.pl docs/release-validation-reuse.md
+# Shared companions: scripts/ci/run-validation-stage.pl
 use strict;
 use warnings;
 use Cwd qw(abs_path);

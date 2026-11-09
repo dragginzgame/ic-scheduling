@@ -37,11 +37,11 @@ canister graphs must still exclude older providers that lack that key.
 | One-shot dispatch, pending queue and authenticated IC callbacks | Private `crates/ic-timers/src/platform`; `ic-platform-runtime` owns the shared executor for future polling and call-context cleanup | Only `platform/ffi.rs` owns unsafe exports/callback registration |
 | Measurement arithmetic | `ic-metrics` | Timer-specific event names, recording/sample boundaries and memory extents in `snapshot/metrics.rs` |
 | Durable jobs, readiness, lifecycle order and operator-health labels | Consuming application/framework | Registration claims and snapshots; no durable task database or application lifecycle exports here |
-| Wasm compilation and artifact-cache custody | `ic-build`, with explicit child custody from `ic-host-process` | `crates/ic-timers-pocketic/src/build/mod.rs` selects packages, profile, features and artifact lifetime |
+| Wasm compilation and artifact-cache custody | `ic-build`, with explicit child custody from `ic-host-process` | `qualification/ic-timers-pocketic/src/build/mod.rs` selects packages, profile, features and artifact lifetime |
 | Native report alias admission and atomic publication | `ic-host-fs` | The qualification driver protects its reviewed baseline and selects report schema, path and permissions |
 | PocketIC client types and raw call transport | `ic-testkit::pocket_ic`; canonical identities from `ic-platform-types` | Native tests retain bounded Wire requests |
 | PocketIC server selection, admission, lifecycle and bounded progress | `ic-testkit` | `scripts/dev/testkit-tool.sh` selects the root-lock CLI; the native harness supplies instance configuration |
-| Controlled probe codecs | Published `ic-wire::native` and Serde; Testkit owns native typed call handling | The unpublished protocol owns method identities/limits; Wire Endpoint binds canister entrypoints; the native harness selects the protocol and caller |
+| Controlled probe codecs | Published `ic-wire::native` and Serde; the shared qualification harness frames raw Testkit calls | The unpublished protocol owns method identities/limits; Wire Endpoint binds canister entrypoints; the native harness selects the protocol and caller |
 | Common tools, fixture dependency closure, evidence transport and release mechanics | Reviewed Shared Tooling snapshot | Local Make selections, product release/source policy and evidence identity; see [adoption boundaries](development.md) |
 
 The [root manifest](../../Cargo.toml) owns all eight maintained packages and every
@@ -62,7 +62,7 @@ metrics adapter or introduce a persisted-format migration.
 
 ## Candid and CDK dependency boundary
 
-Registry-published `ic-platform-runtime` 0.20 is the selected execution boundary.
+Registry-published `ic-platform-runtime` 0.21 is the selected execution boundary.
 The current lock and source-qualified receipts are recorded in
 [current status](../status/current.md).
 Runtime owns the maintained IC0 bindings and executor. The root catalog disables
@@ -77,7 +77,7 @@ The protocol package selects Wire and Serde without a direct Runtime dependency.
 The private platform uses `ic_platform_runtime::ic0` for system calls,
 retaining context placement, protected spawning and callback/trap cleanup.
 Runtime selects its exact matching executor singleton guard. Applications must
-align all executor and Endpoint suppliers with Runtime 0.20; removing or
+align all executor and Endpoint suppliers with Runtime 0.21; removing or
 overriding the guard does not establish compatibility. Deployed roots have one
 Runtime executor owner and no standalone
 `ic-cdk-executor` or `ic0` package. Native substitutes cannot
@@ -139,14 +139,14 @@ test binary. Its normal build coordinator uses Build and Host for artifacts and
 process custody, plus Clap/Serde/JSON for commands and receipts. It does not link
 the simulator or codecs. Build, Host and Testkit share the published family
 selected by the root lockfile. The harness uses Wire 0.17 and Testkit 0.88, with
-canonical Types 0.18 identities. The independent Platform PocketIC client is absent.
+canonical Types 0.19 identities. The independent Platform PocketIC client is absent.
 Managed startup supplies Testkit's required server URL and retains server custody.
 Timers passes external client types across the test boundary, not owned
 Principal values.
 Testkit also selects Candid/management support for native provider
 fixtures; PocketIC retains Candid for its simulator protocols. These are native
 qualification dependencies. Independent library and canister graphs
-remain Candid-free and select Runtime 0.20.
+remain Candid-free and select Runtime 0.21.
 These host-only providers do not enter deployed graphs; there is no unpublished
 override.
 The local provider check also rejects Candid codec paths and default-codec
@@ -515,7 +515,7 @@ An after-completion interval is not a watchdog: if its callback traps or runs
 out of instructions, code after the callback cannot arm a successor. A
 watchdog policy commits the successor before invoking fallible work while
 preventing concurrent logical execution. Maintained
-[PocketIC subjects](../../crates/ic-timers-pocketic/tests/runtime/tests/mod.rs) exercise
+[PocketIC subjects](../../qualification/ic-timers-pocketic/tests/runtime/tests/mod.rs) exercise
 trap, actual instruction exhaustion, upgrade reconstruction, external-ingress
 rejection, independent timers, insufficient cycles followed by top-up,
 an armed Watchdog and its committed scheduler/work gap surviving a genuine freeze

@@ -101,7 +101,7 @@ jobs:
         if: needs.change-scope.outputs.scope == 'docs'
         run: |
           export PATH="$PWD/.tools/host/bin:$PATH"
-          make host-tools-check shared-tooling-check check-doc-links
+          make host-tools-check toko-tooling-check check-doc-links
           echo 'Documentation-only checks passed; native qualification was not selected.' >> "$GITHUB_STEP_SUMMARY"
       - name: Read the declared compiler policy
         id: rust-policy
@@ -129,7 +129,9 @@ jobs:
         run: make tools-check
       - name: Prepare selected dependency cache
         if: needs.change-scope.outputs.scope != 'docs'
-        run: cargo fetch --locked
+        run: |
+          cargo fetch --locked
+          cargo fetch --manifest-path qualification/Cargo.toml --locked
       - name: Prepare the lock-selected release metadata editor
         if: needs.change-scope.outputs.scope != 'docs'
         run: make install-release-tools

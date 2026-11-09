@@ -1,3 +1,5 @@
 /target/
 /.tools/
-/.shared-tooling-refresh.*
+/.toko-tooling-refresh.*
+
+/qualification/target/

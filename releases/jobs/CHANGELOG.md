@@ -1,8 +1,54 @@
 # IC Jobs changelog
 
-This ledger covers `ic-jobs`, `ic-jobs-test-consumer` and
-`ic-jobs-canister-tests`. See the [Timers ledger](../timers/CHANGELOG.md)
+This ledger covers the `ic-jobs` product; older entries retain the former
+private qualification members' history. See the [Timers ledger](../timers/CHANGELOG.md)
 and [coordinated history through 0.33.1](../history.md).
+
+Private qualification packages now belong to their independent workspace, not
+this product release group. Older entries retain their historical scope.
+
+## [0.34.17] - Unreleased
+
+### 🧪 Testing
+
+- Qualify Runtime 0.21 / Endpoint 0.10 / Wire 0.19 and Storage 0.71.1 in the
+  private consumer. Share current-codec framing over raw Testkit transport with
+  Timers qualification while retaining lightweight default artifact capture.
+  Canonical identities remove the temporary Runtime principal-byte projections.
+
+- Adopt Testkit 0.96 and Platform 0.28 for native qualification. Share canonical
+  Principal identities across the client and application DTOs, removing the native
+  byte projections and registry management-DTO dependency while preserving
+  simulator custody, authorization, snapshot recovery and no-replay behavior.
+
+- Adopt canonical Platform Types 0.19 for qualification DTOs. Remove the retired
+  external-Principal feature and project exact identity bytes at the independently
+  selected Runtime boundary, preserving stored identities, Wire frames,
+  caller authorization and the sole executor guard.
+
+- Adopt Storage 0.71 for the private qualification consumer. Its new whole-store
+  backing requires fresh qualification storage; prior images are refused without
+  writes or growth, while their unresolved deliveries and receipts remain blocked.
+  No automatic reset or migration is added; the public Jobs contract is unchanged.
+
+### 🧹 Cleanup
+
+- Move private harnesses and the qualification consumer into `qualification/`,
+  preserving package identities, private versions, native/Wasm boundaries and
+  stored fixtures while removing product release-group membership. Update
+  build, recovery and documentation callers together
+  ([#90](https://github.com/dragginzgame/ic-scheduling/issues/90)).
+
+### 🛠️ Tooling
+
+- Adopt published Toko Tooling 0.38.2 with Cargo-owned selection and authenticated
+  snapshot installation. Use `toko-tooling-*` commands and `TOKO_TOOLING_*`
+  settings; CI, release and publication callers retain admission before effects.
+  Update fixture LOC metadata to the new namespace and correct closure-hook
+  classification. Separate private qualification into its own workspace/catalog/lock,
+  preserve private versions and remove its packages from product release groups.
+  Prepare product and qualification metadata through the shared multi-lock
+  transaction, preserving private versions and unrelated supplier selections.
 
 ## [0.34.16] - 2026-11-09
 

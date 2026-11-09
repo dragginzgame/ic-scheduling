@@ -1,5 +1,35 @@
 # Scheduling release validation groups
 
+Current local migration: only `ic-jobs` and `ic-timers` belong to product groups.
+The six private packages live in the independent `qualification/` workspace;
+its literal private versions remain unchanged by product releases. The existing
+stage roster still maps group changes to the same native, Wasm, installed-runtime
+and policy-cohort obligations through explicit qualification manifest selections.
+
+Toko Tooling 0.38.2 now supplies shared multi-lock rendering, admission and
+all-or-rollback preparation. `ci/cargo-release-groups.json` opts in through
+`qualification_workspace: "qualification"`; its admitted plan owns both
+qualification manifests/locks alongside the selected product files. Remove the
+former shared-metadata lock declaration and the temporary consumer release guard;
+there is no consumer copy of the rendering machinery. The focused metadata caller
+covers both groups, frozen file/receipt inventories, private-version and supplier
+preservation, and failures in product and qualification lock rendering.
+Completed/failed historical batches retain their source and custody; do not
+reinterpret their journals under this new policy. Ordinary release gates,
+installed-runtime/cohort requirements and explicit group/publication selection
+remain mandatory. This adoption does not execute a product release.
+
+The pin-check caller applies the shared declaration/workflow/lock validator and
+shared `dependency-pins.jq` inheritance checks with each workspace's actual version
+owner. Product literals are admitted by the complete group plan; unpublished
+qualification literals are owned by their packages. Dependency inheritance is
+checked identically in both roots, including normal/dev/build/target tables.
+This avoids the common CLI's obsolete assumption that private versions all inherit
+one workspace version, without filtering source inventory or suppressing findings.
+The consumer caller fixture refuses stale product versions, missing private
+versions, independent/target dependency selections and publishable qualification.
+No fake qualification release group or private version bump is introduced.
+
 Scheduling adopts the Shared Tooling [group-plan contract](release-group-validation.md).
 The versioned policy is [ci/release-validation.json](../ci/release-validation.json);
 the sole ordered roster contains 32 common CI obligations and four standalone
@@ -129,10 +159,10 @@ is performed by this adoption.
 
 ## Shared release batch contract
 
-The installed tooling is crates.io `toko-tooling` 0.36.0, selected by one exact
-root Cargo dependency pin inherited as a dev-dependency by all eight members.
-The normal Cargo.lock owns its archive checksum.
-Its installed archive checksum is recorded in `.shared-tooling.snapshot`.
+The installed tooling is crates.io `toko-tooling` 0.38.2, selected by one exact
+Cargo dependency pin in each workspace, inherited by its members. Both normal
+Cargo locks select the same archive checksum and are admitted against one snapshot.
+Its installed archive checksum is recorded in `.toko-tooling.snapshot`.
 The batch interface introduced at 0.31.0
 remains in use; its receipt schema is independent of the Scheduling group
 validation receipt. Historical release evidence remains source-bound.

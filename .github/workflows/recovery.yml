@@ -34,7 +34,9 @@ jobs:
             uname -sm
           } > "$evidence/source.txt"
           cp Cargo.toml Cargo.lock rust-toolchain.toml "$evidence/"
-          cp .shared-tooling.snapshot "$evidence/shared-tooling.snapshot"
+          mkdir "$evidence/qualification"
+          cp qualification/Cargo.toml qualification/Cargo.lock "$evidence/qualification/"
+          cp .toko-tooling.snapshot "$evidence/toko-tooling.snapshot"
       - name: Restore pinned tool downloads
         id: restore-downloads
         uses: ./.github/actions/cache-tool-downloads
@@ -60,14 +62,16 @@ jobs:
         run: |
           make install-tools 2>&1 | tee "$RUNNER_TEMP/tools-common-setup.log"
           make tools-check 2>&1 | tee "$RUNNER_TEMP/tools-common-check.log"
-          make shared-tooling-check check-pins
+          make toko-tooling-check check-pins
       - name: Save pinned tool downloads
         id: save-downloads
         uses: ./.github/actions/cache-tool-downloads
         with:
           mode: save
       - name: Prepare the selected dependency cache
-        run: cargo fetch --locked 2>&1 | tee "$RUNNER_TEMP/tools-dependency-cache.log"
+        run: |
+          cargo fetch --locked 2>&1 | tee "$RUNNER_TEMP/tools-dependency-cache.log"
+          cargo fetch --manifest-path qualification/Cargo.toml --locked 2>&1 | tee "$RUNNER_TEMP/qualification-dependency-cache.log"
       - name: Prepare and admit the selected Testkit CLI
         id: testkit
         run: |

@@ -1,11 +1,50 @@
 # IC Timers changelog
 
-This ledger covers `ic-timers`, `ic-timers-pocketic`, `ic-timers-runtime-probe`,
-`ic-timers-size-probe` and `ic-timers-test-protocol`. Jobs uses the
+This ledger covers the `ic-timers` product. Earlier entries include its former
+private qualification members, whose history remains recorded below. Jobs uses the
 [Jobs ledger](../jobs/CHANGELOG.md). The shared Scheduling release through 0.33.1
 is retained once in [coordinated history](../history.md).
 The older Timers entries below are preserved as imported provenance; an undated
 entry alone does not establish publication.
+
+Private qualification packages now belong to their independent workspace, not
+this product release group. Older entries retain their historical scope.
+
+## [0.42.0] - Unreleased
+
+### ⚠️ Breaking
+
+- Require Platform Runtime/executor guard 0.21. Composed consumers using Runtime
+  0.20 must adopt the matching 0.21 family; Wire endpoint users also select
+  Endpoint 0.10 / Wire 0.19. Mixed executor guards remain refused. Timer APIs,
+  method identities, checkpoint bytes and callback/recovery semantics are unchanged.
+
+### 🧪 Testing
+
+- Qualify the matching Runtime 0.21, Types 0.19, Endpoint 0.10 / Wire 0.19 and
+  Storage 0.71.1 stack. Share current-codec framing over raw Testkit transport
+  between native harnesses; preserve error context, budgets and no-retry behavior.
+
+- Adopt Testkit 0.96/Platform 0.28 in native runtime qualification and use canonical
+  Types Principal directly. Preserve explicit server lifetime, transport budgets,
+  Runtime singleton and installed recovery/cohort obligations.
+
+- Own installed Runtime composition qualification in Scheduling for its supported
+  Runtime 0.21 cohort: repeated initialization, raw/prepared call continuations,
+  trap cleanup, cancellation, rearming and dispatch after upgrade. Retain exact
+  guard admission and reuse the existing probe and Watchdog gate
+  ([#91](https://github.com/dragginzgame/ic-scheduling/issues/91)).
+
+### 🛠️ Tooling
+
+- Adopt published Toko Tooling 0.38.2 with Cargo-owned selection and authenticated
+  snapshot installation. Use `toko-tooling-*` commands and `TOKO_TOOLING_*`
+  settings; CI, release and publication callers retain admission before effects.
+  Update fixture LOC metadata to the new namespace and correct closure-hook
+  classification. Separate private qualification into its own workspace/catalog/lock,
+  preserve private versions and remove its packages from product release groups.
+  Prepare product and qualification metadata through the shared multi-lock
+  transaction, preserving private versions and unrelated supplier selections.
 
 ## [0.41.5] - 2026-11-09
 

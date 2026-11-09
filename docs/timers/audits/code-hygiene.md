@@ -4,7 +4,7 @@
 
 Use the [shared code-hygiene method](../../../audits/code-hygiene.md) and
 [common audit contract](../../../audits/README.md) from the reviewed revision
-recorded in the [snapshot](../../../.shared-tooling.snapshot).
+recorded in the [snapshot](../../../.toko-tooling.snapshot).
 [AGENTS.md](../../../AGENTS.md) identifies the adopted baseline and supplies local
 command authority under the shared validation cadence. This overlay
 selects product scope for a requested review, including a review before a minor
@@ -67,7 +67,7 @@ Cheap inspection permitted by AGENTS.md includes:
 git diff --check
 rg 'unwrap\(|expect\(|panic!|todo!|unimplemented!|TODO|FIXME|HACK' crates/ic-timers/src
 rg 'pub(\(| )|ic_cdk_timers|ic-cdk-timers' crates/ic-timers/src Cargo.toml crates/ic-timers/Cargo.toml
-bash scripts/ci/verify-shared-tooling-snapshot.sh
+bash scripts/ci/verify-toko-tooling-snapshot.sh
 ```
 
 Inspect command effects before selecting additional evidence. Applicable locked

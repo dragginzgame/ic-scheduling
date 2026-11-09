@@ -98,7 +98,7 @@ chmod +x "$consumer/.tools/rust/common/bin/formatting-fixture-cargo"
 # The pin catalog is selected from the resolved consumer root at runtime.
 # shellcheck disable=SC1091
 . "$root/ci/tool-versions.env"
-export FORMAT_EVIDENCE_VERSION="$SHARED_TOOLING_CARGO_SORT_VERSION"
+export FORMAT_EVIDENCE_VERSION="$TOKO_TOOLING_CARGO_SORT_VERSION"
 export FORMAT_EVIDENCE_EVENTS="$fixture/events"
 : > "$FORMAT_EVIDENCE_EVENTS"
 status=0
@@ -129,7 +129,7 @@ cmp "$fixture/expected" "$fixture/normalized-success"
 
 bash "$root/scripts/ci/extract-workflow-step.sh" "$fixture/collector-steps.json" archive \
     > "$fixture/collect.sh"
-SHARED_TOOLING_STORE="$fixture/store" \
+TOKO_TOOLING_STORE="$fixture/store" \
     EVIDENCE_TEMP_ROOT="$fixture/temp" EVIDENCE_REPOSITORY_ROOT="$fixture/repository" \
     EVIDENCE_ACTION_ROOT="$root/.github/actions/retain-failure-evidence" \
     RUNNER_TEMP="$fixture/temp" GITHUB_OUTPUT="$fixture/archive-output" \

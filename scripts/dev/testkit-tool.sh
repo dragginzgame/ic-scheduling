@@ -6,4 +6,4 @@ set -euo pipefail
     echo 'usage: testkit-tool.sh [--check]' >&2; exit 2;
 }
 exec bash "${BASH_SOURCE[0]%/*}/install-rust-tools.sh" --package ic-testkit \
-    --lockfile Cargo.lock --bin ic-testkit-server --profile release --features cli "$@"
+    --lockfile qualification/Cargo.lock --bin ic-testkit-server --profile release --features cli "$@"

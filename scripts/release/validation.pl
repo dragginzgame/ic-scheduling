@@ -145,8 +145,8 @@ sub select_scope {
         # files broaden; an annotated ancestor alone never grants an omission.
         my @outside = grep { !m{\A(?:
             crates/ic-jobs/(?:src|tests|examples)/|
-            apps/ic-jobs-test-consumer/(?:src|tests)/|
-            crates/ic-jobs-canister-tests/(?:src|tests|examples)/|
+            qualification/ic-jobs-test-consumer/(?:src|tests)/|
+            qualification/ic-jobs-canister-tests/(?:src|tests|examples)/|
             releases/jobs/CHANGELOG\.md\z
         )}x } @{$baseline->{changes}};
         if (!@outside) {

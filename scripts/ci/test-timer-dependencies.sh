@@ -11,34 +11,26 @@ trap 'fixture_finish "$?" "$fixture" "Failed library-boundary fixture retained"'
 # Real Cargo resolution against the maintained catalog and lock. Empty fixture
 # source is never built; no sibling source or network dependency is introduced.
 bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" \
-    scripts/ci/check-timer-dependencies.sh scripts/ci/check-timer-provider.sh scripts/ci/check-make-execution.sh scripts/ci/check-cargo-dependency-boundaries.sh \
+    scripts/ci/check-timer-dependencies.sh scripts/ci/check-timer-provider.sh scripts/ci/check-make-execution.sh scripts/ci/check-cargo-dependency-boundaries.sh ci/workspace-manifests.txt \
     ci/cargo-dependency-boundaries.json
 RUSTUP_AUTO_INSTALL=0 cargo metadata --locked --offline --format-version 1 > "$fixture/workspace.json"
 platform_version="$(perl -MJSON::PP -0777 -e '
     my $metadata = decode_json(<>);
-    my @platform = grep { $_->{name} eq "ic-platform-runtime" && $_->{version} =~ /^0\.20\.[0-9]+$/ }
+    my @platform = grep { $_->{name} eq "ic-platform-runtime" && $_->{version} =~ /^0\.21\.[0-9]+$/ }
         @{$metadata->{packages}};
     @platform == 1 or die "expected one selected runtime Platform\n";
     print $platform[0]{version};
 ' "$fixture/workspace.json")"
-perl -MJSON::PP -MFile::Spec -0777 -e '
-    my $metadata = decode_json(<>);
-    my %members = map { $_ => 1 } @{$metadata->{workspace_members}};
-    for my $package (@{$metadata->{packages}}) {
-        next unless $members{$package->{id}};
-        my $manifest = File::Spec->abs2rel($package->{manifest_path}, $metadata->{workspace_root});
-        $manifest !~ m{^(?:\.\./|/)} && $manifest !~ /[\r\n]/ or die "invalid member manifest\n";
-        print "$manifest\n";
-    }
-' "$fixture/workspace.json" > "$fixture/member-manifests"
-manifests=(Cargo.toml Cargo.lock)
+cp "$root/ci/workspace-manifests.txt" "$fixture/member-manifests"
+manifests=(Cargo.toml Cargo.lock qualification/Cargo.toml qualification/Cargo.lock)
 while IFS= read -r manifest; do
-    [[ "$manifest" == Cargo.toml ]] || manifests+=("$manifest")
+    manifests+=("$manifest")
     package="${manifest%/Cargo.toml}"
     mkdir -p "$fixture/$package/src"
     touch "$fixture/$package/src/lib.rs" "$fixture/$package/src/main.rs"
 done < "$fixture/member-manifests"
 for manifest in "${manifests[@]}"; do
+    mkdir -p "$fixture/$(dirname "$manifest")"
     cp "$root/$manifest" "$fixture/$manifest"
 done
 printf 'fn main() {}\n' > "$fixture/crates/ic-timers/build.rs"
@@ -48,13 +40,17 @@ reset_manifests() {
     for manifest in "${manifests[@]}"; do
         cp "$root/$manifest" "$manifest"
     done
+    # Prepared Wire selection for deliberate library-edge mutations below.
+    TIMER_FIXTURE_WIRE_REQUIREMENT="$(sed -n 's/^ic-wire = //p' "$root/qualification/Cargo.toml")" \
+        perl -pi -e 's/^\[workspace.dependencies\]/[workspace.dependencies]\nic-wire = $ENV{TIMER_FIXTURE_WIRE_REQUIREMENT}/' Cargo.toml
 }
+reset_manifests
 
 checker=scripts/ci/check-timer-dependencies.sh
 bash "$checker"
 # The test-only simulator graph is admitted, but promoting it into the native
 # build coordinator must fail even when the lock already contains every package.
-perl -pi -e 's/^\[dependencies\]/[dependencies]\nic-testkit.workspace = true/' crates/ic-timers-pocketic/Cargo.toml
+perl -pi -e 's/^\[dependencies\]/[dependencies]\nic-testkit.workspace = true/' qualification/ic-timers-pocketic/Cargo.toml
 if bash "$checker" > worker-failure.log 2>&1; then
     echo 'error: build coordinator admitted its test-only simulator dependency' >&2
     exit 1
@@ -65,6 +61,7 @@ reset_manifests
 # Runtime APIs belong only to entrypoint-owning probes; the published library
 # must keep its executor/IC0-only boundary even when runtime adds no new macro.
 perl -pi -e 's/"executor", "ic0"/"executor", "ic0", "runtime"/' crates/ic-timers/Cargo.toml
+RUSTUP_AUTO_INSTALL=0 cargo tree --offline -p ic-timers --target wasm32-unknown-unknown > /dev/null
 if bash "$checker" > runtime-failure.log 2>&1; then
     echo 'error: library admitted Platform runtime APIs' >&2; exit 1
 fi
@@ -74,17 +71,18 @@ reset_manifests
 # Empty Platform defaults still violate the library feature allowlist, even
 # without introducing another package. Probe and protocol policies are separate.
 perl -pi -e 's/"executor", "ic0"/"executor", "ic0", "default"/' crates/ic-timers/Cargo.toml
+RUSTUP_AUTO_INSTALL=0 cargo tree --offline -p ic-timers --target wasm32-unknown-unknown > /dev/null
 if bash "$checker" > default-failure.log 2>&1; then
     echo 'error: library admitted Platform default features' >&2; exit 1
 fi
 grep -q 'forbidden dependency feature edge: ic-platform-runtime/default' default-failure.log
 reset_manifests
-cat >> crates/ic-timers-test-protocol/Cargo.toml <<'EOF'
+cat >> qualification/ic-timers-test-protocol/Cargo.toml <<'EOF'
 
 [build-dependencies]
 ic-platform-runtime = { workspace = true, features = ["executor"] }
 EOF
-RUSTUP_AUTO_INSTALL=0 cargo tree --offline -p ic-timers-test-protocol --target wasm32-unknown-unknown > /dev/null
+RUSTUP_AUTO_INSTALL=0 cargo tree --manifest-path qualification/Cargo.toml --offline -p ic-timers-test-protocol --target wasm32-unknown-unknown > /dev/null
 if bash "$checker" > protocol-failure.log 2>&1; then
     echo 'error: protocol admitted Platform authority' >&2; exit 1
 fi
@@ -96,7 +94,7 @@ reset_manifests
 # Lock preparation is confined to this disposable fixture, never the checkout.
 # Pin the deliberate alias to the already prepared package, rather than resolving
 # an independent old Wire graph that a clean offline CI cache cannot provide.
-RUSTUP_AUTO_INSTALL=0 cargo metadata --locked --offline --format-version 1 > wire-alias-metadata.json
+RUSTUP_AUTO_INSTALL=0 cargo metadata --manifest-path qualification/Cargo.toml --locked --offline --format-version 1 > wire-alias-metadata.json
 perl -MJSON::PP -0777 -i -pe '
     BEGIN {
         open my $input, "<", "wire-alias-metadata.json" or die "$!\n";
@@ -160,7 +158,7 @@ edition = "2024"
 [workspace]
 EOF
 touch relay-substitute/src/lib.rs
-perl -pi -e 's/^resolver = /exclude = ["relay-substitute"]\nresolver = /' Cargo.toml
+perl -pi -e 's/exclude = \["qualification"\]/exclude = ["qualification", "relay-substitute"]/' Cargo.toml
 perl -pi -e 's/^\[workspace.dependencies\]/[workspace.dependencies]\napplication-delivery = { package = "ic-relay", path = "relay-substitute" }/' Cargo.toml
 for table in "target.'cfg(target_arch = \"wasm32\")'.dependencies" "target.'cfg(unix)'.build-dependencies"; do
     cp "$root/crates/ic-timers/Cargo.toml" crates/ic-timers/Cargo.toml
@@ -229,7 +227,7 @@ if bash "$checker" > identity-failure.log 2>&1; then
     echo 'error: library admitted an unqualified Platform source at the same version' >&2
     exit 1
 fi
-grep -q 'expected one qualified registry ic-platform-runtime 0.20 runtime owner' identity-failure.log
+grep -q 'expected one qualified registry ic-platform-runtime 0.21 runtime owner' identity-failure.log
 reset_manifests
 
 # The feature-selected helper is also registry-owned and must match the facade.
@@ -282,7 +280,7 @@ reset_manifests
 # The actual Make admission must reject a new Host family member without
 # needing that concrete package name in another exclusion roster.
 cp "$root/Makefile" Makefile
-cp -R "$root/make" make
+cp -R "$root/make/." make/
 mkdir -p future-host/src
 printf '[package]\nname="ic-host-unlisted-fixture"\nversion="0.0.0"\nedition="2024"\n' > future-host/Cargo.toml
 printf '' > future-host/src/lib.rs
@@ -301,11 +299,13 @@ reset_manifests
 # Static provider admission follows the real probe declarations without building
 # a canister. Mutations retain the surrounding source and change one obligation.
 for package in ic-timers ic-timers-runtime-probe ic-timers-size-probe ic-timers-test-protocol; do
-    cp -R "$root/crates/$package/src/." "crates/$package/src/"
+    tree=qualification
+    [[ "$package" != ic-timers ]] || tree=crates
+    cp -R "$root/$tree/$package/src/." "$tree/$package/src/"
 done
 bash scripts/ci/check-timer-provider.sh
-probe=crates/ic-timers-runtime-probe/src/lib.rs
-contract=crates/ic-timers-test-protocol/src/rpc/mod.rs
+probe=qualification/ic-timers-runtime-probe/src/lib.rs
+contract=qualification/ic-timers-test-protocol/src/rpc/mod.rs
 cp "$probe" original-probe.rs
 cp "$contract" original-contract.rs
 for mutation in identity budget bare; do

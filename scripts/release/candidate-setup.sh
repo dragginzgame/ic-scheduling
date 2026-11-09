@@ -12,6 +12,7 @@ if [[ "$RELEASE_SETUP_MODE" == prepare ]]; then
     if ! make --no-print-directory host-tools-check; then make --no-print-directory install-host-tools; fi
     bash scripts/dev/minimum-rust.sh --check
     bash scripts/dev/minimum-rust.sh cargo fetch --locked
+    bash scripts/dev/minimum-rust.sh cargo fetch --manifest-path qualification/Cargo.toml --locked
     if ! make --no-print-directory tools-check; then make --no-print-directory install-tools; fi
     if ! make --no-print-directory release-tools-check; then make --no-print-directory install-release-tools; fi
     make --no-print-directory install-hooks

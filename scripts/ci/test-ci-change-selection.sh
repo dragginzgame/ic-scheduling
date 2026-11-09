@@ -118,9 +118,9 @@ while IFS= read -r path; do
     case "$path" in ''|'#'*) continue ;; esac
     # Admission review guard: prose must stay outside executable/packaged inputs
     # and snapshot companions, regardless of the classifier's Markdown grammar.
-    [[ "$path" != AGENTS.md && "$path" != DRAGGINZGAME.md && "$path" != releases/* && "$path" != crates/* && "$path" != apps/* ]]
+    [[ "$path" != AGENTS.md && "$path" != TOKO-TOOLING.md && "$path" != releases/* && "$path" != crates/* && "$path" != apps/* ]]
     awk '/Shared companions:/ { exit 1 }' "$root/$path"
-    awk -F '\t' -v path="$path" '$1 == "file" && $4 == path { found=1 } END { exit found ? 1 : 0 }' "$root/.shared-tooling.snapshot"
+    awk -F '\t' -v path="$path" '$1 == "file" && $4 == path { found=1 } END { exit found ? 1 : 0 }' "$root/.toko-tooling.snapshot"
     mkdir -p "$(dirname "$fixture/repo/$path")"
     printf '# Prose fixture\n' > "$fixture/repo/$path"
 done < "$root/ci/docs-only-paths.txt"
@@ -167,7 +167,7 @@ run_case() {
         ' "$fixture/validate-steps.json")"
         if [[ "$selected" == documentation ]]; then
             bash -e -o pipefail "$fixture/docs.sh"
-            printf 'host-tools-check shared-tooling-check check-doc-links\n' > "$fixture/expected"
+            printf 'host-tools-check toko-tooling-check check-doc-links\n' > "$fixture/expected"
         else
             TMPDIR="$fixture" bash -e -o pipefail "$fixture/native.sh"
             printf 'ci\n' > "$fixture/expected"
@@ -197,8 +197,8 @@ for kind in code mixed policy workflow packaged manifest lock private-manifest; 
         manifest) cp "$root/Cargo.toml" Cargo.toml ;;
         lock) cp "$root/Cargo.lock" Cargo.lock ;;
         private-manifest)
-            mkdir -p crates/ic-timers-size-probe
-            cp "$root/crates/ic-timers-size-probe/Cargo.toml" crates/ic-timers-size-probe/Cargo.toml ;;
+            mkdir -p qualification/ic-timers-size-probe
+            cp "$root/qualification/ic-timers-size-probe/Cargo.toml" qualification/ic-timers-size-probe/Cargo.toml ;;
     esac
     [[ "$kind" != mixed ]] || printf '\nProse alongside code.\n' >> README.md
     git add -- .

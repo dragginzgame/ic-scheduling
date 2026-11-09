@@ -27,7 +27,7 @@ disposing of in-flight calls. The qualification queue separately uses bounded
 Wire under `JQW\x01`; retained JSON queues refuse without reset or conversion.
 Retire old installations only after resolving their outstanding effects with
 the old reader and preserving their exact attempts, receipts and backups. See
-the [consumer's retirement procedure](apps/ic-jobs-test-consumer/README.md).
+the [consumer's retirement procedure](qualification/ic-jobs-test-consumer/README.md).
 External simulator/management protocols in the native harness
 retain their required Candid encoding; owned fixture endpoints do not.
 

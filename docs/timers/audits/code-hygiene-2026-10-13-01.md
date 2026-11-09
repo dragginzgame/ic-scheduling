@@ -90,7 +90,7 @@ Concrete anchors: [creation](../../../crates/ic-timers/src/runtime/mod.rs#L658),
 [effect binding](../../../crates/ic-timers/src/runtime/mod.rs#L1024),
 [abandonment](../../../crates/ic-timers/src/runtime/mod.rs#L1232),
 [observation](../../../crates/ic-timers/src/registry/mod.rs#L1637) and
-[probe lifecycle](../../../crates/ic-timers-runtime-probe/src/lib.rs#L31).
+[probe lifecycle](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/crates/ic-timers-runtime-probe/src/lib.rs#L31).
 
 ### Timing and failure interpretation
 
@@ -186,8 +186,8 @@ the existing evidence verifier, publication fixtures and PocketIC harness.
 ### LOW P3 Two probe paths still use core in std packages
 
 **Problem/evidence:** memory observation uses `core::arch::wasm32` in
-[size probe](../../../crates/ic-timers-size-probe/src/lib.rs#L181) and
-[churn probe](../../../crates/ic-timers-runtime-probe/src/churn/mod.rs#L80).
+[size probe](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/crates/ic-timers-size-probe/src/lib.rs#L181) and
+[churn probe](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/crates/ic-timers-runtime-probe/src/churn/mod.rs#L80).
 Both packages use std; the adopted hygiene convention selects its std re-export.
 
 **Change/impact:** use `std::arch::wasm32` when these probe files next receive an

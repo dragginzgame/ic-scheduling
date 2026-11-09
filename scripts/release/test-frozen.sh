@@ -48,7 +48,7 @@ for arg in "$@"; do
                 exit 37
             fi
             exit 0 ;;
-        shared-tooling-check|clippy-jobs|clippy-timers|package-jobs|package-timers)
+        toko-tooling-check|clippy-jobs|clippy-timers|package-jobs|package-timers)
             exec "$FROZEN_TEST_REAL_MAKE" "$@" ;;
     esac
     if jq -e --arg target "$arg" '.stages | index($target) != null' ci/release-validation.json > /dev/null; then

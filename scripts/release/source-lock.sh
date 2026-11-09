@@ -10,6 +10,6 @@ select_release_source_lock() {
     [[ -n "${TMPDIR:-}" ]] || mkdir -p "$parent"
     release_lock_selection="$(mktemp -d "$parent/jobs-release-selection.XXXXXX")"
     trap 'rm -rf -- "$release_lock_selection"' EXIT
-    git show "$source:Cargo.lock" > "$release_lock_selection/Cargo.lock" || return
+    git show "$source:qualification/Cargo.lock" > "$release_lock_selection/Cargo.lock" || return
     export RELEASE_METADATA_LOCKFILE="$release_lock_selection/Cargo.lock"
 }

@@ -1,17 +1,7 @@
 [workspace]
-# Production packages: crates/ic-jobs, crates/ic-timers.
-# Remaining members are unpublished consumer, test and qualification packages.
-members = [
-    "apps/ic-jobs-test-consumer",
-    "crates/ic-jobs",
-    "crates/ic-jobs-canister-tests",
-    "crates/ic-timers",
-    "crates/ic-timers-pocketic",
-    "crates/ic-timers-runtime-probe",
-    "crates/ic-timers-size-probe",
-    "crates/ic-timers-test-protocol",
-]
+members = ["crates/ic-jobs", "crates/ic-timers"]
 default-members = ["crates/ic-jobs", "crates/ic-timers"]
+exclude = ["qualification"]
 resolver = "3"
 
 [workspace.package]
@@ -25,39 +15,22 @@ repository = "https://github.com/dragginzgame/ic-scheduling"
 # Jobs
 # Changelog : releases/jobs/CHANGELOG.md
 ic-jobs = { path = "crates/ic-jobs", version = "0.34.16" }
-ic-jobs-canister-tests = { path = "crates/ic-jobs-canister-tests", version = "0.34.16" }
-ic-jobs-test-consumer = { path = "apps/ic-jobs-test-consumer", version = "0.34.16" }
 
 # Timers
 # Changelog : releases/timers/CHANGELOG.md
 ic-timers = { path = "crates/ic-timers", version = "0.41.5" }
-ic-timers-pocketic = { path = "crates/ic-timers-pocketic", version = "0.41.5" }
-ic-timers-runtime-probe = { path = "crates/ic-timers-runtime-probe", version = "0.41.5" }
-ic-timers-size-probe = { path = "crates/ic-timers-size-probe", version = "0.41.5" }
-ic-timers-test-protocol = { path = "crates/ic-timers-test-protocol", version = "0.41.5" }
 
 # Production dependencies
 # Metrics and Serde also serve qualification consumers.
 ic-metrics = { version = "0.29.0", default-features = false }
-ic-platform-runtime = { version = "0.20.0", default-features = false }
+ic-platform-runtime = { version = "0.21.0", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"
 
 # Tests and tooling only
-clap = { version = "4.6", default-features = false, features = ["std", "help", "usage", "error-context"] }
-ic-build = "0.81.0"
-ic-host-artifacts = "0.76.1"
-ic-host-fs = { version = "0.76.1", default-features = false }
-ic-host-process = { version = "0.76.1", default-features = false }
-ic-platform-types = { version = "0.18.0", default-features = false }
-ic-storage = "0.70.0"
-ic-testkit = "0.95.0"
-ic-wire = "0.18.0"
-ic-wire-endpoint = "0.9.0"
 serde_json = "1.0"
 serde_test = "1.0"
-tokio = { version = "1", default-features = false }
-toko-tooling = "=0.36.0"
+toko-tooling = "=0.38.2"
 
 [workspace.lints.rust]
 missing_docs = "deny"
@@ -65,11 +38,3 @@ unsafe_code = "forbid"
 
 [workspace.lints.clippy]
 all = "warn"
-
-# Preserve the Timers probes' qualified optimization profile.
-[profile.timer-probe]
-inherits = "release"
-lto = "thin"
-opt-level = "z"
-panic = "abort"
-strip = "symbols"

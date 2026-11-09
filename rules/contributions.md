@@ -1,7 +1,7 @@
 # Contributions, commits and pull requests
 <!-- Shared companions: docs/release-batches.md -->
 
-These rules are part of the [engineering baseline](../DRAGGINZGAME.md).
+These rules are part of the [engineering baseline](../TOKO-TOOLING.md).
 Direct local edits are the default; requested or required review contributions
 use a topic branch and PR. Human contributors use their normal repository/fork
 permissions. The agent authority below does not restrict that human workflow.
@@ -23,7 +23,7 @@ does not establish current access or authorship of every included commit.
 
 For repositories that adopt an approved contributor agreement, verify executed
 acceptance and rights-holder authority before merging covered contributions.
-Follow the canonical [CLA and relicensing guidance](https://github.com/dragginzgame/shared-tooling/blob/main/docs/licenses.md#contributor-agreements-and-relicensing).
+Follow the canonical [CLA and relicensing guidance](https://github.com/dragginzgame/toko-tooling/blob/main/docs/licenses.md#contributor-agreements-and-relicensing).
 A PR, DCO sign-off or agent-generated checkbox does not establish a signed CLA;
 agents must not sign on another person's or entity's behalf. Publishing an
 agreement does not establish acceptance or configure fleet-wide signing checks.
@@ -34,17 +34,29 @@ agreement does not establish acceptance or configure fleet-wide signing checks.
 
 **Prefer direct edits in the normal authorized checkout when a PR is optional.**
 Ordinary fixes end with reviewable working-tree changes, focused checks and
-[pending notes](changelogs.md#automatic-next-version-selection). Shared Tooling
+[pending notes](changelogs.md#automatic-next-version-selection). Toko Tooling
 also prepares its local `VERSION`; other package versions remain unchanged.
 Use a PR when requested or required by the authorized delivery workflow or branch
 protections. Optional hosted CI is not a reason to add a PR or approval round.
 
 The [authorization table](#agent-authorization) defines Git and release effects.
 Inspect wrappers and Make targets for those effects before running them.
-Beyond the pending notes and Shared Tooling `VERSION` preparation above,
-implementation and validation alone do not authorize staging, commits, package
+Beyond the pending notes and Toko Tooling `VERSION` preparation above,
+implementation and validation alone do not authorize staging file contents, commits, package
 version changes, tags, pushes or publication. Disposable validation fixtures may
 exercise those operations only in their documented test repositories.
+
+An implementation or fix request does authorize **intent-to-add** bookkeeping:
+use `git add -N -- <explicit-paths>` for newly created, task-owned files when an
+applicable validation check requires them to be known to Git. For example, the
+dependency-pin checker requires a newly created `qualification/Cargo.lock` to
+have an index entry. This command does not stage the file contents or authorize
+a commit, push or release. Inspect Git status and the index first, select only
+the required new files, preserve existing staged work, and explain the reason
+before proceeding. Do not request separate permission for this validation step,
+use a broad directory selection, or stage content merely to satisfy a checker.
+Report remaining intent-to-add entries at handoff; do not silently alter other
+index entries to clean up after validation.
 
 Carry established authority forward without repeated permission. During ordinary
 implementation, “keep going”, “finish this”, “prepare the release”, a release
@@ -146,6 +158,7 @@ permission for already-authorized steps.
 | Request | Authorized work |
 | --- | --- |
 | Fix or implement a change | Make scoped local edits and run relevant checks. |
+| Validate newly created task-owned files | When a check requires Git-known paths, use scoped `git add -N` without another approval; no file-content staging, commit or push. |
 | Stage the selected change | Stage only its reviewed paths; no commit or release. |
 | Commit the change | Stage the selected work and create its local commit; no implicit push. |
 | Open or submit a PR for the change | Create/use a topic branch, make scoped commits, push that branch to the intended repository or fork, and open the PR. Use a draft when readiness is incomplete or requested. |
@@ -238,7 +251,7 @@ workflow. Prefer direct edits when authorized and a PR is optional.
 `dragginzgame/toko` and `dragginzgame/toko-miner` require explicit inclusion.
 Repositories outside Dragginzgame require explicit destination/action authority;
 DFINITY contributions remain excluded under the
-[own-the-solution rule](../DRAGGINZGAME.md#dfinity-dependencies-own-the-solution).
+[own-the-solution rule](../TOKO-TOOLING.md#dfinity-dependencies-own-the-solution).
 Explicit read-only and no-push instructions remain binding.
 
 - Verify the repository, read its adopted baseline/local overlay, and compare
@@ -280,7 +293,7 @@ PR closure or branch deletion; a policy update does not request fleet adoption P
   authority. Ordinary delivery does not waive these restrictions.
 - Respect branch protections, required checks/reviews and repository permissions.
   Report actual unmet requirements without inventing optional approval gates.
-  Follow the [asynchronous CI policy](../DRAGGINZGAME.md#validation-and-evidence);
+  Follow the [asynchronous CI policy](../TOKO-TOOLING.md#validation-and-evidence);
   pending optional CI alone does not require holding the turn open.
 - Keep each PR scoped to one destination and coherent change. Use its template,
   describing behavior, relevant validation and remaining gaps. Maintain

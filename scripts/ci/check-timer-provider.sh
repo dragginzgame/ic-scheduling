@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Shared companions: ci/workspace-manifests.txt
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -6,7 +7,18 @@ perl <<'PERL'
 use strict;
 use warnings;
 use File::Find;
-my $root = 'crates/ic-timers/src';
+open my $inventory, '<', 'ci/workspace-manifests.txt' or die "$!\n";
+my %package_roots;
+while (my $manifest = <$inventory>) {
+    chomp $manifest;
+    $manifest =~ m{\A((?:crates|qualification)/.+)/Cargo\.toml\z}
+        or die "invalid verified member path: $manifest\n";
+    my $directory = $1;
+    my ($name) = $directory =~ m{/([^/]+)\z};
+    !exists($package_roots{$name}) or die "ambiguous member directory: $name\n";
+    $package_roots{$name} = $directory;
+}
+my $root = "$package_roots{'ic-timers'}/src";
 open my $facade, '<', "$root/lib.rs" or die "$root/lib.rs: $!";
 my $source = do { local $/; <$facade> };
 $source =~ /^mod platform;$/m or die "platform must remain a private module\n";
@@ -33,7 +45,7 @@ find({ no_chdir => 1, wanted => sub {
 }}, $root);
 # Probe transport owns a Wire contract; reject accidental Candid defaults locally.
 for my $probe (qw(ic-timers-runtime-probe ic-timers-size-probe ic-timers-test-protocol ic-timers-pocketic)) {
-    my @probe_roots = grep { -d $_ } map { "crates/$probe/$_" } qw(src tests);
+    my @probe_roots = grep { -d $_ } map { "$package_roots{$probe}/$_" } qw(src tests);
     next unless @probe_roots; # Disposable provider fixtures may omit probes.
     find({ no_chdir => 1, wanted => sub {
         return unless /\.rs$/ && -f $_;
@@ -47,7 +59,7 @@ for my $probe (qw(ic-timers-runtime-probe ic-timers-size-probe ic-timers-test-pr
         while ($text =~ /#\[ic_wire_endpoint::(query|update|\$kind)\b(.*?)\]/sg) {
             my ($kind, $attributes) = ($1, $2);
             my $macro = $kind eq '$kind';
-            !$macro || $file eq 'crates/ic-timers-test-protocol/src/rpc/mod.rs'
+            !$macro || $file eq "$package_roots{'ic-timers-test-protocol'}/src/rpc/mod.rs"
                 or die "probe entrypoints require the protocol-owned declaration macro: $file\n";
             my $owner = $macro ? '\$crate::rpc::' : 'ic_timers_test_protocol::rpc::';
             my $method = $macro ? '\$method' : '[A-Za-z0-9_]+';

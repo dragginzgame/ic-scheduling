@@ -62,17 +62,32 @@ owns the explicit retained-installation retirement procedure.
 
 The consumer retains two additional complete physical images:
 
-- [Storage 0.63 / Memory image](../../../../apps/ic-jobs-test-consumer/src/queue/fixtures/stable-image-storage063.json):
+- [Storage 0.63 / Memory image](../../../../qualification/ic-jobs-test-consumer/src/queue/fixtures/stable-image-storage063.json):
   a valid Wire queue with Running/Uncertain attempts and two exact receipts.
   Current Storage refuses the retired physical format without writes or reset;
   the unchanged application payload still enters through Job::restore blocked.
-- [Storage 0.64 Cell image](../../../../apps/ic-jobs-test-consumer/src/queue/fixtures/stable-image-storage064.json):
+- [Storage 0.64 Cell image](../../../../qualification/ic-jobs-test-consumer/src/queue/fixtures/stable-image-storage064.json):
   captured with the previous reader before the Storage 0.65, Runtime 0.18 and
   Wire 0.15 update. Historical 0.65–0.67 readers preserved both blocked states,
   authority and exact receipts without writes or growth. Storage 0.68 refuses
   this previous Cell framing during both recovery and fresh creation with zero
   writes/growth and identical bytes. Frozen metadata still establishes the
   blocked attempts and receipts; it does not authorize replay or reset.
+- [Storage 0.70 image](../../../../qualification/ic-jobs-test-consumer/src/queue/fixtures/stable-image-storage070.json):
+  captured from the relocated qualification consumer before Storage 0.71 adoption,
+  using Runtime 0.20.3 and the pending Tooling/layout graph. The producer cold-opened
+  two exact receipted deliveries, one Running and one Uncertain, before capture.
+  Storage 0.71 rejects the complete four-page snapshot-directory backing during
+  recovery and creation, without writes, growth or replacement. The unchanged
+  queue Wire payload still restores both effects blocked through Job::restore.
+  Native acceptance supplies no converter, reset authority or IC rollback proof.
+
+The 0.70 fixture SHA-256 is
+`c4a40b8e3af89bdbafc97ecda3e12241f4ec26777089782ad0bbb4e1312a71c5`;
+producer lock SHA-256 is
+`e676a9999a634f4cd322d5712209afd42b6c35d6e6a3582b409320858c90a598`.
+The one-time Rust producer, old lock and capture log remain under
+`target/evidence/storage-tooling-20261109/`; ordinary checks do not regenerate it.
 
 Each image records its producer, old dependency-lock digest, bounded physical
 pages, sparse runs and snapshot metadata; the Wire images retain exact payload

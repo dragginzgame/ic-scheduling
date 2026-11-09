@@ -44,7 +44,7 @@ authority and never follow implicitly from this document.
 Persist one canonical `JobRecord` beside its immutable application payload and
 domain operation binding. Decode under Canic-owned byte/work limits and restore
 through `Job::restore` before publishing authority. The native
-[Wire persistence tests](../apps/ic-jobs-test-consumer/tests/stored_wire.rs) exercise the
+[Wire persistence tests](../qualification/ic-jobs-test-consumer/tests/stored_wire.rs) exercise the
 public record/attempt values, checked history and blocked restoration. Their
 limits are fixture policy, not Canic's production budget or stable envelope.
 Jobs supplies no universal stable byte format; Canic owns that contract.

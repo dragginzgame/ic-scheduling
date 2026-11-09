@@ -15,11 +15,11 @@ trap 'fixture_finish "$?" "$fixture" "Jobs formatting input retained"' EXIT
 
 # Only reorder two adjacent dependencies; keep names, versions and features.
 perl "$root/scripts/ci/prepare-cargo-formatting-fixture.pl" \
-    "$root/Cargo.toml" workspace.dependencies ic-build ic-host-artifacts > "$fixture/unsorted.toml"
+    "$root/Cargo.toml" workspace.dependencies serde_json serde_test > "$fixture/unsorted.toml"
 bash "$root/scripts/ci/check-formatting-hooks.sh" "$root" \
     crates/ic-jobs/src/job.rs Cargo.toml "$fixture/unsorted.toml" \
     --rust-sources \
-    crates/*/Cargo.toml apps/*/Cargo.toml \
+    $(cat "$root/ci/workspace-manifests.txt") qualification/Cargo.toml qualification/Cargo.lock \
     Cargo.lock make/consumer.mk make/tools.mk make/rust-format.mk make/release.mk make/execution.mk \
     ci/tool-versions.env scripts/ci/check-format-tools.sh scripts/ci/run-formatting.sh \
     scripts/ci/run-rust-formatting.pl

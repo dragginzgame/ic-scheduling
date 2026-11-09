@@ -2837,7 +2837,7 @@ gaps are explicit; no production timer Wasm/instruction change is expected.
 Released compatible repository-only **0.14.14** adopts reviewed committed
 Shared Tooling 0.1.23
 [`0ba0ad00ed94848e54ecc82629b6b7873b7284c0`](https://github.com/dragginzgame/shared-tooling/tree/0ba0ad00ed94848e54ecc82629b6b7873b7284c0).
-The [baseline snapshot](../../../.shared-tooling.snapshot),
+The [baseline snapshot](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/.shared-tooling.snapshot),
 [audit/setup snapshot](https://github.com/dragginzgame/ic-timers/blob/50b535a5936e885a727e6dade20f029d8a9113c2/.shared-tooling-audits.snapshot) and
 [helper snapshot](https://github.com/dragginzgame/ic-timers/blob/50b535a5936e885a727e6dade20f029d8a9113c2/.shared-tooling/helpers/.shared-tooling.snapshot) select
 35/30/13 exact files at that same revision. A clean detached scratch clone
@@ -4103,7 +4103,7 @@ and [handoff](../../status/current.md) for present selection and qualification.
 
 ### Current authority
 
-One [snapshot](../../../.shared-tooling.snapshot) records **134** canonical payloads
+One [snapshot](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/.shared-tooling.snapshot) records **134** canonical payloads
 from reviewed Shared Tooling **0.27.3**, revision
 `7ee5c83744aa822ecd070703dbf0a7d95076d5f6`.
 Canonical impact/apply ran from a clean clone of that committed revision with
@@ -4278,7 +4278,7 @@ Package-selection changes still require explicit setup for that selected tool;
 checks remain offline and never install or repair it. Old installations and
 failed attempts remain retained.
 
-The [baseline](../../../DRAGGINZGAME.md) and [local overlay](../../../AGENTS.md) retain
+The [baseline](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/DRAGGINZGAME.md) and [local overlay](../../../AGENTS.md) retain
 maintainer-owned commits/releases, direct delivery, Testkit server ownership and
 separate macOS qualification. This adoption does not activate optional audits or
 schedules. Historical selections and receipts remain in the

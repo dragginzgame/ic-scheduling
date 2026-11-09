@@ -1,0 +1,66 @@
+[workspace]
+members = [
+    "ic-jobs-canister-tests",
+    "ic-jobs-test-consumer",
+    "ic-timers-pocketic",
+    "ic-timers-runtime-probe",
+    "ic-timers-size-probe",
+    "ic-timers-test-protocol",
+]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.99.1"
+license = "MIT"
+description = "Durable application job policies for Internet Computer canisters"
+repository = "https://github.com/dragginzgame/ic-scheduling"
+
+[workspace.dependencies]
+# Current product source; qualification is not a product release group.
+ic-jobs = { path = "../crates/ic-jobs" }
+ic-timers = { path = "../crates/ic-timers" }
+
+# Private qualification members
+ic-jobs-canister-tests = { path = "ic-jobs-canister-tests" }
+ic-jobs-test-consumer = { path = "ic-jobs-test-consumer" }
+ic-timers-pocketic = { path = "ic-timers-pocketic" }
+ic-timers-runtime-probe = { path = "ic-timers-runtime-probe" }
+ic-timers-size-probe = { path = "ic-timers-size-probe" }
+ic-timers-test-protocol = { path = "ic-timers-test-protocol" }
+
+# Qualification implementation dependencies
+ic-metrics = { version = "0.29.0", default-features = false }
+ic-platform-runtime = { version = "0.21.0", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"
+
+# Native harness and build tooling
+clap = { version = "4.6", default-features = false, features = ["std", "help", "usage", "error-context"] }
+ic-build = "0.81.0"
+ic-host-artifacts = "0.76.1"
+ic-host-fs = { version = "0.76.1", default-features = false }
+ic-host-process = { version = "0.76.1", default-features = false }
+ic-platform-types = { version = "0.19.0", default-features = false }
+ic-storage = "0.71.1"
+ic-testkit = "0.96.0"
+ic-wire = "0.19.0"
+ic-wire-endpoint = "0.10.0"
+serde_json = "1.0"
+tokio = { version = "1", default-features = false }
+toko-tooling = "=0.38.2"
+
+[workspace.lints.rust]
+missing_docs = "deny"
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"
+
+# Preserve the Timers probes' qualified optimization profile.
+[profile.timer-probe]
+inherits = "release"
+lto = "thin"
+opt-level = "z"
+panic = "abort"
+strip = "symbols"

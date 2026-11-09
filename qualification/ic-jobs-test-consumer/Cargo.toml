@@ -1,0 +1,47 @@
+# Tests and tooling packages: qualification application, including its Wasm.
+[package]
+name = "ic-jobs-test-consumer"
+version = "0.34.16"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ic-jobs.workspace = true
+ic-metrics.workspace = true
+ic-platform-runtime = { workspace = true, features = ["cdk"] }
+ic-storage.workspace = true
+ic-timers.workspace = true
+ic-wire-endpoint.workspace = true
+
+# Only the Wasm qualification canister enables Runtime's CDK frontend.
+# It owns entrypoint generation and upstream calls, spawning and trap behavior;
+# native DTO/codec tests need only Principal and Serde.
+[package.metadata.cargo-machete]
+ignored = ["toko-tooling"]
+
+[package.metadata.toko-tooling.loc]
+category = "tests"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# This unpublished qualification app owns IC integration. Platform supplies the
+# Principal for native DTO consumers. Queue/runtime integration is Wasm or
+# test-only, matching the source module gates.
+[dependencies]
+ic-platform-types.workspace = true
+ic-wire.workspace = true
+serde = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+ic-jobs.workspace = true
+ic-metrics.workspace = true
+ic-platform-types = { workspace = true, features = ["principal-self-authenticating"] }
+ic-storage = { workspace = true, features = ["test-support"] }
+serde_json.workspace = true
+toko-tooling.workspace = true
+
+[lints]
+workspace = true

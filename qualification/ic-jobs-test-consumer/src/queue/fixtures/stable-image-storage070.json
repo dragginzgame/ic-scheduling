@@ -1,0 +1,76 @@
+{
+  "pages": 4,
+  "producer": "ic-scheduling bb67e6f + pending layout/tooling/runtime qualification / ic-storage 0.70.0 / Runtime 0.20.3 / lock e676a9999a634f4cd322d5712209afd42b6c35d6e6a3582b409320858c90a598",
+  "queue_hex": "4a5157011de33f021521d09ed907c106ba9e46a7ff70207db4555f0eaf3b8c5c1502011de33f021521d09ed907c106ba9e46a7ff70207db4555f0eaf3b8c5c150203020100640101010100000164036464010364011de33f021521d09ed907c106ba9e46a7ff70207db4555f0eaf3b8c5c15021272657461696e656420756e6365727461696e0200640101010100000164026400011de33f021521d09ed907c106ba9e46a7ff70207db4555f0eaf3b8c5c15021072657461696e65642072756e6e696e6700020100011de33f021521d09ed907c106ba9e46a7ff70207db4555f0eaf3b8c5c15021272657461696e656420756e6365727461696e0200011de33f021521d09ed907c106ba9e46a7ff70207db4555f0eaf3b8c5c15021072657461696e65642072756e6e696e67",
+  "runs": [
+    [
+      0,
+      "4943524f4f54523102"
+    ],
+    [
+      16,
+      "01"
+    ],
+    [
+      24,
+      "36"
+    ],
+    [
+      32,
+      "04"
+    ],
+    [
+      40,
+      "75fa931d71559d52bf3a0f2b0bf98cbe"
+    ],
+    [
+      65536,
+      "49434449525230310202040201010201010120746573742e6a6f62732e636f6e73756d65722e6d616e6167656d656e742e7631010301"
+    ],
+    [
+      131072,
+      "49434449525230310102030201010201010120746573742e6a6f62732e636f6e73756d65722e6d616e6167656d656e742e7631"
+    ],
+    [
+      196608,
+      "53434c012c01"
+    ],
+    [
+      196616,
+      "4a5157011de33f021521d09ed907c106ba9e46a7ff70207db4555f0eaf3b8c5c1502011de33f021521d09ed907c106ba9e46a7ff70207db4555f0eaf3b8c5c1502030201"
+    ],
+    [
+      196685,
+      "6401010101"
+    ],
+    [
+      196692,
+      "0164036464010364011de33f021521d09ed907c106ba9e46a7ff70207db4555f0eaf3b8c5c15021272657461696e656420756e6365727461696e02"
+    ],
+    [
+      196752,
+      "6401010101"
+    ],
+    [
+      196759,
+      "01640264"
+    ],
+    [
+      196764,
+      "011de33f021521d09ed907c106ba9e46a7ff70207db4555f0eaf3b8c5c15021072657461696e65642072756e6e696e67"
+    ],
+    [
+      196813,
+      "0201"
+    ],
+    [
+      196816,
+      "011de33f021521d09ed907c106ba9e46a7ff70207db4555f0eaf3b8c5c15021272657461696e656420756e6365727461696e02"
+    ],
+    [
+      196868,
+      "011de33f021521d09ed907c106ba9e46a7ff70207db4555f0eaf3b8c5c15021072657461696e65642072756e6e696e67"
+    ]
+  ],
+  "snapshot": "{\"init\":{\"manager\":\"hpjxp-lpdh4-bbkio-qt3mq-pqigx-kpenj-77oaq-h3ncv-l4hk6-o4mlq-kqe\",\"delivery_sender\":\"hpjxp-lpdh4-bbkio-qt3mq-pqigx-kpenj-77oaq-h3ncv-l4hk6-o4mlq-kqe\"},\"next_id\":3,\"jobs\":[{\"job\":{\"id\":1,\"schedule\":{\"Once\":{\"at_ns\":100}},\"retry\":{\"max_attempts\":1,\"initial_delay_ns\":1,\"max_delay_ns\":1},\"sequence\":1,\"occurrence\":0,\"schedule_origin\":0,\"attempts\":1,\"scheduled_ns\":100,\"state\":{\"Uncertain\":{\"started_ns\":100}},\"updated_ns\":100,\"last_outcome\":{\"outcome\":\"Uncertain\",\"at_ns\":100}},\"task\":{\"Deliver\":{\"destination\":\"hpjxp-lpdh4-bbkio-qt3mq-pqigx-kpenj-77oaq-h3ncv-l4hk6-o4mlq-kqe\",\"message\":\"retained uncertain\"}}},{\"job\":{\"id\":2,\"schedule\":{\"Once\":{\"at_ns\":100}},\"retry\":{\"max_attempts\":1,\"initial_delay_ns\":1,\"max_delay_ns\":1},\"sequence\":1,\"occurrence\":0,\"schedule_origin\":0,\"attempts\":1,\"scheduled_ns\":100,\"state\":\"Running\",\"updated_ns\":100,\"last_outcome\":null},\"task\":{\"Deliver\":{\"destination\":\"hpjxp-lpdh4-bbkio-qt3mq-pqigx-kpenj-77oaq-h3ncv-l4hk6-o4mlq-kqe\",\"message\":\"retained running\"}}}],\"counter\":0,\"receipts\":[{\"job\":1,\"occurrence\":0,\"sequence\":1,\"payload\":{\"destination\":\"hpjxp-lpdh4-bbkio-qt3mq-pqigx-kpenj-77oaq-h3ncv-l4hk6-o4mlq-kqe\",\"message\":\"retained uncertain\"}},{\"job\":2,\"occurrence\":0,\"sequence\":1,\"payload\":{\"destination\":\"hpjxp-lpdh4-bbkio-qt3mq-pqigx-kpenj-77oaq-h3ncv-l4hk6-o4mlq-kqe\",\"message\":\"retained running\"}}]}"
+}

@@ -749,7 +749,7 @@ passed Linux, MSRV and both complete native macOS gates. That source is untagged
 remain outside this qualification; normal green CI still does not qualify #23.
 
 macOS host workflows are required by the
-[adopted engineering baseline](../../../DRAGGINZGAME.md#host-support).
+[adopted engineering baseline](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/DRAGGINZGAME.md#host-support).
 The requirement is separate from executed qualification; canister execution
 continues to target Wasm on the Internet Computer.
 
@@ -990,7 +990,7 @@ inspection, with all three MSRV jobs passed. Host 0.5.2's
 passes Linux, MSRV and both native macOS gates. These observations do not
 qualify the incoming consumer graph; no dependency file was written by the audit.
 
-The maintained [harness](../../../crates/ic-timers-pocketic/tests/runtime/harness/mod.rs)
+The maintained [harness](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/crates/ic-timers-pocketic/tests/runtime/harness/mod.rs)
 still explicitly spawns the audited PocketIC binary and connects a fresh
 instance to its owned server, retaining instance-before-server destruction.
 Testkit delegates server spawn, polling, termination and background reaping to
@@ -1860,7 +1860,7 @@ source, public APIs and canister dependencies are unchanged.
 The downloaded registry startup owner and CLI match Testkit's tagged 0.27.0
 source at `f2d9fc6f197bcb9e669a7abaa1135f4cdffdd9ee`. Its startup error is a
 record with `failure()`, bounded `output()` and independent command/server cleanup
-reports. The private [harness](../../../crates/ic-timers-pocketic/tests/runtime/harness/mod.rs)
+reports. The private [harness](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/crates/ic-timers-pocketic/tests/runtime/harness/mod.rs)
 uses retained spawn/connect/build APIs and `expect`, without matching retired
 error variants. Its error's `Debug` includes the original cause and cleanup/output
 fields; adding downstream error reconstruction would duplicate the owner.
@@ -1931,7 +1931,7 @@ complete release gate, including its existing MSRV-selected probe execution.
 Both product targets use the existing [Make owners](../../../Makefile): offline
 Testkit admission precedes builds, admission is rechecked afterward, and only
 the resulting server path reaches the probes. The private
-[harness](../../../crates/ic-timers-pocketic/tests/runtime/harness/mod.rs) starts a fresh
+[harness](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/crates/ic-timers-pocketic/tests/runtime/harness/mod.rs) starts a fresh
 managed server and IC instance for each subject. The watchdog target selects
 the existing `tests::` subjects; the cohort target selects the existing size and
 instruction subject with its measurement output. Normal step failure stops the
@@ -3194,7 +3194,7 @@ make release-verify
 ```
 
 Ordinary development and handoff follow Shared's
-[validation cadence](../../../DRAGGINZGAME.md#validation-and-evidence), adopted by the
+[validation cadence](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/DRAGGINZGAME.md#validation-and-evidence), adopted by the
 maintainer on 2026-10-14. Use the local command map in the
 [hygiene overlay](../audits/code-hygiene.md#inspection-and-validation-commands)
 for affected library/probe compilation, tests, lint and shell contracts.

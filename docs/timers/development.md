@@ -51,6 +51,40 @@ Native tests cannot establish IC recovery. The manually selected recovery workfl
 runs both Jobs recovery and Timers watchdog/cohort gates on each host. Check the
 handoff for what was actually run on this combined source and graph.
 
+## Runtime composition qualification
+
+Scheduling owns Timers' composition with its root-selected Platform Runtime,
+instead of gating Platform's releases on a downstream Timers dependency
+([#91](https://github.com/dragginzgame/ic-scheduling/issues/91)). The supported
+cohort is Runtime 0.21 with the matching exact guard; the current lock selects
+0.21.0. The mandatory installed subjects and policy cohorts qualify this selected
+source and lock; earlier Runtime 0.20 evidence does not substitute for that gate.
+
+| Required observation | Scheduling owner |
+| --- | --- |
+| Initialize/reinitialize without losing active callback authority | Installed `runtime_composition_preserves_calls_cleanup_and_lifecycle`; native `initialization_is_required_and_idempotent` |
+| Callback awaits a real Runtime call, then completes | Same installed composition subject, selecting raw and prepared calls with identical Wire requests/budgets |
+| Callback continuation trap cleans execution authority; later work succeeds | Same composition subject plus `ordinary_continuation_trap_retires_running_work_and_releases_expired_authority` |
+| Cancellation causes no callback mutation; explicit rearm dispatches | Same composition subject plus `absent_ordinary_demand_is_idle_and_explicit_cancellation_stays_distinct` |
+| Dispatch succeeds after upgrade | Same composition subject plus the retained readiness/reconstruction proof in `trapped_work_keeps_committed_successor_and_executor_is_private` |
+| One selected executor and exact registry guard in each native/Wasm graph | `check-timer-dependencies` and its forbidden-edge/source rejection fixtures |
+
+The composition subject is mandatory in the existing Watchdog qualification
+roster. Its private controls select the call transport and repeat initialization;
+they add no product API, timer provider, persisted state or Candid facade.
+Testkit continues to own simulator/server lifecycle. For focused development:
+
+```bash
+cli="$(bash scripts/dev/testkit-tool.sh --check)"
+export POCKET_IC_BIN="$("$cli" check)"
+cargo run --manifest-path qualification/Cargo.toml -p ic-timers-pocketic --locked --offline -- focused \
+  tests::lifecycle::runtime_composition_preserves_calls_cleanup_and_lifecycle
+```
+
+Use the prepared tools described in [repository setup](../../README.md#repository-setup).
+The driver
+binds subjects, source, lock, compiler and exact Wasm bytes in its retained receipt.
+
 ## Release and retained evidence
 
 Jobs and Timers have independent versions and canonical
