@@ -1,5 +1,10 @@
 # Current handoff
 
+Delivery batch `batch-XVdlf0HL` stopped before version preparation, tags, pushes
+or uploads: its dependency fixture duplicated Tooling's dev-dependency table.
+Table insertion and protocol-macro admission/mutations are repaired; the focused
+fixture and ShellCheck pass. Preserve its evidence; restart from new source for Jobs 0.34.16 / Timers 0.41.5.
+
 ## Pending: native fixture consolidation — 2026-11-09
 
 Generated ordinary-command traces now include isolated requests and delayed
@@ -34,9 +39,8 @@ including four-cohort/two-calibration qualification); native Watchdog cleanup cu
 90 (15 tests/Clippy), and counter/report/registry consolidation cut 173 (nine and
 18 tests, all 12 report omissions retained). Evidence remains under
 `target/evidence/large-cleanup-20261109/`, `target/evidence/watchdog-native-cleanup-20261109/`,
-`target/evidence/test-cleanup-20261109/` and
-`target/evidence/registry-test-cleanup-20261109/`. These qualify their original
-graphs; no full gate or delivery was claimed.
+`target/evidence/test-cleanup-20261109/` and `target/evidence/registry-test-cleanup-20261109/`.
+These qualify their original graphs; no full gate or delivery was claimed.
 
 ## Pending: three audit improvements — 2026-11-09
 
@@ -63,11 +67,10 @@ No product API, checkpoint format, dependency, version, full CI or delivery chan
 ## Pending: Timers memory-growth arithmetic — 2026-11-09
 
 MemoryPageSummary delegates growth counts/maxima to Metrics MeasurementAggregate;
-Timers retains paired extents, differences, sampling and attribution. Public equality
-excludes unexposed totals/overflow flags; this adds bookkeeping, not footprint savings.
-Eight summary/four runtime tests and native/Wasm Clippy passed:
-`target/evidence/memory-summary-20261109/`. No API/dependency/checkpoint change,
-full gate, installed IC qualification or delivery; notes extend Timers 0.41.5.
+Timers retains extents, differences, sampling and attribution. Public equality ignores
+unexposed totals/overflow flags; bookkeeping grows. Eight summary/four runtime tests
+and native/Wasm Clippy passed: `target/evidence/memory-summary-20261109/`. No API,
+dependency/checkpoint change, full/live gate or delivery; notes extend Timers 0.41.5.
 
 ## Pending: supplier adoption — 2026-11-09
 
@@ -117,7 +120,7 @@ publication fixtures; product stages/uploads are substituted. Evidence and
 preserved concurrent supplier changes: `target/evidence/tooling-036-20261108/`.
 One producer-owned docs/make-interface.md row still incorrectly says update
 changes Cargo selection; actual scripts/local instructions require Cargo first.
-No full gate or delivery. Pending notes remain Jobs 0.34.16 / Timers 0.41.5.
+No full gate/delivery; pending notes: Jobs 0.34.16 / Timers 0.41.5.
 ## Published baseline and recovery custody
 
 Timers 0.41.4 was tagged, pushed and published on 2026-11-08 through completed
@@ -139,8 +142,7 @@ Durable verification remains in
 in its repository.git/release-state. Delivery logs remain under
 `target/evidence/deploy-cleanup-20261108/`.
 
-Detailed delivery/cleanup, older failed-batch and deferral custody are in the
-[previous handoff](https://github.com/dragginzgame/ic-scheduling/blob/25c4167f48017d43fb4ec9dc31afa89f2dc14323/docs/status/current.md).
+Older delivery/cleanup, failed-batch and deferral custody: [previous handoff](https://github.com/dragginzgame/ic-scheduling/blob/25c4167f48017d43fb4ec9dc31afa89f2dc14323/docs/status/current.md).
 Preserve all prior batches, tags, source pins, branches/stashes, archives and
 recovery artifacts; nothing was retired. Jobs stays Serde-only at runtime;
 restore uses Job::restore and uncertain effects stay blocked. Timers retains its

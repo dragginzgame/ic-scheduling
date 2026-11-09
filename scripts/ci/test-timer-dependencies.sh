@@ -125,11 +125,11 @@ for table in "target.'cfg(target_arch = \"wasm32\")'.dependencies" "target.'cfg(
     grep -q 'forbidden pattern matches ic-wire' build-failure.log
 done
 reset_manifests
-cat >> crates/ic-timers/Cargo.toml <<'EOF'
-
-[dev-dependencies]
-ic-wire.workspace = true
-EOF
+# Tooling selection already owns a dev-dependencies table in every member.
+perl -0777 -pi -e '
+    s/^\[dev-dependencies\]\n/[dev-dependencies]\nic-wire.workspace = true\n/m
+        or die "missing member dev-dependencies table\n";
+' crates/ic-timers/Cargo.toml
 RUSTUP_AUTO_INSTALL=0 cargo tree --offline -p ic-timers --target wasm32-unknown-unknown > /dev/null
 bash "$checker"
 reset_manifests
@@ -300,17 +300,20 @@ reset_manifests
 
 # Static provider admission follows the real probe declarations without building
 # a canister. Mutations retain the surrounding source and change one obligation.
-for package in ic-timers ic-timers-runtime-probe ic-timers-size-probe; do
+for package in ic-timers ic-timers-runtime-probe ic-timers-size-probe ic-timers-test-protocol; do
     cp -R "$root/crates/$package/src/." "crates/$package/src/"
 done
 bash scripts/ci/check-timer-provider.sh
 probe=crates/ic-timers-runtime-probe/src/lib.rs
+contract=crates/ic-timers-test-protocol/src/rpc/mod.rs
 cp "$probe" original-probe.rs
+cp "$contract" original-contract.rs
 for mutation in identity budget bare; do
     cp original-probe.rs "$probe"
+    cp original-contract.rs "$contract"
     case "$mutation" in
-        identity) perl -0777 -pi -e 's/id = ic_timers_test_protocol::rpc::Method::\w+ as u64/id = 0/' "$probe" ;;
-        budget) perl -0777 -pi -e 's/request = ic_timers_test_protocol::rpc::REQUEST_LIMITS/request = another_limit/' "$probe" ;;
+        identity) perl -0777 -pi -e 's/id = \$crate::rpc::Method::\$method as u64/id = 0/ or die "missing probe identity binding\n"' "$contract" ;;
+        budget) perl -0777 -pi -e 's/request = \$crate::rpc::REQUEST_LIMITS/request = another_limit/ or die "missing probe budget binding\n"' "$contract" ;;
         bare) printf '\n#[ic_platform_runtime::cdk::query]\nfn unadmitted_probe() {}\n' >> "$probe" ;;
     esac
     if bash scripts/ci/check-timer-provider.sh > "provider-$mutation-failure.log" 2>&1; then
@@ -319,6 +322,7 @@ for mutation in identity budget bare; do
     grep -q 'probe entrypoints require' "provider-$mutation-failure.log"
 done
 cp original-probe.rs "$probe"
+cp original-contract.rs "$contract"
 
 cmp "$root/Cargo.lock" Cargo.lock
 fixture_complete=true

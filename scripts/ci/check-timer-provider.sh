@@ -44,11 +44,16 @@ for my $probe (qw(ic-timers-runtime-probe ic-timers-size-probe ic-timers-test-pr
             or die "probe protocols must use Wire: $file\n";
         $text !~ /#\[ic_platform_runtime::cdk::(?:query|update)\b/
             or die "probe entrypoints require canonical Wire Endpoint attributes: $file\n";
-        while ($text =~ /#\[ic_wire_endpoint::(?:query|update)\b(.*?)\]/sg) {
-            my $attributes = $1;
-            $attributes =~ /id\s*=\s*ic_timers_test_protocol::rpc::Method::[A-Za-z0-9_]+\s+as\s+u64/
-                && $attributes =~ /request\s*=\s*ic_timers_test_protocol::rpc::REQUEST_LIMITS/
-                && $attributes =~ /response\s*=\s*ic_timers_test_protocol::rpc::RESPONSE_LIMITS/
+        while ($text =~ /#\[ic_wire_endpoint::(query|update|\$kind)\b(.*?)\]/sg) {
+            my ($kind, $attributes) = ($1, $2);
+            my $macro = $kind eq '$kind';
+            !$macro || $file eq 'crates/ic-timers-test-protocol/src/rpc/mod.rs'
+                or die "probe entrypoints require the protocol-owned declaration macro: $file\n";
+            my $owner = $macro ? '\$crate::rpc::' : 'ic_timers_test_protocol::rpc::';
+            my $method = $macro ? '\$method' : '[A-Za-z0-9_]+';
+            $attributes =~ /id\s*=\s*${owner}Method::$method\s+as\s+u64/
+                && $attributes =~ /request\s*=\s*${owner}REQUEST_LIMITS/
+                && $attributes =~ /response\s*=\s*${owner}RESPONSE_LIMITS/
                 or die "probe entrypoints require explicit protocol identity and Wire budgets: $file\n";
         }
     }}, @probe_roots);

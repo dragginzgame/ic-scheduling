@@ -49,6 +49,9 @@ entry alone does not establish publication.
 
 ### 🛠️ Tooling
 
+- Admit the protocol-owned endpoint macro in provider checks and exercise real
+  identity/budget mutations at that owner. Extend the existing dev-dependency
+  table in boundary fixtures so Tooling selection remains valid during checks.
 - Share publication lint selection between dry runs and uploads. Qualified
   Jobs-only proof selects its combined-consumer lint; Timers, shared or unavailable
   proof retains complete fresh lint. Re-admit sealed evidence and prepared
