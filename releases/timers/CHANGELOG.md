@@ -23,19 +23,25 @@ this product release group. Older entries retain their historical scope.
 
 - Qualify the matching Runtime 0.21, Types 0.19, Endpoint 0.10 / Wire 0.19 and
   Storage 0.71.1 stack. Share current-codec framing over raw Testkit transport
-  between native harnesses; preserve error context, budgets and no-retry behavior.
+  between native harnesses; preserve error context, budgets and no-retry behavior
+  ([#92](https://github.com/dragginzgame/ic-scheduling/issues/92)).
 
 - Adopt Testkit 0.96/Platform 0.28 in native runtime qualification and use canonical
   Types Principal directly. Preserve explicit server lifetime, transport budgets,
   Runtime singleton and installed recovery/cohort obligations.
 
-- Own installed Runtime composition qualification in Scheduling for its supported
-  Runtime 0.21 cohort: repeated initialization, raw/prepared call continuations,
+- Establish Scheduling-owned installed composition qualification for the earlier
+  Runtime 0.20 cohort: repeated initialization, raw/prepared call continuations,
   trap cleanup, cancellation, rearming and dispatch after upgrade. Retain exact
   guard admission and reuse the existing probe and Watchdog gate
-  ([#91](https://github.com/dragginzgame/ic-scheduling/issues/91)).
+  ([#91](https://github.com/dragginzgame/ic-scheduling/issues/91)); keep that evidence
+  bound to its original graph while #92 qualifies the new family.
 
 ### 🛠️ Tooling
+
+- Clean only the disposable frozen fixture's qualification Cargo cache before
+  retirement, preserving generic ignored-file protection and retained release refs.
+  Route its optional installed subjects through the qualification manifest/target.
 
 - Adopt published Toko Tooling 0.38.2 with Cargo-owned selection and authenticated
   snapshot installation. Use `toko-tooling-*` commands and `TOKO_TOOLING_*`

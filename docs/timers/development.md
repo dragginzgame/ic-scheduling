@@ -55,7 +55,9 @@ handoff for what was actually run on this combined source and graph.
 
 Scheduling owns Timers' composition with its root-selected Platform Runtime,
 instead of gating Platform's releases on a downstream Timers dependency
-([#91](https://github.com/dragginzgame/ic-scheduling/issues/91)). The supported
+([#91](https://github.com/dragginzgame/ic-scheduling/issues/91)). Runtime 0.21
+adoption and delivery are tracked separately in
+[#92](https://github.com/dragginzgame/ic-scheduling/issues/92). The supported
 cohort is Runtime 0.21 with the matching exact guard; the current lock selects
 0.21.0. The mandatory installed subjects and policy cohorts qualify this selected
 source and lock; earlier Runtime 0.20 evidence does not substitute for that gate.

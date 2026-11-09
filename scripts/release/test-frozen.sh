@@ -198,12 +198,14 @@ CURL
         "$GROUP_TEST_REAL_MAKE" --no-print-directory install-testkit-tools install-consumer-server
         local cli server
         cli="$(bash scripts/dev/testkit-tool.sh --check)"; server="$("$cli" check)"
-        POCKET_IC_BIN="$server" CARGO_NET_OFFLINE=true bash scripts/dev/minimum-rust.sh cargo run -p ic-timers-pocketic --locked --offline -- focused \
+        POCKET_IC_BIN="$server" CARGO_NET_OFFLINE=true bash scripts/dev/minimum-rust.sh cargo run --manifest-path qualification/Cargo.toml -p ic-timers-pocketic --locked --offline -- focused \
             tests::lifecycle::shared_watchdog_survives_trap_and_upgrade \
             tests::ingress::typed_entrypoints_reject_invalid_wire_before_mutating_timer_state
         "$GROUP_TEST_REAL_MAKE" --no-print-directory build-consumer
-        IC_JOBS_CONSUMER_WASM="$work/target/wasm32-unknown-unknown/release/ic_jobs_test_consumer.wasm" \
-            "$cli" run --ttl 900 -- bash scripts/dev/minimum-rust.sh cargo test -p ic-jobs-canister-tests --test recovery --features harness --locked --offline -- \
+        local target
+        target="$("$FROZEN_TEST_REAL_CARGO" metadata --manifest-path qualification/Cargo.toml --no-deps --locked --offline --format-version 1 | jq -er .target_directory)"
+        IC_JOBS_CONSUMER_WASM="$target/wasm32-unknown-unknown/release/ic_jobs_test_consumer.wasm" \
+            "$cli" run --ttl 900 -- bash scripts/dev/minimum-rust.sh cargo test --manifest-path qualification/Cargo.toml -p ic-jobs-canister-tests --test recovery --features harness --locked --offline -- \
             --ignored --exact management_upgrade_and_real_watchdog_delivery --nocapture
     ) > "$suite/frozen-installed.log" 2>&1; fi
     # Reconciliation preserves dirty normal work. Explicit fixture-only cleanup
@@ -214,6 +216,15 @@ CURL
     [[ "$(git hash-object Cargo.lock)" == "$original_lock" ]]
     "$GROUP_TEST_REAL_MAKE" --no-print-directory release-batch-reconcile "BATCH=$batch" > "$suite/frozen-reconcile.log" 2>&1
     [[ "$(git rev-parse HEAD)" == "$delivered" ]]
+    # Shared retirement preserves ignored paths outside its root build/tool trees.
+    # These qualification artifacts belong only to this disposable test. Ask
+    # Cargo to clean its explicit cache; never relax production retirement or
+    # remove a real release's build/evidence directories as a side effect.
+    if [[ -d "$work/qualification/target" ]]; then
+        [[ ! -L "$work/qualification/target" ]]
+        "$FROZEN_TEST_REAL_CARGO" clean --manifest-path "$work/qualification/Cargo.toml" \
+            --target-dir "$work/qualification/target" > "$suite/frozen-qualification-clean.log" 2>&1
+    fi
     "$GROUP_TEST_REAL_MAKE" --no-print-directory release-batch-retire "BATCH=$batch" > "$suite/frozen-retire.log" 2>&1
     [[ ! -e "$work" && ! -e "${state%/intent.json}" ]]
     for group in timers jobs; do

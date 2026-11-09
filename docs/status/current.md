@@ -2,13 +2,21 @@
 
 ## Runtime 0.21 adoption and authorized Timers release — 2026-11-09
 
-The user authorized Runtime 0.21 adoption and deployment/publication in this
+The user authorized issue #92, Runtime 0.21 adoption and deployment/publication in this
 repository. Origin/main equals the current base bb67e6f; siblings remain read-only.
 Target Timers 0.42.0: its required executor family changes from 0.20 to 0.21, so
 composed consumers must update their Runtime/Endpoint stack. Jobs' public library
 contract is unchanged and remains 0.34.16; its private maintenance notes remain
 Unreleased 0.34.17. Qualification versions stay at their existing literals.
-No product version has been prepared yet. Use the standard frozen flow:
+Implementation source 1f2b9ed adopted the complete matching family. Frozen batch
+`batch-1wgxqWCb` failed before preparation/delivery at `test-release-tooling`: its
+disposable nested fixture retired after reconciliation, but generic retirement
+correctly refused ignored `qualification/target` output. The consumer fixture now
+cleans only that explicit Cargo cache before retirement; the retained completed
+fixture passed focused cleanup/retirement with both release tags preserved.
+Evidence: `target/evidence/runtime21-release-20261109T171837Z/issue92-retirement/`.
+Keep the failed real batch/source/evidence intact. No product version, tag, push
+or upload occurred. Capture a new fixed source and rerun the standard full flow:
 `make release-minor RELEASE_GROUP=timers RELEASE_PUBLISH_TARGET=publish` after
 committing the complete implementation and obtaining a clean source checkout.
 Preserve any resulting batch/context and use its explicit BATCH for recovery.
@@ -68,7 +76,11 @@ zero writes/growth, while payload restore stays blocked through Job::restore.
 See [the fixture guide](../../crates/ic-jobs/tests/fixtures/README.md) and
 [consumer guide](../../qualification/ic-jobs-test-consumer/README.md).
 
-This implementation is being captured as the authorized clean release source.
+A concurrent normal Cargo.lock refresh selects Metrics 0.29.10 instead of the
+recorded 0.29.9 product graph. Preserve it separately; it belongs to the next
+candidate and does not alter the Runtime 0.21 release inputs.
+
+This fixed implementation is being captured as the authorized clean release source.
 The deployment request authorizes its scoped implementation commit, standard
 release commits/tags, origin/main delivery and Timers publication.
 No sibling release or editing is authorized. No protected prior batch/artifact
