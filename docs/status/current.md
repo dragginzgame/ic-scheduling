@@ -1,38 +1,50 @@
 # Current handoff
 
-## Runtime 0.21 adoption and authorized Timers release — 2026-11-09
+## Published Timers 0.42.0 / Runtime 0.21 — 2026-11-09
 
-The user authorized issue #92, Runtime 0.21 adoption and deployment/publication in this
-repository. Origin/main equals the current base bb67e6f; siblings remain read-only.
-Target Timers 0.42.0: its required executor family changes from 0.20 to 0.21, so
-composed consumers must update their Runtime/Endpoint stack. Jobs' public library
-contract is unchanged and remains 0.34.16; its private maintenance notes remain
-Unreleased 0.34.17. Qualification versions stay at their existing literals.
-Implementation source 1f2b9ed adopted the complete matching family. Frozen batch
-`batch-1wgxqWCb` failed before preparation/delivery at `test-release-tooling`: its
-disposable nested fixture retired after reconciliation, but generic retirement
-correctly refused ignored `qualification/target` output. The consumer fixture now
-cleans only that explicit Cargo cache before retirement; the retained completed
-fixture passed focused cleanup/retirement with both release tags preserved.
-Evidence: `target/evidence/runtime21-release-20261109T171837Z/issue92-retirement/`.
-The fresh `batch-ACww0dNn` on fixed source `10718c7` passed the full frozen
-release fixture, including reconciliation and retirement, then stopped at
-`test-consumer-tooling`. Batch-routing and CI-drift fixtures had retained their
-snapshot substitution but unexpectedly invoked real qualification membership
-admission against incomplete fixtures. They now explicitly substitute both
-admission checks; dedicated tooling admission retains all real 56 caller routes
-and rejection tests. The complete consumer-tooling suite passes after the fix.
-Evidence: `target/evidence/runtime21-release-20261109T171837Z/consumer-all-fixed.log`.
-Keep both failed real batches/source/evidence intact. No product version, tag,
-push or upload occurred. Capture a new fixed source and rerun the standard full flow:
-`make release-minor RELEASE_GROUP=timers RELEASE_PUBLISH_TARGET=publish` after
-committing the complete implementation and obtaining a clean source checkout.
-Preserve any resulting batch/context and use its explicit BATCH for recovery.
+Timers 0.42.0 was delivered to origin/main and published to crates.io through
+completed, reconciled `batch-zgh_z6sJ`, captured from `f6c6637`. Do not replay
+publication. [Issue #92](https://github.com/dragginzgame/ic-scheduling/issues/92)
+is closed. Its required executor family changes from 0.20 to 0.21; composed
+consumers must update their Runtime/Endpoint stack. Canic adoption remains
+separately qualified; sibling repositories were not edited or released.
+Jobs stays 0.34.16, with private maintenance notes Unreleased 0.34.17.
+All six qualification versions remain unchanged.
+
+- Release commit: `a3f04e0b1f82286e1b723d278fb10aa8841789ef`.
+- Annotated `timers-v0.42.0` tag object: `53875bd22bba8a98d4b0c5172c1594ff7b145fe0`.
+- Registry/upload archive SHA-256: `01158550931928401fe8f4a71ce7c6d6ab4e51fb9cbb8e2458491fe1eaec728f`.
+
+All 36 selected release stages passed on Linux/Rust 1.99.1 with PocketIC 16.1.0:
+36 installed Watchdog/runtime subjects, four policy and two calibration cohorts,
+native/Wasm/archive checks and the consumer tooling fixtures. The exact-input
+validation fixture was admitted through its standard reuse contract; other
+required stages executed. The published archive matches the uploaded bytes and
+registry checksum, records the release commit and requires Runtime 0.21.0.
+A fresh registry-only Cargo probe resolves published Timers 0.42.0 with exact
+Runtime 0.21.0 and executor/IC0/runtime features, selecting one matching guard.
+Its metadata and result are under `published-0.42.0/composition-probe/` in the
+evidence directory. This is resolution proof, not Canic execution.
+No macOS pass is claimed.
+
+Evidence: `target/evidence/runtime21-release-20261109T171837Z/`;
+durable batch/journals/sealed qualification:
+`.git/release-state/frozen/batch-zgh_z6sJ/`. Installed runtime receipt:
+`target/release-frozen/batch-zgh_z6sJ/target/tmp/timer-qualification-3134713-0/runtime.json`;
+cohort receipt: `target/release-frozen/batch-zgh_z6sJ/qualification/target/timer-cohorts.json`.
+
+Preserve failed `batch-1wgxqWCb` and `batch-ACww0dNn`. Their fixture failures
+were corrected without relaxing product gates: clean only disposable qualification
+Cargo cache before retirement, and explicitly substitute membership admission in
+batch-routing/CI-drift fixtures while keeping all 56 real admission routes.
+The completed batch also retains its initial ENOSPC failure at the final cohort
+build. Capacity recovered without repository cleanup; a focused cohort retry and
+then standard saved-batch recovery passed. No failed run was sealed as a pass.
 
 Both owning locks now select Runtime/macros/exact guard 0.21.0; qualification
 selects Types 0.19, Wire 0.19 / Endpoint 0.10 and Storage 0.71.1. This now resolves
-with one Runtime, guard, Types and Wire identity. Remove the temporary principal
-byte projections; endpoint identities, stored fixtures and codec bytes are unchanged.
+with one Runtime, guard, Types and Wire identity. The temporary principal
+byte projections are removed; endpoint identities, stored fixtures and codec bytes are unchanged.
 Do not reintroduce ic-memory or bypass singleton/source/provider gates.
 
 Testkit 0.96 remains current. Its optional Wire adapter selects Wire 0.18, so
@@ -63,11 +75,11 @@ and Wasm Clippy, pin/member/graph/provider/group admission, and Runtime composit
 plus typed request/transport/reply error live subjects pass. All 10 explicit Jobs
 installed recovery subjects pass on the captured current-stack Wasm. Main adoption evidence:
 `target/evidence/runtime21-release-20261109T171837Z/`; initial focused Timers receipt:
-`target/tmp/timer-qualification-1483809-0/runtime.json`. The release still requires
-its full selected gate and fresh Watchdog/policy-cohort qualification on captured
-source; earlier Runtime 0.20 or old native passes do not substitute for it.
+`target/tmp/timer-qualification-1483809-0/runtime.json`. The completed release's
+fresh Watchdog/policy-cohort gate is recorded above; earlier Runtime 0.20 evidence
+retains its original graph and does not substitute for it.
 
-All prior pending work is preserved for authorized delivery: issue #90/#91 fixes,
+The release includes the prior pending work: issue #90/#91 fixes,
 qualified storage backing hard cut, canonical native Types/Testkit adoption and
 Tooling/layout migration. Previous evidence remains in
 `target/evidence/platform-placement-20261109T162754Z/`,
@@ -84,15 +96,13 @@ zero writes/growth, while payload restore stays blocked through Job::restore.
 See [the fixture guide](../../crates/ic-jobs/tests/fixtures/README.md) and
 [consumer guide](../../qualification/ic-jobs-test-consumer/README.md).
 
-A concurrent normal Cargo.lock refresh selects Metrics 0.29.10 instead of the
-recorded 0.29.9 product graph. Preserve it separately; it belongs to the next
-candidate and does not alter the Runtime 0.21 release inputs.
-
-This fixed implementation is being captured as the authorized clean release source.
-The deployment request authorizes its scoped implementation commit, standard
-release commits/tags, origin/main delivery and Timers publication.
-No sibling release or editing is authorized. No protected prior batch/artifact
-custody has been retired.
+A normal Cargo.lock refresh to Metrics 0.29.10 remains uncommitted and deferred;
+the release used 0.29.9. After standard reconciliation, targeted Cargo update
+reapplied only that version/checksum, preserving Timers 0.42.0 and other suppliers.
+Its original bytes remain in stash `7f1fe032b88665507192692dcea2278aeec713a6`
+and `issue92-retirement/deferred-metrics-Cargo.lock` beneath the evidence directory.
+Do not drop that stash or treat this refresh as released. No protected prior
+batch/artifact custody was retired.
 
 ## Published baseline and recovery custody
 
