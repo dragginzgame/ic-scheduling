@@ -505,6 +505,11 @@ cat > "$fixture/scripts/dev/toko-tooling.sh" <<'VERIFY'
 # Snapshot admission is substituted here; this phase owns later input drift.
 [[ "$*" == "check --consumer $PWD --manifest .toko-tooling.snapshot" ]]
 VERIFY
+cat > "$fixture/scripts/ci/check-qualification-tooling.sh" <<'VERIFY'
+#!/usr/bin/env bash
+# Membership admission is covered by tooling-admission, before this drift proof.
+exit 0
+VERIFY
 for toolset in host ic rust; do
     cat > "$fixture/scripts/dev/install-$toolset-tools.sh" <<'ADMISSION'
 #!/usr/bin/env bash
@@ -716,6 +721,11 @@ phase_batch_commands() (
     cat > "$fixture/scripts/dev/toko-tooling.sh" <<'ADMISSION'
 #!/usr/bin/env bash
 [[ "${1:-}" == check ]]
+ADMISSION
+    cat > "$fixture/scripts/ci/check-qualification-tooling.sh" <<'ADMISSION'
+#!/usr/bin/env bash
+# This phase owns batch routing; tooling-admission tests real member admission.
+exit 0
 ADMISSION
     cat > "$fixture/scripts/dev/clean-empty-source-dirs.pl" <<'CLEANUP'
 print "Cleanup substituted for batch routing qualification.\n";

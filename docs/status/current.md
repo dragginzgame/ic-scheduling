@@ -15,8 +15,16 @@ correctly refused ignored `qualification/target` output. The consumer fixture no
 cleans only that explicit Cargo cache before retirement; the retained completed
 fixture passed focused cleanup/retirement with both release tags preserved.
 Evidence: `target/evidence/runtime21-release-20261109T171837Z/issue92-retirement/`.
-Keep the failed real batch/source/evidence intact. No product version, tag, push
-or upload occurred. Capture a new fixed source and rerun the standard full flow:
+The fresh `batch-ACww0dNn` on fixed source `10718c7` passed the full frozen
+release fixture, including reconciliation and retirement, then stopped at
+`test-consumer-tooling`. Batch-routing and CI-drift fixtures had retained their
+snapshot substitution but unexpectedly invoked real qualification membership
+admission against incomplete fixtures. They now explicitly substitute both
+admission checks; dedicated tooling admission retains all real 56 caller routes
+and rejection tests. The complete consumer-tooling suite passes after the fix.
+Evidence: `target/evidence/runtime21-release-20261109T171837Z/consumer-all-fixed.log`.
+Keep both failed real batches/source/evidence intact. No product version, tag,
+push or upload occurred. Capture a new fixed source and rerun the standard full flow:
 `make release-minor RELEASE_GROUP=timers RELEASE_PUBLISH_TARGET=publish` after
 committing the complete implementation and obtaining a clean source checkout.
 Preserve any resulting batch/context and use its explicit BATCH for recovery.

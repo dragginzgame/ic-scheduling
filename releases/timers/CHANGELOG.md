@@ -42,6 +42,8 @@ this product release group. Older entries retain their historical scope.
 - Clean only the disposable frozen fixture's qualification Cargo cache before
   retirement, preserving generic ignored-file protection and retained release refs.
   Route its optional installed subjects through the qualification manifest/target.
+- Keep batch-routing and CI-drift fixtures' admission substitutions explicit after
+  separating qualification; retain real two-workspace admission and refusal tests.
 
 - Adopt published Toko Tooling 0.38.2 with Cargo-owned selection and authenticated
   snapshot installation. Use `toko-tooling-*` commands and `TOKO_TOOLING_*`
