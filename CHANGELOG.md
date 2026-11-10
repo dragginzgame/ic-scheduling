@@ -7,5 +7,5 @@ Jobs and Timers have independent release groups. Select `RELEASE_GROUP=jobs` or
 - [Timers changelog](releases/timers/CHANGELOG.md): Timers and its four private qualification packages.
 - [Coordinated history through 0.33.1](releases/history.md): preserved shared releases before group separation.
 
-See [release commands and recovery](docs/releasing.md). This index has no
+See [release commands and recovery](docs/releases/README.md). This index has no
 workspace release version and is not an executable release ledger.

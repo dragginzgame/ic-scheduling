@@ -36,7 +36,7 @@ source. Existing scoped expectations retain their reasons and enabled
 
 | Rule family | Source/caller evidence and disposition |
 | --- | --- |
-| Snapshot adoption and local authority | `.shared-tooling.snapshot`, exported payload verification, `AGENTS.md`; only reviewed committed Shared files are adopted. Consumer LOC guidance is owned locally in `docs/fleet-tools.md`. |
+| Snapshot adoption and local authority | `.shared-tooling.snapshot`, exported payload verification, `AGENTS.md`; only reviewed committed Shared files are adopted. Consumer LOC guidance is owned locally in `docs/operations/source-layout.md`. |
 | Contribution and delivery authority | No staging, source commits, releases, publication or sibling edits for this audit. The same-repository description correction is separately observed through GitHub. |
 | Ownership and simplicity | Jobs remains a Serde-only model; Timers owns the sole private provider. No new scheduler, lifecycle API, registry or dependency is added. |
 | Complete/reviewable changes | Six role declarations, actual `make cloc` caller, public failure docs, scratch callers and operator docs are updated together. Group notes remain pending. |

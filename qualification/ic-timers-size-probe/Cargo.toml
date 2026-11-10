@@ -4,7 +4,7 @@ rust-version.workspace = true
 edition.workspace = true
 version = "0.41.5"
 publish = false
-license.workspace = true
+license-file.workspace = true
 
 [package.metadata.cargo-machete]
 ignored = ["toko-tooling"]

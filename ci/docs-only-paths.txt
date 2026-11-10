@@ -3,8 +3,8 @@
 # These guides/status notes have no snapshot companion or executable declarations.
 # Exclude AGENTS/baseline policy, release ledgers/contracts and all crate READMEs.
 README.md
-docs/canic-integration.md
+docs/integration/canic.md
 docs/status/current.md
-docs/test-consumers.md
+docs/testing/consumers.md
 docs/timers/architecture.md
 docs/timers/development.md

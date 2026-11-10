@@ -7,24 +7,18 @@ and [coordinated history through 0.33.1](../history.md).
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
-## [0.34.17] - Unreleased
+## [0.35.0] - Unreleased
 
 ### 🧪 Testing
 
-- Qualify Runtime 0.21 / Endpoint 0.10 / Wire 0.19 and Storage 0.71.1 in the
-  private consumer. Share current-codec framing over raw Testkit transport with
-  Timers qualification while retaining lightweight default artifact capture.
-  Canonical identities remove the temporary Runtime principal-byte projections.
-
-- Adopt Testkit 0.96 and Platform 0.28 for native qualification. Share canonical
+- Qualify Runtime 0.21 / Endpoint 0.10 / Wire 0.19, Storage 0.71.1 and Testkit 0.96
+  in the private consumer. Share current-codec framing over raw Testkit transport
+  with Timers qualification while retaining lightweight default artifact capture.
+  Canonical Types 0.19 identities remove the temporary Runtime principal-byte
+  projections. Retain Platform 0.28 for native qualification and share canonical
   Principal identities across the client and application DTOs, removing the native
   byte projections and registry management-DTO dependency while preserving
   simulator custody, authorization, snapshot recovery and no-replay behavior.
-
-- Adopt canonical Platform Types 0.19 for qualification DTOs. Remove the retired
-  external-Principal feature and project exact identity bytes at the independently
-  selected Runtime boundary, preserving stored identities, Wire frames,
-  caller authorization and the sole executor guard.
 
 - Adopt Storage 0.71 for the private qualification consumer. Its new whole-store
   backing requires fresh qualification storage; prior images are refused without
@@ -41,14 +35,15 @@ this product release group. Older entries retain their historical scope.
 
 ### 🛠️ Tooling
 
-- Adopt published Toko Tooling 0.38.2 with Cargo-owned selection and authenticated
-  snapshot installation. Use `toko-tooling-*` commands and `TOKO_TOOLING_*`
-  settings; CI, release and publication callers retain admission before effects.
-  Update fixture LOC metadata to the new namespace and correct closure-hook
-  classification. Separate private qualification into its own workspace/catalog/lock,
-  preserve private versions and remove its packages from product release groups.
-  Prepare product and qualification metadata through the shared multi-lock
-  transaction, preserving private versions and unrelated supplier selections.
+- Adopt Toko Tooling 0.39.7 in both workspaces. Keep shared releases explicitly
+  enabled and replace the private-version inheritance workaround with the shared
+  checker and consumer rejection tests. Retire managed reference copies through
+  the exporter, use commit-pinned upstream guides, and organise native integration,
+  testing, release and operations docs with a local index.
+
+- Keep Cargo-owned selection, authenticated installation and admission before
+  CI/release/publication effects. Prepare both workspace manifests and locks through
+  the shared transaction, preserving private versions and unrelated suppliers.
 
 ## [0.34.16] - 2026-11-09
 
@@ -1195,7 +1190,7 @@ together before explicitly selecting live IC qualification.
   shell exports. Keep recovery bound to its saved source's selection without
   installation or dependency fetching. Retire the Perl renderers and use Shared's
   grouped-formatting defaults. Standalone offline fixtures retain explicit
-  [tool preparation](../../docs/releasing.md#preparation).
+  [tool preparation](../../docs/releases/README.md#preparation).
 - Use Clap for the unpublished capture CLI's parsing, help and argument errors,
   preserving capture and optimizer invocations. Keep dependency-role headers in
   the root catalog and preserve the incoming Host 0.28.1 lockfile update.
@@ -2267,7 +2262,7 @@ together before explicitly selecting live IC qualification.
 
 - Provide package verification, publication dry runs and a separate crates.io
   upload command for clean releases with matching pushed annotated tags.
-- Include regular README and license files in the crate package, supporting
+- Include the regular README in the crate package, supporting
   packaged rustdoc and the repository's pre-commit formatting snapshot.
 - Keep release fixture checks independent of the shell locale, and report the
   failing source line when a tooling check fails.

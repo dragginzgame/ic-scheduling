@@ -1,4 +1,4 @@
-<!-- Archived from docs/releasing.md on 2026-10-15. -->
+<!-- Archived from docs/releases/README.md on 2026-10-15. -->
 
 > Historical evidence only. Statements of current/pending state below are scoped
 > to their recorded source and date. Use the [current procedure](../development.md)
@@ -396,7 +396,7 @@ Keep completed user-visible changes in one numbered, undated section at the top:
 ```
 
 Automated contributors derive the candidate from the latest finalized release
-and the complete batch under the [shared changelog rules](../../../rules/changelogs.md).
+and the complete batch under the [shared changelog rules](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/rules/changelogs.md).
 Reuse that section for later compatible work; before 1.0, a breaking batch needs
 the next minor line. Honour a valid maintainer-selected target. This selects
 notes only, without changing Cargo, either lockfile or release defaults. Do not
@@ -624,7 +624,7 @@ matching destination and canonical metadata at the saved previous or candidate
 version. It archives the original plan unchanged under `release-state`, then
 computes the requested increment from current metadata and repeats preflight and
 the complete gate. See the
-[canonical restart contract](../../releases.md#source-changes-after-saved-preparation-intent).
+[canonical restart contract](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/releases/releases.md#source-changes-after-saved-preparation-intent).
 Unchanged HEAD and explicit resume retain exact-source recovery; staged/later
 phases, conflicts and occupied locks still refuse unsafe restart. Release
 execution remains maintainer-owned.
@@ -1776,7 +1776,7 @@ Make, `update-dev` and hosted CI use the same common setup/check targets and
 checkout-local PATH. No separate system jq/yq/ripgrep/cloc installation is
 required. The repository fixture still supplies an explicit local yq path.
 PocketIC keeps its separate exact audited admission owner. Follow the
-[bootstrap prerequisites](../../local-setup.md#bootstrap-prerequisites) for Linux and
+[bootstrap prerequisites](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/local-setup.md#bootstrap-prerequisites) for Linux and
 macOS and prepare this repository's Rust toolchain before the common aggregate.
 The reviewed installer itself requires no sudo.
 
@@ -2554,7 +2554,7 @@ owns previews, source and preserved inputs. This replaces the interrupted 0.4.2
 policy-only adoption. No local store manager or executable relocation is added.
 
 Run `make install-tools` then `make tools-check`. Host/IC payloads now use the
-[canonical per-user store](../../local-setup.md#shared-executable-storage), with local
+[canonical per-user store](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/local-setup.md#shared-executable-storage), with local
 `.tools/host/bin` / `.tools/ic/bin` command selections unchanged. If setting
 `SHARED_TOOLING_STORE`, use the same absolute location for setup, offline checks
 and failure collection. Older local host/IC bundles remain retained but fail
@@ -2583,7 +2583,7 @@ A live early/late artifact round trip retains its explicit manual-dispatch scope
 No tests/builds/lint/setup or release runs during preparation. Artifact deletion,
 Cargo/version mutation, staging, commits and release execution remain user-owned.
 
-The [package-impact rules](../../../rules/changelogs.md#classify-the-released-packages-own-impact)
+The [package-impact rules](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/rules/changelogs.md#classify-the-released-packages-own-impact)
 classify this as contributor tooling, compatible for the IC Timers library.
 The adoption was delivered in 0.17.9; no consumer API/runtime/build requirement
 changes or measured Wasm/instruction saving are claimed. Keep the normal complete
@@ -3319,7 +3319,7 @@ retains the complete release gate despite having no runtime changes.
 
 ## Standard release runner
 
-The three standard SemVer entry points use the [common release contract](../../releases.md)
+The three standard SemVer entry points use the [common release contract](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/releases/releases.md)
 with explicit `RELEASE_REMOTE=origin` and `RELEASE_BRANCH=main`. The complete local
 release gate retains its product qualification. Consumer adapters select the
 three metadata outputs and the complete root graph. Publishing stays separate.

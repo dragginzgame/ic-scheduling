@@ -1458,7 +1458,7 @@ matching public main and its annotated tag. The incoming checkout was clean.
 The accepted Shared update now adopts committed **0.6.5** at
 `42f2091768b5f71c98a684d3dab563f408ca2dd9`, verified as public main, from an
 isolated clean source. The canonical exporter preserves 84 selections, adds
-`make/consumer.mk` and `docs/make-interface.md`, and updates 14 existing files:
+`make/consumer.mk` and `docs/adoption/make-interface.md`, and updates 14 existing files:
 **86 selections**. AGENTS records the exact reviewed revision; shared copies
 are unmodified after export.
 
@@ -1534,7 +1534,7 @@ Shared public main is **0.6.4** at
 Its common Make interface owns setup, formatting, hooks, snapshot checking and
 releases while retaining consumer inputs. The canonical read-only preview
 passes: ten current selections would update, and `make/consumer.mk` plus
-`docs/make-interface.md` would be added (86 selections). Adoption must replace
+`docs/adoption/make-interface.md` would be added (86 selections). Adoption must replace
 Jobs' separate includes and equivalent local hook/snapshot recipes, propagate
 fixture inputs and qualify actual routing. This inspection does **not** export
 or claim adoption; the reviewed snapshot remains Shared **0.6.3**, with 84 files.
@@ -3078,7 +3078,7 @@ dependency graph.
 
 The maintainer requested notes for an application-owned canister management API,
 IC Memory-governed stable storage and timer reconstruction across upgrades.
-The [consumer composition](../test-consumers.md#proposed-durable-canister-consumer)
+The [consumer composition](../testing/consumers.md#proposed-durable-canister-consumer)
 records ownership, mutation/rollback ordering, startup and blocked-effect rules;
 [#11](https://github.com/dragginzgame/ic-jobs/issues/11) owns implementation and
 IC Testkit qualification. The 0.4.4 continuation implements the native notification
@@ -3370,7 +3370,7 @@ fixture; its actual consumer Make/hook checks remain separate from canonical
 fixture results. Linux Bash 3.2 does not establish native macOS qualification.
 
 The maintainer requested in-repository test consumers.
-[Notification and cache-maintenance fixtures](../test-consumers.md)
+[Notification and cache-maintenance fixtures](../testing/consumers.md)
 now exercise the public API with bounded application-owned byte storage, immutable
 notification payloads and a separate destination receipt owner. Every load uses
 `Job::restore`. Notification delivery is exposed only after Running intent commits;
@@ -3723,9 +3723,9 @@ publication dry run verified the all-feature tarball without upload; rustdoc and
 its example, native/Wasm Rust 1.85 core / Rust 1.88 timers, formatting, dependency
 declarations, snapshot integrity and documentation links passed. The initial
 tarball failure exposed a workspace-relative README include, now fixed with
-crate-local README/license files. The initial symlink implementation was rejected
-by pre-commit snapshot admission and replaced with a regular package guide and
-license file. An offline publication dry run was refused by
+crate-local README files. The initial symlink implementation was rejected
+by pre-commit snapshot admission and replaced with regular package files.
+An offline publication dry run was refused by
 Cargo's required HTTP observation; `publish-check` now explicitly uses registry
 access. These passes do not establish native macOS or live publication evidence.
 
@@ -3781,4 +3781,4 @@ MSRV, durable-record or existing public API changes; 0.1.2 remains the compatibl
 pending release. No commit, release, tag push or upload was made for this work.
 
 See [the README](../../README.md), [safety contract](../../SAFETY.md) and
-[delivery procedure](../releasing.md).
+[delivery procedure](../releases/README.md).

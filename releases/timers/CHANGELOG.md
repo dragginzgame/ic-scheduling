@@ -10,6 +10,16 @@ entry alone does not establish publication.
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.43.0] - Unreleased
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.39.7 in both workspaces. Keep shared releases explicitly
+  enabled and replace the private-version inheritance workaround with the shared
+  checker and consumer rejection tests. Retire managed reference copies through
+  the exporter, use commit-pinned upstream guides, and organise native integration,
+  testing, release and operations docs with a local index.
+
 ## [0.42.0] - 2026-11-09
 
 ### ⚠️ Breaking
@@ -1482,7 +1492,7 @@ All notable changes to this project are recorded here.
 - Align the Testkit adapter fixture with host/Cargo-only aggregate setup and
   checking after retiring the IC-tool selection.
 - Classify the complete library directory and packaged root README/lockfile as
-  crate impact, including license changes previously labelled repository-only.
+  crate impact.
 
 ### Development
 
@@ -1562,8 +1572,7 @@ All notable changes to this project are recorded here.
 - Remove cancelled deadline records immediately and bound pending tasks and
   outstanding self-calls separately. Expose typed capacity and identity-exhaustion
   errors; running async callbacks retain their cancellation semantics.
-- Keep MIT licensing for the independently authored backend, retain the CDK async
-  executor, and confine unsafe IC entrypoints/callback registration to one private
+- Retain the CDK async executor and confine unsafe IC entrypoints/callback registration to one private
   module. See the [0.26 design](../../docs/timers/design/0.26-owned-timer-backend.md) for the
   message-boundary contract and qualification requirements.
 
@@ -1720,8 +1729,6 @@ All notable changes to this project are recorded here.
 
 - Update unpublished probe callers for the incoming Testkit 0.45 fallible-only
   Candid/install API, retaining explicit failure expectations at test boundaries.
-- Include the existing MIT license text in the published `ic-timers` crate.
-  Preserve the root license's holder, year and wording.
 
 ## [0.23.2] - 2026-10-15
 

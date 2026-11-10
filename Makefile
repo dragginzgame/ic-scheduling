@@ -10,6 +10,7 @@ LOCAL_TOOL_INSTALL_TARGETS := install-ic-tools
 LOCAL_TOOL_CHECK_TARGETS := ic-tools-check
 export PATH := $(CURDIR)/.tools/ic/bin:$(PATH)
 FORMAT_RUST_ARGS := --extra-workspace qualification
+TOKO_TOOLING_RELEASE := 1
 include make/consumer.mk
 
 toko-tooling-check: check-qualification-tooling
@@ -78,8 +79,9 @@ TESTKIT_TOOL = bash scripts/dev/testkit-tool.sh
 MINIMUM_RUST = bash scripts/dev/minimum-rust.sh
 RELEASE_METADATA_LOCKFILE ?= $(CURDIR)/qualification/Cargo.lock
 RELEASE_METADATA_TOOL = bash scripts/dev/install-rust-tools.sh --package ic-build --lockfile "$(RELEASE_METADATA_LOCKFILE)" --bin ic-build-release-metadata --profile debug --features cli
-VALIDATION_INPUTS := --input Cargo.toml --input Cargo.lock --input qualification/Cargo.toml --input qualification/Cargo.lock --input ci/workspace-manifests.txt --input scripts/ci/check-qualification-tooling.sh --input scripts/ci/check-workspace-inheritance.sh --input rust-toolchain.toml \
+VALIDATION_INPUTS := --input Cargo.toml --input Cargo.lock --input qualification/Cargo.toml --input qualification/Cargo.lock --input ci/workspace-manifests.txt --input scripts/ci/check-qualification-tooling.sh --input rust-toolchain.toml \
 	--input .toko-tooling.snapshot --input Makefile --input scripts/dev/testkit-tool.sh --input scripts/dev/minimum-rust.sh --input ci/tool-versions.env \
+	--input LICENSE.md --input CONTRIBUTING.md --input NOTICE --input crates/ic-jobs/NOTICE --input crates/ic-timers/NOTICE \
 	--input ci/ic-tools.tsv --input ci/release-delivery.txt --input ci/dependency-pinning-exceptions.json --input ci/cargo-dependency-boundaries.json --input ci/candid-boundary.json --input ci/cbor-dependencies.json --input ci/cargo-release-groups.json \
 	--input .github/workflows/ci.yml --input .github/workflows/recovery.yml --input ci/docs-only-paths.txt --input scripts/ci/classify-ci-change.pl \
 	--input ci/release-validation.json --input scripts/release/validation.pl --input scripts/release/verify.sh --input scripts/release/ci.sh \
@@ -201,11 +203,10 @@ docs-timers:
 	+RUSTDOCFLAGS="-D warnings" cargo doc -p ic-timers --all-features --locked --offline --no-deps
 
 check-doc-links:
-	perl scripts/ci/check-documentation-links.pl --root . *.md releases/history.md releases/*/CHANGELOG.md docs/*.md docs/changelog/*.md docs/principles/*.md docs/status/*.md rules/*.md audits/*.md tasks/*.md $(shell rg --files docs/timers -g '*.md') crates/ic-timers/SAFETY.md crates/ic-timers/CHANGELOG.md $(wildcard $(patsubst %/Cargo.toml,%/README.md,$(shell cat ci/workspace-manifests.txt))) $(wildcard $(patsubst %/Cargo.toml,%/tests/fixtures/README.md,$(shell cat ci/workspace-manifests.txt)))
+	perl scripts/ci/check-documentation-links.pl --root . *.md releases/history.md releases/*/CHANGELOG.md $(shell rg --files docs -g '*.md') crates/ic-timers/SAFETY.md crates/ic-timers/CHANGELOG.md $(wildcard $(patsubst %/Cargo.toml,%/README.md,$(shell cat ci/workspace-manifests.txt))) $(wildcard $(patsubst %/Cargo.toml,%/tests/fixtures/README.md,$(shell cat ci/workspace-manifests.txt)))
 
 check-pins:
-	+bash scripts/ci/check-dependency-pins.sh
-	+bash scripts/ci/check-workspace-inheritance.sh
+	+bash scripts/ci/check-dependency-pins.sh --cargo-inheritance
 
 .PHONY: check-candid-boundary check-dependency-boundaries check-release-groups package-all
 check-release-groups:

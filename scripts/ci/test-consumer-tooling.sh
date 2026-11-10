@@ -42,9 +42,10 @@ prepare_phase() {
     cp "$root/Cargo.toml" "$root/rust-toolchain.toml" "$fixture/"
     cp "$root/scripts/ci/"{verify-file-checksum,test-canister,fixture-lifecycle}.sh "$fixture/scripts/ci/"
     cp "$root/Cargo.lock" "$fixture/"
+    cp "$root/"{LICENSE.md,CONTRIBUTING.md,NOTICE} "$fixture/"
     mkdir -p "$fixture/qualification"
     cp "$root/qualification/"{Cargo.toml,Cargo.lock} "$fixture/qualification/"
-    cp "$root/scripts/ci/"{check-qualification-tooling,check-workspace-inheritance}.sh "$fixture/scripts/ci/"
+    cp "$root/scripts/ci/check-qualification-tooling.sh" "$fixture/scripts/ci/"
     export JOBS_CONSUMER_TOOLING_EVENTS="$fixture/events"
     : > "$fixture/events"
 }
@@ -82,19 +83,22 @@ phase_workspace_inheritance() (
     mkdir -p "$fixture/releases/jobs" "$fixture/releases/timers"
     cp "$root/releases/jobs/CHANGELOG.md" "$fixture/releases/jobs/"
     cp "$root/releases/timers/CHANGELOG.md" "$fixture/releases/timers/"
-    bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" scripts/ci/check-workspace-inheritance.sh
-    bash "$fixture/scripts/ci/check-workspace-inheritance.sh" > "$fixture/valid.log" 2>&1
+    bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" scripts/ci/check-dependency-pins.sh
+    cp "$root/AGENTS.md" "$fixture/"
+    git init -q "$fixture"
+    git -C "$fixture" add -- AGENTS.md Cargo.lock qualification/Cargo.lock
+    make --no-print-directory -C "$fixture" check-pins > "$fixture/valid.log" 2>&1
     for invalid in product-version missing-private-version private-dependency target-dependency published-qualification; do
         cp "$root/crates/ic-timers/Cargo.toml" "$fixture/crates/ic-timers/Cargo.toml"
         cp "$root/qualification/ic-jobs-canister-tests/Cargo.toml" "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml"
         case "$invalid" in
             product-version) perl -pi -e 's/^version = "[^"]+"/version = "0.0.0"/' "$fixture/crates/ic-timers/Cargo.toml" ;;
             missing-private-version) perl -ni -e 'print unless /^version = /' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
-            private-dependency) perl -pi -e 's/^toko-tooling.workspace = true/toko-tooling = "=0.38.2"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
+            private-dependency) perl -pi -e 's/^toko-tooling.workspace = true/toko-tooling = "=0.39.7"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
             target-dependency) printf '\n%s\n%s\n' "[target.'cfg(unix)'.dev-dependencies]" 'serde = "1.0"' >> "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
             published-qualification) perl -pi -e 's/^publish = false/publish = ["crates-io"]/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
         esac
-        if bash "$fixture/scripts/ci/check-workspace-inheritance.sh" > "$fixture/$invalid.log" 2>&1; then
+        if make --no-print-directory -C "$fixture" check-pins > "$fixture/$invalid.log" 2>&1; then
             echo "workspace inheritance admitted $invalid" >&2; exit 1
         fi
         [[ -s "$fixture/$invalid.log" ]]
@@ -164,7 +168,7 @@ for invalid in missing-lock version-drift checksum-drift missing-member independ
         missing-member)
             perl -0pi -e 's/^toko-tooling\.workspace = true\n//m' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
         independent-member)
-            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.38.2"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
+            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.39.7"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
     esac
     for target in ci release-patch release-preflight publish publish-check clean-empty-source-dirs; do
         status=0
@@ -495,6 +499,7 @@ cp "$root/"{Cargo.toml,.toko-tooling.snapshot,rust-toolchain.toml} "$fixture/"
 for member in crates/ic-jobs qualification/ic-jobs-test-consumer qualification/ic-jobs-canister-tests crates/ic-timers qualification/ic-timers-pocketic qualification/ic-timers-runtime-probe qualification/ic-timers-size-probe qualification/ic-timers-test-protocol; do
     mkdir -p "$fixture/$member"
     cp "$root/$member/Cargo.toml" "$fixture/$member/"
+    if [[ -f "$root/$member/NOTICE" ]]; then cp "$root/$member/NOTICE" "$fixture/$member/"; fi
 done
 cp "$root/scripts/ci/"{run-validation-targets,check-format-tools}.sh "$fixture/scripts/ci/"
 cp "$root/scripts/ci/classify-ci-change.pl" "$fixture/scripts/ci/"
@@ -539,9 +544,11 @@ chmod +x "$fixture/.tools/rust/common/bin/cargo"
 # observation failures, checkpoint files and timing format. Retain this actual
 # Jobs Make/CI wiring proof: changing the Cargo manifest/lock, CLI selection or docs policy
 # during admission stops checks before product Cargo effects.
-for input in Cargo.toml Cargo.lock scripts/dev/testkit-tool.sh ci/docs-only-paths.txt scripts/release/publication-lint.sh; do
+for input in Cargo.toml Cargo.lock LICENSE.md crates/ic-timers/NOTICE scripts/dev/testkit-tool.sh ci/docs-only-paths.txt scripts/release/publication-lint.sh; do
     cp "$root/Cargo.lock" "$fixture/Cargo.lock"
     cp "$root/Cargo.toml" "$fixture/Cargo.toml"
+    cp "$root/"{LICENSE.md,CONTRIBUTING.md,NOTICE} "$fixture/"
+    cp "$root/crates/ic-timers/NOTICE" "$fixture/crates/ic-timers/"
     cp "$root/scripts/dev/testkit-tool.sh" "$fixture/scripts/dev/testkit-tool.sh"
     cp "$root/ci/docs-only-paths.txt" "$fixture/ci/docs-only-paths.txt"
     cp "$root/scripts/release/publication-lint.sh" "$fixture/scripts/release/publication-lint.sh"
@@ -557,7 +564,7 @@ for input in Cargo.toml Cargo.lock scripts/dev/testkit-tool.sh ci/docs-only-path
     grep -F "validation input changed: $input" \
         "$fixture/drift-failures-${input##*/}/latest.log" > /dev/null
 done
-echo 'Changed Cargo manifest/lock, CLI selection, docs or publication policy stops Jobs CI after admission (actual Make route; substitute tool effects; no product validation)'
+echo 'Changed Cargo manifest/lock, licence/notice bytes, CLI selection, docs or publication policy stops Jobs CI after admission (actual Make route; substitute tool effects; no product validation)'
 )
 
 phase_rust_policy() (

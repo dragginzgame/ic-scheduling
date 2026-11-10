@@ -14,9 +14,9 @@ evidence; its consumer integration remains open. IC Host's inspected ownership
 paths need no additional API for the maintained timer harness. That conclusion
 does not qualify the incoming consumer dependency graph.
 
-Methods: [flow convergence](../../../audits/flow-convergence-and-duplication.md),
-[code hygiene](../../../audits/code-hygiene.md) and
-[complexity](../../../audits/complexity-and-technical-debt.md), from adopted Shared
+Methods: [flow convergence](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/audits/flow-convergence-and-duplication.md),
+[code hygiene](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/audits/code-hygiene.md) and
+[complexity](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/audits/complexity-and-technical-debt.md), from adopted Shared
 revision `0ba0ad00ed94848e54ecc82629b6b7873b7284c0`. Local overlay:
 [code hygiene](code-hygiene.md), Git blob
 `287cff14da8edba945be3c093efd35dbc8522e9d`; AGENTS blob

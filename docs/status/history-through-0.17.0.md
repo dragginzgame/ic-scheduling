@@ -1156,4 +1156,4 @@ Earlier source-bound receipts and original tracker descriptions are preserved in
 [history through 0.13.0](history-through-0.13.0.md). See also the
 [package contract](../../crates/ic-jobs/README.md), [safety contract](../../SAFETY.md),
 [consumer qualification](https://github.com/dragginzgame/ic-scheduling/blob/bb67e6f23ec50a95cf1b58f675cd5a8d8c60f4ff/apps/ic-jobs-test-consumer/README.md) and
-[delivery procedure](../releasing.md).
+[delivery procedure](../releases/README.md).

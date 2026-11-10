@@ -1,28 +1,24 @@
 # IC Scheduling agent instructions
 
-Apply the reviewed [Toko Tooling baseline](TOKO-TOOLING.md) first.
-Root `[workspace.dependencies]` selects exact `toko-tooling = "=0.38.2"`.
-Every real member in both workspaces inherits its owning exact pin as a
-dev-dependency with a cargo-machete exemption. Both selections must match the
-single authenticated repository snapshot.
-The exact pin prevents a Cargo update from silently changing the installer/receipt
-contract; its scoped compatibility exception is in `ci/dependency-pinning-exceptions.json`.
-Each Cargo.lock owns its archive checksum; [.toko-tooling.snapshot](.toko-tooling.snapshot)
-records installed files. After editing both pins, resolve both Cargo locks with
-Cargo and run `make toko-tooling-update` at the repository root;
-`make toko-tooling-install` installs the existing selection. Never import Rust
-APIs solely for tooling selection.
+Apply the installed [Toko Tooling baseline](TOKO-TOOLING.md) and its
+revision-bound references. [.toko-tooling.snapshot](.toko-tooling.snapshot)
+records the adopted payload; do not edit it or follow a moving sibling baseline.
+This overlay owns product safeguards, local commands and approved exceptions.
+The baseline owns common action authority, validation, compiler and reporting rules,
+including scoped `git add -N` when validation requires new task-owned paths.
+
+Both workspace catalogs/locks select the same tooling release and installed
+receipt. Its exact-pin exception is in `ci/dependency-pinning-exceptions.json`.
+After changing both pins and locks, use the repository-root installer.
+
 Product commands use the root manifest; private checks use
 `--manifest-path qualification/Cargo.toml`. `make cloc-qualification` reports the
 private workspace separately. Release plans select the standard shared
-`qualification_workspace` transaction; see `docs/release-validation-groups.md`.
-`make check-pins` retains the common declaration/workflow/lock checks and calls
-the shared inheritance function with product-group and private qualification
-version ownership. Keep all dependency-table checks; private packages belong
-to no product release group.
-This file is the local overlay. Read [the current handoff](docs/status/current.md).
-Offline governance and directly used helpers remain explicitly selected; installing
-the standalone baseline does not implicitly install its detailed references.
+`qualification_workspace` transaction; see `docs/releases/validation-groups.md`.
+`make check-pins` uses the common declaration/workflow/lock and inheritance
+checker, including explicitly admitted private qualification versions.
+Private packages belong to no product release group.
+Read [the current handoff](docs/status/current.md).
 
 - Scope is this workspace; other sibling repositories remain read-only.
 - In `ic-jobs`, keep metadata/storage authority consumer-owned. Do not add lifecycle exports,
@@ -32,12 +28,12 @@ the standalone baseline does not implicitly install its detailed references.
 - New storage/scheduling policy must have a concrete consumer requirement.
 - Consumer integration uses Storage's checked allocation/backing APIs and its
   test-support IO meters. The retired `ic-memory` crate must not be reintroduced.
-- For Canic adapter work, read [the integration guide](docs/canic-integration.md).
+- For Canic adapter work, read [the integration guide](docs/integration/canic.md).
   It describes a proposed consumer integration, not an implemented Canic API.
 - Follow the [shared validation cadence](TOKO-TOOLING.md#validation-and-evidence).
   Local focused checks include package tests, MSRV/Wasm checks and tooling
   fixtures; `make ci` is the full repository suite. Releases use the qualified
-  [group plan](docs/release-validation-groups.md): proven Jobs-only changes select
+  [group plan](docs/releases/validation-groups.md): proven Jobs-only changes select
   Jobs and combined-consumer obligations, omitting unchanged standalone Timers
   and release-tooling fixtures. Shared, Timers or uncertain inputs retain the
   complete roster. Explicit live PocketIC qualification stays separate from native CI.

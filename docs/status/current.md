@@ -1,5 +1,55 @@
 # Current handoff
 
+## Authorized two-group delivery — 2026-11-10
+
+Prepare Timers 0.43.0 and Jobs 0.35.0 through the standard captured batch,
+selecting `RELEASE_GROUPS=timers,jobs RELEASE_PUBLISH_TARGET=publish` with
+`make release-minor`. Both groups retain the complete selected gate because
+the pending tooling, metadata and documentation inputs are shared. Private
+qualification versions remain unchanged. No sibling delivery is authorized.
+Preserve the existing batches, tags, stashes and release evidence.
+
+The normal Metrics 0.29.10 refresh remains deferred. Capture the release using
+the previously qualified Metrics 0.29.9 selection while retaining Toko Tooling
+0.39.7 in both owning locks. Preserve the original working graph durably before
+selecting committed source, then deliberately reapply only the deferred Metrics
+patch in the normal checkout after source capture and after reconciliation.
+The release runner must use its own captured graph throughout.
+
+## Local Toko Tooling 0.39.7 and documentation cleanup — 2026-11-10
+
+Both workspaces select exact crates.io Toko Tooling 0.39.7, archive SHA-256
+`fd795f6ef878496ac27a990a9208b87fa786a9148c18580338ef8ac79df501d7`.
+The complete 59-entrypoint selection admits 106 files: the root baseline,
+canonical root policy files, required executables and their runtime inputs.
+The exporter authenticates and retires 66 unchanged
+reference documents; their consumer links now use the reviewed upstream commit
+`12459b6029115b830b8477879d3bea2f030b6e63`. The release-evidence executable is an
+explicit root, preserving the actual validation caller after guide retirement.
+
+Everything under `docs/` is now native Scheduling documentation. Its
+[index](../README.md) links integration, testing, releases, operations, reports,
+Timers and status topics. Six root-level guides moved into those topics; their
+relative links, local instructions and exact docs-only CI allowlist moved together.
+The 0.39.5 online-reference policy supersedes the earlier namespace plan; there is
+no vendored reference library, shared-doc directory or native product wrapper.
+`TOKO_TOOLING_RELEASE := 1` explicitly retains the existing grouped release and
+publication flow. Shared `--cargo-inheritance` now admits both catalogs and
+private qualification versions, replacing the consumer inheritance adapter.
+Its consumer fixture retains stale/missing-version, independent/target dependency
+and privacy refusals through the actual Make caller.
+The 0.39.7 refresh changes only the baseline and two retired-setting diagnostics;
+all five legacy settings refuse through Make and the direct batch CLI, pointing
+to the pinned online release guide. Installed paths remain unchanged.
+
+Snapshot/tool and pin/group checks, both locked fetches, 600 local links, all 56
+admission routes, batch/drift fixtures, exact docs-only CI routing and the retained
+36-stage release-roster caller pass. No full repository or installed-runtime suite
+was run for this tooling/documentation refresh. Product versions remain Timers 0.42.0 and
+Jobs 0.34.16. Earlier release evidence below retains its original tooling identity.
+The pre-existing AGENTS.md simplification is preserved, and the deferred Metrics
+0.29.10 lock selection remains separate from the released graph.
+
 ## Published Timers 0.42.0 / Runtime 0.21 — 2026-11-09
 
 Timers 0.42.0 was delivered to origin/main and published to crates.io through

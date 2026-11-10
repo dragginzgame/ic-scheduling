@@ -4,7 +4,7 @@ name = "ic-jobs-canister-tests"
 version = "0.34.16"
 edition.workspace = true
 rust-version.workspace = true
-license.workspace = true
+license-file.workspace = true
 publish = false
 
 [package.metadata.cargo-machete]

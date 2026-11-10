@@ -989,7 +989,7 @@ remain at `/tmp/ic-timers-019-adoption.9184ql8f/`. No uncommitted sibling payloa
 is selected. The three root additions are the common entrypoint, its interface
 guide and canonical fixture. Existing tool pins/build policy do not change.
 
-[The common interface](../../make-interface.md) replaces three separate Make includes,
+[The common interface](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/make-interface.md) replaces three separate Make includes,
 the local hook recipe and root snapshot-check wiring. All actual Make/hook/
 release/Testkit fixture exports include the new file; update-dev calls the common
 hook target. Direct-only delivery, root-lock-selected Testkit provisioning,
@@ -1147,7 +1147,7 @@ Preview identifies one required companion, `scripts/dev/cargo-tool-build.sh`;
 the completed audit export adds it explicitly. No uncommitted sibling bytes,
 consumer pin changes or optional producer drivers are imported.
 
-The [canonical 0.6 adoption contract](../../consuming-snapshots.md#shared-cargo-storage-adoption-in-060)
+The [canonical 0.6 adoption contract](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/consuming-snapshots.md#shared-cargo-storage-adoption-in-060)
 now shares Cargo generations as well as host/IC bundles. Cargo source and packaged
 lock checks, compiler/native/build-environment identities and selected executable
 receipts remain owned by the installer. Tool builds exclude project flags,
@@ -1227,7 +1227,7 @@ Host and IC setup now reuse exact verified bundles in the per-user store while
 checkout-local `.tools/host/bin` and `.tools/ic/bin` still select their own pins.
 The default store is `${XDG_DATA_HOME:-$HOME/.local/share}/shared-tooling/tools`;
 if overriding `SHARED_TOOLING_STORE`, use the same absolute setting for setup,
-checks and evidence. Adopt the [canonical storage boundary](../../local-setup.md#shared-executable-storage)
+checks and evidence. Adopt the [canonical storage boundary](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/local-setup.md#shared-executable-storage)
 and [Shared #120](https://github.com/dragginzgame/shared-tooling/issues/120).
 Run `make install-tools` then `make tools-check`; older physical checkout-local
 host/IC bundles are retained but no longer admitted as active installations.
@@ -1257,7 +1257,7 @@ setup/check, corruption/interruption, formatting and Linux/Intel/ARM consumer
 acceptance open. The [exact-source upstream run](https://github.com/dragginzgame/shared-tooling/actions/runs/38132790945)
 was queued at inspection; availability and earlier evidence do not qualify it.
 The [release owner](release-history.md#shared-050-storage-adoption) owns acceptance.
-The [package-impact rules](../../../rules/changelogs.md#classify-the-released-packages-own-impact)
+The [package-impact rules](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/rules/changelogs.md#classify-the-released-packages-own-impact)
 classify this contributor-only adoption as a compatible library patch; no timer
 API, runtime semantics or consumer build requirement changes. No measured Wasm
 or instruction delta is claimed.
@@ -1302,7 +1302,7 @@ has a successful lint job at observation; Linux and both native macOS jobs remai
 running. The superseded 0.3.10 run was cancelled and is not a complete native
 qualification. Producer and consumer qualification remain separate.
 
-The adopted [derive-macro guidance](../../../rules/git-hooks.md#derive-macros-and-dollar-prefixed-paths)
+The adopted [derive-macro guidance](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/rules/git-hooks.md#derive-macros-and-dollar-prefixed-paths)
 from [Shared #113](https://github.com/dragginzgame/shared-tooling/issues/113)
 applies to formatter rewrites of dollar-prefixed macro tokens. Maintained Timers
 Rust sources contain no `macro_rules!` or `$crate` usage. No suppression markers,
@@ -1563,7 +1563,7 @@ validation-depth gap remains with
 [Shared #104](https://github.com/dragginzgame/shared-tooling/issues/104), whose fix
 is not included in this reviewed commit. Do not patch the shared runner locally.
 
-The requested [README task](../../../tasks/readme-freshness.md) is advisory: assess
+The requested [README task](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/tasks/readme-freshness.md) is advisory: assess
 maintained commands, examples and claims against their actual owners, allow
 valid older examples and ranges, and report concrete findings without prose
 rewrites or release/CI blockers. It joins the seven routine maintenance tasks;
@@ -3330,7 +3330,7 @@ after the 0.14.5 evidence review. Exact-source
 [upstream CI](https://github.com/dragginzgame/shared-tooling/actions/runs/37581058940)
 at `e378671` passed Linux portable regression, lint/security and both native
 macOS jobs. The reviewed diff adds the
-[workspace layout rule](../../../rules/rust-workspaces.md) and links it from the
+[workspace layout rule](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/rules/rust-workspaces.md) and links it from the
 baseline, dependency and hook rules and the flat governance export list.
 It changes no shared executable and does not fix the Make-mode boundary in #20.
 
@@ -4180,7 +4180,7 @@ suites through the same reviewed revision's exporter; their actual consumer
 checks remain selected.
 
 The compact baseline delegates task-specific detail to
-[`rules/engineering-details.md`](../../../rules/engineering-details.md). Validation
+[`rules/engineering-details.md`](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/rules/engineering-details.md). Validation
 follows a coherent edit batch with the smallest meaningful affected checks;
 line metrics and symbol inventories are opt-in. Current and future root entries
 use emoji category headings; older history, release identities and dates stay intact. Formatting
@@ -4424,7 +4424,7 @@ and build dependencies, protocol authority exclusion, permitted dev-only Wire,
 Wasm JSON rejection and
 same-version executor source replacement. Shared owns generic parser and failed-
 producer fixtures; those are no longer repeated here. Source symlink checks run
-in `actions-check`; package verification admits the prepared archive's license.
+in `actions-check`; package verification admits the prepared archive's metadata.
 
 **Remaining limits:** role comments and unused catalog entries are not validated.
 Feature-edge inspection is not a universal inventory of arbitrary root features;

@@ -4,6 +4,12 @@ A product workspace for durable jobs and observable timer primitives on the
 Internet Computer. Jobs and Timers have independent release versions within one
 dependency catalog, lockfile, toolchain and CI.
 
+Repository-owned source, tests, tooling, documentation, fixtures and generated
+materials are licensed under the [Toko Studios Network Licence 1.0](LICENSE.md).
+Required prior-distribution notices are retained in [NOTICE](NOTICE).
+External dependencies retain their own terms. Contributions follow the canonical
+[contribution policy](CONTRIBUTING.md).
+
 - [`ic-jobs`](crates/ic-jobs/README.md): durable records and checked job policies.
 - [`ic-timers`](crates/ic-timers/README.md): volatile callbacks, wakeups and watchdogs.
 
@@ -25,8 +31,8 @@ See [SAFETY.md](SAFETY.md) for persistence and recovery obligations.
 Run `cargo run -p ic-jobs --locked --example persisted_job` for the packaged
 [adapter example](crates/ic-jobs/examples/persisted_job.rs), including failed
 commits and receipt reconciliation. The [adapter contract](crates/ic-jobs/README.md#adapter-integration-contract)
-and [acceptance checklist](docs/test-consumers.md#adapter-acceptance-checklist)
-describe the host obligations. The [Canic integration guide](docs/canic-integration.md)
+and [acceptance checklist](docs/testing/consumers.md#adapter-acceptance-checklist)
+describe the host obligations. The [Canic integration guide](docs/integration/canic.md)
 maps those obligations to the proposed adapter; it does not advertise an existing
 Canic API. Jobs depends only on Serde, so Canic owns its integration dependency
 versions. The unpublished [canister consumer](qualification/ic-jobs-test-consumer/README.md)
@@ -164,7 +170,7 @@ The qualification Wasm intentionally includes its test integrations above; those
 cannot be prohibited there using the production library's exclusion list.
 
 `make check-candid-boundary` scans first-party Rust under `crates/`
-with the [shared lexical boundary check](docs/candid-boundary.md), its CBOR mode
+with the [shared lexical boundary check](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/validation/candid-boundary.md), its CBOR mode
 and [empty Candid/CBOR allowance policy](ci/candid-boundary.json). Owned application
 DTOs use Wire; external types and CBOR codecs stay with Platform. This runs once as a prerequisite
 of the common dependency-boundary stage, including CI and selected release plans.
@@ -201,7 +207,7 @@ adapters at the Candid boundary; PocketIC itself uses Candid
 management and transport DTOs. Testkit owns no Candid codec adapter. Disabling
 dependency defaults
 cannot remove those required edges. Jobs-owned RPCs continue to use Wire.
-The policy lives in Make; Shared owns the [observation/checker](docs/cargo-graph-checks.md).
+The policy lives in Make; Shared owns the [observation/checker](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/validation/cargo-graph-checks.md).
 The [snapshot manifest](.toko-tooling.snapshot) records the reviewed Shared
 Tooling version, registry archive checksum and payload digests. No sibling checkout is a
 runtime prerequisite.
@@ -221,7 +227,7 @@ Wire conformance and the packaged adapter example on Rust 1.99.1. They cover com
 failures, reconstruction, exact receipt reconciliation, stale continuations and
 bounded recurring work. The composition fixtures request IC Storage allocations
 through the [qualification-selected dependency](qualification/Cargo.toml); the host fixture reopens actual
-stable cells. See [test consumers](docs/test-consumers.md) for their storage and
+stable cells. See [test consumers](docs/testing/consumers.md) for their storage and
 timer boundaries.
 
 Choose checks for the affected caller. For native consumer storage/timer
@@ -276,11 +282,17 @@ do not establish IC message rollback or upgrade recovery.
 
 The reviewed [Toko Tooling snapshot](.toko-tooling.snapshot) records the
 installed registry archive checksum, entrypoints and payload digests. The
-[common Make interface](docs/make-interface.md) owns setup, formatting, hooks,
+[common Make interface](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/make-interface.md) owns setup, formatting, hooks,
 snapshot checks and release routing. Jobs retains product checks, dependency
 selections and release/publication policy.
 
-Both workspace catalogs pin `toko-tooling = "=0.38.2"`; every real
+The [documentation index](docs/README.md) covers Scheduling-owned guides by
+topic. Shared reference guides remain upstream at reviewed commit-pinned links;
+only the root [Toko baseline](TOKO-TOOLING.md), required executable tooling and
+runtime inputs are installed here. The snapshot receipt identifies those managed
+files. See the [online-reference migration](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/migrations.md#online-reference-documentation-in-0395).
+
+Both workspace catalogs pin `toko-tooling = "=0.39.7"`; every real
 member inherits it as a dev-dependency with an intentional cargo-machete exemption.
 Cargo.lock selects its registry checksum, and `.toko-tooling.snapshot` records
 the authenticated installed files. After editing the root pin, run
@@ -288,7 +300,7 @@ the authenticated installed files. After editing the root pin, run
 `make toko-tooling-install` installs the existing Cargo selection; neither
 installation command edits Cargo.lock. CI, release and publication entrypoints
 require `make toko-tooling-check` before effects. See the
-[installation guide](docs/consuming-snapshots.md#cargo-selection-and-installation).
+[installation guide](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/consuming-snapshots.md#cargo-selection-and-installation).
 
 Run `make install-tools` to prepare common host/Rust tools and Jobs' selected IC
 bundle for optimized qualification; `make tools-check` admits them offline.
@@ -298,7 +310,7 @@ retained installations are preserved outside the newly selected common PATH.
 For an interactive shell, prepend
 `$PWD/.tools/host/bin:$PWD/.tools/ic/bin:$PWD/.tools/rust/common/bin` to PATH.
 Use the same `TOKO_TOOLING_STORE` for setup, checks and evidence collection;
-see [local setup](docs/local-setup.md) for prerequisites, storage and reuse rules.
+see [local setup](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/local-setup.md) for prerequisites, storage and reuse rules.
 `make help` lists check groups and points to focused selections.
 `make install-hooks` enables the reviewed formatting hook after tool preparation;
 `make formatting-hook-check` verifies it in disposable repositories.
@@ -308,7 +320,7 @@ this repository has no frontend formatter integration.
 
 `make cloc` reports library, test, example and tooling source separately. Private
 qualification packages declare their roles in Cargo metadata; see
-[source layout and LOC reporting](docs/fleet-tools.md).
+[source layout and LOC reporting](docs/operations/source-layout.md).
 Use `make cloc CLOC_DEPTH=1` for module rows, or
 `bash scripts/dev/cloc.sh -d 1 ic-timers::runtime` to inspect one source branch.
 
@@ -326,7 +338,7 @@ Common setup and ordinary CI do not launch PocketIC.
 
 Release metadata qualification additionally selects IC Build's published
 `ic-build-release-metadata` executable through `make install-release-tools` and
-offline `make release-tools-check`. See [release preparation](docs/releasing.md#preparation)
+offline `make release-tools-check`. See [release preparation](docs/releases/README.md#preparation)
 for its explicit path and byte allowance. The capture CLI uses Clap for argument
 parsing and preserves the original/optimized capture invocation forms.
 
@@ -339,7 +351,7 @@ root version. Batch recovery selects the saved roster with `BATCH`.
 The [group policy](ci/cargo-release-groups.json) covers the two products; private
 qualification packages keep independent versions and remain required by validation
 plans. Shared multi-lock preparation covers both manifests/locks with rollback;
-see [release validation and workspace-owned pin checks](docs/release-validation-groups.md).
+see [release validation and workspace-owned pin checks](docs/releases/validation-groups.md).
 See the [Jobs ledger](releases/jobs/CHANGELOG.md), [Timers ledger](releases/timers/CHANGELOG.md)
 and [shared history through 0.33.1](releases/history.md).
 
@@ -371,5 +383,5 @@ Omitting the publication target delivers Git only. The normal branch is advanced
 explicitly through `release-batch-reconcile BATCH=...` after preserving deferred
 edits; it is never reset or automatically merged. Each group retains its qualified
 validation plan and clean/tag-bound publication checks. See the
-[delivery procedure](docs/releasing.md) for setup, recovery and retirement.
+[delivery procedure](docs/releases/README.md) for setup, recovery and retirement.
 Configuring these commands does not authorize a release or upload.

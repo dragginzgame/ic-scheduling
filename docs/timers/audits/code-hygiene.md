@@ -2,8 +2,8 @@
 
 # IC Timers code-hygiene overlay
 
-Use the [shared code-hygiene method](../../../audits/code-hygiene.md) and
-[common audit contract](../../../audits/README.md) from the reviewed revision
+Use the [shared code-hygiene method](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/audits/code-hygiene.md) and
+[common audit contract](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/audits/README.md) from the reviewed revision
 recorded in the [snapshot](../../../.toko-tooling.snapshot).
 [AGENTS.md](../../../AGENTS.md) identifies the adopted baseline and supplies local
 command authority under the shared validation cadence. This overlay
@@ -19,7 +19,7 @@ when provider, recovery or measurement assertions are
 in scope. Repository tooling reviews include affected `scripts/`, workflows,
 Make recipes, package inputs and every member of the single root Cargo workspace.
 
-The [IC canister application addendum](../../../audits/ic-canister-applications.md)
+The [IC canister application addendum](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/audits/ic-canister-applications.md)
 adds boundary questions for the canister probes and source-bound Wasm evidence.
 The library does not own consumer Candid services, stable storage or lifecycle
 registration. This adoption adds no product audit or validation gate.

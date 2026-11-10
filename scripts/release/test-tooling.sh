@@ -20,8 +20,8 @@ if [[ -z "$GROUP_TEST_REAL_EDITOR" && "$fixture_mode" != frozen && "$fixture_mod
     GROUP_TEST_REAL_EDITOR="$(make --silent --no-print-directory -C "$root" release-tools-check)"
 fi
 mkdir "$fixture_suite/source" "$fixture_suite/bin"
-cp "$root"/{Cargo.toml,Cargo.lock,CHANGELOG.md,README.md,LICENSE,Makefile,.gitignore,.toko-tooling.snapshot,rust-toolchain.toml,TOKO-TOOLING.md,AGENTS.md} "$fixture_suite/source/"
-tar -C "$root" --exclude=target -cf - crates qualification scripts make ci docs releases .github rules audits tasks | tar -C "$fixture_suite/source" -xf -
+cp "$root"/{Cargo.toml,Cargo.lock,CHANGELOG.md,README.md,LICENSE.md,CONTRIBUTING.md,NOTICE,Makefile,.gitignore,.toko-tooling.snapshot,rust-toolchain.toml,TOKO-TOOLING.md,AGENTS.md} "$fixture_suite/source/"
+tar -C "$root" --exclude=target -cf - crates qualification scripts make ci docs releases .github | tar -C "$fixture_suite/source" -xf -
 cp -R "$root/.githooks" "$fixture_suite/source/"
 if [[ "$fixture_mode" == frozen ]]; then
     # shellcheck source=scripts/release/test-frozen.sh

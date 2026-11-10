@@ -1,7 +1,7 @@
 # Timers in IC Scheduling
 
 This workspace owns both published libraries and all their qualification packages.
-Use the root [agent instructions](../../AGENTS.md), [release guide](../releasing.md)
+Use the root [agent instructions](../../AGENTS.md), [release guide](../releases/README.md)
 and [current handoff](../status/current.md). Older evidence and design documents
 retain their tested source identities; old repository commands are historical.
 

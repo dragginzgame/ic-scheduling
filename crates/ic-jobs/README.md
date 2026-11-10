@@ -284,3 +284,8 @@ The package and its qualification consumer require Rust 1.99.1.
 See the [repository guide](https://github.com/dragginzgame/ic-jobs) and
 [safety contract](https://github.com/dragginzgame/ic-jobs/blob/main/SAFETY.md)
 for the complete persistence and recovery obligations.
+
+## License
+
+Toko Studios Network Licence 1.0 (TSNL-1.0). The crate archive includes
+`LICENSE.md` and required prior-distribution notices in `NOTICE`.

@@ -16,8 +16,8 @@ Tests, lint, probe builds and release execution remain maintainer-owned under
 
 ## Scope and identities
 
-Method: [code hygiene](../../../audits/code-hygiene.md) and
-[IC application addendum](../../../audits/ic-canister-applications.md), from reviewed
+Method: [code hygiene](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/audits/code-hygiene.md) and
+[IC application addendum](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/audits/ic-canister-applications.md), from reviewed
 Shared `626fc2bd3125195520fb870b92abfec11b01454d` (0.10.2). The
 [local overlay](code-hygiene.md) has SHA-256
 `875a81861e6e6c47c1896dfdfa1baa342221996bcde5716de80a03678ea42f0f`;

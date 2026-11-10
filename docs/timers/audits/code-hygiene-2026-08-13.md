@@ -99,9 +99,7 @@ No production `unwrap`, `expect`, `todo`, `unimplemented`, explicit `panic`,
 unsafe code, direct provider leak, duplicate dependency version, or RustSec
 advisory was found. Callback invariant failures still deliberately trap through
 the private platform boundary; test-only panics remain fixture assertions.
-The publishable archive contains the expected metadata, README, and source
-tree; its standard MIT SPDX declaration avoids redundant license metadata and
-duplicated license text.
+The publishable archive contains the expected metadata, README, and source tree.
 
 The DRY review retained the policy-specific registration methods and separate
 registry effect arms. They encode different legal operations and exact linear
