@@ -4,12 +4,7 @@ use super::*;
 fn running_watchdog_unregistration_clears_its_committed_successor() {
     let mut registry = registry();
     let timer = identity("unregister-watchdog");
-    let claim = registry
-        .register_watchdog(timer.clone(), cadence(5), DeclarationLifetime::Retained)
-        .expect("claim should succeed");
-    let initial = registry
-        .ensure_recurring(&claim, 0)
-        .expect("ensure should succeed");
+    let (claim, initial) = scheduled_watchdog(&mut registry, timer.clone(), 0);
     confirm(&mut registry, &initial);
     let (scheduler, _) = arm(initial);
     let dispatched = registry.begin_watchdog_scheduler(&scheduler, 10);
@@ -68,12 +63,8 @@ fn watchdog_completion_arbitrates_immediate_cancellation_and_unregistration() {
     let mut registry = registry();
     for pending in [Pending::None, Pending::Cancel, Pending::Unregister] {
         let timer = identity(&format!("watchdog-precedence-{pending:?}"));
-        let claim = registry
-            .register_watchdog(timer.clone(), cadence(5), DeclarationLifetime::Retained)
-            .expect("claim should succeed");
-        let (scheduler, _) = arm(registry
-            .ensure_recurring(&claim, 10)
-            .expect("ensure should succeed"));
+        let (claim, initial) = scheduled_watchdog(&mut registry, timer.clone(), 10);
+        let (scheduler, _) = arm(initial);
         let (cadence_successor, work) = dispatch(registry.begin_watchdog_scheduler(&scheduler, 20));
         assert!(registry.begin_watchdog_work(&work).is_some());
         if !matches!(pending, Pending::None) {
@@ -144,12 +135,8 @@ fn watchdog_completion_arbitrates_immediate_cancellation_and_unregistration() {
 fn watchdog_terminal_cancellation_makes_queued_callbacks_stale() {
     let mut registry = registry();
     let timer = identity("watchdog-cancel");
-    let claim = registry
-        .register_watchdog(timer.clone(), cadence(5), DeclarationLifetime::Retained)
-        .expect("claim should succeed");
-    let (scheduler, _) = arm(registry
-        .ensure_recurring(&claim, 0)
-        .expect("ensure should succeed"));
+    let (claim, initial) = scheduled_watchdog(&mut registry, timer.clone(), 0);
+    let (scheduler, _) = arm(initial);
     let before = registry.inventory();
     for schedule in [
         None,
@@ -189,9 +176,12 @@ fn watchdog_terminal_cancellation_makes_queued_callbacks_stale() {
         TimerRegistrationStatus::Unregistered
     );
     let counters = snapshot.observability().counters();
-    assert_eq!(counters.cancelled().exact_total().unwrap(), 1);
-    assert_eq!(counters.stale_work().exact_total().unwrap(), 1);
-    assert_eq!(counters.stale_wakeups().exact_total().unwrap(), 1);
+    assert_counters!(
+        counters,
+        (cancelled, 1),
+        (stale_work, 1),
+        (stale_wakeups, 1)
+    );
 
     let (rearmed, _) = arm(registry.ensure_recurring(&claim, 20).unwrap());
     assert_eq!(
@@ -216,12 +206,7 @@ fn watchdog_terminal_cancellation_makes_queued_callbacks_stale() {
 fn watchdog_result_matrix_tracks_retry_stop_and_invariant_failure() {
     let mut registry = registry();
     let timer = identity("watchdog-results");
-    let claim = registry
-        .register_watchdog(timer.clone(), cadence(5), DeclarationLifetime::Retained)
-        .expect("claim should succeed");
-    let initial = registry
-        .ensure_recurring(&claim, 0)
-        .expect("ensure should succeed");
+    let (claim, initial) = scheduled_watchdog(&mut registry, timer.clone(), 0);
     confirm(&mut registry, &initial);
     let (scheduler, _) = arm(initial);
     let dispatched = registry.begin_watchdog_scheduler(&scheduler, 10);
@@ -294,21 +279,20 @@ fn watchdog_result_matrix_tracks_retry_stop_and_invariant_failure() {
             reason: InactiveReason::InvariantFailure,
         }
     );
-    assert_eq!(counters.retryable_failure().exact_total().unwrap(), 1);
-    assert_eq!(counters.no_work().exact_total().unwrap(), 1);
-    assert_eq!(counters.invariant_failure().exact_total().unwrap(), 1);
+    assert_counters!(
+        counters,
+        (retryable_failure, 1),
+        (no_work, 1),
+        (invariant_failure, 1)
+    );
 }
 
 #[test]
 fn watchdog_nested_cancel_then_ensure_retains_committed_successor() {
     let mut registry = registry();
     let timer = identity("watchdog-nested");
-    let claim = registry
-        .register_watchdog(timer.clone(), cadence(5), DeclarationLifetime::Retained)
-        .expect("claim should succeed");
-    let (scheduler, _) = arm(registry
-        .ensure_recurring(&claim, 0)
-        .expect("ensure should succeed"));
+    let (claim, initial) = scheduled_watchdog(&mut registry, timer.clone(), 0);
+    let (scheduler, _) = arm(initial);
     let (_successor, work) = dispatch(registry.begin_watchdog_scheduler(&scheduler, 10));
     assert!(registry.begin_watchdog_work(&work).is_some());
     registry
@@ -330,15 +314,7 @@ fn watchdog_nested_cancel_then_ensure_retains_committed_successor() {
         snapshot.state(),
         TimerRuntimeStateSnapshot::Watchdog(WatchdogRuntimeStateSnapshot::Scheduled { .. })
     ));
-    assert_eq!(
-        snapshot
-            .observability()
-            .counters()
-            .cancelled()
-            .exact_total()
-            .unwrap(),
-        0
-    );
+    assert_counters!(snapshot.observability().counters(), (cancelled, 0));
 }
 
 #[test]
@@ -525,16 +501,13 @@ fn transient_watchdog_completion_keeps_retained_or_replaced_successors() {
             ),
             Ok(true)
         );
-        assert_eq!(
+        assert_counters!(
             registry
                 .snapshot(&timer)
                 .unwrap()
                 .observability()
-                .counters()
-                .work_completed()
-                .exact_total()
-                .unwrap(),
-            1
+                .counters(),
+            (work_completed, 1)
         );
     }
 }

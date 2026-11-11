@@ -92,14 +92,9 @@ fn rejected_watchdog_cadence_preserves_the_complete_snapshot() {
         .ensure_scheduled_immediately()
         .expect("a valid request remains possible after rejection");
     assert_eq!(timer_count(), 1);
-    assert_eq!(
-        registered_snapshot(&timer)
-            .observability()
-            .counters()
-            .schedule_requests()
-            .exact_total()
-            .unwrap(),
-        1
+    assert_counters!(
+        registered_snapshot(&timer).observability().counters(),
+        (schedule_requests, 1)
     );
 }
 
@@ -331,8 +326,7 @@ fn stale_reused_identity_callback_cannot_change_handles_or_measurements() {
     let after = registered_snapshot(replacement.identity());
     let counters = after.observability().counters();
     assert_eq!(after.observability().performance(), before_performance);
-    assert_eq!(counters.stale_wakeups().exact_total().unwrap(), 1);
-    assert_eq!(counters.work_started().exact_total().unwrap(), 0);
+    assert_counters!(counters, (stale_wakeups, 1), (work_started, 0));
     assert!(
         replacement
             .has_armed_wakeup()
@@ -405,15 +399,7 @@ fn replacement_and_cancellation_clear_actual_owned_handles() {
     assert!(!run_next_due());
     assert_eq!(calls.get(), 0);
     let snapshot = registered_snapshot(&timer);
-    assert_eq!(
-        snapshot
-            .observability()
-            .counters()
-            .cancelled()
-            .exact_total()
-            .unwrap(),
-        1
-    );
+    assert_counters!(snapshot.observability().counters(), (cancelled, 1));
 
     registration
         .ensure_scheduled(TimerSchedule::At(150))

@@ -43,6 +43,9 @@ for my $target ('wasm32-unknown-unknown', $host) {
         for my $rule (@$rules) {
             my $name = $rule->{dependency};
             next if !$protocol && $name eq 'ic-platform-runtime-guard';
+            # Runtime owns the registry IC0 backend. Common declaration checks
+            # still reject direct SDK edges from either consumer workspace.
+            next if !$protocol && $name eq 'ic0';
             next if !$library && !$protocol && $name eq 'ic-platform-macros';
             push @check, '--forbid', $name;
         }
@@ -62,7 +65,8 @@ for my $target ('wasm32-unknown-unknown', $host) {
         if ($protocol) {
             push @check, map { ('--forbid', $_) } qw(ic-platform-runtime ic-timers);
         } else {
-            push @check, '--require', 'ic-platform-runtime=1', '--require', 'ic-platform-runtime-guard=1';
+            push @check, '--require', 'ic-platform-runtime=1', '--require', 'ic-platform-runtime-guard=1',
+                '--require', 'ic0=1';
             my %allowed = map { $_ => 1 } ($library ? qw(executor ic0) : qw(cdk runtime executor ic0));
             push @check, map { ('--forbid-feature', "ic-platform-runtime/$_") }
                 grep { !$allowed{$_} } sort keys %features;

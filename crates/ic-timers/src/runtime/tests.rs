@@ -5,6 +5,7 @@ use registration_fixture::ReconciliationSlot;
 
 use super::effects::{apply_effect, bind_provider_handle, clear_entry_provider_handles};
 use super::*;
+use crate::tests::assert_counters;
 use crate::{
     AfterCompletionDecision, InactiveReason, MemoryPageSample, OnceDecision, TimerLastOutcome,
     TimerPolicy, TimerRegistrationStatus, TimerRuntimeStateSnapshot, TimerSchedulingMode,

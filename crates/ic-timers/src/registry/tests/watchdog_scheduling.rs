@@ -4,12 +4,7 @@ use super::*;
 fn watchdog_dispatches_successor_first_and_retires_unacknowledged_attempt() {
     let mut registry = registry();
     let timer = identity("watchdog");
-    let claim = registry
-        .register_watchdog(timer.clone(), cadence(5), DeclarationLifetime::Retained)
-        .expect("claim should succeed");
-    let initial_transition = registry
-        .ensure_recurring(&claim, 10)
-        .expect("initial ensure should succeed");
+    let (_claim, initial_transition) = scheduled_watchdog(&mut registry, timer.clone(), 10);
     confirm(&mut registry, &initial_transition);
     let (scheduler, _) = arm(initial_transition);
     let deadline = scheduled_deadline(&registry, &scheduler);
@@ -73,10 +68,13 @@ fn watchdog_dispatches_successor_first_and_retires_unacknowledged_attempt() {
 
     let snapshot = registry.snapshot(&timer).expect("snapshot should exist");
     let counters = snapshot.observability().counters();
-    assert_eq!(counters.scheduler_started().exact_total().unwrap(), 3);
-    assert_eq!(counters.work_dispatched().exact_total().unwrap(), 3);
-    assert_eq!(counters.unacknowledged().exact_total().unwrap(), 1);
-    assert_eq!(counters.stale_work().exact_total().unwrap(), 1);
+    assert_counters!(
+        counters,
+        (scheduler_started, 3),
+        (work_dispatched, 3),
+        (unacknowledged, 1),
+        (stale_work, 1)
+    );
     assert_eq!(
         snapshot.observability().outcomes().last_outcome(),
         Some(TimerLastOutcome::Unacknowledged)
@@ -88,10 +86,8 @@ fn watchdog_requests_preserve_dispatch_authority_until_completion_replaces_the_p
     for running in [false, true] {
         let mut registry = registry();
         let timer = identity("watchdog-dispatch-authority");
-        let claim = registry
-            .register_watchdog(timer.clone(), cadence(5), DeclarationLifetime::Retained)
-            .unwrap();
-        let (initial, _) = arm(registry.ensure_recurring(&claim, 0).unwrap());
+        let (claim, initial) = scheduled_watchdog(&mut registry, timer.clone(), 0);
+        let (initial, _) = arm(initial);
         let (scheduler, _) = arm(registry
             .reconcile_watchdog_schedule(&claim, 0, Some(TimerSchedule::At(10)))
             .unwrap());
@@ -127,23 +123,10 @@ fn watchdog_requests_preserve_dispatch_authority_until_completion_replaces_the_p
         let pending = registry.snapshot(&timer).unwrap();
         assert_eq!(pending.state(), before.state());
         assert_eq!(pending.scheduling_mode(), before.scheduling_mode());
-        assert_eq!(
-            pending
-                .observability()
-                .counters()
-                .schedule_requests()
-                .exact_total()
-                .unwrap(),
-            5
-        );
-        assert_eq!(
-            pending
-                .observability()
-                .counters()
-                .coalesced()
-                .exact_total()
-                .unwrap(),
-            3
+        assert_counters!(
+            pending.observability().counters(),
+            (schedule_requests, 5),
+            (coalesced, 3)
         );
         assert!(registry.begin_watchdog_work(&successor).is_none());
         assert_eq!(
@@ -218,9 +201,12 @@ fn watchdog_immediate_initial_and_replacement_requests_coalesce_without_duplicat
         );
         assert_eq!(snapshot.latest_requested_delay_ns(), Some(0));
         assert_eq!(snapshot.latest_armed_delay_ns(), Some(0));
-        assert_eq!(counters.schedule_requests().exact_total().unwrap(), 2);
-        assert_eq!(counters.wakeups_armed().exact_total().unwrap(), 1);
-        assert_eq!(counters.coalesced().exact_total().unwrap(), 1);
+        assert_counters!(
+            counters,
+            (schedule_requests, 2),
+            (wakeups_armed, 1),
+            (coalesced, 1)
+        );
 
         let replacement_timer = identity("watchdog-immediate-replacement");
         let replacement_claim = registry
@@ -269,10 +255,13 @@ fn watchdog_immediate_initial_and_replacement_requests_coalesce_without_duplicat
         );
         assert_eq!(snapshot.latest_requested_delay_ns(), Some(0));
         assert_eq!(snapshot.latest_armed_delay_ns(), Some(0));
-        assert_eq!(counters.schedule_requests().exact_total().unwrap(), 4);
-        assert_eq!(counters.wakeups_armed().exact_total().unwrap(), 2);
-        assert_eq!(counters.coalesced().exact_total().unwrap(), 2);
-        assert_eq!(counters.stale_wakeups().exact_total().unwrap(), 1);
+        assert_counters!(
+            counters,
+            (schedule_requests, 4),
+            (wakeups_armed, 2),
+            (coalesced, 2),
+            (stale_wakeups, 1)
+        );
     }
 }
 
@@ -280,12 +269,7 @@ fn watchdog_immediate_initial_and_replacement_requests_coalesce_without_duplicat
 fn watchdog_running_immediate_request_replaces_exact_successor_and_beats_cadence() {
     let mut registry = registry();
     let timer = identity("watchdog-running-immediate");
-    let claim = registry
-        .register_watchdog(timer.clone(), cadence(5), DeclarationLifetime::Retained)
-        .expect("claim should succeed");
-    let initial = registry
-        .ensure_recurring(&claim, 10)
-        .expect("initial ensure should succeed");
+    let (claim, initial) = scheduled_watchdog(&mut registry, timer.clone(), 10);
     confirm(&mut registry, &initial);
     let (scheduler, _) = arm(initial);
     let dispatched = registry.begin_watchdog_scheduler(&scheduler, 20);
@@ -350,9 +334,12 @@ fn watchdog_running_immediate_request_replaces_exact_successor_and_beats_cadence
     assert_eq!(snapshot.latest_requested_delay_ns(), Some(0));
     assert_eq!(snapshot.latest_armed_delay_ns(), Some(0));
     let counters = snapshot.observability().counters();
-    assert_eq!(counters.schedule_requests().exact_total().unwrap(), 4);
-    assert_eq!(counters.wakeups_armed().exact_total().unwrap(), 3);
-    assert_eq!(counters.work_dispatched().exact_total().unwrap(), 1);
-    assert_eq!(counters.coalesced().exact_total().unwrap(), 3);
-    assert_eq!(counters.stale_wakeups().exact_total().unwrap(), 1);
+    assert_counters!(
+        counters,
+        (schedule_requests, 4),
+        (wakeups_armed, 3),
+        (work_dispatched, 1),
+        (coalesced, 3),
+        (stale_wakeups, 1)
+    );
 }

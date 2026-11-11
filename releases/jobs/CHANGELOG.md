@@ -7,6 +7,23 @@ and [coordinated history through 0.33.1](../history.md).
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.35.1] - Unreleased
+
+### 📦 Dependencies
+
+- Align consumer qualification with Metrics 0.29.11 and Platform Runtime 0.21.1;
+  keep the Jobs library Serde-only.
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.39.9, including native-only PocketIC dev-dependency
+  admission while retaining production and Wasm dependency restrictions.
+
+### 🧪 Testing
+
+- Share delivery-request and failed-commit fixtures while preserving storage
+  refusal, corruption, receipt and recovery assertions.
+
 ## [0.35.0] - 2026-11-10
 
 ### 🧪 Testing

@@ -7,13 +7,7 @@ fn running_and_uncertain_survive_reopen_and_require_exact_receipts() {
         let destination = Principal::self_authenticating(b"receiver");
         let mut sender = fresh_queue(backing.clone());
         let id = sender
-            .create(Create {
-                timing: Timing::Once(100),
-                task: Task::Deliver(DeliveryPayload {
-                    destination,
-                    message: "report".into(),
-                }),
-            })
+            .create(delivery_request(Timing::Once(100), destination, "report"))
             .unwrap()
             .value;
         let Committed {
@@ -245,13 +239,7 @@ fn receipt_extraction_and_duplicate_acknowledgement_leave_storage_unchanged() {
 fn retained_retry_preserves_payload_and_rejects_late_results() {
     let mut queue = fresh_queue(VectorMemory::default());
     let id = queue
-        .create(Create {
-            timing: Timing::Once(100),
-            task: Task::Deliver(DeliveryPayload {
-                destination: manager(),
-                message: "report".into(),
-            }),
-        })
+        .create(delivery_request(Timing::Once(100), manager(), "report"))
         .unwrap()
         .value;
     // Creation defaults to no retries. Qualify an admitted retained job whose
@@ -291,13 +279,11 @@ fn queue_order_and_cancellation_progress_past_unresolved_delivery() {
     let mut queue = fresh_queue(backing.clone());
     for at in [100, 90, 95, 90] {
         queue
-            .create(Create {
-                timing: Timing::Once(at),
-                task: Task::Deliver(DeliveryPayload {
-                    destination: manager(),
-                    message: format!("report-{at}"),
-                }),
-            })
+            .create(delivery_request(
+                Timing::Once(at),
+                manager(),
+                format!("report-{at}"),
+            ))
             .unwrap();
     }
     assert_eq!(queue.dispatch(89).unwrap(), local_batch(0, Some(90)));

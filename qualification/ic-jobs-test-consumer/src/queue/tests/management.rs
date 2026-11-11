@@ -93,13 +93,11 @@ fn resume_preserves_overdue_policy_and_bounded_batch() {
 fn refused_management_preserves_stable_bytes_and_blocked_delivery() {
     let mut queue = fresh_queue(VectorMemory::default());
     let id = queue
-        .create(Create {
-            timing: Timing::Once(0),
-            task: Task::Deliver(DeliveryPayload {
-                destination: Principal::self_authenticating(b"receiver"),
-                message: "retained".into(),
-            }),
-        })
+        .create(delivery_request(
+            Timing::Once(0),
+            Principal::self_authenticating(b"receiver"),
+            "retained",
+        ))
         .unwrap()
         .value;
     let Committed {
@@ -266,13 +264,11 @@ fn mutation_replies_return_the_fresh_committed_deadline() {
     assert_eq!(queue.cancel(early.value, 0).unwrap().next_due_ns, Some(200));
     assert_eq!(queue.dispatch(200).unwrap(), local_batch(1, None));
     let external = queue
-        .create(Create {
-            timing: Timing::Once(250),
-            task: Task::Deliver(DeliveryPayload {
-                destination: manager(),
-                message: "exact immutable payload".into(),
-            }),
-        })
+        .create(delivery_request(
+            Timing::Once(250),
+            manager(),
+            "exact immutable payload",
+        ))
         .unwrap();
     assert_eq!(external.next_due_ns, Some(250));
     let Committed {

@@ -25,8 +25,7 @@ fn assert_cancelled_lifetime(
         }
     );
     let counters = snapshot.observability().counters();
-    assert_eq!(counters.cancelled().exact_total().unwrap(), 1);
-    assert_eq!(counters.work_started().exact_total().unwrap(), 0);
+    assert_counters!(counters, (cancelled, 1), (work_started, 0));
 }
 
 #[test]
@@ -237,9 +236,12 @@ fn ordinary_terminal_failures_respect_declaration_lifetime() {
                     );
                     if completing {
                         let counters = snapshot.observability().counters();
-                        assert_eq!(counters.work_completed().exact_total().unwrap(), 1);
-                        assert_eq!(counters.succeeded().exact_total().unwrap(), 0);
-                        assert_eq!(counters.invariant_failure().exact_total().unwrap(), 1);
+                        assert_counters!(
+                            counters,
+                            (work_completed, 1),
+                            (succeeded, 0),
+                            (invariant_failure, 1)
+                        );
                         let outcomes = snapshot.observability().outcomes();
                         assert_eq!(outcomes.last_work_count(), Some(3));
                         assert_eq!(
@@ -368,7 +370,7 @@ fn watchdog_terminal_failures_respect_declaration_lifetime() {
                     assert_eq!(snapshot.latest_requested_delay_ns(), Some(0));
                 }
                 let counters = snapshot.observability().counters();
-                assert_eq!(counters.cancelled().exact_total().unwrap(), 0);
+                assert_counters!(counters, (cancelled, 0));
                 assert_eq!(counters.coalesced().exact_total().unwrap(), 0, "{subject}");
                 assert_eq!(
                     counters.work_completed().exact_total().unwrap(),

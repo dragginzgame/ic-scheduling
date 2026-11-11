@@ -28,13 +28,11 @@ fn job_metrics_count_committed_local_success_and_permanent_failure() {
 fn job_metrics_separate_retries_uncertainty_and_receipt_reconciliation() {
     let mut queue = fresh_queue(VectorMemory::default());
     queue
-        .create(Create {
-            timing: Timing::Once(100),
-            task: Task::Deliver(DeliveryPayload {
-                destination: manager(),
-                message: "same payload".into(),
-            }),
-        })
+        .create(delivery_request(
+            Timing::Once(100),
+            manager(),
+            "same payload",
+        ))
         .unwrap();
     // This consumer's ordinary creation policy has no retries. Give this fixture
     // an admitted retry budget before the first attempt without adding a new policy.
@@ -105,16 +103,14 @@ fn job_metrics_exclude_rejected_mutations_and_leave_running_intent_blocked() {
     let backing = VectorMemory::default();
     let mut queue = fresh_queue(backing.clone());
     queue
-        .create(Create {
-            timing: Timing::AfterCompletion {
+        .create(delivery_request(
+            Timing::AfterCompletion {
                 first_ns: 100,
                 every_ns: u64::MAX,
             },
-            task: Task::Deliver(DeliveryPayload {
-                destination: manager(),
-                message: "keep intent".into(),
-            }),
-        })
+            manager(),
+            "keep intent",
+        ))
         .unwrap();
     let delivery = queue.dispatch(100).unwrap().value.deliveries.pop().unwrap();
     let before = queue.cell.get().as_slice().to_vec();
@@ -135,13 +131,7 @@ fn job_metrics_exclude_rejected_mutations_and_leave_running_intent_blocked() {
 fn job_metrics_authorize_reset_and_never_change_durable_authority() {
     let mut queue = fresh_queue(VectorMemory::default());
     queue
-        .create(Create {
-            timing: Timing::Once(100),
-            task: Task::Deliver(DeliveryPayload {
-                destination: manager(),
-                message: "blocked".into(),
-            }),
-        })
+        .create(delivery_request(Timing::Once(100), manager(), "blocked"))
         .unwrap();
     let delivery = queue.dispatch(100).unwrap().value.deliveries.pop().unwrap();
     let before = queue.cell.get().as_slice().to_vec();

@@ -1,4 +1,5 @@
 use super::*;
+use crate::tests::assert_counters;
 use crate::{
     TimerCompletionOutcome, TimerLastOutcome, TimerRegistrationStatus, TimerRuntimeStateSnapshot,
     WatchdogAttemptStatus, WatchdogDecision, WatchdogRuntimeStateSnapshot,
@@ -124,6 +125,20 @@ fn registry() -> TimerRegistry {
 
 fn cadence(nanoseconds: u64) -> TimerCadence {
     TimerCadence::from_nanos(nanoseconds).expect("fixture cadence should be valid")
+}
+
+// Successful setup only. Provider confirmation and work admission stay explicit.
+#[track_caller]
+fn scheduled_watchdog(
+    registry: &mut TimerRegistry,
+    timer: TimerIdentity,
+    now_ns: u64,
+) -> (RegistrationClaim, RegistryTransition) {
+    let claim = registry
+        .register_watchdog(timer, cadence(5), DeclarationLifetime::Retained)
+        .unwrap();
+    let transition = registry.ensure_recurring(&claim, now_ns).unwrap();
+    (claim, transition)
 }
 
 fn register_policy(

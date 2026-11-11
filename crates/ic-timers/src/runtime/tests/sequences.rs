@@ -419,23 +419,10 @@ fn suspended_command_sequences_retire_authority_across_completion_and_abandonmen
                                     TimerRuntimeStateSnapshot::Inactive { reason }
                                 );
                             }
-                            assert_eq!(
-                                snapshot
-                                    .observability()
-                                    .counters()
-                                    .work_completed()
-                                    .exact_total()
-                                    .unwrap(),
-                                u128::from(!abandon)
-                            );
-                            assert_eq!(
-                                snapshot
-                                    .observability()
-                                    .counters()
-                                    .unacknowledged()
-                                    .exact_total()
-                                    .unwrap(),
-                                u128::from(abandon)
+                            assert_counters!(
+                                snapshot.observability().counters(),
+                                (work_completed, u128::from(!abandon)),
+                                (unacknowledged, u128::from(abandon))
                             );
                             if abandon {
                                 assert_eq!(

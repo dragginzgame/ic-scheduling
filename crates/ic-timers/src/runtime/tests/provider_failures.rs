@@ -14,13 +14,10 @@ fn assert_retained_provider_binding_failure(
         }
     );
     assert_eq!(failed.generation(), None);
-    assert_eq!(
-        failed_counters.schedule_requests().exact_total().unwrap(),
-        schedule_requests
-    );
-    assert_eq!(
-        failed_counters.wakeups_armed().exact_total().unwrap(),
-        wakeups_armed
+    assert_counters!(
+        failed_counters,
+        (schedule_requests, schedule_requests),
+        (wakeups_armed, wakeups_armed)
     );
 }
 
@@ -58,8 +55,7 @@ fn immediate_watchdog_completion_fault_traps_and_leaves_cadence_successor_armed(
     );
     let snapshot = registered_snapshot(&timer);
     let counters = snapshot.observability().counters();
-    assert_eq!(counters.work_started().exact_total().unwrap(), 1);
-    assert_eq!(counters.work_completed().exact_total().unwrap(), 0);
+    assert_counters!(counters, (work_started, 1), (work_completed, 0));
     let performance = snapshot.observability().performance();
     assert_eq!(performance.scheduler_memory_pages().samples(), 1);
     assert_eq!(performance.work_memory_pages().samples(), 0);
@@ -328,15 +324,7 @@ fn rejected_and_coalesced_requests_preserve_bound_handles_without_reinstallation
     let after = registered_snapshot(&timer);
     assert_eq!(after.generation(), before.generation());
     assert_eq!(after.next_deadline_ns(), before.next_deadline_ns());
-    assert_eq!(
-        after
-            .observability()
-            .counters()
-            .coalesced()
-            .exact_total()
-            .unwrap(),
-        1
-    );
+    assert_counters!(after.observability().counters(), (coalesced, 1));
 
     // A real replacement must still encounter the unconsumed installation fault.
     assert!(matches!(
@@ -461,10 +449,13 @@ fn watchdog_failed_dispatch_clears_handles_without_confirming_work() {
                 assert!(!registration.has_armed_wakeup().unwrap());
                 let snapshot = registered_snapshot(&timer);
                 let counters = snapshot.observability().counters();
-                assert_eq!(counters.scheduler_started().exact_total().unwrap(), 1);
-                assert_eq!(counters.work_dispatched().exact_total().unwrap(), 0);
-                assert_eq!(counters.work_started().exact_total().unwrap(), 0);
-                assert_eq!(counters.work_completed().exact_total().unwrap(), 0);
+                assert_counters!(
+                    counters,
+                    (scheduler_started, 1),
+                    (work_dispatched, 0),
+                    (work_started, 0),
+                    (work_completed, 0)
+                );
             } else {
                 assert!(timer_snapshot(&timer).unwrap().is_none());
                 assert!(matches!(
@@ -523,8 +514,7 @@ fn stale_watchdog_dispatch_clears_partial_arms_without_confirming_work() {
     let counts = registered_snapshot(registration.identity())
         .observability()
         .counters();
-    assert_eq!(counts.wakeups_armed().exact_total().unwrap(), 2);
-    assert_eq!(counts.work_dispatched().exact_total().unwrap(), 1);
+    assert_counters!(counts, (wakeups_armed, 2), (work_dispatched, 1));
 }
 
 #[test]

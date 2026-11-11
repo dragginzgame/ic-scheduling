@@ -156,7 +156,40 @@ fn missing_or_incomplete_candidate_never_replaces_a_previous_report() {
     .flat_map(|pointer| {
         [serde_json::Value::Null, serde_json::json!({})].map(|value| (pointer, Some(value)))
     });
-    for (pointer, replacement) in omissions.chain(wrong_types) {
+    let unknown_fields = [
+        "/unknown",
+        "/context/unknown",
+        "/artifacts/once/unknown",
+        "/measurements/unknown",
+        "/measurements/once/unknown",
+    ]
+    .into_iter()
+    .map(|pointer| (pointer, Some(1.into())));
+    let mismatches = [
+        ("/context/lock_sha256", "other invocation".into()),
+        ("/artifacts/once/wasm_sha256", "other bytes".into()),
+        (
+            "/artifacts/once/recipe_identity",
+            "other configuration".into(),
+        ),
+        ("/schema", (SCHEMA + 1).into()),
+        ("/schema", 1.into()),
+    ]
+    .into_iter()
+    .map(|(pointer, value)| (pointer, Some(value)));
+    let refuse = |bytes: &[u8], case: &str| {
+        fs::write(&candidate, bytes).unwrap();
+        assert!(
+            Report::read_candidate(&candidate, &expected).is_err(),
+            "{case}"
+        );
+        assert_eq!(fs::read(&output).unwrap(), previous, "{case}");
+    };
+    for (pointer, replacement) in omissions
+        .chain(wrong_types)
+        .chain(unknown_fields)
+        .chain(mismatches)
+    {
         let mut changed: serde_json::Value = serde_json::from_slice(&previous).unwrap();
         let (parent, key) = pointer.rsplit_once('/').unwrap();
         let object = changed
@@ -169,66 +202,9 @@ fn missing_or_incomplete_candidate_never_replaces_a_previous_report() {
         } else {
             object.remove(key);
         }
-        fs::write(&candidate, serde_json::to_vec(&changed).unwrap()).unwrap();
-        assert!(
-            Report::read_candidate(&candidate, &expected).is_err(),
-            "{pointer}"
-        );
-        assert_eq!(fs::read(&output).unwrap(), previous);
+        refuse(&serde_json::to_vec(&changed).unwrap(), pointer);
     }
-    for pointer in [
-        "",
-        "/context",
-        "/artifacts/once",
-        "/measurements",
-        "/measurements/once",
-    ] {
-        let mut changed: serde_json::Value = serde_json::from_slice(&previous).unwrap();
-        changed
-            .pointer_mut(pointer)
-            .unwrap()
-            .as_object_mut()
-            .unwrap()
-            .insert("unknown".into(), 1.into());
-        fs::write(&candidate, serde_json::to_vec(&changed).unwrap()).unwrap();
-        assert!(
-            Report::read_candidate(&candidate, &expected).is_err(),
-            "{pointer}"
-        );
-    }
-    for change in [
-        "context",
-        "artifact",
-        "recipe",
-        "schema",
-        "legacy-schema",
-        "malformed",
-    ] {
-        let mut changed = complete.clone();
-        match change {
-            "context" => changed.context.lock_sha256 = "other invocation".into(),
-            "artifact" => {
-                changed.artifacts.get_mut("once").unwrap().wasm_sha256 = "other bytes".into()
-            }
-            "recipe" => {
-                changed.artifacts.get_mut("once").unwrap().recipe_identity =
-                    "other configuration".into()
-            }
-            "schema" => changed.schema = SCHEMA + 1,
-            "legacy-schema" => changed.schema = 1,
-            _ => {}
-        }
-        let bytes = if change == "malformed" {
-            b"not JSON".to_vec()
-        } else {
-            serde_json::to_vec(&changed).unwrap()
-        };
-        fs::write(&candidate, bytes).unwrap();
-        assert!(
-            Report::read_candidate(&candidate, &expected).is_err(),
-            "{change}"
-        );
-    }
+    refuse(b"not JSON", "malformed");
     fs::write(&candidate, &previous).unwrap();
     let admitted = Report::read_candidate(&candidate, &expected).unwrap();
     // Comparison and publication use the admitted object, even if the child's

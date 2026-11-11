@@ -35,35 +35,49 @@ Latest cohort receipt: `qualification/target/timer-cohorts.json` there.
 
 ## Current tooling and workspace ownership
 
-Both catalogs/locks select exact crates.io Toko Tooling 0.39.7, archive SHA-256
-`fd795f6ef878496ac27a990a9208b87fa786a9148c18580338ef8ac79df501d7`.
-Its complete 59-entrypoint selection admits 106 managed files. The exporter
-retired 66 authenticated reference copies; consumer links retain immutable
-upstream revisions. Everything under `docs/` is native Scheduling documentation;
-use [its index](../README.md). The root baseline remains `TOKO-TOOLING.md`.
+Both catalogs/locks locally select exact crates.io Toko Tooling 0.39.9, archive SHA-256
+`1dd7bdb5bbb9bb8076dd35d8dc179c9e49196d9945c8e585990e40091b468b48`.
+Its complete 59-entrypoint selection admits 106 managed files. Shared references
+remain at immutable upstream revisions. Everything under `docs/` is native
+Scheduling documentation; use [its index](../README.md).
 
-The product workspace contains only Jobs and Timers. Six private packages live
-under the independent qualification catalog/lock and belong to no release group.
-Standard `qualification_workspace` release preparation owns both workspaces'
-product references/locks while preserving private versions and other suppliers.
-The shared inheritance checker replaces the consumer adapter; rejection tests
-retain stale/missing versions, independent/target dependencies and privacy cases.
-Shared grouped releases are explicitly enabled with `TOKO_TOOLING_RELEASE := 1`.
-See [release operations](../releases/README.md) and
-[validation groups](../releases/validation-groups.md).
+The 0.39.9 refresh is included in the pending patch delivery. Both locked fetches, standard tool installation,
+snapshot/pin/group/link admission, workspace inheritance, both dependency-boundary
+callers and all 56 tooling drift-refusal routes pass. Native-only PocketIC dev
+dependencies are admitted; production/Wasm restrictions and CBOR refusals remain.
+The published releases above retain their original 0.39.7 source and graph.
 
-## Deferred work and graph boundaries
+Six private qualification packages remain outside the Jobs/Timers product groups.
+Their independent catalog/lock uses standard `qualification_workspace` preparation,
+preserving private versions and suppliers. `TOKO_TOOLING_RELEASE := 1` enables releases.
+See [release operations](../releases/README.md) and [validation groups](../releases/validation-groups.md).
 
-The normal product Cargo.lock retains only an uncommitted Metrics 0.29.11 refresh.
-It is not part of either publication; both release locks select Metrics 0.29.9.
-After standard batch reconciliation, targeted Cargo update reapplied only this
-version/checksum against the new product versions. No related adoption or release
-is claimed. Original pending graph/source custody remains in stash
+Local test cleanup reduces Rust LOC from 29,011 to 28,762 across two passes.
+The first retains 126 counter expectations and all 176 Timers / 41 queue tests;
+evidence: `target/evidence/test-cleanup-20261111/`. The second retains all test
+names and 31 receipt-corruption cases; five report tests, eight composition tests,
+and the two changed installed watchdog subjects pass, with Clippy/format checks.
+Production logic is unchanged. Evidence: `target/evidence/qualification-cleanup-20261111/`;
+live receipt: `target/tmp/timer-qualification-79894-0/runtime.json` (focused, not a full gate).
+
+## Active patch delivery and graph boundaries
+
+Jobs 0.35.1 and Timers 0.43.1 are authorized for frozen-batch release and
+publication, Timers first. Both catalogs/locks now select Metrics 0.29.11 and
+Runtime/exact guard 0.21.1; qualification also selects matching macros and the
+required Types 0.19.2. Runtime owns the single transitive ic0 1.2.0 backend.
+Focused native/Wasm graphs and actual rejection fixtures pass, including direct
+SDK aliases in both workspaces. Full product and installed-runtime qualification
+must pass on the captured source before delivery; earlier live receipts above
+do not qualify the refreshed graph. Evidence: `target/evidence/deploy-patches-20261111/`.
+
+Tracked pre-adoption work and both original locks are preserved in stash
+`4adfda0e74ffee32281b835735a25128b7648ceb`. Original pending graph/source custody remains in stash
 `19beca78079c6437b91eb436d789521fc86ac760`; preserve the older deferred graph stash
 `7f1fe032b88665507192692dcea2278aeec713a6` too. Do not apply whole old locks over
 released product versions or drop protected custody.
 
-Runtime/macros/exact guard remain 0.21.0, Types 0.19, Wire 0.19 / Endpoint 0.10,
+The delivered baseline above is Runtime/macros/exact guard 0.21.0. Current selections retain Wire 0.19 / Endpoint 0.10,
 Storage 0.71.1 and Testkit 0.96. Qualification uses raw Testkit transport with
 current Wire framing; Testkit's optional adapter selects the older Wire family.
 Jobs stays Serde-only, with consumer-owned storage and metadata. Timers retains

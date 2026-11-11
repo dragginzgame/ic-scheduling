@@ -1,8 +1,8 @@
 # Toko Tooling snapshot v1
-# version	0.39.7
+# version	0.39.9
 format	1
 source	https://crates.io/crates/toko-tooling
-revision	fd795f6ef878496ac27a990a9208b87fa786a9148c18580338ef8ac79df501d7
+revision	1dd7bdb5bbb9bb8076dd35d8dc179c9e49196d9945c8e585990e40091b468b48
 # entrypoint	TOKO-TOOLING.md
 # entrypoint	scripts/ci/run-release.sh
 # entrypoint	scripts/ci/check-make-execution.sh
@@ -62,7 +62,7 @@ revision	fd795f6ef878496ac27a990a9208b87fa786a9148c18580338ef8ac79df501d7
 # entrypoint	scripts/ci/validation-evidence.pl
 # entrypoint	LICENSE.md
 # entrypoint	CONTRIBUTING.md
-file	c04bf9274df49fc32b450834ba1aec0d1efb2f7d11f9c9d88a8010a8dc924a63	-	TOKO-TOOLING.md
+file	cfed3d5ae20733a798849caa2656fde5195e1188af45109c40850f4cd62a93d8	-	TOKO-TOOLING.md
 file	d4d73d12601ca093878f8206a41185e383ad30484fa9206d60bfcf78248b865c	x	scripts/ci/run-release.sh
 file	3bbcd3458afbeee5803bf4f51e624afd2b11578ee961250522c9332ed0fc7b4f	x	scripts/ci/check-make-execution.sh
 file	918815a81861abd80684fea14f71cb5a298644317afc0f5860a3d1b6506a0a16	x	scripts/ci/next-release-version.sh
@@ -109,7 +109,7 @@ file	e2825c554ea3952515ecb2938f7ad592d6539ec5304c3b3107d32a1bfc6b4eda	-	scripts/
 file	d866bd1ae0bf5c5d22120c3427857968eba86cbc2affa310951f76742e339116	x	scripts/ci/check-pipe-jobserver.pl
 file	ec0ee173807556f931a08a173fc4e38397f26bab00539b748b829cb24d310138	x	scripts/ci/prepare-script-fixture.sh
 file	1d69a4a04dbf19db8a54a070d820ee89ffea457ded2ca666108777c310b0e9ac	-	scripts/ci/cargo-release-preflight.sh
-file	1782eec112f61159382411038c658ba964cd70b6b80e0d0e14cadabe98dcc71b	x	scripts/ci/check-cargo-dependency-boundaries.sh
+file	7e38c947d6d66c75a83ac45a6d49d11e602153d7906893436ec5083ff0c55cf0	x	scripts/ci/check-cargo-dependency-boundaries.sh
 file	06f16c4a6e7f97e13fc568b75b8adca7e7db399efbead9fa806d4a429bd5b742	-	scripts/ci/check-cargo-graph.pl
 file	efdb27607dff8a634f78e1fd8268192120e09cbb3f154e58c4fd1acfccfece34	-	scripts/ci/release-receipts.sh
 file	57a0d0ff82abe26422adb86b8c5f2474b019202e031bedcaf780910d6757f7e0	-	scripts/ci/classify-ci-change.pl
@@ -119,7 +119,7 @@ file	00bb9fa13d3109ecec058251d5213081471084c481b89f2a4be7465ac9719f29	x	scripts/
 file	00ebfbb78532106cdfb3ae85deed9c114122b12d163eb159ef07dc36e205405f	x	scripts/ci/seal-validation-stage.pl
 file	4ba3a93e5ba61d532fa368d0f264a23f601693a8289e83e82749b09da53cf0e9	-	scripts/ci/check-candid-boundary.pl
 file	3a3df3b5cb0147ca2a532d963e97b186920a4fa261d1aacc5fa6989f253fb323	-	scripts/ci/validation-evidence.pl
-file	52b9a85c4c1b8d327f23fa9571652db4f5d2adb0d10f7f26e9a0748612385ef2	-	LICENSE.md
+file	3f2971bfefccf71cf4929cabd1fa000e0c7b3d4002b9a08ca58821ccb048c123	-	LICENSE.md
 file	0ae38d62c728fb06f1a2dd2325f99f2277bfdb0cd48ac6df49d4120c0bfe88bd	-	CONTRIBUTING.md
 file	4aeaa61c8d04904c8039046bd62e2ae836e59126f5014d45744e95fd6ccaf0a8	-	scripts/ci/release-plan.pl
 file	d2670d079e6fe54ccb72f0f6fab328723bf1baf7829b852ba8157cc9ddebd27b	x	scripts/ci/validate-release-inputs.pl

@@ -94,7 +94,7 @@ phase_workspace_inheritance() (
         case "$invalid" in
             product-version) perl -pi -e 's/^version = "[^"]+"/version = "0.0.0"/' "$fixture/crates/ic-timers/Cargo.toml" ;;
             missing-private-version) perl -ni -e 'print unless /^version = /' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
-            private-dependency) perl -pi -e 's/^toko-tooling.workspace = true/toko-tooling = "=0.39.7"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
+            private-dependency) perl -pi -e 's/^toko-tooling.workspace = true/toko-tooling = "=0.39.9"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
             target-dependency) printf '\n%s\n%s\n' "[target.'cfg(unix)'.dev-dependencies]" 'serde = "1.0"' >> "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
             published-qualification) perl -pi -e 's/^publish = false/publish = ["crates-io"]/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
         esac
@@ -168,7 +168,7 @@ for invalid in missing-lock version-drift checksum-drift missing-member independ
         missing-member)
             perl -0pi -e 's/^toko-tooling\.workspace = true\n//m' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
         independent-member)
-            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.39.7"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
+            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.39.9"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
     esac
     for target in ci release-patch release-preflight publish publish-check clean-empty-source-dirs; do
         status=0

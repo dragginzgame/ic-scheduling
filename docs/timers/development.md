@@ -59,8 +59,10 @@ instead of gating Platform's releases on a downstream Timers dependency
 adoption and delivery are tracked separately in
 [#92](https://github.com/dragginzgame/ic-scheduling/issues/92). The supported
 cohort is Runtime 0.21 with the matching exact guard; the current lock selects
-0.21.0. The mandatory installed subjects and policy cohorts qualify this selected
-source and lock; earlier Runtime 0.20 evidence does not substitute for that gate.
+0.21.1. Runtime owns its transitive registry IC0 backend; Scheduling packages
+cannot declare direct SDK dependencies. The mandatory installed subjects and
+policy cohorts qualify this selected source and lock; earlier Runtime 0.20
+evidence does not substitute for that gate.
 
 | Required observation | Scheduling owner |
 | --- | --- |

@@ -24,6 +24,16 @@ fn increment(at: u64) -> Create {
     }
 }
 
+fn delivery_request(timing: Timing, destination: Principal, message: impl Into<String>) -> Create {
+    Create {
+        timing,
+        task: Task::Deliver(DeliveryPayload {
+            destination,
+            message: message.into(),
+        }),
+    }
+}
+
 fn fresh_queue<M: MemoryBacking>(memory: M) -> Queue<M> {
     Queue::open(memory, Some(config())).unwrap().0
 }

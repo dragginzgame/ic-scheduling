@@ -37,15 +37,7 @@ fn inactive_demand_keeps_custody_idle_and_explicit_cancel_distinct() {
         );
         assert_eq!(snapshot.registration_id(), original);
         assert_eq!(snapshot.next_deadline_ns(), None);
-        assert_eq!(
-            snapshot
-                .observability()
-                .counters()
-                .cancelled()
-                .exact_total()
-                .unwrap(),
-            0
-        );
+        assert_counters!(snapshot.observability().counters(), (cancelled, 0));
         let scheduled = registry
             .reconcile_ordinary(&claim, 2, Some(TimerSchedule::At(20)))
             .unwrap();
@@ -59,15 +51,7 @@ fn inactive_demand_keeps_custody_idle_and_explicit_cancel_distinct() {
                 reason: InactiveReason::Cancelled
             }
         );
-        assert_eq!(
-            snapshot
-                .observability()
-                .counters()
-                .cancelled()
-                .exact_total()
-                .unwrap(),
-            1
-        );
+        assert_counters!(snapshot.observability().counters(), (cancelled, 1));
         assert_eq!(snapshot.registration_id(), original);
     }
 }
@@ -193,14 +177,9 @@ fn inactive_demand_preserves_command_order_and_invariant_failure_priority() {
             }
             let current = registry.snapshot(&timer).unwrap();
             assert_eq!(current.registration_id(), original);
-            assert_eq!(
-                current
-                    .observability()
-                    .counters()
-                    .cancelled()
-                    .exact_total()
-                    .unwrap(),
-                u128::from(command == Command::Cancel)
+            assert_counters!(
+                current.observability().counters(),
+                (cancelled, u128::from(command == Command::Cancel))
             );
             if command == Command::Schedule {
                 assert_eq!(current.next_deadline_ns(), Some(20));

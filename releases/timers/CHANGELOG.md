@@ -10,6 +10,26 @@ entry alone does not establish publication.
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.43.1] - Unreleased
+
+### 📦 Dependencies
+
+- Select Metrics 0.29.11 and Platform Runtime 0.21.1 with its exact guard across
+  both workspaces. Admit Runtime's IC0 backend while retaining direct SDK bans
+  and single-owner native/Wasm graph checks.
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.39.9, including native-only PocketIC dev-dependency
+  admission while retaining production and Wasm dependency restrictions.
+
+### 🧪 Testing
+
+- Share native and installed watchdog observations, exact counter assertions and
+  ordinary-policy test steps while preserving every scenario and overflow check.
+- Consolidate receipt-corruption cases and verify previous-output preservation
+  for every rejected candidate.
+
 ## [0.43.0] - 2026-11-10
 
 ### 🛠️ Tooling

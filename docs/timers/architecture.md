@@ -69,8 +69,8 @@ Runtime owns the maintained IC0 bindings and executor. The root catalog disables
 default Runtime features. The library selects only `executor` and `ic0`; the two
 canister probes select `cdk` for entrypoint contexts,
 protected calls/spawning, traps, cycle burning and stable byte I/O. The native
-harness selects Testkit 0.93's async-only `pocket_ic` module for clients and
-`ic-platform-types` 0.18 with `principal-external` for canonical identities.
+harness selects Testkit 0.96's async-only `pocket_ic` module for clients and
+`ic-platform-types` 0.19 with `principal-external` for canonical identities.
 Clients select a 60-second request budget independently of server startup limits.
 The protocol package selects Wire and Serde without a direct Runtime dependency.
 
@@ -79,8 +79,9 @@ retaining context placement, protected spawning and callback/trap cleanup.
 Runtime selects its exact matching executor singleton guard. Applications must
 align all executor and Endpoint suppliers with Runtime 0.21; removing or
 overriding the guard does not establish compatibility. Deployed roots have one
-Runtime executor owner and no standalone
-`ic-cdk-executor` or `ic0` package. Native substitutes cannot
+Runtime executor owner, its single transitive registry `ic0` backend and no
+standalone `ic-cdk-executor`. Direct Scheduling SDK dependencies remain forbidden.
+Native substitutes cannot
 qualify those IC paths. [The call ownership boundary](../../crates/ic-timers/SAFETY.md#platform-and-application-call-ownership)
 keeps application call builders and Relay above the runtime. The library's Runtime
 selection remains executor/system-only, excluding Principal/Account, SHA-2, text

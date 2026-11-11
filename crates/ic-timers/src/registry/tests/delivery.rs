@@ -165,46 +165,20 @@ fn provider_roles_keep_paired_handles_distinct_and_reject_policy_mismatches() {
         if token.role() == CallbackRole::WatchdogScheduler {
             let staged = registry.snapshot(token.identity()).unwrap();
             assert_eq!(staged.latest_armed_delay_ns(), None);
-            assert_eq!(
-                staged
-                    .observability()
-                    .counters()
-                    .wakeups_armed()
-                    .exact_total()
-                    .unwrap(),
-                0
-            );
-            assert_eq!(
-                staged
-                    .observability()
-                    .counters()
-                    .work_dispatched()
-                    .exact_total()
-                    .unwrap(),
-                0
+            assert_counters!(
+                staged.observability().counters(),
+                (wakeups_armed, 0),
+                (work_dispatched, 0)
             );
         }
     }
     for (token, delay_ns, work) in [(&tokens[0], 10, 0), (&tokens[2], 5, 1)] {
         let committed = registry.snapshot(token.identity()).unwrap();
         assert_eq!(committed.latest_armed_delay_ns(), Some(delay_ns));
-        assert_eq!(
-            committed
-                .observability()
-                .counters()
-                .wakeups_armed()
-                .exact_total()
-                .unwrap(),
-            1
-        );
-        assert_eq!(
-            committed
-                .observability()
-                .counters()
-                .work_dispatched()
-                .exact_total()
-                .unwrap(),
-            work
+        assert_counters!(
+            committed.observability().counters(),
+            (wakeups_armed, 1),
+            (work_dispatched, work)
         );
         let before = registry.inventory();
         let (error, handle) = registry
@@ -441,6 +415,5 @@ fn watchdog_dispatch_confirmation_rejects_stale_attempts() {
         .unwrap()
         .observability()
         .counters();
-    assert_eq!(counts.wakeups_armed().exact_total().unwrap(), 2);
-    assert_eq!(counts.work_dispatched().exact_total().unwrap(), 2);
+    assert_counters!(counts, (wakeups_armed, 2), (work_dispatched, 2));
 }

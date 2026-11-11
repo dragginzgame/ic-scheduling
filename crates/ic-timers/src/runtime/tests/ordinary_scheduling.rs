@@ -30,15 +30,7 @@ fn once_owns_one_provider_handle_and_executes_without_registry_borrow() {
         .expect("ensure should arm provider timer");
     assert_eq!(timer_count(), 1);
     let scheduled = registered_snapshot(&timer);
-    assert_eq!(
-        scheduled
-            .observability()
-            .counters()
-            .wakeups_armed()
-            .exact_total()
-            .unwrap(),
-        1
-    );
+    assert_counters!(scheduled.observability().counters(), (wakeups_armed, 1));
     assert_eq!(scheduled.latest_armed_delay_ns(), Some(5));
 
     set_time(15);
@@ -53,8 +45,7 @@ fn once_owns_one_provider_handle_and_executes_without_registry_borrow() {
             reason: InactiveReason::Stopped,
         }
     );
-    assert_eq!(stopped_counters.work_started().exact_total().unwrap(), 1);
-    assert_eq!(stopped_counters.work_completed().exact_total().unwrap(), 1);
+    assert_counters!(stopped_counters, (work_started, 1), (work_completed, 1));
     assert_eq!(
         stopped
             .observability()
@@ -149,9 +140,12 @@ fn ordinary_callback_borrow_failure_stops_without_invoking_or_measuring_work() {
                 }
             );
             let counters = snapshot.observability().counters();
-            assert_eq!(counters.work_started().exact_total().unwrap(), 1);
-            assert_eq!(counters.work_completed().exact_total().unwrap(), 1);
-            assert_eq!(counters.invariant_failure().exact_total().unwrap(), 1);
+            assert_counters!(
+                counters,
+                (work_started, 1),
+                (work_completed, 1),
+                (invariant_failure, 1)
+            );
             let performance = snapshot.observability().performance();
             assert_eq!(performance.work_instructions().aggregate().samples(), 0);
             assert_eq!(performance.work_memory_pages().samples(), 0);
@@ -249,8 +243,7 @@ fn after_completion_rearms_from_actual_completion_time() {
     assert_eq!(timer_count(), 0);
     let snapshot = registered_snapshot(&timer);
     let snapshot_counters = snapshot.observability().counters();
-    assert_eq!(snapshot_counters.wakeups_armed().exact_total().unwrap(), 2);
-    assert_eq!(snapshot_counters.work_completed().exact_total().unwrap(), 2);
+    assert_counters!(snapshot_counters, (wakeups_armed, 2), (work_completed, 2));
 }
 
 #[test]
@@ -287,21 +280,7 @@ fn after_completion_context_can_restore_recurrence_after_nested_cancel() {
         .ensure_scheduled()
         .expect("initial ensure should succeed");
 
-    set_time(15);
-    assert!(run_next_due());
-    assert_eq!(calls.get(), 1);
-    assert_eq!(timer_count(), 1);
-    assert_eq!(
-        timer_snapshot(&timer)
-            .expect("snapshot lookup should succeed")
-            .and_then(|snapshot| snapshot.next_deadline_ns()),
-        Some(20)
-    );
-
-    set_time(20);
-    assert!(run_next_due());
-    assert_eq!(calls.get(), 2);
-    assert_eq!(timer_count(), 0);
+    assert_nested_rearm(&timer, &calls, 20);
 }
 
 #[test]
@@ -334,16 +313,20 @@ fn once_context_can_restore_scheduling_after_nested_cancel() {
         .ensure_scheduled(TimerSchedule::At(15))
         .expect("initial ensure should succeed");
 
+    assert_nested_rearm(&timer, &calls, 30);
+}
+
+#[track_caller]
+fn assert_nested_rearm(timer: &TimerIdentity, calls: &Cell<u64>, deadline_ns: u64) {
     set_time(15);
     assert!(run_next_due());
+    assert_eq!(calls.get(), 1);
     assert_eq!(timer_count(), 1);
     assert_eq!(
-        timer_snapshot(&timer)
-            .expect("snapshot lookup should succeed")
-            .and_then(|snapshot| snapshot.next_deadline_ns()),
-        Some(30)
+        registered_snapshot(timer).next_deadline_ns(),
+        Some(deadline_ns)
     );
-    set_time(30);
+    set_time(deadline_ns);
     assert!(run_next_due());
     assert_eq!(calls.get(), 2);
     assert_eq!(timer_count(), 0);

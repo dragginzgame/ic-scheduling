@@ -28,8 +28,7 @@ fn immediate_watchdog_reconciliation_arms_one_zero_delay_scheduler() {
     assert_eq!(scheduled.latest_requested_delay_ns(), Some(0));
     assert_eq!(scheduled.latest_armed_delay_ns(), Some(0));
     let counters = scheduled.observability().counters();
-    assert_eq!(counters.schedule_requests().exact_total().unwrap(), 1);
-    assert_eq!(counters.wakeups_armed().exact_total().unwrap(), 1);
+    assert_counters!(counters, (schedule_requests, 1), (wakeups_armed, 1));
 
     assert!(run_next_due(), "zero-delay scheduler should run later");
     assert_eq!(calls.get(), 0, "the scheduler must not invoke work inline");
@@ -69,9 +68,12 @@ fn immediate_watchdog_ensure_moves_cadence_earlier_and_repeats_idempotently() {
     assert_eq!(snapshot.latest_requested_delay_ns(), Some(0));
     assert_eq!(snapshot.latest_armed_delay_ns(), Some(0));
     let counters = snapshot.observability().counters();
-    assert_eq!(counters.schedule_requests().exact_total().unwrap(), 3);
-    assert_eq!(counters.wakeups_armed().exact_total().unwrap(), 2);
-    assert_eq!(counters.coalesced().exact_total().unwrap(), 1);
+    assert_counters!(
+        counters,
+        (schedule_requests, 3),
+        (wakeups_armed, 2),
+        (coalesced, 1)
+    );
 
     registration
         .cancel()
@@ -100,9 +102,12 @@ fn immediate_watchdog_ensure_coalesces_an_overdue_cadence_wakeup() {
     assert_eq!(snapshot.latest_requested_delay_ns(), Some(0));
     assert_eq!(snapshot.latest_armed_delay_ns(), Some(5));
     let counters = snapshot.observability().counters();
-    assert_eq!(counters.schedule_requests().exact_total().unwrap(), 2);
-    assert_eq!(counters.wakeups_armed().exact_total().unwrap(), 1);
-    assert_eq!(counters.coalesced().exact_total().unwrap(), 1);
+    assert_counters!(
+        counters,
+        (schedule_requests, 2),
+        (wakeups_armed, 1),
+        (coalesced, 1)
+    );
 
     registration
         .cancel()
@@ -166,9 +171,12 @@ fn watchdog_continuations_keep_prearming_and_separate_scheduler_from_work() {
             TimerRuntimeStateSnapshot::Watchdog(WatchdogRuntimeStateSnapshot::AwaitingWork { .. })
         ));
         let counters = dispatched.observability().counters();
-        assert_eq!(counters.scheduler_started().exact_total().unwrap(), 1);
-        assert_eq!(counters.wakeups_armed().exact_total().unwrap(), 2);
-        assert_eq!(counters.work_dispatched().exact_total().unwrap(), 1);
+        assert_counters!(
+            counters,
+            (scheduler_started, 1),
+            (wakeups_armed, 2),
+            (work_dispatched, 1)
+        );
 
         assert!(run_next_due(), "first separate work callback should run");
         assert_eq!(calls.get(), 1);
@@ -183,8 +191,7 @@ fn watchdog_continuations_keep_prearming_and_separate_scheduler_from_work() {
         assert_eq!(continued.latest_requested_delay_ns(), Some(delay));
         assert_eq!(continued.latest_armed_delay_ns(), Some(delay));
         let counters = continued.observability().counters();
-        assert_eq!(counters.wakeups_armed().exact_total().unwrap(), armed);
-        assert_eq!(counters.work_dispatched().exact_total().unwrap(), 1);
+        assert_counters!(counters, (wakeups_armed, armed), (work_dispatched, 1));
 
         set_time(deadline);
         assert!(run_next_due(), "successor scheduler is a later message");
@@ -230,11 +237,7 @@ fn watchdog_running_immediate_context_targets_that_attempts_successor() {
         snapshot.scheduling_mode(),
         TimerSchedulingMode::Continuation
     );
-    assert_eq!(
-        snapshot_counters.schedule_requests().exact_total().unwrap(),
-        3
-    );
-    assert_eq!(snapshot_counters.coalesced().exact_total().unwrap(), 2);
+    assert_counters!(snapshot_counters, (schedule_requests, 3), (coalesced, 2));
 
     registration
         .cancel()
@@ -278,15 +281,7 @@ fn watchdog_cancellation_clears_successor_and_queued_work() {
     assert!(!run_next_due());
     assert_eq!(calls.get(), 0);
     let snapshot = registered_snapshot(&timer);
-    assert_eq!(
-        snapshot
-            .observability()
-            .counters()
-            .cancelled()
-            .exact_total()
-            .unwrap(),
-        1
-    );
+    assert_counters!(snapshot.observability().counters(), (cancelled, 1));
 
     registration.ensure_scheduled().unwrap();
     assert_eq!(
@@ -347,9 +342,12 @@ fn watchdog_invariant_failure_overrides_nested_cancellation_and_clears_handles()
                 }
             );
             let counters = snapshot.observability().counters();
-            assert_eq!(counters.work_completed().exact_total().unwrap(), 1);
-            assert_eq!(counters.invariant_failure().exact_total().unwrap(), 1);
-            assert_eq!(counters.cancelled().exact_total().unwrap(), 0);
+            assert_counters!(
+                counters,
+                (work_completed, 1),
+                (invariant_failure, 1),
+                (cancelled, 0)
+            );
         } else {
             assert!(snapshot.is_none());
             assert!(matches!(

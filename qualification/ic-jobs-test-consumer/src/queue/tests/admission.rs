@@ -4,13 +4,11 @@ use super::*;
 fn unrelated_corruption_precedes_completion_lookup_receipt_and_clock_checks() {
     let mut queue = fresh_queue(VectorMemory::default());
     queue
-        .create(Create {
-            timing: Timing::Once(10),
-            task: Task::Deliver(DeliveryPayload {
-                destination: Principal::self_authenticating(b"receiver"),
-                message: "report".into(),
-            }),
-        })
+        .create(delivery_request(
+            Timing::Once(10),
+            Principal::self_authenticating(b"receiver"),
+            "report",
+        ))
         .unwrap();
 
     let corrupt = queue.create(increment(20)).unwrap().value;
@@ -73,13 +71,11 @@ fn contradictory_dispatch_counts_block_the_complete_stable_queue() {
         let backing = VectorMemory::default();
         let mut queue = fresh_queue(backing.clone());
         let corrupt = queue
-            .create(Create {
-                timing: Timing::Once(100),
-                task: Task::Deliver(DeliveryPayload {
-                    destination: Principal::self_authenticating(b"receiver"),
-                    message: "retained intent".into(),
-                }),
-            })
+            .create(delivery_request(
+                Timing::Once(100),
+                Principal::self_authenticating(b"receiver"),
+                "retained intent",
+            ))
             .unwrap()
             .value;
         let healthy = queue.create(increment(200)).unwrap().value;
@@ -223,13 +219,11 @@ fn snapshot_admission_preserves_restore_and_collection_error_order() {
 fn view_projection_preserves_large_ids_and_refuses_unadmitted_identities() {
     let mut queue = fresh_queue(VectorMemory::default());
     queue
-        .create(Create {
-            timing: Timing::Once(100),
-            task: Task::Deliver(DeliveryPayload {
-                destination: manager(),
-                message: "large identity".into(),
-            }),
-        })
+        .create(delivery_request(
+            Timing::Once(100),
+            manager(),
+            "large identity",
+        ))
         .unwrap();
     let id = u64::MAX - 1;
     mutate_records(&mut queue, |snapshot| {

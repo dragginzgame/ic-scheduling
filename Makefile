@@ -230,7 +230,7 @@ CORE_GRAPH_FORBIDDEN := clap ctrlc candid candid_derive candid_parser ic-cdk ic-
 	ic-cdk-executor ic-cdk-timers ic-platform ic-platform-pocket-ic ic-platform-runtime ic-platform-types ic-platform-macros ic-platform-runtime-guard ic0 ic-memory ic-stable-structures ic-storage \
 	ic-timers ic-metrics ic-logging ic-wire ic-wire-derive postcard \
 	 ic-jobs-test-consumer ic-jobs-canister-tests pocket-ic serde_json serde_test
-QUALIFICATION_GRAPH_FORBIDDEN := ic-cdk-executor ic0 ic-platform ic-platform-pocket-ic clap ctrlc serde_json ic-memory ic-stable-structures candid candid_derive candid_parser ic-cdk ic-agent \
+QUALIFICATION_GRAPH_FORBIDDEN := ic-cdk-executor ic-platform ic-platform-pocket-ic clap ctrlc serde_json ic-memory ic-stable-structures candid candid_derive candid_parser ic-cdk ic-agent \
 	 ic-jobs-canister-tests pocket-ic tokio
 # Jobs and Timers share one Runtime owner; Storage keeps its allocation facade.
 # Keep one executor, raw-system provider and entrypoint generator, without
@@ -248,7 +248,7 @@ check-dependency-graphs:
 		$(foreach dependency,$(CORE_GRAPH_FORBIDDEN),--forbid $(dependency))
 	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)/qualification" --package ic-jobs-test-consumer \
 		--target wasm32-unknown-unknown --all-features \
-		--require ic-timers=1 --require ic-platform-runtime-guard=1 \
+		--require ic-timers=1 --require ic-platform-runtime-guard=1 --require ic0=1 \
 		--require ic-platform-runtime=1 --require ic-platform-types=1 --require ic-platform-macros=1 \
 		--forbid sha2 --forbid-feature ic-platform/principal-external \
 		--forbid-pattern '$(HOST_GRAPH_FORBIDDEN_PATTERN)' \

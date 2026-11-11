@@ -43,6 +43,9 @@ mod schedule;
 #[forbid(unsafe_code)]
 mod snapshot;
 
+#[cfg(test)]
+mod tests;
+
 pub use callback::{
     AfterCompletionDecision, AfterCompletionRunResult, OnceDecision, OnceRunResult,
 };

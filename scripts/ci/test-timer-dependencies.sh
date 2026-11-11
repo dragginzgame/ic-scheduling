@@ -192,6 +192,27 @@ fi
 grep -q 'ic-timers -> ic_principal' direct-failure.log
 reset_manifests
 
+# Runtime's transitive backend is admitted above; it must not let either
+# workspace bypass Platform with a renamed, optional target/build SDK edge.
+for package in crates/ic-timers qualification/ic-timers-runtime-probe; do
+    catalog=Cargo.toml
+    consumer="$fixture"
+    [[ "$package" != qualification/* ]] || { catalog=qualification/Cargo.toml; consumer="$fixture/qualification"; }
+    perl -pi -e 's/^\[workspace.dependencies\]/[workspace.dependencies]\nexternal-system = { package = "ic0", version = "1.2.0" }/' "$catalog"
+    cat >> "$package/Cargo.toml" <<'EOF'
+
+[target.'cfg(target_arch = "wasm32")'.build-dependencies]
+external-system = { workspace = true, optional = true }
+EOF
+    RUSTUP_AUTO_INSTALL=0 cargo metadata --manifest-path "$catalog" --offline --format-version 1 > /dev/null
+    if bash "$direct_checker" --consumer "$consumer" --external-ic > direct-ic0-failure.log 2>&1; then
+        echo "error: common IC boundary admitted direct SDK dependency from $package" >&2
+        exit 1
+    fi
+    grep -q "${package##*/} -> ic0" direct-ic0-failure.log
+    reset_manifests
+done
+
 # A source override at the same version is not the qualified runtime owner.
 mkdir -p platform-substitute/src
 cat > platform-substitute/Cargo.toml <<EOF

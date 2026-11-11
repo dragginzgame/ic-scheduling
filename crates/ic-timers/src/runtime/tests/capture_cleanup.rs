@@ -428,23 +428,10 @@ fn initial_registration_confirms_exact_wakeup_before_returning_authority() {
             assert_eq!(timer_count(), 1);
             let snapshot = registered_snapshot(&timer);
             assert_eq!(snapshot.next_deadline_ns(), Some(20));
-            assert_eq!(
-                snapshot
-                    .observability()
-                    .counters()
-                    .schedule_requests()
-                    .exact_total()
-                    .unwrap(),
-                1
-            );
-            assert_eq!(
-                snapshot
-                    .observability()
-                    .counters()
-                    .wakeups_armed()
-                    .exact_total()
-                    .unwrap(),
-                1
+            assert_counters!(
+                snapshot.observability().counters(),
+                (schedule_requests, 1),
+                (wakeups_armed, 1)
             );
             assert!(!run_next_due());
             unregister_claim(&claim).unwrap();

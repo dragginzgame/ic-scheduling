@@ -883,9 +883,9 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.29.9"
+version = "0.29.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "772f3578bbf345d171fc64d05679535df30969058d993a9a408bd0c785aaf711"
+checksum = "45009e4547025d669c579899d17332fdcd00c34429d43bc1795297978b8eb21d"
 
 [[package]]
 name = "ic-platform"
@@ -905,9 +905,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-macros"
-version = "0.21.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98df66d597eefcc8b3502e8e76670d1c32d04db55f151357eed4cbd043370bda"
+checksum = "ada4ea7e8782a29b9ffb2a00a0b151f8a193f1b8bd036b4a1814a608f4227d2a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -916,13 +916,14 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.21.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c68b2ccef0e24eaf2e2f860e36ba8f63de422719aea060b872e0013cf99cd1b0"
+checksum = "f3f3f3b871dd64d2b5e01696dbed3951cdc4a6a8aa640b1e5d43774b22ec3d0e"
 dependencies = [
  "ic-platform-macros",
  "ic-platform-runtime-guard",
  "ic-platform-types",
+ "ic0",
  "pin-project-lite",
  "serde",
  "slotmap",
@@ -931,15 +932,15 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.21.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "539d72216e01a7021b28a7a12d03aacbab9fa3a5c778f5c30f2ffee4fc7da49c"
+checksum = "1dae8afb137bbe3ac6fd8b9e3010b3fa9e6a3a5dbc32438255402b9365bdf1c6"
 
 [[package]]
 name = "ic-platform-types"
-version = "0.19.0"
+version = "0.19.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "105fa02267cbd906dd788f1986fb2e25c60c82e595cee3efeab03aa1c4ea39f2"
+checksum = "4df787e872f1daa8011e66390f9ab3c5780685e762ddede93395906013e77f5f"
 dependencies = [
  "crc32fast",
  "data-encoding",
@@ -1097,6 +1098,12 @@ dependencies = [
  "quote",
  "syn 3.0.10",
 ]
+
+[[package]]
+name = "ic0"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f05349d5c51ab6cc962c8963f877f826997ee6b737c6be3aafc9779eb8a4dd05"
 
 [[package]]
 name = "ic_principal"
@@ -2173,9 +2180,9 @@ dependencies = [
 
 [[package]]
 name = "toko-tooling"
-version = "0.39.7"
+version = "0.39.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd795f6ef878496ac27a990a9208b87fa786a9148c18580338ef8ac79df501d7"
+checksum = "1dd7bdb5bbb9bb8076dd35d8dc179c9e49196d9945c8e585990e40091b468b48"
 
 [[package]]
 name = "toml"

@@ -54,12 +54,12 @@ fn dropped_ordinary_deliveries_retire_confirmed_scheduled_and_running_work() {
                     assert!(!has_armed_wakeup_claim(&claim).unwrap());
                     let observations = snapshot.observability();
                     let counters = observations.counters();
-                    assert_eq!(counters.unacknowledged().exact_total().unwrap(), 1);
-                    assert_eq!(
-                        counters.work_started().exact_total().unwrap(),
-                        u128::from(started)
+                    assert_counters!(
+                        counters,
+                        (unacknowledged, 1),
+                        (work_started, u128::from(started)),
+                        (work_completed, 0)
                     );
-                    assert_eq!(counters.work_completed().exact_total().unwrap(), 0);
                     let performance = observations.performance();
                     assert_eq!(performance.work_instructions().aggregate().samples(), 0);
                     assert_eq!(
@@ -80,8 +80,7 @@ fn dropped_ordinary_deliveries_retire_confirmed_scheduled_and_running_work() {
                     assert!(run_next_due());
                     let completed = registered_snapshot(&timer);
                     let counters = completed.observability().counters();
-                    assert_eq!(counters.work_completed().exact_total().unwrap(), 1);
-                    assert_eq!(counters.unacknowledged().exact_total().unwrap(), 1);
+                    assert_counters!(counters, (work_completed, 1), (unacknowledged, 1));
                     unregister_claim(&claim).unwrap();
                 } else {
                     assert!(timer_snapshot(&timer).unwrap().is_none());
@@ -206,15 +205,7 @@ fn unconfirmed_ordinary_delivery_drop_preserves_binding_failure_accounting() {
                 reason: InactiveReason::ControlFailure(TimerControlFailure::ProviderBindingFailed),
             }
         );
-        assert_eq!(
-            snapshot
-                .observability()
-                .counters()
-                .unacknowledged()
-                .exact_total()
-                .unwrap(),
-            0
-        );
+        assert_counters!(snapshot.observability().counters(), (unacknowledged, 0));
         assert_eq!(snapshot.observability().outcomes().last_outcome(), None);
         assert_eq!(timer_count(), 0);
         unregister_claim(&claim).unwrap();
@@ -299,7 +290,7 @@ fn suspended_once_work_allows_other_timers_and_arbitrates_external_commands() {
                     let counters = snapshot.observability().counters();
                     let expected_deadline = if command == "ensure" { 40 } else { 50 };
                     assert_eq!(snapshot.next_deadline_ns(), Some(expected_deadline));
-                    assert_eq!(counters.work_completed().exact_total().unwrap(), 1);
+                    assert_counters!(counters, (work_completed, 1));
                     assert_eq!(timer_count(), 1);
                 }
                 "cancel" if lifetime == DeclarationLifetime::Retained => {

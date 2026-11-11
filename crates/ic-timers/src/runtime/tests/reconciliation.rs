@@ -323,23 +323,10 @@ fn watchdog_exact_deadline_reconstruction_moves_both_directions_and_sleeps() {
         assert_eq!(timer_count(), 1);
     }
     let scheduled = registered_snapshot(&timer);
-    assert_eq!(
-        scheduled
-            .observability()
-            .counters()
-            .wakeups_armed()
-            .exact_total()
-            .unwrap(),
-        3
-    );
-    assert_eq!(
-        scheduled
-            .observability()
-            .counters()
-            .coalesced()
-            .exact_total()
-            .unwrap(),
-        1
+    assert_counters!(
+        scheduled.observability().counters(),
+        (wakeups_armed, 3),
+        (coalesced, 1)
     );
     assert!(!run_next_due());
     registration.reconcile_schedule(None).unwrap();
@@ -545,15 +532,7 @@ fn recovery_retires_an_interrupted_attempts_exact_deadline_proposal() {
     assert!(run_next_due());
     let recovered = registered_snapshot(&timer);
     assert_eq!(recovered.next_deadline_ns(), Some(20));
-    assert_eq!(
-        recovered
-            .observability()
-            .counters()
-            .unacknowledged()
-            .exact_total()
-            .unwrap(),
-        1
-    );
+    assert_counters!(recovered.observability().counters(), (unacknowledged, 1));
     assert_eq!(recovered.registration_id(), before.registration_id());
     assert_eq!(timer_count(), 1);
 }

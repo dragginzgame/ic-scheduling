@@ -161,8 +161,7 @@ fn watchdog_successor_retires_an_unacknowledged_dispatched_attempt() {
     assert_eq!(timer_count(), 2);
     let snapshot = registered_snapshot(&timer);
     let snapshot_counters = snapshot.observability().counters();
-    assert_eq!(snapshot_counters.unacknowledged().exact_total().unwrap(), 1);
-    assert_eq!(snapshot_counters.work_started().exact_total().unwrap(), 0);
+    assert_counters!(snapshot_counters, (unacknowledged, 1), (work_started, 0));
     assert_eq!(
         snapshot.observability().outcomes().last_outcome(),
         Some(TimerLastOutcome::Unacknowledged)
@@ -178,14 +177,7 @@ fn watchdog_successor_retires_an_unacknowledged_dispatched_attempt() {
         },
         "the retired attempt's reconciliation must not override the successor's Stop"
     );
-    assert_eq!(
-        completed_counters.unacknowledged().exact_total().unwrap(),
-        1
-    );
-    assert_eq!(
-        completed_counters.work_completed().exact_total().unwrap(),
-        1
-    );
+    assert_counters!(completed_counters, (unacknowledged, 1), (work_completed, 1));
     assert_eq!(timer_count(), 0);
 }
 
@@ -250,10 +242,10 @@ fn reconstruction_and_external_demand_are_synchronous_and_idempotent() {
         TimerRuntimeStateSnapshot::Watchdog(WatchdogRuntimeStateSnapshot::Scheduled { .. })
     ));
     let retrying_counters = retrying.observability().counters();
-    assert_eq!(retrying_counters.work_completed().exact_total().unwrap(), 2);
-    assert_eq!(
-        retrying_counters.retryable_failure().exact_total().unwrap(),
-        1
+    assert_counters!(
+        retrying_counters,
+        (work_completed, 2),
+        (retryable_failure, 1)
     );
 
     result.set(WatchdogRunResult::new(
@@ -296,16 +288,13 @@ fn reconstruction_and_external_demand_are_synchronous_and_idempotent() {
         }
     );
     let terminal_counters = terminal.observability().counters();
-    assert_eq!(terminal_counters.work_completed().exact_total().unwrap(), 4);
-    assert_eq!(
-        terminal_counters.invariant_failure().exact_total().unwrap(),
-        1
-    );
-    assert_eq!(terminal_counters.succeeded().exact_total().unwrap(), 1);
-    assert_eq!(terminal_counters.no_work().exact_total().unwrap(), 1);
-    assert_eq!(
-        terminal_counters.retryable_failure().exact_total().unwrap(),
-        1
+    assert_counters!(
+        terminal_counters,
+        (work_completed, 4),
+        (invariant_failure, 1),
+        (succeeded, 1),
+        (no_work, 1),
+        (retryable_failure, 1)
     );
 
     result.set(WatchdogRunResult::new(

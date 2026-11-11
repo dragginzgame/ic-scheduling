@@ -17,7 +17,7 @@ use ic_storage::{
 use serde::{Deserialize, Serialize};
 mod consumer_support;
 
-use consumer_support::{DeliveryFixture, Evidence, Result, Store};
+use consumer_support::{DeliveryFixture, Evidence, Result, Store, assert_failed_commit};
 
 // Minimal local-effect transaction. Scheduling policy remains in Job, and this
 // fixture owns neither cache expiry nor a second batch/scheduler implementation.
@@ -237,8 +237,7 @@ fn notification_commit_failure_never_exposes_delivery() -> Result<()> {
     let idle = sender.dispatch_due(99)?;
     assert_eq!(idle, None);
     assert_eq!(sender.load()?.job.next_due_ns(), Some(100));
-    sender.store.writes_before_failure = Some(0);
-    assert!(sender.dispatch_due(100).is_err());
+    assert_failed_commit!(sender.store, sender.dispatch_due(100));
     assert_eq!(sender.store.bytes, before);
     assert!(sender.load()?.job.active_attempt().is_none());
     assert_eq!(sender.load()?.job.next_due_ns(), Some(100));
@@ -262,11 +261,9 @@ fn interrupted_delivery_and_failed_commits_reconcile_without_redelivery() -> Res
                 .push((delivery.attempt.execution, delivery.payload.clone()));
         }
         if failed_result_commit {
-            sender.store.writes_before_failure = Some(0);
-            assert!(
-                sender
-                    .finish(delivery.attempt, 101, Outcome::Success)
-                    .is_err()
+            assert_failed_commit!(
+                sender.store,
+                sender.finish(delivery.attempt, 101, Outcome::Success)
             );
         }
 
@@ -289,14 +286,10 @@ fn interrupted_delivery_and_failed_commits_reconcile_without_redelivery() -> Res
             assert_eq!(restored.dispatch_due(1000)?, None);
             continue;
         }
-        let unresolved = restored.store.bytes.clone();
-        restored.store.writes_before_failure = Some(0);
-        assert!(
-            restored
-                .reconcile(delivery.attempt, &destination, 202)
-                .is_err()
+        assert_failed_commit!(
+            restored.store,
+            restored.reconcile(delivery.attempt, &destination, 202)
         );
-        assert_eq!(restored.store.bytes, unresolved);
         assert_eq!(restored.dispatch_due(202)?, None);
         assert!(restored.reconcile(delivery.attempt, &destination, 202)?);
         assert_eq!(restored.load()?.job.record().state, JobState::Completed);
@@ -322,13 +315,10 @@ fn lost_rejection_reply_uses_exact_evidence_and_retains_retry_budget() -> Result
         let before = restored.store.bytes.clone();
         assert!(!restored.reconcile(first.attempt, &Evidence::default(), 102)?);
         assert_eq!(restored.store.bytes, before);
-        restored.store.writes_before_failure = Some(0);
-        assert!(
-            restored
-                .reconcile(first.attempt, &destination, 102)
-                .is_err()
+        assert_failed_commit!(
+            restored.store,
+            restored.reconcile(first.attempt, &destination, 102)
         );
-        assert_eq!(restored.store.bytes, before);
         assert_eq!(restored.dispatch_due(102)?, None);
         assert!(restored.reconcile(first.attempt, &destination, 102)?);
         assert_eq!(restored.load()?.job.next_due_ns(), Some(112));
@@ -402,7 +392,6 @@ fn reconciliation_requires_matching_payload_and_prefers_success_evidence() -> Re
 fn failed_management_commits_preserve_committed_deadlines() -> Result<()> {
     for cancel in [false, true] {
         let mut sender = DeliveryFixture::new()?;
-        let before = sender.store.bytes.clone();
         let mutate = |sender: &mut DeliveryFixture| {
             sender.transition(|job| {
                 if cancel {
@@ -412,13 +401,7 @@ fn failed_management_commits_preserve_committed_deadlines() -> Result<()> {
                 }
             })
         };
-        sender.store.writes_before_failure = Some(0);
-        let error = mutate(&mut sender).unwrap_err();
-        assert_eq!(
-            error.downcast_ref::<io::Error>().unwrap().kind(),
-            io::ErrorKind::Other
-        );
-        assert_eq!(sender.store.bytes, before);
+        assert_failed_commit!(sender.store, mutate(&mut sender));
         assert!(sender.load()?.job.active_attempt().is_none());
         assert_eq!(sender.load()?.job.next_due_ns(), Some(100));
         mutate(&mut sender)?;

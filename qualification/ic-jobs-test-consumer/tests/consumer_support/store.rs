@@ -4,6 +4,23 @@ use std::io;
 
 const MAX_SNAPSHOT_BYTES: usize = 4096;
 
+macro_rules! assert_failed_commit {
+    ($store:expr, $operation:expr) => {{
+        let before = $store.bytes.clone();
+        $store.writes_before_failure = Some(0);
+        let Err(error) = $operation else {
+            panic!("expected an injected commit failure")
+        };
+        assert_eq!(
+            error.downcast_ref::<std::io::Error>().unwrap().kind(),
+            std::io::ErrorKind::Other
+        );
+        assert_eq!($store.bytes, before);
+    }};
+}
+
+pub(crate) use assert_failed_commit;
+
 // The effect and maintenance fixtures have tiny, bounded snapshots. Storage is not a Jobs
 // trait, and a failed write keeps the previously committed bytes unchanged.
 pub(crate) struct Store {

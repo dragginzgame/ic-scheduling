@@ -44,13 +44,11 @@ fn typed_commit_preserves_canonical_snapshot_bytes_and_metadata() {
     .0;
     queue.create(increment(100)).unwrap();
     queue
-        .create(Create {
-            timing: Timing::Once(100),
-            task: Task::Deliver(DeliveryPayload {
-                destination: manager(),
-                message: "paired payload".into(),
-            }),
-        })
+        .create(delivery_request(
+            Timing::Once(100),
+            manager(),
+            "paired payload",
+        ))
         .unwrap();
     let delivery = queue.dispatch(100).unwrap().value.deliveries.pop().unwrap();
     queue.receive(manager(), delivery.clone()).unwrap();
