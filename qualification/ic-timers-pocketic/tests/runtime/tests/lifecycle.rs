@@ -262,9 +262,7 @@ async fn rejected_initial_reconciliation_preserves_ic_inventory_and_releases_cap
     let owned = fresh_pocket_ic().await;
     let pic = owned.instance();
     // A positive time makes now + u64::MAX overflow; never move IC time backwards.
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
+    pic.advance_time(Duration::from_secs(1)).await;
     let canister_id = install_probe(pic, probe_wasm()).await;
     for policy in ProbePolicy::ALL {
         let result: (bool, bool, u64, bool) = update_wire(
@@ -350,10 +348,7 @@ async fn shared_watchdog_survives_trap_and_upgrade() {
         )
         .await;
     assert!(
-        matches!(
-            external,
-            Err(ic_testkit::pocket_ic::ClientError::Canister(_))
-        ),
+        external.is_err(),
         "the timer backend must reject external ingress: {external:?}"
     );
     assert_eq!(snapshot(pic, canister_id).await, before_external);
@@ -400,4 +395,100 @@ async fn overdue_shared_timers_coalesce_to_bounded_work() {
     assert!(overdue.application_completed.total > 0);
 
     close_instance(owned).await;
+}
+
+#[tokio::test]
+async fn cached_baseline_restoration_preserves_timer_ownership_after_mutation() {
+    use ic_testkit::pic::{CachedPocketIcBaseline, CanisterSnapshotTarget, SnapshotRestoreFunding};
+
+    let (owned, canister_id) = installed_probe().await;
+    let pic = owned.instance();
+    let instance_id = pic.instance_id;
+    let baseline_deadline = now_ns(pic).await + 600_000_000_000;
+    assert!(update_bool(pic, canister_id, Method::Start).await);
+    update_wire::<(), _>(
+        pic,
+        canister_id,
+        Principal::anonymous(),
+        Method::ScheduleAt,
+        (baseline_deadline,),
+    )
+    .await
+    .unwrap();
+    let captured = snapshot(pic, canister_id).await;
+    assert_eq!(captured.next_deadline_ns, Some(baseline_deadline));
+    assert_eq!(captured.completed_work, 0);
+    pic.stop_canister(canister_id, None).await.unwrap();
+    let baseline = CachedPocketIcBaseline::capture(
+        owned,
+        [CanisterSnapshotTarget {
+            canister_id,
+            sender: None,
+        }],
+        captured,
+    )
+    .await
+    .expect("capture the stopped timer baseline");
+    let pic = baseline.pocket_ic();
+
+    // First exercise the complete unchanged-restore/callback control; then
+    // repeat after mutation, without replacing this baseline or its instance.
+    for (cycle, mutate) in [(0, false), (1, true), (2, true)] {
+        if mutate {
+            let mutated_deadline = baseline_deadline + cycle * 60_000_000_000;
+            update_wire::<(), _>(
+                pic,
+                canister_id,
+                Principal::anonymous(),
+                Method::ScheduleAt,
+                (mutated_deadline,),
+            )
+            .await
+            .expect("mutate the live scheduler and system timer");
+            assert_eq!(
+                snapshot(pic, canister_id).await.next_deadline_ns,
+                Some(mutated_deadline)
+            );
+            assert!(now_ns(pic).await < baseline_deadline);
+            pic.stop_canister(canister_id, None).await.unwrap();
+        }
+        baseline
+            .restore(SnapshotRestoreFunding::Preserve)
+            .await
+            .unwrap();
+        pic.start_canister(canister_id, None).await.unwrap();
+        assert_eq!(pic.instance_id, instance_id, "reuse the same IC instance");
+        assert_eq!(baseline.metadata(), &snapshot(pic, canister_id).await);
+
+        // A real rearm checks restored heap authority against the system timer.
+        // Do not reset the timer or rebuild the instance before this operation.
+        let deadline = now_ns(pic).await + 1_000_000_000;
+        update_wire::<(), _>(
+            pic,
+            canister_id,
+            Principal::anonymous(),
+            Method::ScheduleAt,
+            (deadline,),
+        )
+        .await
+        .unwrap_or_else(|error| {
+            panic!("restore cycle {cycle} (mutated={mutate}) must rearm without a competing-owner trap: {error}")
+        });
+        set_work_decision(pic, canister_id, WorkDecision::Stop).await;
+        advance(pic, Duration::from_secs(1), 16).await;
+        let completed = snapshot(pic, canister_id).await;
+        assert_eq!(
+            completed.registration_id,
+            baseline.metadata().registration_id
+        );
+        assert_eq!(completed.completed_work, 1);
+        assert_eq!(completed.scheduler_started.total, 1);
+        assert_eq!(completed.work_completed.total, 1);
+        assert_eq!(completed.unacknowledged.total, 0);
+        assert_eq!(completed.next_deadline_ns, None);
+        advance(pic, Duration::from_secs(1), 8).await;
+        assert_eq!(snapshot(pic, canister_id).await.completed_work, 1);
+    }
+
+    baseline.close().await;
 }

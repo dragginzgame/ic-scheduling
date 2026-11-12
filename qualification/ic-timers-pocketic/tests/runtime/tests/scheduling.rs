@@ -20,12 +20,7 @@ async fn self_call_queue_pressure_defers_timer_submission_without_losing_work() 
     println!("ic_timers_queue_pressure failed={failed} replies={replies}");
     assert!(failed > 0);
     assert!(replies >= 500);
-    assert!(
-        pic.cycle_balance(canister_id)
-            .await
-            .expect("read canister cycles")
-            > INIT_CYCLES / 2
-    );
+    assert!(pic.cycle_balance(canister_id).await > INIT_CYCLES / 2);
     assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
     update_unit(pic, canister_id, Method::ReleasePressure).await;
     advance(pic, Duration::ZERO, 16).await;
@@ -49,12 +44,7 @@ async fn deferred_submission_cancellation_and_replacement_do_not_revive_old_work
         advance(pic, Duration::ZERO, 8).await;
         let original = snapshot(pic, canister_id).await;
         assert_eq!(original.scheduler_started.total, 0);
-        assert!(
-            pic.cycle_balance(canister_id)
-                .await
-                .expect("read canister cycles")
-                > INIT_CYCLES / 2
-        );
+        assert!(pic.cycle_balance(canister_id).await > INIT_CYCLES / 2);
         update_unit(
             pic,
             canister_id,
@@ -143,13 +133,8 @@ async fn successful_immediate_continuation_runs_again_without_waiting_for_cadenc
     assert!(update_bool(pic, canister_id, Method::Start).await);
     set_work_decision(pic, canister_id, WorkDecision::ContinueImmediately).await;
 
-    let cycles_before_first = pic
-        .cycle_balance(canister_id)
-        .await
-        .expect("read canister cycles");
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
+    let cycles_before_first = pic.cycle_balance(canister_id).await;
+    pic.advance_time(Duration::from_secs(1)).await;
     let immediate = wait_for_probe(
         pic,
         16,
@@ -163,16 +148,10 @@ async fn successful_immediate_continuation_runs_again_without_waiting_for_cadenc
     assert_eq!(immediate.schedule_requests.total, 1);
     assert_eq!(immediate.wakeups_armed.total, 3);
     assert_eq!(immediate.work_dispatched.total, 1);
-    let first_dispatch_cycles = cycles_before_first.saturating_sub(
-        pic.cycle_balance(canister_id)
-            .await
-            .expect("read canister cycles"),
-    );
+    let first_dispatch_cycles =
+        cycles_before_first.saturating_sub(pic.cycle_balance(canister_id).await);
 
-    let cycles_before_second = pic
-        .cycle_balance(canister_id)
-        .await
-        .expect("read canister cycles");
+    let cycles_before_second = pic.cycle_balance(canister_id).await;
     advance(pic, Duration::ZERO, 16).await;
     let continued = snapshot(pic, canister_id).await;
     assert_eq!(continued.completed_work, 2);
@@ -182,11 +161,8 @@ async fn successful_immediate_continuation_runs_again_without_waiting_for_cadenc
     assert_eq!(continued.wakeups_armed.total, 4);
     assert_eq!(continued.schedule_requests.total, 1);
     assert_eq!(continued.coalesced.total, 0);
-    let second_dispatch_cycles = cycles_before_second.saturating_sub(
-        pic.cycle_balance(canister_id)
-            .await
-            .expect("read canister cycles"),
-    );
+    let second_dispatch_cycles =
+        cycles_before_second.saturating_sub(pic.cycle_balance(canister_id).await);
     println!(
         "ic_timers_immediate first_scheduler={} first_work={} first_cycles={} second_scheduler={} second_work={} second_cycles={}",
         immediate.scheduler_instruction_total,
@@ -287,9 +263,7 @@ async fn cancellation_between_scheduler_and_work_makes_late_provider_delivery_ha
     let (owned, canister_id) = installed_probe().await;
     let pic = owned.instance();
     assert!(update_bool(pic, canister_id, Method::Start).await);
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
+    pic.advance_time(Duration::from_secs(1)).await;
 
     let dispatched = wait_for_probe(
         pic,
@@ -416,9 +390,7 @@ async fn maximum_capacity_dispatch_preserves_every_survivor_under_pressure_and_a
         dispatch_batch_observation(pic, canister_id).await.starts,
         vec![0; 65]
     );
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
+    pic.advance_time(Duration::from_secs(1)).await;
     let expected: Vec<u64> = (0..65).map(|index| u64::from(index >= 2)).collect();
     let waiting = wait_for_probe(
         pic,

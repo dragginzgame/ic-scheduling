@@ -81,7 +81,7 @@ RELEASE_METADATA_LOCKFILE ?= $(CURDIR)/qualification/Cargo.lock
 RELEASE_METADATA_TOOL = bash scripts/dev/install-rust-tools.sh --package ic-build --lockfile "$(RELEASE_METADATA_LOCKFILE)" --bin ic-build-release-metadata --profile debug --features cli
 VALIDATION_INPUTS := --input Cargo.toml --input Cargo.lock --input qualification/Cargo.toml --input qualification/Cargo.lock --input ci/workspace-manifests.txt --input scripts/ci/check-qualification-tooling.sh --input rust-toolchain.toml \
 	--input .toko-tooling.snapshot --input Makefile --input scripts/dev/testkit-tool.sh --input scripts/dev/minimum-rust.sh --input ci/tool-versions.env \
-	--input LICENSE.md --input CONTRIBUTING.md --input NOTICE --input crates/ic-jobs/NOTICE --input crates/ic-timers/NOTICE \
+	--input LICENSE.md --input CONTRIBUTING.md --input README.md --input crates/ic-jobs/README.md --input crates/ic-timers/README.md \
 	--input ci/ic-tools.tsv --input ci/release-delivery.txt --input ci/dependency-pinning-exceptions.json --input ci/cargo-dependency-boundaries.json --input ci/candid-boundary.json --input ci/cbor-dependencies.json --input ci/cargo-release-groups.json \
 	--input .github/workflows/ci.yml --input .github/workflows/recovery.yml --input ci/docs-only-paths.txt --input scripts/ci/classify-ci-change.pl \
 	--input ci/release-validation.json --input scripts/release/validation.pl --input scripts/release/verify.sh --input scripts/release/ci.sh \
@@ -268,8 +268,8 @@ check-dependency-graphs:
 		--forbid-feature ic-platform/pocket-ic
 	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)/qualification" --package ic-jobs-canister-tests \
 		--target "$$(rustc -vV | sed -n 's/^host: //p')" --features harness --edges normal \
-		--require ic-testkit=1 --require ic-platform-types=1 --forbid ic-platform-pocket-ic --forbid pocket-ic \
-		--require ic-platform=1 --require ic-wire=1 --forbid ic-management-canister-types
+		--require ic-testkit=1 --require ic-platform-types=1 --forbid ic-platform-pocket-ic --require pocket-ic=1 \
+		--require ic-platform=1 --forbid-feature ic-platform/cdk --require ic-wire=1
 
 check-release-commands:
 	RELEASE_BATCH_ACTIVE=1 RELEASE_GROUP=jobs bash scripts/ci/check-release-commands.sh . make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/run-formatting.sh scripts/ci/check-release-delivery.sh ci/release-delivery.txt scripts/ci/check-qualification-tooling.sh Cargo.toml Cargo.lock qualification/Cargo.lock $(shell rg --files crates qualification -g '*.rs' -g Cargo.toml)

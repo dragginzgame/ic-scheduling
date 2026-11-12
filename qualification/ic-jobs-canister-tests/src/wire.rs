@@ -1,7 +1,7 @@
 //! Qualification framing with the selected Wire codec and raw Testkit transport.
 
 use ic_platform_types::Principal;
-use ic_testkit::pocket_ic::{ClientError, PocketIc};
+use ic_testkit::pocket_ic::{CanisterId, RejectResponse, nonblocking::PocketIc};
 use ic_wire::{Limits, native};
 use serde::{Serialize, de::DeserializeOwned};
 
@@ -43,12 +43,12 @@ pub enum WireCallError {
         /// Canonical Wire error.
         source: ic_wire::Error,
     },
-    /// Raw transport or canister rejection; never retried here.
+    /// Original canister rejection; transport panics propagate without retry.
     Call {
         /// Selected transport identity.
         context: Box<WireCallContext>,
-        /// Original Testkit failure.
-        source: Box<ClientError>,
+        /// Original upstream rejection.
+        source: Box<RejectResponse>,
     },
     /// Reply refused by the consumer's codec contract.
     Decode {
@@ -67,17 +67,18 @@ impl std::fmt::Display for WireCallError {
 
 impl std::error::Error for WireCallError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(match self {
-            Self::Encode { source, .. } | Self::Decode { source, .. } => source,
-            Self::Call { source, .. } => source.as_ref(),
-        })
+        match self {
+            Self::Encode { source, .. } | Self::Decode { source, .. } => Some(source),
+            Self::Call { .. } => None,
+        }
     }
 }
 
 /// Query with canonical framing and no transport fallback or retry.
 ///
 /// # Errors
-/// Retains encoding, transport and decoding failures with their exact context.
+/// Retains encoding, rejection and decoding failures with their exact context.
+/// Upstream transport panics propagate without retrying the operation.
 pub async fn query_wire<Request: Serialize, Response: DeserializeOwned>(
     pic: &PocketIc,
     canister_id: Principal,
@@ -91,7 +92,8 @@ pub async fn query_wire<Request: Serialize, Response: DeserializeOwned>(
 /// Update with canonical framing; uncertain effects remain caller-owned.
 ///
 /// # Errors
-/// Retains encoding, transport and decoding failures with their exact context.
+/// Retains encoding, rejection and decoding failures with their exact context.
+/// Upstream transport panics propagate without retrying the operation.
 pub async fn update_wire<Request: Serialize, Response: DeserializeOwned>(
     pic: &PocketIc,
     canister_id: Principal,
@@ -124,11 +126,13 @@ async fn call_wire<Request: Serialize, Response: DeserializeOwned>(
                 source,
             }
         })?;
+    let destination = CanisterId::from_slice(canister_id.as_slice());
+    let sender = CanisterId::from_slice(caller.as_slice());
     let reply = if query {
-        pic.query_call(canister_id, caller, spec.method, frame)
+        pic.query_call(destination, sender, spec.method, frame)
             .await
     } else {
-        pic.update_call(canister_id, caller, spec.method, frame)
+        pic.update_call(destination, sender, spec.method, frame)
             .await
     }
     .map_err(|source| WireCallError::Call {

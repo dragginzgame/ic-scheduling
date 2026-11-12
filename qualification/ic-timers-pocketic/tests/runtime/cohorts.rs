@@ -1,7 +1,6 @@
 use super::harness::{advance, fresh_pocket_ic, install_probe, update_unit};
 use super::harness::{query_wire, update_wire};
-use ic_platform_types::Principal;
-use ic_testkit::pocket_ic::PocketIc;
+use ic_testkit::pocket_ic::{CanisterId as Principal, nonblocking::PocketIc};
 use ic_timers_pocketic::{BuildContext, Cohort};
 use ic_timers_pocketic::{CalibrationMetrics, Measurements, PolicyMetrics};
 use ic_timers_test_protocol::rpc::Method;
@@ -61,19 +60,11 @@ async fn run_cohort(cohort: Cohort) -> PolicyMetrics {
         assert!(scheduled.next_deadline_ns.is_some());
     }
 
-    let cycles_before_dispatch = pic
-        .cycle_balance(canister_id)
-        .await
-        .expect("read canister cycles");
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
+    let cycles_before_dispatch = pic.cycle_balance(canister_id).await;
+    pic.advance_time(Duration::from_secs(1)).await;
     advance(pic, Duration::ZERO, 16).await;
-    let dispatch_cycles = cycles_before_dispatch.saturating_sub(
-        pic.cycle_balance(canister_id)
-            .await
-            .expect("read canister cycles"),
-    );
+    let dispatch_cycles =
+        cycles_before_dispatch.saturating_sub(pic.cycle_balance(canister_id).await);
     let completed = observe(pic, canister_id).await;
     match cohort {
         Cohort::Baseline => {
@@ -117,9 +108,7 @@ async fn run_cohort(cohort: Cohort) -> PolicyMetrics {
             .await
             .changed
     );
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
+    pic.advance_time(Duration::from_secs(1)).await;
     advance(pic, Duration::ZERO, 16).await;
     let cancelled = observe(pic, canister_id).await;
     assert_eq!(cancelled.callbacks, completed.callbacks);
@@ -165,10 +154,7 @@ async fn run_cohort(cohort: Cohort) -> PolicyMetrics {
         dispatch_cycles,
         wasm_bytes: wasm_bytes as u128,
     };
-    owned
-        .close()
-        .await
-        .expect("delete cohort instance before stopping its server");
+    owned.close().await;
     metrics
 }
 
@@ -182,19 +168,11 @@ async fn run_watchdog_calibration(representative_work: bool) -> CalibrationMetri
     let start = update_measurement(pic, canister_id, Method::CohortStart).await;
     assert!(start.changed);
 
-    let cycles_before_dispatch = pic
-        .cycle_balance(canister_id)
-        .await
-        .expect("read canister cycles");
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
+    let cycles_before_dispatch = pic.cycle_balance(canister_id).await;
+    pic.advance_time(Duration::from_secs(1)).await;
     advance(pic, Duration::ZERO, 16).await;
-    let dispatch_cycles = cycles_before_dispatch.saturating_sub(
-        pic.cycle_balance(canister_id)
-            .await
-            .expect("read canister cycles"),
-    );
+    let dispatch_cycles =
+        cycles_before_dispatch.saturating_sub(pic.cycle_balance(canister_id).await);
     let completed = observe(pic, canister_id).await;
     assert_eq!(completed.scheduler_instruction_samples, 1);
     assert_eq!(completed.work_instruction_samples, 1);
@@ -205,10 +183,7 @@ async fn run_watchdog_calibration(representative_work: bool) -> CalibrationMetri
         work_instructions: completed.work_instruction_total,
         dispatch_cycles,
     };
-    owned
-        .close()
-        .await
-        .expect("delete calibration instance before stopping its server");
+    owned.close().await;
     metrics
 }
 

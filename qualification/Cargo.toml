@@ -43,12 +43,12 @@ ic-host-fs = { version = "0.76.1", default-features = false }
 ic-host-process = { version = "0.76.1", default-features = false }
 ic-platform-types = { version = "0.19.0", default-features = false }
 ic-storage = "0.71.1"
-ic-testkit = "0.96.0"
+ic-testkit = "0.101.0"
 ic-wire = "0.19.0"
 ic-wire-endpoint = "0.10.0"
 serde_json = "1.0"
 tokio = { version = "1", default-features = false }
-toko-tooling = "=0.39.9"
+toko-tooling = "=0.39.12"
 
 [workspace.lints.rust]
 missing_docs = "deny"

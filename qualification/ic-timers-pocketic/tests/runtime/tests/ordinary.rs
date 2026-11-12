@@ -55,9 +55,7 @@ async fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
     assert_eq!(suspended.gate_error, None);
 
     freeze_for_five_minutes(pic, canister_id, budget.seconds, budget.reserve).await;
-    pic.add_cycles(canister_id, budget.balance * 16)
-        .await
-        .expect("fund canister cycles");
+    pic.add_cycles(canister_id, budget.balance * 16).await;
     // Query before another replica round: funding cannot hide a completion,
     // abandoned attempt or ownership change that already happened while frozen.
     let thawed = ordinary_observation(pic, canister_id).await;
@@ -152,9 +150,7 @@ async fn assert_frozen_await_failure_retires(policy: OrdinaryPolicy) {
                 .total,
             2
         );
-        pic.advance_time(Duration::from_secs(1))
-            .await
-            .expect("advance IC time");
+        pic.advance_time(Duration::from_secs(1)).await;
         let recurring = wait_for_probe(
             pic,
             32,

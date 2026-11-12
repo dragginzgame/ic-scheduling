@@ -10,7 +10,7 @@ use ic_jobs_test_consumer::{
 };
 use ic_platform_types::Principal;
 use ic_testkit::pic::InstallSpec;
-use ic_testkit::pocket_ic::PocketIc;
+use ic_testkit::pocket_ic::nonblocking::PocketIc;
 use serde::{Serialize, de::DeserializeOwned};
 
 // Transport and the management contract converge here. Each caller still owns
@@ -61,22 +61,17 @@ pub fn init_bytes(config: &Init) -> Result<Vec<u8>, ic_wire::Error> {
     ic_wire::native::encode_request(Method::Init as u64, config, REQUEST_LIMITS)
 }
 
-/// Standard qualification-consumer installation, with caller-owned label and errors.
+/// Standard qualification-consumer installation with caller-owned errors.
 ///
 /// # Errors
 /// Returns [`ic_wire::Error`] if the initialization request cannot be encoded
 /// within the consumer's limits. This function does not create a canister.
-pub fn install_spec(
-    wasm: Vec<u8>,
-    config: &Init,
-    label: impl Into<String>,
-) -> Result<InstallSpec, ic_wire::Error> {
+pub fn install_spec(wasm: Vec<u8>, config: &Init) -> Result<InstallSpec, ic_wire::Error> {
     Ok(InstallSpec {
         wasm,
         init_bytes: init_bytes(config)?,
         cycles: 10_000_000_000_000,
         install_sender: None,
-        label: Some(label.into()),
     })
 }
 

@@ -6,7 +6,6 @@ dependency catalog, lockfile, toolchain and CI.
 
 Repository-owned source, tests, tooling, documentation, fixtures and generated
 materials are licensed under the [Toko Studios Network Licence 1.0](LICENSE.md).
-Required prior-distribution notices are retained in [NOTICE](NOTICE).
 External dependencies retain their own terms. Contributions follow the canonical
 [contribution policy](CONTRIBUTING.md).
 
@@ -78,8 +77,8 @@ what they use. The product root contains Jobs and Timers and their release group
 Six private packages belong to [qualification/Cargo.toml](qualification/Cargo.toml),
 with an independent lock and unchanged private versions. They are validation
 obligations, not product release-group members. Product packages never depend
-on qualification. `make cloc` reports products; `make cloc-qualification` reports
-the private workspace with its existing LOC categories.
+on qualification. `make cloc` includes both workspaces; `make cloc-qualification`
+reports the private workspace separately with its existing LOC categories.
 The catalog labels `Production dependencies` and `Tests and tooling only`
 describe use here, independently of registry publication. Serde is shared by
 production and tests, so it belongs to production. The qualification Wasm and
@@ -124,20 +123,19 @@ The Wasm application selects neither registry Principal conversion nor SHA-2 has
 Storage supplies native IO metering under its test-support feature.
 Native tests select `principal-self-authenticating` explicitly;
 DTOs select Types 0.19 without the retired `principal-external` feature. The
-native harness uses canonical Types Principal and Testkit 0.96's async-only
-`ic_testkit::pocket_ic` client. Callers own their Tokio runtime and await explicit
-instance closure. Each client uses an explicit 60-second request budget, separate
-from its server startup deadline. Testkit does not install a global subscriber or
-file log sink; application logging remains caller-owned.
+native harness uses canonical Types Principal for application DTOs and Testkit
+0.101.0's upstream `ic_testkit::pocket_ic::nonblocking` client. Callers own their
+Tokio runtime and retain the managed server through awaited best-effort closure.
+Each client selects a 60-second polling budget, separate from its server startup
+deadline. Upstream transport panics and logging behavior apply.
 Managed `PocketIcStartupConfig::build_instance` supplies its
 explicit server endpoint and retains server custody. The deployed
 graph has one Runtime 0.21 owner and exact matching executor guard.
-Runtime, Endpoint, DTOs and native Testkit now share canonical Types 0.19.
-The composed graphs require one identity without principal-byte projections.
-The native host graph requires one Types identity and rejects registry management
-DTOs. Native DTO-only graphs stay free of
-registry Principal, Candid and runtime dependencies. No conversion alias or
-compatibility endpoint is added; stored identities and Wire frames are unchanged.
+Runtime, Endpoint and application DTOs share canonical Types 0.19. Native
+transport converts these identities explicitly to upstream PocketIC identities;
+its management DTOs remain at that native boundary. DTO-only graphs stay free of
+registry Principal, Candid and runtime dependencies. Stored identities and Wire
+frames are unchanged.
 
 Installation, management, fixture controls and delivery use IC Wire native Serde
 frames. Consumer-owned method identities and request/reply budgets live in
@@ -204,7 +202,8 @@ Platform `cdk` feature.
 The fifth context keeps Candid, PocketIC, Tokio and Testkit out of the native capture
 binary's normal/build graph. Native Testkit uses Platform's external-protocol
 adapters at the Candid boundary; PocketIC itself uses Candid
-management and transport DTOs. Testkit owns no Candid codec adapter. Disabling
+management and transport DTOs. Testkit uses Platform's owned management codec to
+prepare cached snapshots with coherent heap, timer and hook state. Disabling
 dependency defaults
 cannot remove those required edges. Jobs-owned RPCs continue to use Wire.
 The policy lives in Make; Shared owns the [observation/checker](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/validation/cargo-graph-checks.md).
@@ -292,7 +291,7 @@ only the root [Toko baseline](TOKO-TOOLING.md), required executable tooling and
 runtime inputs are installed here. The snapshot receipt identifies those managed
 files. See the [online-reference migration](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/migrations.md#online-reference-documentation-in-0395).
 
-Both workspace catalogs pin `toko-tooling = "=0.39.9"`; every real
+Both workspace catalogs pin `toko-tooling = "=0.39.12"`; every real
 member inherits it as a dev-dependency with an intentional cargo-machete exemption.
 Cargo.lock selects its registry checksum, and `.toko-tooling.snapshot` records
 the authenticated installed files. After editing the root pin, run
@@ -323,6 +322,8 @@ qualification packages declare their roles in Cargo metadata; see
 [source layout and LOC reporting](docs/operations/source-layout.md).
 Use `make cloc CLOC_DEPTH=1` for module rows, or
 `bash scripts/dev/cloc.sh -d 1 ic-timers::runtime` to inspect one source branch.
+Use `bash scripts/dev/cloc.sh --wide .` to show full names in table output;
+JSON reports always retain full names.
 
 Standard formatting reports each manifest/Rustfmt pass and its elapsed time.
 Eligible unchanged inputs can reuse a successful result after tool admission;

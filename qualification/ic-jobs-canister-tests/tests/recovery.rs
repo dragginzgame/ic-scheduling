@@ -11,10 +11,11 @@ use ic_jobs_test_consumer::{
 };
 use ic_platform_types::Principal;
 use ic_testkit::pic::{
-    CanisterDiagnosticsRequest, CanisterInstallError, CanisterLogRenderLimits, InstallSpec,
     PocketIcInstance, PocketIcStartupConfig, RetryPolicy, advance_and_tick, tick_until,
 };
-use ic_testkit::pocket_ic::{ClientError, ErrorCode, PocketIc, PocketIcBuilder, RejectResponse};
+use ic_testkit::pocket_ic::{
+    CanisterId, ErrorCode, PocketIcBuilder, RejectResponse, nonblocking::PocketIc,
+};
 use ic_wire::native;
 use serde::{Serialize, de::DeserializeOwned};
 use std::{convert::Infallible, path::PathBuf, task::Poll, time::Duration};
@@ -34,15 +35,11 @@ impl Fixture {
             .instance()
             .get_time()
             .await
-            .expect("read IC time")
             .as_nanos_since_unix_epoch()
     }
 
     async fn close(self) {
-        self.pic
-            .close()
-            .await
-            .expect("delete Jobs instance before stopping its server");
+        self.pic.close().await;
     }
 
     async fn install(
@@ -51,41 +48,19 @@ impl Fixture {
         manager: Principal,
         delivery_sender: Option<Principal>,
     ) -> Principal {
-        match pic
-            .try_create_and_install(
-                harness::install_spec(
-                    wasm.to_vec(),
-                    &Init {
-                        manager,
-                        delivery_sender,
-                    },
-                    "ic-jobs-test-consumer",
-                )
-                .unwrap(),
+        let canister = ic_testkit::pic::create_and_install(
+            pic,
+            harness::install_spec(
+                wasm.to_vec(),
+                &Init {
+                    manager,
+                    delivery_sender,
+                },
             )
-            .await
-        {
-            Ok(canister) => canister,
-            Err(error) => {
-                if let CanisterInstallError::InstallCode { canister_id, .. } = &error {
-                    // Diagnostics are subordinate to the original install failure,
-                    // including a failed stderr write or collection panic.
-                    let _ = pic
-                        .write_canister_diagnostics(
-                            CanisterDiagnosticsRequest {
-                                canister_id: *canister_id,
-                                status_sender: Principal::anonymous(),
-                                log_sender: Principal::anonymous(),
-                                log_limits: CanisterLogRenderLimits::default(),
-                            },
-                            "install Jobs consumer",
-                            &mut std::io::stderr().lock(),
-                        )
-                        .await;
-                }
-                panic!("install Jobs consumer: {error:?}");
-            }
-        }
+            .unwrap(),
+        )
+        .await;
+        Principal::from_slice(canister.as_slice())
     }
 
     async fn install_receiver(&self) -> Principal {
@@ -107,7 +82,11 @@ impl Fixture {
         let config = PocketIcStartupConfig::from_env(Duration::from_secs(30))
             .expect("use ic-testkit-server run after explicit setup/check");
         let pic = config
-            .build_instance(PocketIcBuilder::new(REQUEST_TIMEOUT).with_application_subnet())
+            .build_instance(
+                PocketIcBuilder::new()
+                    .with_max_request_time_ms(Some(REQUEST_TIMEOUT.as_millis().try_into().unwrap()))
+                    .with_application_subnet(),
+            )
             .await
             .expect("bounded PocketIC startup");
         let manager = Principal::self_authenticating(b"jobs-manager");
@@ -137,10 +116,7 @@ impl Fixture {
     ) -> Result<T, RejectResponse> {
         match self.client(self.sender, caller).update(method, &args).await {
             Ok(value) => Ok(value),
-            Err(WireCallError::Call { source, .. }) => match *source {
-                ClientError::Canister(response) => Err(response),
-                other => panic!("PocketIC Wire call failed: {other:?}"),
-            },
+            Err(WireCallError::Call { source, .. }) => Err(*source),
             Err(other) => panic!("PocketIC Wire contract failed: {other:?}"),
         }
     }
@@ -169,10 +145,15 @@ impl Fixture {
         caller: Principal,
         method: &str,
         bytes: Vec<u8>,
-    ) -> Result<Vec<u8>, ClientError> {
+    ) -> Result<Vec<u8>, RejectResponse> {
         self.pic
             .instance()
-            .update_call(canister, caller, method, bytes)
+            .update_call(
+                native_principal(canister),
+                native_principal(caller),
+                method,
+                bytes,
+            )
             .await
     }
 
@@ -205,14 +186,18 @@ impl Fixture {
         operation: impl AsyncFnOnce(&PocketIc) -> T,
     ) -> T {
         let pic = self.pic.instance();
-        pic.stop_canister(canister, None).await.unwrap();
+        pic.stop_canister(native_principal(canister), None)
+            .await
+            .unwrap();
         let result = operation(pic).await;
-        pic.start_canister(canister, None).await.unwrap();
+        pic.start_canister(native_principal(canister), None)
+            .await
+            .unwrap();
         result
     }
     async fn snapshot(&self, canister: Principal) -> Vec<u8> {
         self.stopped(canister, async |pic| {
-            pic.take_canister_snapshot(canister, None, None)
+            pic.take_canister_snapshot(native_principal(canister), None, None)
                 .await
                 .unwrap()
                 .id
@@ -221,7 +206,7 @@ impl Fixture {
     }
     async fn restore_snapshot(&self, canister: Principal, snapshot: Vec<u8>) {
         self.stopped(canister, async |pic| {
-            pic.load_canister_snapshot(canister, None, snapshot)
+            pic.load_canister_snapshot(native_principal(canister), None, snapshot)
                 .await
                 .unwrap()
         })
@@ -235,10 +220,10 @@ impl Fixture {
     async fn summary(&self, id: Principal) -> Summary {
         self.query(id, Method::Summary, ()).await.unwrap()
     }
-    async fn upgrade(&self, id: Principal) -> Result<(), ClientError> {
+    async fn upgrade(&self, id: Principal) -> Result<(), RejectResponse> {
         self.pic
             .instance()
-            .upgrade_canister(id, self.wasm.clone(), Vec::new(), None)
+            .upgrade_canister(native_principal(id), self.wasm.clone(), Vec::new(), None)
             .await
     }
     async fn until(&self, predicate: impl AsyncFn() -> bool) {
@@ -254,11 +239,11 @@ impl Fixture {
     }
 }
 
-fn assert_canister_trap(error: impl Into<ClientError>) {
-    let error = error.into();
-    let ClientError::Canister(error) = error else {
-        panic!("expected canister rejection, got {error:?}");
-    };
+fn native_principal(principal: Principal) -> CanisterId {
+    CanisterId::from_slice(principal.as_slice())
+}
+
+fn assert_canister_trap(error: RejectResponse) {
     assert_eq!(
         error.error_code,
         ErrorCode::CanisterCalledTrap,
@@ -315,19 +300,16 @@ async fn management_wire_refuses_retired_and_invalid_unit_requests() {
             .to_vec(),
         vec![0; control::REQUEST_LIMITS.bytes + 1],
     ] {
-        let error = fixture
-            .pic
-            .instance()
-            .try_create_and_install(InstallSpec {
-                wasm: fixture.wasm.clone(),
-                init_bytes,
-                cycles: 10_000_000_000_000,
-                install_sender: None,
-                label: Some("invalid Jobs init".into()),
-            })
+        let pic = fixture.pic.instance();
+        let canister = pic.create_canister().await;
+        pic.add_cycles(canister, 10_000_000_000_000).await;
+        // Reinstall a fresh empty canister to observe the original init rejection
+        // rather than upstream install_canister's panic-on-rejection convenience.
+        let error = pic
+            .reinstall_canister(canister, fixture.wasm.clone(), init_bytes, None)
             .await
             .unwrap_err();
-        assert!(matches!(error, CanisterInstallError::InstallCode { .. }));
+        assert_canister_trap(error);
     }
     let id = Method::DispatchDue as u64;
     let mut trailing = native::encode_request(id, &(), control::REQUEST_LIMITS).unwrap();
@@ -480,8 +462,7 @@ async fn management_upgrade_and_real_watchdog_delivery() {
         .pic
         .instance()
         .advance_time(Duration::from_secs(40))
-        .await
-        .expect("advance IC time");
+        .await;
     fixture
         .until(async || fixture.view(second).await.status == Status::Completed)
         .await;
@@ -506,17 +487,14 @@ async fn management_upgrade_and_real_watchdog_delivery() {
         .pic
         .instance()
         .advance_time(Duration::from_secs(15))
-        .await
-        .expect("advance IC time");
+        .await;
     fixture
         .until(async || fixture.view(third).await.status == Status::Completed)
         .await;
     assert_eq!(fixture.summary(receiver).await.receipts, 1);
     fixture.upgrade(fixture.sender).await.unwrap();
     fixture.upgrade(receiver).await.unwrap();
-    advance_and_tick(fixture.pic.instance(), Duration::ZERO, 3)
-        .await
-        .expect("advance and tick PocketIC");
+    advance_and_tick(fixture.pic.instance(), Duration::ZERO, 3).await;
     assert_eq!(fixture.summary(receiver).await.receipts, 1);
 
     fixture.close().await;
@@ -590,8 +568,7 @@ async fn watchdog_batch_trap_rolls_back_then_recovers_without_repeating_local_ef
         .pic
         .instance()
         .advance_time(Duration::from_secs(10))
-        .await
-        .expect("advance IC time");
+        .await;
     // Observe a real trap, not merely a dispatched callback awaiting execution.
     let marker = b"fixture: watchdog trap after stable batch write";
     fixture
@@ -599,7 +576,7 @@ async fn watchdog_batch_trap_rolls_back_then_recovers_without_repeating_local_ef
             fixture
                 .pic
                 .instance()
-                .fetch_canister_logs(fixture.sender, Principal::anonymous())
+                .fetch_canister_logs(native_principal(fixture.sender), CanisterId::anonymous())
                 .await
                 .unwrap()
                 .iter()
@@ -634,8 +611,7 @@ async fn watchdog_batch_trap_rolls_back_then_recovers_without_repeating_local_ef
         .pic
         .instance()
         .advance_time(Duration::from_secs(2))
-        .await
-        .expect("advance IC time");
+        .await;
     fixture
         .until(async || fixture.view(healthy).await.status == Status::Completed)
         .await;
@@ -655,17 +631,14 @@ async fn watchdog_batch_trap_rolls_back_then_recovers_without_repeating_local_ef
         .pic
         .instance()
         .advance_time(Duration::from_secs(40))
-        .await
-        .expect("advance IC time");
+        .await;
     fixture
         .until(async || fixture.view(later).await.status == Status::Completed)
         .await;
     assert_eq!(fixture.summary(fixture.sender).await.counter, 5);
     assert!(!fixture.summary(fixture.sender).await.armed);
     fixture.upgrade(fixture.sender).await.unwrap();
-    advance_and_tick(fixture.pic.instance(), Duration::from_secs(3), 12)
-        .await
-        .expect("advance and tick PocketIC");
+    advance_and_tick(fixture.pic.instance(), Duration::from_secs(3), 12).await;
     assert_eq!(fixture.summary(fixture.sender).await.counter, 5);
     assert_eq!(fixture.view(failed).await.status, Status::Failed);
     assert!(!fixture.summary(fixture.sender).await.armed);
@@ -814,18 +787,16 @@ async fn invalid_restore_refuses_upgrade_and_preserves_the_controller_snapshot()
     // Snapshot loading consumes installation resources too. Testkit owns the
     // bounded rate-limit retry; every other rejection must fail immediately.
     // The job's one-hour deadline exceeds the maximum thirty-minute cooldown.
-    fixture
-        .pic
-        .instance()
-        .retry_install_code(
-            RetryPolicy {
-                max_attempts: std::num::NonZeroUsize::new(4).unwrap(),
-                cooldown: Duration::from_secs(600),
-            },
-            async || fixture.upgrade(fixture.sender).await,
-        )
-        .await
-        .unwrap();
+    ic_testkit::pic::retry_install_code(
+        fixture.pic.instance(),
+        RetryPolicy {
+            max_attempts: std::num::NonZeroUsize::new(4).unwrap(),
+            cooldown: Duration::from_secs(600),
+        },
+        async || fixture.upgrade(fixture.sender).await,
+    )
+    .await
+    .unwrap();
     assert!(matches!(
         fixture.view(id).await.status,
         Status::Pending { .. }
@@ -864,8 +835,7 @@ async fn overdue_fixed_rate_work_reconstructs_catch_up_and_skip_policies() {
         .pic
         .instance()
         .advance_time(Duration::from_secs(13))
-        .await
-        .expect("advance IC time");
+        .await;
     for id in &ids {
         assert_eq!(fixture.view(*id).await.status, Status::Paused);
         assert_eq!(fixture.view(*id).await.occurrence, 0);
@@ -896,9 +866,7 @@ async fn overdue_fixed_rate_work_reconstructs_catch_up_and_skip_policies() {
     }
     assert!(!fixture.summary(fixture.sender).await.armed);
     let before = fixture.summary(fixture.sender).await.counter;
-    advance_and_tick(fixture.pic.instance(), Duration::from_secs(30), 3)
-        .await
-        .expect("advance and tick PocketIC");
+    advance_and_tick(fixture.pic.instance(), Duration::from_secs(30), 3).await;
     assert_eq!(fixture.summary(fixture.sender).await.counter, before);
 
     fixture.close().await;
@@ -936,9 +904,7 @@ async fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
     assert_eq!(fixture.summary(fixture.sender).await.next_due_ns, None);
     assert!(!fixture.summary(fixture.sender).await.armed);
     fixture.upgrade(fixture.sender).await.unwrap();
-    advance_and_tick(fixture.pic.instance(), Duration::from_secs(40), 3)
-        .await
-        .expect("advance and tick PocketIC");
+    advance_and_tick(fixture.pic.instance(), Duration::from_secs(40), 3).await;
     assert_eq!(fixture.summary(fixture.sender).await.counter, 0);
     let later = fixture.now_ns().await + 100_000_000_000;
     fixture
@@ -987,8 +953,7 @@ async fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
         .pic
         .instance()
         .advance_time(Duration::from_secs(20))
-        .await
-        .expect("advance IC time");
+        .await;
     fixture
         .until(async || fixture.view(id).await.status == Status::Completed)
         .await;

@@ -7,6 +7,25 @@ and [coordinated history through 0.33.1](../history.md).
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.35.2] - Unreleased
+
+### 🛠️ Tooling
+
+- Refresh Toko Tooling to 0.39.12, including reviewed dependency boundaries,
+  bounded LOC labels and explicit supplier freshness reviews.
+
+### 🧪 Testing
+
+- Adopt Testkit 0.101.0 and its upstream PocketIC 16.1 client in the recovery
+  harness. Convert native identities explicitly, retain exact rejections and
+  await best-effort instance deletion without replaying effects.
+- Select Testkit's required Host 0.76.4, Types 0.19.4 and native Platform 0.31.2
+  for coherent cached snapshots. The 2026-11-12 release review defers optional
+  Build 0.83.0, Runtime 0.21.2, Storage 0.73.4 and Wire 0.21.2 / Endpoint 0.12.1
+  to the next Scheduling supplier maintenance batch. Retain qualification's
+  Thiserror 2.0.18 until that batch and Cargo Sort Derives 0.14.1 until the next
+  Toko tool-catalog refresh for 0.15.0.
+
 ## [0.35.1] - 2026-11-11
 
 ### 📦 Dependencies

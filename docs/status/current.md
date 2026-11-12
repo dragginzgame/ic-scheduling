@@ -1,11 +1,28 @@
 # Current handoff
 
+## Release preparation — cached baseline blocker cleared
+
+Published Testkit 0.101.0 corrects the cached snapshot defect tracked by
+[Timers #87](https://github.com/dragginzgame/ic-timers/issues/87) and
+[Tooling #263](https://github.com/dragginzgame/ic-tooling/issues/263). The mandatory,
+unignored same-instance regression passes unchanged restoration and both mutated
+restore/rearm/callback cycles. The competing-owner negative control still passes;
+production guard code is intact. All ten installed Jobs recovery tests pass too.
+Both native harnesses pass Clippy; tooling, pins, native/Wasm graphs and docs pass.
+
+Evidence: `target/evidence/deploy-retry-20261112.iuLa37/`; focused runtime receipt:
+`target/tmp/timer-qualification-704322-0/runtime.json`. Earlier 0.100.2 failures
+remain in `target/evidence/timer-baseline-87-20261112.FT14fd/`. They are not passes.
+The authorized next batch selects compatible Timers 0.43.2 and Jobs 0.35.2;
+full release qualification and publication are pending. Canic's exact two-case
+integration remains separately owned. No sibling source or release was changed.
+
 ## Published Timers 0.43.1 and Jobs 0.35.1 — 2026-11-11
 
 Both groups were delivered to origin/main and published to crates.io through
 completed, reconciled `batch-t4HsIlVh`, captured from
 `5bb381437a2d128f70f068a0928b80e1ef98495c`. Do not replay publication.
-The normal checkout contains both release commits, with no deferred supplier edits.
+Both release commits are reconciled; the local tooling/harness refresh below is pending.
 All six private qualification versions remain unchanged. No sibling repository
 was edited or released; Canic adoption remains separately qualified.
 
@@ -36,39 +53,62 @@ Latest cohort receipt: `qualification/target/timer-cohorts.json` there.
 
 ## Tooling, cleanup and workspace ownership
 
-Both catalogs/locks select exact crates.io Toko Tooling 0.39.9, archive SHA-256
-`1dd7bdb5bbb9bb8076dd35d8dc179c9e49196d9945c8e585990e40091b468b48`.
+Both catalogs/locks locally select exact crates.io Toko Tooling 0.39.12, archive SHA-256
+`acb1fd3f459a63940669e925d427fd6821abf02a7525bf9ef38d323dc778a8d2`.
 Its 59-entrypoint selection admits 106 managed files. Shared references remain
 at immutable upstream revisions. Everything under `docs/` is native Scheduling
 documentation; use [its index](../README.md).
 
-Both locked fetches, standard installation, snapshot/pin/group/link admission,
-workspace inheritance, dependency-boundary callers and all 56 tooling drift-refusal
-routes pass. Native-only PocketIC dev dependencies are admitted; production/Wasm
-restrictions and CBOR refusals remain. Both published groups include this refresh.
+The refresh is local and uncommitted. Both locked fetches, standard installation,
+snapshot/pin/group admission and dependency/source boundaries pass. The 0.39.12
+payload changes only the baseline from 0.39.11, adding explicit supplier review.
+Direct product/qualification suppliers and Cargo tools were compared with stable,
+non-yanked registry releases. Dispositions appear below and in both pending ledgers.
+
+Both native harness packages pass Clippy with all targets. Testkit's CLI/server
+setup, offline admission and focused selection/failure callers pass. All ten
+installed Jobs recovery tests and four exact Timers subjects pass on Linux/Rust
+1.99.1/PocketIC 16.1.0. Evidence: `target/evidence/tooling-testkit-adoption-20261111.PqzKOB/`;
+Jobs capture: `qualification/target/tmp/jobs-recovery.ztaY9w/`; focused Timers
+receipt: `target/tmp/timer-qualification-595050-0/runtime.json`.
+The published groups retain their 0.39.9/Testkit 0.96 source and graph. No new full
+release/watchdog/cohort gate or macOS execution is claimed for this refresh.
 
 Six private qualification packages remain outside the Jobs/Timers product groups.
 Their independent catalog/lock uses standard `qualification_workspace` preparation,
 preserving private versions and suppliers. `TOKO_TOOLING_RELEASE := 1` enables releases.
 See [release operations](../releases/README.md) and [validation groups](../releases/validation-groups.md).
 
-Test cleanup reduces Rust LOC from 29,011 to 28,762 (249 fewer lines), retaining
+The published test cleanup reduced Rust LOC from 29,011 to 28,762, retaining
 all scenarios, 126 exact counter expectations and 31 receipt-corruption cases.
 Production logic and its 5,444 app/library lines are unchanged by the cleanup.
 Focused evidence: `target/evidence/test-cleanup-20261111/` and
 `target/evidence/qualification-cleanup-20261111/`. Both full release gates above
-qualify the resulting source and refreshed graph.
+qualify that original source/graph; those counts precede this harness migration.
 
 ## Supplier and persistence boundaries
 
 Both workspaces now select Metrics 0.29.11 and Runtime/exact guard 0.21.1;
-qualification also selects matching macros and the required Types 0.19.2.
+qualification also selects matching macros and the required Types 0.19.4.
 Runtime owns the single transitive registry ic0 1.2.0 backend. Native/Wasm graphs
 and rejection fixtures pass, including direct SDK aliases in both workspaces.
 Common direct-dependency bans, the protocol/coordinator exclusions and Timers'
-exact runtime guard remain enforced. Wire 0.19 / Endpoint 0.10, Storage 0.71.1
-and Testkit 0.96 selections are retained. Qualification uses raw Testkit transport
-with current Wire framing; Testkit's optional adapter selects the older Wire family.
+exact runtime guard remain enforced. Qualification selects Testkit 0.101.0,
+required Host 0.76.4 patches, native Platform 0.31.2 and upstream PocketIC through Testkit's
+native re-export. Application DTOs retain canonical Types; native identity
+conversion is explicit. Rejections remain typed, transport panics propagate and
+awaited deletion is upstream best effort. No failed update is replayed.
+Wire 0.19 / Endpoint 0.10 and Storage 0.71.1 are retained. The consumer-owned
+Wire harness uses raw transport, without enabling Testkit's Wire 0.21 adapter.
+
+The 2026-11-12 registry review defers optional Build 0.83.0, Runtime 0.21.2,
+Storage 0.73.4 and Wire 0.21.2 / Endpoint 0.12.1 to the next Scheduling supplier
+maintenance batch; this release qualifies the existing product graph and required
+Testkit correction. Qualification's Thiserror 2.0.18 also remains until that batch;
+the product graph selects current 2.0.21. Cargo Sort Derives 0.15.0 awaits the next
+Toko tool-catalog refresh; the reviewed managed pin remains 0.14.1. Other reviewed
+direct supplier locks match observed stable releases. Revisit deferrals at that
+maintenance boundary or the next release review, whichever comes first.
 
 Jobs stays Serde-only, with consumer-owned storage and metadata. Timers retains
 its private FFI provider, singleton guard and runtime/cohort gates. Native tests

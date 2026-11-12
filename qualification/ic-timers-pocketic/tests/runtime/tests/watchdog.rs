@@ -22,10 +22,7 @@ async fn trapped_work_keeps_committed_successor_and_executor_is_private() {
         )
         .await;
     assert!(
-        matches!(
-            external,
-            Err(ic_testkit::pocket_ic::ClientError::Canister(_))
-        ),
+        external.is_err(),
         "provider executor must reject external ingress: {external:?}"
     );
     assert_eq!(snapshot(pic, canister_id).await, before_external);
@@ -164,9 +161,7 @@ async fn scheduler_abandonment_under_round_pressure_recovers_after_stop() {
             let pic = owned.instance();
             if successor {
                 assert!(update_bool(pic, canister_id, Method::Start).await);
-                pic.advance_time(Duration::from_secs(1))
-                    .await
-                    .expect("advance IC time");
+                pic.advance_time(Duration::from_secs(1)).await;
                 wait_for_probe(
                     pic,
                     32,
@@ -189,8 +184,7 @@ async fn scheduler_abandonment_under_round_pressure_recovers_after_stop() {
             pic.advance_time(Duration::from_nanos(
                 deadline.checked_sub(now_ns(pic).await).unwrap(),
             ))
-            .await
-            .expect("advance IC time");
+            .await;
             let pressure: u64 = wait_for_probe(
                 pic,
                 8,
@@ -297,9 +291,7 @@ async fn insufficient_cycles_defer_due_work_until_top_up() {
     assert_eq!(deferred.completed_work, 0);
     assert_eq!(deferred.scheduler_started.total, 0);
 
-    pic.add_cycles(canister_id, INIT_CYCLES)
-        .await
-        .expect("fund canister cycles");
+    pic.add_cycles(canister_id, INIT_CYCLES).await;
     advance(pic, Duration::ZERO, 4).await;
     assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
     advance(pic, Duration::from_secs(1), 16).await;
@@ -329,9 +321,7 @@ async fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     assert_eq!(armed.scheduler_started.total, 0);
     assert_eq!(armed.completed_work, 0);
     let before = if after_scheduler {
-        pic.advance_time(Duration::from_secs(1))
-            .await
-            .expect("advance IC time");
+        pic.advance_time(Duration::from_secs(1)).await;
         let dispatched = wait_for_probe(
             pic,
             12,
@@ -353,9 +343,7 @@ async fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     assert!(now_ns(pic).await > deadline);
     // No ensure/reconcile call, threshold reset, raw timer write or upgrade can
     // repair the wakeup here. A top-up and replica rounds must suffice.
-    pic.add_cycles(canister_id, budget.balance * 16)
-        .await
-        .expect("fund canister cycles");
+    pic.add_cycles(canister_id, budget.balance * 16).await;
     // Read-only observation before another round proves the frozen interval
     // left the overdue registration intact and executed no timer work.
     let thawed = snapshot(pic, canister_id).await;
@@ -398,9 +386,7 @@ async fn assert_frozen_watchdog_resumes_after_top_up(after_scheduler: bool) {
     assert_eq!(settled.unacknowledged.total, 0);
     let now = now_ns(pic).await;
     assert!(settled.next_deadline_ns.is_some_and(|next| next > now));
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
+    pic.advance_time(Duration::from_secs(1)).await;
     let recurring = wait_for_probe(
         pic,
         32,

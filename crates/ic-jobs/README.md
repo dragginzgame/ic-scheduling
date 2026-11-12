@@ -288,4 +288,4 @@ for the complete persistence and recovery obligations.
 ## License
 
 Toko Studios Network Licence 1.0 (TSNL-1.0). The crate archive includes
-`LICENSE.md` and required prior-distribution notices in `NOTICE`.
+`LICENSE.md`.

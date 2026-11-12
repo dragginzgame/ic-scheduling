@@ -78,6 +78,7 @@ const COHORT_SUBJECT: &str =
 // These subjects anchor the maintained recovery contract, not incidental test counts.
 const REQUIRED_WATCHDOG_SUBJECTS: &[&str] = &[
     "tests::lifecycle::runtime_composition_preserves_calls_cleanup_and_lifecycle",
+    "tests::lifecycle::cached_baseline_restoration_preserves_timer_ownership_after_mutation",
     "tests::ordinary::absent_ordinary_demand_is_idle_and_explicit_cancellation_stays_distinct",
     "tests::watchdog::scheduler_abandonment_under_round_pressure_recovers_after_stop",
     "tests::ingress::host_inspection_refuses_timer_ingress_but_foreign_calls_still_authenticate",

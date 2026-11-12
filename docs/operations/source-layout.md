@@ -13,6 +13,7 @@ Run from the repository root with the prepared host tools and Rust compiler:
 make cloc
 bash scripts/dev/cloc.sh -d 0 .
 bash scripts/dev/cloc.sh -d 1 ic-timers
+bash scripts/dev/cloc.sh --wide -d 1 .
 bash scripts/dev/cloc.sh --json .
 ```
 
@@ -41,6 +42,8 @@ library/tooling files. Rust doctests in documentation comments are outside this
 source-code count, as are shell tooling fixtures and non-Rust assets.
 
 The JSON report records file hashes, categories and classification diagnostics.
+Table labels are shortened to fit the available width; `--wide` retains full
+names. JSON labels and numeric counts remain complete in either display mode.
 Macro expansion and conditional attributes require review; zero unclassified
 lines alone is not a proof of compilation or deployment behavior. A category
 correction changes accounting, not the amount of maintained source.

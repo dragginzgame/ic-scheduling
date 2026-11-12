@@ -39,7 +39,7 @@ canister graphs must still exclude older providers that lack that key.
 | Durable jobs, readiness, lifecycle order and operator-health labels | Consuming application/framework | Registration claims and snapshots; no durable task database or application lifecycle exports here |
 | Wasm compilation and artifact-cache custody | `ic-build`, with explicit child custody from `ic-host-process` | `qualification/ic-timers-pocketic/src/build/mod.rs` selects packages, profile, features and artifact lifetime |
 | Native report alias admission and atomic publication | `ic-host-fs` | The qualification driver protects its reviewed baseline and selects report schema, path and permissions |
-| PocketIC client types and raw call transport | `ic-testkit::pocket_ic`; canonical identities from `ic-platform-types` | Native tests retain bounded Wire requests |
+| PocketIC client types and raw call transport | Testkit's upstream `pocket_ic` re-export; explicit canonical/native identity conversion | Native tests retain bounded Wire requests |
 | PocketIC server selection, admission, lifecycle and bounded progress | `ic-testkit` | `scripts/dev/testkit-tool.sh` selects the root-lock CLI; the native harness supplies instance configuration |
 | Controlled probe codecs | Published `ic-wire::native` and Serde; the shared qualification harness frames raw Testkit calls | The unpublished protocol owns method identities/limits; Wire Endpoint binds canister entrypoints; the native harness selects the protocol and caller |
 | Common tools, fixture dependency closure, evidence transport and release mechanics | Reviewed Shared Tooling snapshot | Local Make selections, product release/source policy and evidence identity; see [adoption boundaries](development.md) |
@@ -69,9 +69,10 @@ Runtime owns the maintained IC0 bindings and executor. The root catalog disables
 default Runtime features. The library selects only `executor` and `ic0`; the two
 canister probes select `cdk` for entrypoint contexts,
 protected calls/spawning, traps, cycle burning and stable byte I/O. The native
-harness selects Testkit 0.96's async-only `pocket_ic` module for clients and
-`ic-platform-types` 0.19 with `principal-external` for canonical identities.
-Clients select a 60-second request budget independently of server startup limits.
+harness selects Testkit 0.101.0's upstream PocketIC 16.1 async client. Application
+DTOs use canonical `ic-platform-types` 0.19; transport boundaries convert native
+identities explicitly. Clients select a 60-second polling budget independently
+of server startup limits; upstream transport panics propagate without replay.
 The protocol package selects Wire and Serde without a direct Runtime dependency.
 
 The private platform uses `ic_platform_runtime::ic0` for system calls,
@@ -131,21 +132,23 @@ The native driver retains published Testkit for server admission, lifecycle and
 bounded progress. Native tests borrow clients through `PocketIcInstance::instance()`
 while retaining the owner through explicit awaited closure, before the server
 stops. Native async tests own the Tokio runtime; client Drop performs no network
-cleanup. Testkit owns PocketIC clients/DTOs
-in `ic_testkit::pocket_ic`. Probe RPCs use Testkit's typed query/update helpers
-with shared Wire identities/limits. Candid and management types remain upstream transport
-implementation details. The retired `ic-testkit-candid` package remains absent.
+cleanup. Testkit re-exports upstream PocketIC clients/DTOs in
+`ic_testkit::pocket_ic`; its [client migration](https://github.com/dragginzgame/ic-tooling/blob/08a193d863fa42404d3a6ba36c65387468dcaa79/docs/testkit/client-migration.md)
+defines native identity, panic and best-effort deletion behavior. Probe RPCs use
+the consumer-owned Wire harness, retaining current method identities and limits.
+Candid and management types remain upstream transport details. The retired
+`ic-testkit-candid` package remains absent.
 The driver selects PocketIC, Types, Testkit, Wire and the probe protocol only for its
 test binary. Its normal build coordinator uses Build and Host for artifacts and
 process custody, plus Clap/Serde/JSON for commands and receipts. It does not link
 the simulator or codecs. Build, Host and Testkit share the published family
-selected by the root lockfile. The harness uses Wire 0.17 and Testkit 0.88, with
+selected by the qualification lockfile. The harness uses Wire 0.19 and Testkit 0.101, with
 canonical Types 0.19 identities. The independent Platform PocketIC client is absent.
 Managed startup supplies Testkit's required server URL and retains server custody.
 Timers passes external client types across the test boundary, not owned
 Principal values.
-Testkit also selects Candid/management support for native provider
-fixtures; PocketIC retains Candid for its simulator protocols. These are native
+Testkit selects Platform's owned Candid/management codec to prepare coherent
+cached snapshots; PocketIC retains Candid for its simulator protocols. These are native
 qualification dependencies. Independent library and canister graphs
 remain Candid-free and select Runtime 0.21.
 These host-only providers do not enter deployed graphs; there is no unpublished

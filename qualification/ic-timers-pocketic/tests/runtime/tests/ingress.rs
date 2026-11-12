@@ -21,11 +21,10 @@ async fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
         .unwrap()
     };
     let assert_conflict = async |method: Method, args: Vec<u8>| {
-        let rejected = canister_rejection(
-            pic.update_call(canister_id, caller, method.name(), args)
-                .await
-                .unwrap_err(),
-        );
+        let rejected = pic
+            .update_call(canister_id, caller, method.name(), args)
+            .await
+            .unwrap_err();
         assert!(
             rejected
                 .reject_message
@@ -79,9 +78,7 @@ async fn competing_global_timer_writes_trap_and_roll_back_timer_control() {
     )
     .await
     .unwrap();
-    pic.advance_time(Duration::from_nanos(1_000_000_001))
-        .await
-        .expect("advance IC time");
+    pic.advance_time(Duration::from_nanos(1_000_000_001)).await;
     let completed = wait_for_probe(
         pic,
         32,
@@ -105,23 +102,19 @@ async fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authentic
     let relay_id = install_probe(pic, probe_wasm()).await;
     assert!(update_bool(pic, canister_id, Method::Start).await);
     let before = snapshot(pic, canister_id).await;
-    let balance = pic
-        .cycle_balance(canister_id)
-        .await
-        .expect("read canister cycles");
+    let balance = pic.cycle_balance(canister_id).await;
     // The first pending dispatch ID is valid: admission must not rely on a
     // malformed payload or a nonexistent task to prevent early execution.
     let payload = 1_u64.to_le_bytes().to_vec();
-    let denied = canister_rejection(
-        pic.update_call(
+    let denied = pic
+        .update_call(
             canister_id,
             Principal::anonymous(),
             TIMER_EXECUTOR_METHOD,
             payload.clone(),
         )
         .await
-        .unwrap_err(),
-    );
+        .unwrap_err();
     assert_eq!(denied.error_code, ErrorCode::CanisterCalledTrap);
     assert!(
         denied
@@ -129,24 +122,18 @@ async fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authentic
             .contains("probe ingress: timer dispatch is internal")
     );
     assert_eq!(snapshot(pic, canister_id).await, before);
-    assert_eq!(
-        pic.cycle_balance(canister_id)
-            .await
-            .expect("read canister cycles"),
-        balance
-    );
+    assert_eq!(pic.cycle_balance(canister_id).await, balance);
 
     // The host's existing payload policy still runs for non-timer methods.
-    let denied = canister_rejection(
-        pic.update_call(
+    let denied = pic
+        .update_call(
             canister_id,
             Principal::anonymous(),
             Method::Start.name(),
             vec![0; ic_timers_test_protocol::rpc::REQUEST_LIMITS.bytes + 1],
         )
         .await
-        .unwrap_err(),
-    );
+        .unwrap_err();
     assert_eq!(denied.error_code, ErrorCode::CanisterCalledTrap);
     assert!(
         denied
@@ -155,10 +142,7 @@ async fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authentic
     );
     assert_eq!(snapshot(pic, canister_id).await, before);
 
-    let balance = pic
-        .cycle_balance(canister_id)
-        .await
-        .expect("read canister cycles");
+    let balance = pic.cycle_balance(canister_id).await;
     let rejected: String = update_wire(
         pic,
         relay_id,
@@ -170,20 +154,14 @@ async fn host_inspection_refuses_timer_ingress_but_foreign_calls_still_authentic
     .unwrap();
     assert!(rejected.contains("self-call required"), "{rejected}");
     assert_eq!(snapshot(pic, canister_id).await, before);
-    let foreign_cost = balance
-        - pic
-            .cycle_balance(canister_id)
-            .await
-            .expect("read canister cycles");
+    let foreign_cost = balance - pic.cycle_balance(canister_id).await;
     assert!(
         foreign_cost > 0,
         "endpoint authentication still costs target cycles"
     );
     println!("foreign_dispatch_authentication_cycles={foreign_cost}");
 
-    pic.advance_time(Duration::from_secs(1))
-        .await
-        .expect("advance IC time");
+    pic.advance_time(Duration::from_secs(1)).await;
     let completed = wait_for_probe(
         pic,
         32,
@@ -228,16 +206,14 @@ async fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
         vec![0; REQUEST_LIMITS.bytes + 1],
         truncated,
     ] {
-        canister_rejection(
-            pic.update_call(
-                canister_id,
-                Principal::anonymous(),
-                Method::StartOrdinary.name(),
-                arguments,
-            )
-            .await
-            .expect_err("invalid Wire arguments must reject before registration"),
-        );
+        pic.update_call(
+            canister_id,
+            Principal::anonymous(),
+            Method::StartOrdinary.name(),
+            arguments,
+        )
+        .await
+        .expect_err("invalid Wire arguments must reject before registration");
         assert!(!ordinary_observation(pic, canister_id).await.declared);
         assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
     }
@@ -255,16 +231,15 @@ async fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
         decode_request::<(u64,)>(Method::ScheduleAt as u64, &nonminimal, REQUEST_LIMITS),
         Err(ic_wire::Error::Malformed)
     );
-    let rejection = canister_rejection(
-        pic.update_call(
+    let rejection = pic
+        .update_call(
             canister_id,
             Principal::anonymous(),
             Method::ScheduleAt.name(),
             nonminimal,
         )
         .await
-        .unwrap_err(),
-    );
+        .unwrap_err();
     assert_eq!(rejection.error_code, ErrorCode::CanisterCalledTrap);
     assert_eq!(snapshot(pic, canister_id).await, scheduled);
     assert_eq!(snapshot(pic, canister_id).await.scheduler_started.total, 0);
@@ -298,14 +273,11 @@ async fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
         panic!("expected probe rejection, got {error}");
     };
     assert_eq!(context.operation, "update_call");
-    assert_eq!(context.canister_id, canister_id);
-    assert_eq!(context.caller, caller);
+    assert_eq!(context.canister_id.as_slice(), canister_id.as_slice());
+    assert_eq!(context.caller.as_slice(), caller.as_slice());
     assert_eq!(context.method, Method::StartOrdinary.name());
     assert_eq!(context.method_id, id);
-    assert!(matches!(
-        source.as_ref(),
-        ic_testkit::pocket_ic::ClientError::Canister(_)
-    ));
+    assert_eq!(source.error_code, ErrorCode::CanisterCalledTrap);
     let error = query_wire::<bool, _>(pic, canister_id, caller, Method::OrdinaryObservation, ())
         .await
         .unwrap_err();

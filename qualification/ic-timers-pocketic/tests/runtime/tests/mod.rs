@@ -4,10 +4,11 @@ use super::harness::{
     INIT_CYCLES, advance, close_instance, fresh_pocket_ic, install_probe, now_ns, update_unit,
     wait_for_probe,
 };
-use super::harness::{canister_rejection, query_wire, update_wire};
-use ic_platform_types::Principal;
+use super::harness::{query_wire, update_wire};
 use ic_testkit::pic::PocketIcInstance;
-use ic_testkit::pocket_ic::{CanisterSettings, ErrorCode, PocketIc, RejectCode};
+use ic_testkit::pocket_ic::{
+    CanisterId as Principal, CanisterSettings, ErrorCode, RejectCode, nonblocking::PocketIc,
+};
 use ic_timers_test_protocol::rpc::{
     Method, OrdinaryPolicy, ProbeLifetime, ProbePolicy, SchedulerReconcileMode, WorkDecision,
 };
@@ -44,10 +45,7 @@ struct FreezingBudget {
 
 async fn freezing_budget(pic: &PocketIc, canister_id: Principal) -> FreezingBudget {
     let status = pic.canister_status(canister_id, None).await.unwrap();
-    let balance = pic
-        .cycle_balance(canister_id)
-        .await
-        .expect("read canister cycles");
+    let balance = pic.cycle_balance(canister_id).await;
     let idle_per_day: u128 = status.idle_cycles_burned_per_day.0.try_into().unwrap();
     assert!(idle_per_day > 0);
     let seconds = u64::try_from((balance * 4 * 86_400).div_ceil(idle_per_day))
@@ -77,14 +75,11 @@ async fn freeze_for_five_minutes(
     .await
     .expect("raise freezing reserve");
     advance(pic, Duration::from_secs(300), 16).await;
-    let frozen_balance = pic
-        .cycle_balance(canister_id)
-        .await
-        .expect("read canister cycles");
+    let frozen_balance = pic.cycle_balance(canister_id).await;
     assert!(frozen_balance > 0, "frozen, not uninstalled");
     assert!(frozen_balance < freezing_reserve);
-    let rejected = canister_rejection(
-        pic.update_call(
+    let rejected = pic
+        .update_call(
             canister_id,
             Principal::anonymous(),
             Method::Stop.name(),
@@ -96,8 +91,7 @@ async fn freeze_for_five_minutes(
             .unwrap(),
         )
         .await
-        .expect_err("a valid timer control update must reject while frozen"),
-    );
+        .expect_err("a valid timer control update must reject while frozen");
     assert_eq!(rejected.reject_code, RejectCode::SysTransient);
     assert_eq!(rejected.error_code, ErrorCode::CanisterOutOfCycles);
 }

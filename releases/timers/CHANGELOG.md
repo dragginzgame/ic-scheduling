@@ -10,6 +10,32 @@ entry alone does not establish publication.
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.43.2] - Unreleased
+
+### 🛠️ Tooling
+
+- Refresh Toko Tooling to 0.39.12, including reviewed dependency boundaries,
+  bounded LOC labels and explicit supplier freshness reviews.
+
+### 🧪 Testing
+
+- Require a same-instance cached-baseline regression with unchanged-restore
+  control, timer mutation, repeated restore/rearm and callback assertions.
+  Retain the competing-owner rejection test for
+  [Timers #87 — Qualify ownership after mutated cached restoration](https://github.com/dragginzgame/ic-timers/issues/87).
+- Adopt Testkit 0.101.0's coherent cached snapshots, correcting the heap/timer
+  mismatch tracked by
+  [Tooling #263 — Cached snapshots restore heap without matching timer state](https://github.com/dragginzgame/ic-tooling/issues/263).
+  Capture requires two free snapshot slots per target and transfer cycles.
+- Use Testkit's upstream PocketIC 16.1 client in installed
+  qualification. Preserve Wire framing, native identity boundaries, exact
+  rejection assertions and managed-server lifetime through best-effort deletion.
+- Select Testkit's required Host 0.76.4, Types 0.19.4 and native Platform 0.31.2.
+  The 2026-11-12 release review defers optional Build 0.83.0, Runtime 0.21.2,
+  Storage 0.73.4 and Wire 0.21.2 / Endpoint 0.12.1 to the next Scheduling supplier
+  maintenance batch. Retain qualification's Thiserror 2.0.18 until that batch and
+  Cargo Sort Derives 0.14.1 until the next Toko tool-catalog refresh for 0.15.0.
+
 ## [0.43.1] - 2026-11-11
 
 ### 📦 Dependencies

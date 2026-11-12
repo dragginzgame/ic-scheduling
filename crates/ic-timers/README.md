@@ -550,4 +550,4 @@ follow the [0.39 → 0.40 adoption checklist](../../docs/timers/adoption/0.40.md
 ## License
 
 Toko Studios Network Licence 1.0 (TSNL-1.0). The crate archive includes
-`LICENSE.md` and required prior-distribution notices in `NOTICE`.
+`LICENSE.md`.

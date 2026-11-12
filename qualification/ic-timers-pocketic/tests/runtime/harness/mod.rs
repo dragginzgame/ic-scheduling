@@ -2,9 +2,8 @@
 
 use ic_jobs_canister_tests::wire::{WireCallError, WireCallSpec};
 
-use ic_platform_types::Principal;
 use ic_testkit::pic::{InstallSpec, PocketIcInstance, PocketIcStartupConfig, tick_until};
-use ic_testkit::pocket_ic::{ClientError, PocketIc, PocketIcBuilder, RejectResponse};
+use ic_testkit::pocket_ic::{CanisterId as Principal, PocketIcBuilder, nonblocking::PocketIc};
 use ic_timers_test_protocol::rpc::{Method, REQUEST_LIMITS, RESPONSE_LIMITS};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{convert::Infallible, env, fmt::Debug, path::PathBuf, task::Poll, time::Duration};
@@ -22,7 +21,7 @@ pub async fn wait_for_probe<T: Debug>(
 ) -> T {
     let remaining = rounds.checked_sub(1).expect("positive probe round budget");
     let mut last = None;
-    pic.tick().await.expect("tick PocketIC");
+    pic.tick().await;
     tick_until(pic, remaining, Duration::ZERO, async |pic| {
         let observation = observe(pic).await;
         if ready(&observation) {
@@ -38,15 +37,16 @@ pub async fn wait_for_probe<T: Debug>(
 
 /// Install one probe with the fixtures' explicit funding and empty init payload.
 pub async fn install_probe(pic: &PocketIc, wasm: Vec<u8>) -> Principal {
-    pic.try_create_and_install(InstallSpec {
-        wasm,
-        init_bytes: Vec::new(),
-        cycles: INIT_CYCLES,
-        install_sender: None,
-        label: Some("ic-timers probe".to_owned()),
-    })
+    ic_testkit::pic::create_and_install(
+        pic,
+        InstallSpec {
+            wasm,
+            init_bytes: Vec::new(),
+            cycles: INIT_CYCLES,
+            install_sender: None,
+        },
+    )
     .await
-    .expect("install funded timer probe")
 }
 
 /// The caller awaits explicit instance deletion before the managed server stops.
@@ -74,17 +74,18 @@ pub async fn fresh_pocket_ic() -> PocketIcInstance {
         server_idle_ttl: None,
         server_output_files: Some((logs.join("stdout.log"), logs.join("stderr.log"))),
     }
-    .build_instance(PocketIcBuilder::new(REQUEST_TIMEOUT).with_application_subnet())
+    .build_instance(
+        PocketIcBuilder::new()
+            .with_max_request_time_ms(Some(REQUEST_TIMEOUT.as_millis().try_into().unwrap()))
+            .with_application_subnet(),
+    )
     .await
     .expect("construct a fresh owned PocketIC instance through ic-testkit")
 }
 
-/// Consume the instance and await deletion while its managed server is alive.
+/// Await upstream best-effort deletion while the managed server is alive.
 pub async fn close_instance(owned: PocketIcInstance) {
-    owned
-        .close()
-        .await
-        .expect("delete PocketIC instance before stopping its server");
+    owned.close().await;
 }
 
 /// Invoke an anonymous update with no arguments or return values.
@@ -112,8 +113,14 @@ pub async fn update_wire<T: DeserializeOwned, A: Serialize>(
     method: Method,
     args: A,
 ) -> Result<T, WireCallError> {
-    ic_jobs_canister_tests::wire::update_wire(pic, canister_id, caller, wire_call(method), &args)
-        .await
+    ic_jobs_canister_tests::wire::update_wire(
+        pic,
+        ic_platform_types::Principal::from_slice(canister_id.as_slice()),
+        ic_platform_types::Principal::from_slice(caller.as_slice()),
+        wire_call(method),
+        &args,
+    )
+    .await
 }
 
 /// Decode a bounded Wire query reply without changing its caller or timing.
@@ -124,8 +131,14 @@ pub async fn query_wire<T: DeserializeOwned, A: Serialize>(
     method: Method,
     args: A,
 ) -> Result<T, WireCallError> {
-    ic_jobs_canister_tests::wire::query_wire(pic, canister_id, caller, wire_call(method), &args)
-        .await
+    ic_jobs_canister_tests::wire::query_wire(
+        pic,
+        ic_platform_types::Principal::from_slice(canister_id.as_slice()),
+        ic_platform_types::Principal::from_slice(caller.as_slice()),
+        wire_call(method),
+        &args,
+    )
+    .await
 }
 
 /// Exact measurements must not silently include overflowed counters.
@@ -138,25 +151,12 @@ pub fn assert_exact_counters(counters: &[ic_timers_test_protocol::CounterObserva
     }
 }
 
-/// Reject transport/protocol failures instead of treating them as IC rejection.
-pub fn canister_rejection(error: ClientError) -> RejectResponse {
-    match error {
-        ClientError::Canister(response) => response,
-        other => panic!("expected canister rejection, got {other:?}"),
-    }
-}
-
 /// Advance the selected duration and rounds at the caller's observation boundary.
 pub async fn advance(pic: &PocketIc, duration: Duration, rounds: u32) {
-    ic_testkit::pic::advance_and_tick(pic, duration, rounds)
-        .await
-        .expect("advance and tick PocketIC");
+    ic_testkit::pic::advance_and_tick(pic, duration, rounds).await;
 }
 
 /// Read the IC clock afresh at the caller's observation boundary.
 pub async fn now_ns(pic: &PocketIc) -> u64 {
-    pic.get_time()
-        .await
-        .expect("read IC time")
-        .as_nanos_since_unix_epoch()
+    pic.get_time().await.as_nanos_since_unix_epoch()
 }
