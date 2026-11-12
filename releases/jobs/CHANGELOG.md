@@ -26,8 +26,8 @@ this product release group. Older entries retain their historical scope.
   failure propagation. Existing lockfile changes remain on failure.
 - Adopt qualification Build 0.83.0 and its release metadata CLI, preserving the
   lightweight artifact-capture binary and exact failure evidence.
-- Release supplier review retains product Runtime 0.21.1 and qualification
-  Thiserror 2.0.18; optional 0.21.2 / 2.0.21 updates await the next targeted
+- Release supplier review confirms Runtime 0.21.2 in both locks. Qualification
+  retains Thiserror 2.0.18; optional 2.0.21 adoption awaits the next targeted
   maintenance batch. Cargo Sort Derives 0.15.0 awaits the next Toko tool catalog.
 
 ## [0.35.2] - 2026-11-12

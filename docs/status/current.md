@@ -84,7 +84,7 @@ full release gate, cohort comparison, macOS or Canic execution is claimed.
 Evidence: `target/evidence/qualification-suppliers-20261112.5Wta8m/`;
 Jobs capture: `qualification/target/tmp/jobs-recovery.T0IYu1/`; focused runtime
 receipt: `target/tmp/timer-qualification-3841871-0/runtime.json`.
-Product source/versions and its Runtime 0.21.1 graph are unchanged by this adoption.
+Product source/versions and its Runtime 0.21.2 graph are unchanged by this adoption.
 
 Six private qualification packages remain outside the Jobs/Timers product groups.
 Their independent catalog/lock uses standard `qualification_workspace` preparation,
@@ -93,8 +93,8 @@ See [release operations](../releases/README.md) and [validation groups](../relea
 
 ## Supplier and persistence boundaries
 
-The published workspaces select Metrics 0.29.11 and Runtime/exact guard 0.21.1;
-published qualification also selects matching macros and Types 0.19.4.
+The published product lock selects Runtime/exact guard 0.21.2 and Metrics 0.29.11;
+published qualification retained Runtime/macros/guard 0.21.1 and Types 0.19.4.
 Runtime owns the single transitive registry ic0 1.2.0 backend. Native/Wasm graphs
 and rejection fixtures pass, including direct SDK aliases in both workspaces.
 Common direct-dependency bans, the protocol/coordinator exclusions and Timers'
@@ -107,9 +107,9 @@ Its Wire 0.19 / Endpoint 0.10 and Storage 0.71.1 are retained. The consumer-owne
 Wire harness uses raw transport, without enabling Testkit's Wire 0.21 adapter.
 
 The 2026-11-12 registry review and requested qualification adoption complete the
-earlier Build/Storage/Wire deferrals. Optional product Runtime 0.21.2 and
-qualification Thiserror 2.0.21 remain deferred to the next product/qualification
-supplier maintenance batch respectively; qualification retains Thiserror 2.0.18.
+earlier Build/Storage/Wire deferrals. Both current locks select Runtime 0.21.2.
+Optional qualification Thiserror 2.0.21 remains deferred to the next qualification
+supplier maintenance batch; qualification retains Thiserror 2.0.18.
 Cargo Sort Derives 0.15.0 awaits the next Toko tool-catalog refresh; the reviewed
 managed pin remains 0.14.1. Other reviewed direct supplier locks match observed
 stable releases. Revisit deferrals at those boundaries or the next release review.
@@ -138,6 +138,8 @@ explicit Jobs installed-recovery subjects retain their original source/graph in
 `target/evidence/runtime21-release-20261109T171837Z/`. Issue #92 was closed then.
 Preserve failed `batch-1wgxqWCb`, `batch-ACww0dNn` and `batch-XVdlf0HL`, completed
 `batch-ZNhgLJjb` and `batch-6xiXTmGx`, and all older recovery records.
+Preserve interrupted `batch-BZtlH7k8`: stopped before metadata/delivery to correct
+Runtime selection prose; source `6ca263e`, no release commit, push or publication.
 
 Tracked pre-adoption work and original locks remain in stash
 `4adfda0e74ffee32281b835735a25128b7648ceb`; preserve stashes

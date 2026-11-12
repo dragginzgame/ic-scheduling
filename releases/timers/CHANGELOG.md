@@ -28,8 +28,8 @@ this product release group. Older entries retain their historical scope.
 - Migrate the qualification driver to Build 0.83.0's explicit cache maintenance
   and per-label shared Cargo targets, retaining exact artifact leases and the
   existing cache limits. Full manifest/lock inputs determine build freshness.
-- Release supplier review retains product Runtime 0.21.1 and qualification
-  Thiserror 2.0.18; optional 0.21.2 / 2.0.21 updates await the next targeted
+- Release supplier review confirms Runtime 0.21.2 in both locks. Qualification
+  retains Thiserror 2.0.18; optional 2.0.21 adoption awaits the next targeted
   maintenance batch. Cargo Sort Derives 0.15.0 awaits the next Toko tool catalog.
 
 ## [0.43.2] - 2026-11-12
