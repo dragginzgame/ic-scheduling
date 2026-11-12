@@ -1,8 +1,43 @@
 # Current handoff
 
-## Prepared Timers 0.43.4 and Jobs 0.35.4 — 2026-11-12
+## Published Timers 0.43.4 and Jobs 0.35.4 — 2026-11-12
 
-The normal checkout selects Platform Runtime/exact guard 0.21.3 in both locks.
+Both groups were delivered to origin/main and published to crates.io through
+completed, reconciled `batch-dZQHGKiw`, captured from adoption commit
+`f45902bed6ec13b6dcddb7622a01ab7c8738ecc6`. Do not replay publication.
+The normal main checkout contains both release commits. All six private
+qualification versions remain unchanged. No sibling repository was changed.
+
+- Timers release commit: `f795aca3ce7cf98cd8eb6fff71531ee55e0a4ced`.
+  Annotated `timers-v0.43.4` tag: `5e3a7976d27aacccda602723a96895acb4315392`.
+  Archive SHA-256: `e86d41908566ea91a0aa3f3384d81f9ac379a16d9a6e9c1330ea27ed868f6451`.
+- Jobs release commit: `5bbc65fb0b258e88751924a6deb85b8c01d77830`.
+  Annotated `jobs-v0.35.4` tag: `f58b8fb3601494465b58c66e0a293b188824167a`.
+  Archive SHA-256: `75f11b7af3d8549457443488edc59d3559ae89a964ed4d3922250eb798086206`.
+
+Both complete 36-stage release gates passed on Linux/Rust 1.99.1/PocketIC 16.1.0,
+including native/Wasm/archive checks, 37 installed watchdog/runtime subjects and
+four policy plus two calibration cohorts per gate. The validation-plan fixture
+executed for Timers and was admitted for Jobs through qualified exact-input reuse;
+other required stages executed. Registry checksums, downloaded/uploaded archive
+bytes, source metadata, dependency requirements and remote annotated tags were
+independently verified. No fresh macOS or Canic execution is claimed.
+
+Delivery and verification evidence:
+`target/evidence/deploy-scheduling-20261112.BXzhJH/` (`release.log`, exit 0).
+Durable source, journals and sealed validation:
+`.git/release-state/frozen/batch-dZQHGKiw/`.
+Installed receipts under `target/release-frozen/batch-dZQHGKiw/`:
+`target/tmp/timer-qualification-2789758-0/runtime.json` (Timers) and
+`target/tmp/timer-qualification-602382-0/runtime.json` (Jobs).
+Cohort receipts are retained in the delivery evidence as `timers-cohorts.json`
+and `jobs-cohorts.json`; their original diagnostics are
+`target/tmp/timer-qualification-2815269-0/` and
+`target/tmp/timer-qualification-621289-0/` in the captured checkout.
+
+## Released Platform, Wire and Toko adoption
+
+The published graph selects Platform Runtime/exact guard 0.21.3 in both locks.
 Qualification also selects matching macros, Types 0.19.5, native Platform 0.31.3,
 Wire 0.21.4 and Endpoint/macros 0.12.2. Both catalogs and locks select exact
 Toko Tooling 0.39.17, archive SHA-256
@@ -20,13 +55,10 @@ There are no maintained generated browser clients to regenerate for Wire 0.21.4.
 
 The incoming dirty locks already contained these Platform/Wire versions plus
 Host 0.76.5, Storage 0.73.5 and errno 0.3.15. They were preserved; Cargo changed
-only Toko's selected entry relative to those starting locks. Product and private
-package versions remain unchanged until release preparation. The authorized
-frozen patch batch selects Timers 0.43.4 followed by Jobs 0.35.4, including
-crates.io publication. Timers changes its packaged source layout and Runtime
-requirement; both products' normalized dev-dependency contracts change from
-Toko 0.39.15 to 0.39.17. Both public groups therefore receive a release; private
-qualification packages retain their versions. Publication is not yet claimed.
+only Toko's selected entry relative to those starting locks. Timers changes its
+packaged source layout and Runtime requirement; both products' normalized
+dev-dependency contracts change from Toko 0.39.15 to 0.39.17. Both public groups
+therefore received a release; private qualification packages retained their versions.
 
 Focused qualification and supplier review evidence:
 `target/evidence/platform-wire-tooling-20261112.zbX1s2/`. Both full locked metadata
@@ -39,9 +71,9 @@ along with all four policy and two calibration cohorts. Jobs capture is
 `qualification/target/tmp/jobs-recovery.wLGcXu/`; Timers receipts are
 `target/tmp/timer-qualification-2955620-0/runtime.json` and
 `target/tmp/timer-qualification-2976790-0/cohorts.json`.
-No full repository gate, macOS or Canic execution is claimed for this adoption.
+These source/graph-bound adoption checks preceded the complete release gates above.
 
-Published direct supplier review confirms the selected Platform/Wire/Toko,
+Published direct supplier review before capture confirmed Platform/Wire/Toko,
 Build 0.83.0, Testkit 0.101.0, Metrics 0.29.11, Host 0.76.5 and Storage 0.73.5.
 Direct Serde/JSON/test, Clap and Tokio selections remain current. Qualification
 Thiserror 2.0.18 is retained by PocketIC 16.1.0's exact requirement; root selects
@@ -49,7 +81,21 @@ Thiserror 2.0.18 is retained by PocketIC 16.1.0's exact requirement; root select
 selection. Cargo Sort Derives stays at the managed catalog's 0.14.1; review its
 previously observed 0.15.0 at the next Toko catalog refresh.
 
-## Published Timers 0.43.3 and Jobs 0.35.3 — 2026-11-12
+## Pending Metrics 0.29.12
+
+An updater changed both normal-checkout locks to Metrics 0.29.12 during Jobs'
+gate. The captured graph and both releases retained qualified Metrics 0.29.11.
+The published Timers archive's lock independently confirms that selection.
+
+The deferred change is preserved locally on
+`deferred/metrics-during-batch-dZQHGKiw`, commit
+`78fea9dff2f9201d5919ed1f504e32c21832187d`. After the standard guarded
+fast-forward, only its two Metrics hunks were reapplied. Product versions remain
+Timers 0.43.4 and Jobs 0.35.4; no old lockfile was restored. Both locks are dirty
+with this pending refresh, and that branch was not pushed. Metrics 0.29.12 has
+not been qualified here or included in a release; qualify it before further delivery.
+
+## Previous Timers 0.43.3 and Jobs 0.35.3 — 2026-11-12
 
 Both groups were delivered to origin/main and published to crates.io through
 completed, reconciled `batch-StU1JTG0`, captured from
