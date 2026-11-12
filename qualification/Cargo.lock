@@ -31,9 +31,9 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "ar_archive_writer"
-version = "0.5.3"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73cd58deff2140a0a8eae87e417bd01db68a33e148aa93d1e8cd837e55e312b6"
+checksum = "523e5e187fff36fcb8d1d19ccf0ca4ca43ec3d158316057f66dc6f72716bc5ec"
 dependencies = [
  "object",
 ]
@@ -398,9 +398,9 @@ dependencies = [
 
 [[package]]
 name = "crc32fast"
-version = "1.5.4"
+version = "1.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f97d3416d5337d15c4b0d78c8c91df922ca143f57ec20e2d1c188333047ef04"
+checksum = "2b929dd2a135771f40afabd1073f85eed59c800b7c61901e5c254270497dad64"
 dependencies = [
  "cfg-if",
 ]
@@ -854,9 +854,9 @@ dependencies = [
 
 [[package]]
 name = "ic-build"
-version = "0.81.0"
+version = "0.83.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f97094aedd79387e756e5446e5c256e830637522e16c389574c332db06785e5"
+checksum = "47b532cca843e5855ceeb42b39c651492aa3ede7c3abb53f5b0b389e28e92b5b"
 dependencies = [
  "cargo_metadata",
  "hmac",
@@ -866,7 +866,6 @@ dependencies = [
  "rustix",
  "serde",
  "serde_json",
- "sha2 0.10.9",
  "sha2 0.11.1",
  "thiserror 2.0.18",
  "toml",
@@ -939,6 +938,7 @@ dependencies = [
  "ic-testkit",
  "ic-wire",
  "serde",
+ "serde_json",
  "tokio",
  "toko-tooling",
 ]
@@ -991,9 +991,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-macros"
-version = "0.21.1"
+version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ada4ea7e8782a29b9ffb2a00a0b151f8a193f1b8bd036b4a1814a608f4227d2a"
+checksum = "47382e5ee575fd841bab159b031e00a9c7a401890f5bb70d723776a124fdb6eb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1002,9 +1002,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.21.1"
+version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3f3f3b871dd64d2b5e01696dbed3951cdc4a6a8aa640b1e5d43774b22ec3d0e"
+checksum = "0ad53ab1e0e59563983db3046fc0a8ef34a81bc9deb69cf9a79a1e092aa2a771"
 dependencies = [
  "ic-platform-macros",
  "ic-platform-runtime-guard",
@@ -1018,9 +1018,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.21.1"
+version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dae8afb137bbe3ac6fd8b9e3010b3fa9e6a3a5dbc32438255402b9365bdf1c6"
+checksum = "439c1c0d3a13c31ea7456158b2e92790761a9bf613733770a15454a8850532f9"
 
 [[package]]
 name = "ic-platform-types"
@@ -1038,9 +1038,9 @@ dependencies = [
 
 [[package]]
 name = "ic-storage"
-version = "0.71.1"
+version = "0.73.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b26d7c81e6398b1bebb235ceed221e64dc151d0c51798ad282a0c9bdb707443"
+checksum = "b91508b8e1d7cf355fec15a3857596ba26176a977cc951386720c9c9b2304939"
 dependencies = [
  "ic-platform-runtime",
  "serde",
@@ -1146,9 +1146,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire"
-version = "0.19.0"
+version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f3272065b740a91cb245d819a75432953e26b6d4da56913d8cfe913b0fdb1f7"
+checksum = "2a99f609a6ea85187a0699e9a7ff2a7f9c32baecc5f688235b9affe70fd8d78a"
 dependencies = [
  "bytemuck",
  "postcard",
@@ -1158,9 +1158,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire-endpoint"
-version = "0.10.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6a7314b5cc00648bf662f8dbab3174a91103a7264de8a73cd86ca8691112f6f"
+checksum = "b1a796b08cbf4e68954f9f0d1ba6207be579a0108dacc8dd66a4b2bb97951b80"
 dependencies = [
  "ic-platform-runtime",
  "ic-wire",
@@ -1170,9 +1170,9 @@ dependencies = [
 
 [[package]]
 name = "ic-wire-endpoint-macros"
-version = "0.10.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32b395234968238a3cc1523c31fd3ef3de66d7b5099c0a08e6053c6e00deedbf"
+checksum = "6da2d7de0ce054c0b35a66193c1817a9b9d1cb772621e7beb26de326917727a6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1958,9 +1958,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-pki-types"
-version = "1.15.1"
+version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f4925028c7eb5d1fcdaf196971378ed9d2c1c4efc7dc5d011256f76c99c0a96"
+checksum = "102f35f7de7b06d8c61f1cff6592f5253e0dea431c74867aad5dfd70f44663fb"
 dependencies = [
  "web-time",
  "zeroize",
@@ -2555,9 +2555,9 @@ dependencies = [
 
 [[package]]
 name = "toko-tooling"
-version = "0.39.12"
+version = "0.39.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acb1fd3f459a63940669e925d427fd6821abf02a7525bf9ef38d323dc778a8d2"
+checksum = "6cc984822e80e52ff7203aadcaf293a13f9fcf33f84175871321cb3a7de703a9"
 
 [[package]]
 name = "toml"
@@ -2940,9 +2940,9 @@ dependencies = [
 
 [[package]]
 name = "webpki-root-certs"
-version = "1.0.11"
+version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e49d0e65abc00c142e8f9428da991da9f1a250c39be97459901eb12b9b49f62a"
+checksum = "293198dcebfb821155b5092ab94b5a82ff180eddd7241df3bd6e66a4ffd1a585"
 dependencies = [
  "rustls-pki-types",
 ]

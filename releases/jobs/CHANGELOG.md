@@ -7,6 +7,29 @@ and [coordinated history through 0.33.1](../history.md).
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.35.3] - Unreleased
+
+### 🧪 Testing
+
+- Adopt qualification-only Storage 0.73.4, Wire 0.21.2 and Endpoint 0.12.1.
+  Storage requires fresh whole backing; retained 0.71 images preserve blocked
+  deliveries/receipts and refuse without replacement. Add installed upgrade
+  rejection alongside native zero-write checks. Public Jobs APIs remain unchanged.
+- Keep canonical Wire bytes and budgets while accepting upstream redundant
+  varints within width bounds. Over-width inputs and invalid restored histories
+  remain rejected; retain original frames for retries and hashes.
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.39.15 and expose `make deps-update` for sequential product
+  and qualification Cargo updates, with optional package/version selection and
+  failure propagation. Existing lockfile changes remain on failure.
+- Adopt qualification Build 0.83.0 and its release metadata CLI, preserving the
+  lightweight artifact-capture binary and exact failure evidence.
+- Release supplier review retains product Runtime 0.21.1 and qualification
+  Thiserror 2.0.18; optional 0.21.2 / 2.0.21 updates await the next targeted
+  maintenance batch. Cargo Sort Derives 0.15.0 awaits the next Toko tool catalog.
+
 ## [0.35.2] - 2026-11-12
 
 ### 🛠️ Tooling

@@ -10,6 +10,28 @@ entry alone does not establish publication.
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.43.3] - Unreleased
+
+### 🧪 Testing
+
+- Adopt qualification Wire 0.21.2 / Endpoint 0.12.1 and the retained Runtime
+  0.21.2 cohort. Qualify redundant-varint acceptance, over-width refusal and
+  unchanged timer ownership through installed entrypoints; encoder bytes and
+  budgets remain unchanged. Combined Jobs qualification selects Storage 0.73.4
+  with fresh whole backing and refusal of retained 0.71 images.
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.39.15 and expose `make deps-update` for sequential product
+  and qualification Cargo updates, with optional package/version selection and
+  failure propagation. Existing lockfile changes remain on failure.
+- Migrate the qualification driver to Build 0.83.0's explicit cache maintenance
+  and per-label shared Cargo targets, retaining exact artifact leases and the
+  existing cache limits. Full manifest/lock inputs determine build freshness.
+- Release supplier review retains product Runtime 0.21.1 and qualification
+  Thiserror 2.0.18; optional 0.21.2 / 2.0.21 updates await the next targeted
+  maintenance batch. Cargo Sort Derives 0.15.0 awaits the next Toko tool catalog.
+
 ## [0.43.2] - 2026-11-12
 
 ### 🛠️ Tooling

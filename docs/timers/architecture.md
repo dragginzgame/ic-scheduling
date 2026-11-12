@@ -142,7 +142,7 @@ The driver selects PocketIC, Types, Testkit, Wire and the probe protocol only fo
 test binary. Its normal build coordinator uses Build and Host for artifacts and
 process custody, plus Clap/Serde/JSON for commands and receipts. It does not link
 the simulator or codecs. Build, Host and Testkit share the published family
-selected by the qualification lockfile. The harness uses Wire 0.19 and Testkit 0.101, with
+selected by the qualification lockfile. The harness uses Wire 0.21 and Testkit 0.101, with
 canonical Types 0.19 identities. The independent Platform PocketIC client is absent.
 Managed startup supplies Testkit's required server URL and retains server custody.
 Timers passes external client types across the test boundary, not owned

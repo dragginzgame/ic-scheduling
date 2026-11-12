@@ -159,14 +159,14 @@ The fault-injection consumers retain their bounded byte store. A separate native
 host fixture uses IC Storage allocation leases and cells: namespace grants admit the
 two namespaces without component ranges or numeric IDs; the host bootstraps once
 before component adoption/open. Stable cells persist the same bounded snapshot
-bytes. Same-format Storage 0.71 cold reopens retain allocation IDs, payloads and pending deadlines; reads
+bytes. Same-format Storage 0.73 cold reopens retain allocation IDs, payloads and pending deadlines; reads
 restore through the existing `Job::restore` boundary. Running/Uncertain intent
 remains blocked while an independent local-job cancellation persists across a
 subsequent cold reopen, without changing the blocked effect bytes.
 Foreign-owner bootstrap fails without changing backing bytes or granting opens.
 This is actual Storage collection persistence on native VectorMemory, not an IC
 upgrade, message rollback, final Canic/IcyDB composition or live timer evidence.
-Storage 0.71 rejects earlier whole-store backing without writes/growth. The
+Storage 0.73 rejects earlier whole-store backing, including 0.71, without writes/growth. The
 [consumer's installation boundary](../../qualification/ic-jobs-test-consumer/README.md)
 requires fresh backing or explicit owner-authorized retirement, preserving
 unresolved effects and evidence; it supplies no automatic reset or migration.
@@ -175,6 +175,12 @@ allocation API or fallback remains in Jobs' consumers. The current format and
 installation disposition are documented with the
 [canister consumer](../../qualification/ic-jobs-test-consumer/README.md); Jobs' library acquires no
 storage dependency or lifecycle hook.
+
+The frozen 0.71.2 backing retains one Running and one Uncertain delivery with
+exact receipts. Native recovery and creation must refuse it without writes or
+growth. The installed recovery subject seeds those bytes into a stopped fixture,
+then verifies post-upgrade rejection leaves the complete stable image unchanged.
+It does not run an old application or establish production backup compatibility.
 
 ## Durable canister consumer
 

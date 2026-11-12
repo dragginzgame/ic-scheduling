@@ -86,7 +86,7 @@ serializes validated jobs directly and checks collection metadata by borrowing
 entries before replacing stable bytes. Encoded capacity still takes precedence
 over collection errors. Storage 0.69's `StableCell::set` persists admitted bytes
 and directly returns the previous value; construction and load retain typed errors.
-The Cell API remains unchanged, but the Storage 0.71 whole-backing cut below
+The Cell API remains unchanged, but the Storage 0.73 whole-backing cut below
 requires fresh backing for older installations. As before,
 engine/codec failures trap before a committed reply or deadline is returned.
 IC execution supplies rollback. A native mutation panic may leave partial bytes
@@ -116,17 +116,23 @@ bounded oversized value; normal recovery refuses it without replacing bytes.
 Native tests also damage the queue identity and reject empty recovery without creating
 replacement storage. These checks do not establish IC rollback.
 
-**Storage 0.71 installation boundary:** Storage now owns fixed control tables
-and eight-page bucket backing. Whole-store images from 0.70 and earlier cannot
+**Storage 0.73 installation boundary:** Storage now uses its independently
+implemented named backing and STORCELL envelope. Whole-store images from 0.71 and earlier cannot
 be reopened or upgraded in place. Recovery and creation both reject them without
 writes or growth; there is no fallback, conversion or automatic reset. Provision
 fresh qualification backing, or explicitly retire the complete old installation
 only after preserving its binary, lock, backup, blocked attempts and receipts and
 obtaining its owner's disposition of uncertain effects. Clearing only a directory
 or Cell is insufficient. The queue's `JQW\x01` payload and Job::restore boundary
-are unchanged; decoding the frozen 0.70 payload still retains its Running and
-Uncertain deliveries and exact receipts. Same-0.71 backing reopens and upgrades
+are unchanged; decoding the frozen 0.70 and 0.71 payloads still retains their Running and
+Uncertain deliveries and exact receipts. Same-0.73 backing reopens and upgrades
 retain the normal blocked-effect rules.
+
+`src/queue/fixtures/stable-image-storage071.json` was captured through this
+consumer's Queue on Storage 0.71.2 and Runtime 0.21.2 before adoption, including
+a successful cold reopen. Its producer field records the source and lock digest.
+Native refusal checks and installed post-upgrade rejection use these same bytes;
+the latter seeds a stopped current fixture and does not execute an old module.
 
 **Historical Storage 0.64 installation boundary:** Storage replaces the separate Memory
 package and fixed-slot ledger with an owned allocation directory and checksummed
@@ -265,30 +271,31 @@ The consumer's own Wire dependency supplies its endpoint codecs. Metrics has no
 optional `wire` feature; its optional keyed heap `recording` feature stays disabled.
 Published `ic-jobs` remains independent of Metrics.
 Metrics now lives in the IC Observability repository with the same published
-crate identity and arithmetic. Runtime 0.20 and Wire 0.18 supply explicit endpoint
+crate identity and arithmetic. Runtime 0.21 and Wire 0.21 supply explicit endpoint
 codecs and bounded decoding for this consumer and its host harness.
 Its transport boundary is separate from Storage's installation cut above.
 Native DTOs select canonical Types 0.19. Native tests explicitly select
-`principal-self-authenticating`; the recovery harness shares canonical Types
-Principal with Testkit 0.96's async-only `ic_testkit::pocket_ic` client.
+`principal-self-authenticating`; the recovery harness uses Testkit 0.101's upstream
+`ic_testkit::pocket_ic::nonblocking` client with explicit native identity conversion.
 Managed `PocketIcStartupConfig::build_instance` supplies the required server URL
 and keeps server/instance custody together; clients do not implicitly provision it.
 The harness owns its Tokio runtime and awaits instance closure before the server
 stops; updates are not automatically retried or replayed.
 The application uses its owned Principal;
-PocketIC calls and application DTOs now share Types 0.19, with no native identity
-projections or aliases. Runtime 0.20 still requires Types 0.18; only the composing
-Wasm graph admits both Types versions. The canonical DTO owner is 0.19, which has
-no external conversion feature or alias. Wasm projects
-caller/destination bytes at Runtime boundaries while retaining the sole executor
-and guard. Native DTO normal/build graphs exclude registry Principal and hashing;
+PocketIC calls use upstream native identities, explicitly converted at the
+transport boundary. Runtime 0.21, Endpoint and application DTOs share canonical
+Types 0.19. The DTO owner has no external conversion feature or alias. The
+composed Wasm retains the sole executor and exact guard.
+Native DTO normal/build graphs exclude registry Principal and hashing;
 Wasm excludes registry conversion and SHA-2. Principal/Wire/stored bytes are unchanged.
 Upstream adoption preserves RPC frames and job semantics; the queue retirement
 above separately changes the codec. No timer, task or storage owner is replaced.
-Native Testkit uses Platform 0.28 for owned management DTOs and packet
-codecs. PocketIC retains its required transitive Candid dependencies at that
-boundary. The [workspace catalog](../../Cargo.toml),
-[lockfile](../../Cargo.lock) and [handoff](../../docs/status/current.md) own
+Native Testkit uses Platform 0.31 for cached-snapshot management codecs.
+PocketIC retains its upstream management DTOs and transitive Candid dependencies
+at that boundary. Wire accepts redundant varints within width bounds; over-width
+values still refuse, and canonical encoder bytes are unchanged.
+The [qualification catalog](../Cargo.toml),
+[lockfile](../Cargo.lock) and [handoff](../../docs/status/current.md) own
 selection and source-bound qualification.
 
 The live recovery scenarios retain their explicit gate. Native tests and

@@ -62,7 +62,7 @@ consumer="$fixture/jobs"
 mkdir -p "$consumer/.tools/rust/common/bin" "$consumer/src"
 printf '[package]\nname = "formatting-fixture"\nversion = "0.0.0"\nedition = "2024"\n' > "$consumer/Cargo.toml"
 printf 'pub fn fixture() {}\n' > "$consumer/src/lib.rs"
-bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$consumer" make/consumer.mk
+bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$consumer" make/consumer.mk make/cargo-dependencies.mk
 cp "$root/Makefile" "$consumer/"
 cp -R "$root/ci" "$consumer/"
 cp "$root/scripts/ci/check-format-tools.sh" "$consumer/scripts/ci/"

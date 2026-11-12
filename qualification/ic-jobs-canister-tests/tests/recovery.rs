@@ -757,6 +757,40 @@ async fn lost_result_keeps_intent_blocked_and_receipt_resolution_does_not_redeli
 
 #[tokio::test]
 #[ignore = "explicit PocketIC qualification; run make test-canister"]
+async fn retired_storage_backing_refuses_upgrade_without_changing_stable_bytes() {
+    let image: serde_json::Value = serde_json::from_str(include_str!(
+        "../../ic-jobs-test-consumer/src/queue/fixtures/stable-image-storage071.json"
+    ))
+    .unwrap();
+    assert_eq!(image["pages"], 23);
+    let mut bytes = vec![0; 23 * 65_536];
+    let runs: Vec<(usize, String)> = serde_json::from_value(image["runs"].clone()).unwrap();
+    for (offset, run) in runs {
+        for (index, pair) in run.as_bytes().as_chunks::<2>().0.iter().enumerate() {
+            bytes[offset + index] =
+                u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap();
+        }
+    }
+    let fixture = Fixture::new().await;
+    let pic = fixture.pic.instance();
+    let canister = native_principal(fixture.sender);
+    pic.stop_canister(canister, None).await.unwrap();
+    // Seed the exact prior-format backing in a stopped qualification canister.
+    // This tests new post-upgrade refusal, not an old application's execution.
+    pic.set_stable_memory(
+        canister,
+        bytes.clone(),
+        ic_testkit::pocket_ic::common::rest::BlobCompression::NoCompression,
+    )
+    .await;
+    assert_eq!(pic.get_stable_memory(canister).await, bytes);
+    assert_canister_trap(fixture.upgrade(fixture.sender).await.unwrap_err());
+    assert_eq!(pic.get_stable_memory(canister).await, bytes);
+    fixture.close().await;
+}
+
+#[tokio::test]
+#[ignore = "explicit PocketIC qualification; run make test-canister"]
 async fn invalid_restore_refuses_upgrade_and_preserves_the_controller_snapshot() {
     let fixture = Fixture::new().await;
     let id: u64 = fixture

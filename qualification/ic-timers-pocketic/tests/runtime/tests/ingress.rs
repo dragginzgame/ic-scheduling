@@ -220,15 +220,37 @@ async fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
     // Register first so reaching the endpoint body would reconcile a real
     // deadline instead of failing at an unrelated missing-registration trap.
     assert!(update_bool(pic, canister_id, Method::Start).await);
-    let scheduled = snapshot(pic, canister_id).await;
-    // Nonminimal varints must fail decoding. Observe the typed native error and
-    // IC rejection/state, without coupling this boundary to rendered trap text.
-    let mut nonminimal =
-        encode_request(Method::ScheduleAt as u64, &(0_u64,), REQUEST_LIMITS).unwrap();
-    assert_eq!(nonminimal.pop(), Some(0));
-    nonminimal.extend_from_slice(&[0x80, 0]);
+    // Wire's upstream Postcard decoder accepts redundant groups within width
+    // bounds. Qualify this acceptance through the real endpoint as well.
+    let deadline = now_ns(pic).await + 60_000_000_000;
+    let mut redundant =
+        encode_request(Method::ScheduleAt as u64, &(deadline,), REQUEST_LIMITS).unwrap();
+    *redundant.last_mut().unwrap() |= 0x80;
+    redundant.push(0);
     assert_eq!(
-        decode_request::<(u64,)>(Method::ScheduleAt as u64, &nonminimal, REQUEST_LIMITS),
+        decode_request::<(u64,)>(Method::ScheduleAt as u64, &redundant, REQUEST_LIMITS),
+        Ok((deadline,))
+    );
+    let response = pic
+        .update_call(
+            canister_id,
+            Principal::anonymous(),
+            Method::ScheduleAt.name(),
+            redundant,
+        )
+        .await
+        .unwrap();
+    decode_response::<()>(Method::ScheduleAt as u64, &response, RESPONSE_LIMITS).unwrap();
+    let scheduled = snapshot(pic, canister_id).await;
+    assert_eq!(scheduled.next_deadline_ns, Some(deadline));
+    // Over-width varints still refuse without reaching the endpoint body.
+    let mut over_width =
+        encode_request(Method::ScheduleAt as u64, &(0_u64,), REQUEST_LIMITS).unwrap();
+    assert_eq!(over_width.pop(), Some(0));
+    over_width.extend_from_slice(&[0x80; 10]);
+    over_width.push(0);
+    assert_eq!(
+        decode_request::<(u64,)>(Method::ScheduleAt as u64, &over_width, REQUEST_LIMITS),
         Err(ic_wire::Error::Malformed)
     );
     let rejection = pic
@@ -236,7 +258,7 @@ async fn typed_entrypoints_reject_invalid_wire_before_mutating_timer_state() {
             canister_id,
             Principal::anonymous(),
             Method::ScheduleAt.name(),
-            nonminimal,
+            over_width,
         )
         .await
         .unwrap_err();

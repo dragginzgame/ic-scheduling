@@ -4,11 +4,11 @@ set -euo pipefail
 # only their affected caller phases, without replaying installer/hosted suites.
 phases=("$@")
 if [[ $# == 0 ]]; then
-    phases=(workspace-inheritance candid-boundary fixture-scratch batch-commands tooling-admission cli-admission server-commands workflow-selection input-admission artifact-capture ci-admission rust-policy group-recipes)
+    phases=(workspace-inheritance candid-boundary fixture-scratch batch-commands deps-update tooling-admission cli-admission server-commands workflow-selection input-admission artifact-capture ci-admission rust-policy group-recipes)
 fi
 for phase in "${phases[@]}"; do
     case "$phase" in
-        workspace-inheritance|candid-boundary|fixture-scratch|batch-commands|tooling-admission|cli-admission|server-commands|workflow-selection|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
+        workspace-inheritance|candid-boundary|fixture-scratch|batch-commands|deps-update|tooling-admission|cli-admission|server-commands|workflow-selection|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
         *) echo "unknown consumer tooling phase: $phase" >&2; exit 2 ;;
     esac
 done
@@ -33,7 +33,7 @@ suite="$fixture"
 prepare_phase() {
     fixture="$suite/$1"
     mkdir -p "$fixture/scripts/dev" "$fixture/.tools/rust/common/bin"
-    bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" make/consumer.mk
+    bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" make/consumer.mk make/cargo-dependencies.mk
     cp "$root/Makefile" "$fixture/"
     cp -R "$root/ci" "$fixture/"
     cp "$root/scripts/dev/"{install-rust-tools,tool-store,cargo-tool-build,testkit-tool}.sh "$fixture/scripts/dev/"
@@ -94,7 +94,7 @@ phase_workspace_inheritance() (
         case "$invalid" in
             product-version) perl -pi -e 's/^version = "[^"]+"/version = "0.0.0"/' "$fixture/crates/ic-timers/Cargo.toml" ;;
             missing-private-version) perl -ni -e 'print unless /^version = /' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
-            private-dependency) perl -pi -e 's/^toko-tooling.workspace = true/toko-tooling = "=0.39.12"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
+            private-dependency) perl -pi -e 's/^toko-tooling.workspace = true/toko-tooling = "=0.39.15"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
             target-dependency) printf '\n%s\n%s\n' "[target.'cfg(unix)'.dev-dependencies]" 'serde = "1.0"' >> "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
             published-qualification) perl -pi -e 's/^publish = false/publish = ["crates-io"]/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
         esac
@@ -107,6 +107,34 @@ phase_workspace_inheritance() (
         esac
     done
     echo 'Actual shared inheritance caller admits independent private versions and refuses stale products, missing versions, independent/target dependencies and publishable qualification'
+)
+
+phase_deps_update() (
+    local fixture status
+    trap - EXIT
+    prepare_phase deps-update
+    cat > "$fixture/.tools/rust/common/bin/cargo" <<'CARGO'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\0' "$PWD" "$@" >> "$JOBS_CONSUMER_TOOLING_EVENTS"
+exit "${JOBS_DEPENDENCY_UPDATE_FAILURE:-0}"
+CARGO
+    chmod +x "$fixture/.tools/rust/common/bin/cargo"
+    PATH="$fixture/.tools/rust/common/bin:$PATH" make --no-print-directory -C "$fixture" deps-update \
+        DEPENDENCY_PACKAGE=toko-tooling DEPENDENCY_PRECISE=0.39.15 > "$fixture/update.log" 2>&1
+    printf '%s\0' "$fixture" update -v --manifest-path "$fixture/Cargo.toml" \
+        --package toko-tooling --precise 0.39.15 \
+        "$fixture/qualification" update -v --manifest-path "$fixture/qualification/Cargo.toml" \
+        --package toko-tooling --precise 0.39.15 > "$fixture/expected"
+    cmp "$fixture/events" "$fixture/expected"
+    : > "$fixture/events"
+    status=0
+    PATH="$fixture/.tools/rust/common/bin:$PATH" JOBS_DEPENDENCY_UPDATE_FAILURE=37 \
+        make --no-print-directory -C "$fixture" deps-update > "$fixture/failure.log" 2>&1 || status=$?
+    [[ "$status" == 2 ]]
+    printf '%s\0' "$fixture" update -v --manifest-path "$fixture/Cargo.toml" > "$fixture/expected"
+    cmp "$fixture/events" "$fixture/expected"
+    echo 'Actual deps-update caller updates root then qualification with explicit selectors and stops after Cargo failure (substitute Cargo; real locks unchanged)'
 )
 
 phase_tooling_admission() (
@@ -168,7 +196,7 @@ for invalid in missing-lock version-drift checksum-drift missing-member independ
         missing-member)
             perl -0pi -e 's/^toko-tooling\.workspace = true\n//m' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
         independent-member)
-            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.39.12"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
+            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.39.15"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
     esac
     for target in ci release-patch release-preflight publish publish-check clean-empty-source-dirs; do
         status=0

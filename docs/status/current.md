@@ -52,16 +52,39 @@ Earlier 0.100.2 failures remain in
 
 ## Tooling, cleanup and workspace ownership
 
-Both catalogs/locks select exact crates.io Toko Tooling 0.39.12, archive SHA-256
-`acb1fd3f459a63940669e925d427fd6821abf02a7525bf9ef38d323dc778a8d2`.
-Its 59-entrypoint selection admits 106 managed files. Shared references remain
+Both catalogs/locks locally select exact crates.io Toko Tooling 0.39.15, archive SHA-256
+`6cc984822e80e52ff7203aadcaf293a13f9fcf33f84175871321cb3a7de703a9`.
+Its 60-entrypoint selection admits 108 managed files. Shared references remain
 at immutable upstream revisions. Everything under `docs/` is native Scheduling
 documentation; use [its index](../README.md).
 
-Both locked fetches, standard installation, snapshot/pin/group admission and
-dependency/source boundaries pass. Direct product/qualification suppliers and
-Cargo tools were compared with stable, non-yanked registry releases before
-capture. Dispositions appear below and in both released group ledgers.
+The tooling refresh is local and uncommitted; published groups retain 0.39.12.
+The installer preserved all previous files and added the standard dependency
+update Make/script pair. `make deps-update` runs Cargo sequentially in the product
+and qualification workspaces, preserving completed changes on failure. Explicit
+package/version selectors are forwarded; no broad dependency update was run here.
+The updater caller, tooling/member admission and CI drift fixtures use substituted
+effects; they do not qualify changed supplier runtime behavior.
+Snapshot/pin/group checks, release-command callers, formatting evidence and local
+documentation links pass. Pending compatible notes are Jobs 0.35.3 and Timers
+0.43.3; product versions remain unchanged and nothing was committed or delivered.
+
+Local tooling evidence: `target/evidence/tooling-adoption-20261112.FD7Fjq/`.
+
+Qualification now selects published Build 0.83.0, Storage 0.73.4, Wire 0.21.2 and
+Endpoint/macros 0.12.1, preserving the prior Runtime/macros/guard 0.21.2 refresh
+and external lock edits. Its Build metadata CLI is installed and admitted; real
+Jobs/Timers metadata preparation and rollback fixtures pass with substituted
+product gates/uploads. No release effects were performed.
+Native/Wasm Clippy, dependency policies and 82 native tests pass. Eleven installed
+Jobs tests pass, including old-image upgrade rejection with identical stable bytes;
+four focused Timers subjects pass for Wire, Runtime composition, cached restoration
+and competing-owner rejection. Linux/Rust 1.99.1/PocketIC 16.1.0 only; no fresh
+full release gate, cohort comparison, macOS or Canic execution is claimed.
+Evidence: `target/evidence/qualification-suppliers-20261112.5Wta8m/`;
+Jobs capture: `qualification/target/tmp/jobs-recovery.T0IYu1/`; focused runtime
+receipt: `target/tmp/timer-qualification-3841871-0/runtime.json`.
+Product source/versions and its Runtime 0.21.1 graph are unchanged by this adoption.
 
 Six private qualification packages remain outside the Jobs/Timers product groups.
 Their independent catalog/lock uses standard `qualification_workspace` preparation,
@@ -70,35 +93,34 @@ See [release operations](../releases/README.md) and [validation groups](../relea
 
 ## Supplier and persistence boundaries
 
-Both workspaces now select Metrics 0.29.11 and Runtime/exact guard 0.21.1;
-qualification also selects matching macros and the required Types 0.19.4.
+The published workspaces select Metrics 0.29.11 and Runtime/exact guard 0.21.1;
+published qualification also selects matching macros and Types 0.19.4.
 Runtime owns the single transitive registry ic0 1.2.0 backend. Native/Wasm graphs
 and rejection fixtures pass, including direct SDK aliases in both workspaces.
 Common direct-dependency bans, the protocol/coordinator exclusions and Timers'
-exact runtime guard remain enforced. Qualification selects Testkit 0.101.0,
+exact runtime guard remain enforced. Published qualification selects Testkit 0.101.0,
 required Host 0.76.4 patches, native Platform 0.31.2 and upstream PocketIC through Testkit's
 native re-export. Application DTOs retain canonical Types; native identity
 conversion is explicit. Rejections remain typed, transport panics propagate and
 awaited deletion is upstream best effort. No failed update is replayed.
-Wire 0.19 / Endpoint 0.10 and Storage 0.71.1 are retained. The consumer-owned
+Its Wire 0.19 / Endpoint 0.10 and Storage 0.71.1 are retained. The consumer-owned
 Wire harness uses raw transport, without enabling Testkit's Wire 0.21 adapter.
 
-The 2026-11-12 registry review defers optional Build 0.83.0, Runtime 0.21.2,
-Storage 0.73.4 and Wire 0.21.2 / Endpoint 0.12.1 to the next Scheduling supplier
-maintenance batch; this release qualifies the existing product graph and required
-Testkit correction. Qualification's Thiserror 2.0.18 also remains until that batch;
-the product graph selects current 2.0.21. Cargo Sort Derives 0.15.0 awaits the next
-Toko tool-catalog refresh; the reviewed managed pin remains 0.14.1. Other reviewed
-direct supplier locks match observed stable releases. Revisit deferrals at that
-maintenance boundary or the next release review, whichever comes first.
+The 2026-11-12 registry review and requested qualification adoption complete the
+earlier Build/Storage/Wire deferrals. Optional product Runtime 0.21.2 and
+qualification Thiserror 2.0.21 remain deferred to the next product/qualification
+supplier maintenance batch respectively; qualification retains Thiserror 2.0.18.
+Cargo Sort Derives 0.15.0 awaits the next Toko tool-catalog refresh; the reviewed
+managed pin remains 0.14.1. Other reviewed direct supplier locks match observed
+stable releases. Revisit deferrals at those boundaries or the next release review.
 
 Jobs stays Serde-only, with consumer-owned storage and metadata. Timers retains
 its private FFI provider, singleton guard and runtime/cohort gates. Native tests
 do not establish installed IC recovery. Do not reintroduce ic-memory.
 
-Storage 0.71 requires fresh backing or explicitly authorized whole-installation
+Current qualification Storage 0.73 requires fresh backing or explicitly authorized whole-installation
 retirement after preserving binary/lock/backup, blocked attempts and receipts.
-Frozen 0.70 images retain Running/Uncertain deliveries and receipts; physical
+Frozen 0.70 and 0.71 images retain Running/Uncertain deliveries and receipts; physical
 creation/recovery refuse with zero writes/growth. Payload restore remains blocked
 through Job::restore. No converter, automatic reset or effect disposition exists.
 See the [fixture guide](../../crates/ic-jobs/tests/fixtures/README.md) and

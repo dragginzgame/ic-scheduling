@@ -12,6 +12,7 @@ export PATH := $(CURDIR)/.tools/ic/bin:$(PATH)
 FORMAT_RUST_ARGS := --extra-workspace qualification
 TOKO_TOOLING_RELEASE := 1
 include make/consumer.mk
+include make/cargo-dependencies.mk
 
 toko-tooling-check: check-qualification-tooling
 .PHONY: check-qualification-tooling cloc-qualification
@@ -81,6 +82,7 @@ RELEASE_METADATA_LOCKFILE ?= $(CURDIR)/qualification/Cargo.lock
 RELEASE_METADATA_TOOL = bash scripts/dev/install-rust-tools.sh --package ic-build --lockfile "$(RELEASE_METADATA_LOCKFILE)" --bin ic-build-release-metadata --profile debug --features cli
 VALIDATION_INPUTS := --input Cargo.toml --input Cargo.lock --input qualification/Cargo.toml --input qualification/Cargo.lock --input ci/workspace-manifests.txt --input scripts/ci/check-qualification-tooling.sh --input rust-toolchain.toml \
 	--input .toko-tooling.snapshot --input Makefile --input scripts/dev/testkit-tool.sh --input scripts/dev/minimum-rust.sh --input ci/tool-versions.env \
+	--input make/cargo-dependencies.mk --input scripts/dev/cargo-dependencies.pl \
 	--input LICENSE.md --input CONTRIBUTING.md --input README.md --input crates/ic-jobs/README.md --input crates/ic-timers/README.md \
 	--input ci/ic-tools.tsv --input ci/release-delivery.txt --input ci/dependency-pinning-exceptions.json --input ci/cargo-dependency-boundaries.json --input ci/candid-boundary.json --input ci/cbor-dependencies.json --input ci/cargo-release-groups.json \
 	--input .github/workflows/ci.yml --input .github/workflows/recovery.yml --input ci/docs-only-paths.txt --input scripts/ci/classify-ci-change.pl \
@@ -108,6 +110,7 @@ help:
 	@echo "Consumer: check-consumer (native, Wasm, harness compilation); build-consumer (Wasm artifact)"
 	@echo "Explicit IC qualification: install-testkit-tools; install-consumer-server; test-canister[-optimized]"
 	@echo "Metadata: toko-tooling-check, check-doc-links, check-pins, check-candid-boundary, check-dependency-boundaries, check-dependency-graphs, check-release-commands"
+	@echo "Dependency maintenance: deps-update (root, then qualification; optional DEPENDENCY_PACKAGE and DEPENDENCY_PRECISE)"
 	@echo "Read-only readiness: release-status (STATUS_OFFLINE=1, STATUS_JSON=1; optional RELEASE_GROUP)"
 	@echo "Tooling fixtures: version, test-release-tooling, test-formatting-evidence, test-consumer-tooling"
 	@echo "Release fixtures: test-release-tooling-{retention,delivery,recovery,metadata,publication,frozen}; explicit live qualification: test-release-tooling-frozen-installed"
@@ -272,7 +275,7 @@ check-dependency-graphs:
 		--require ic-platform=1 --forbid-feature ic-platform/cdk --require ic-wire=1
 
 check-release-commands:
-	RELEASE_BATCH_ACTIVE=1 RELEASE_GROUP=jobs bash scripts/ci/check-release-commands.sh . make/consumer.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/run-formatting.sh scripts/ci/check-release-delivery.sh ci/release-delivery.txt scripts/ci/check-qualification-tooling.sh Cargo.toml Cargo.lock qualification/Cargo.lock $(shell rg --files crates qualification -g '*.rs' -g Cargo.toml)
+	RELEASE_BATCH_ACTIVE=1 RELEASE_GROUP=jobs bash scripts/ci/check-release-commands.sh . make/consumer.mk make/cargo-dependencies.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/run-formatting.sh scripts/ci/check-release-delivery.sh ci/release-delivery.txt scripts/ci/check-qualification-tooling.sh Cargo.toml Cargo.lock qualification/Cargo.lock $(shell rg --files crates qualification -g '*.rs' -g Cargo.toml)
 
 test-release-tooling: format-tools-check
 	+@editor="$$( $(RELEASE_METADATA_TOOL) --check )" && \

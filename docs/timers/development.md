@@ -59,7 +59,8 @@ instead of gating Platform's releases on a downstream Timers dependency
 adoption and delivery are tracked separately in
 [#92](https://github.com/dragginzgame/ic-scheduling/issues/92). The supported
 cohort is Runtime 0.21 with the matching exact guard; the current lock selects
-0.21.1. Runtime owns its transitive registry IC0 backend; Scheduling packages
+0.21.2 for qualification; the independent product lock retains 0.21.1. Runtime
+owns its transitive registry IC0 backend; Scheduling packages
 cannot declare direct SDK dependencies. The mandatory installed subjects and
 policy cohorts qualify this selected source and lock; earlier Runtime 0.20
 evidence does not substitute for that gate.
@@ -78,6 +79,12 @@ The composition subject is mandatory in the existing Watchdog qualification
 roster. Its private controls select the call transport and repeat initialization;
 they add no product API, timer provider, persisted state or Candid facade.
 Testkit continues to own simulator/server lifecycle.
+
+The qualification workspace selects Build 0.83, Storage 0.73 and Wire 0.21 /
+Endpoint 0.12. Probe recipes use a distinct shared Cargo target per label and
+explicit exact-cache pruning with the existing seven-day/512-MiB limits.
+Build fingerprints include complete workspace manifest/lock bytes; old cache
+entries cannot establish freshness for a changed qualification graph.
 
 The cached-baseline subject stops before capture/load and restarts after complete
 restoration, reusing one instance without timer resets. An unchanged restore is

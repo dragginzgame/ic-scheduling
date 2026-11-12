@@ -164,7 +164,8 @@ fn frozen_backing(frozen: &FrozenMemory, maximum_pages: u64) -> VectorMemory {
 }
 
 fn assert_frozen_memory_refused(frozen: &FrozenMemory) {
-    let backing = frozen_backing(frozen, 4);
+    // Storage 0.71's retained control tables and bucket occupy 23 pages.
+    let backing = frozen_backing(frozen, 23);
     let memory = MeteredMemory::new(backing);
     let before = memory.backing().borrow().clone();
     for initial in [None, Some(config())] {
@@ -283,22 +284,28 @@ fn retired_storage_cells_remain_refused_without_releasing_effects_or_writing() {
 }
 
 #[test]
-fn bucket_backing_cut_refuses_070_images_and_preserves_blocked_effects() {
-    let frozen: FrozenMemory =
-        serde_json::from_str(include_str!("../fixtures/stable-image-storage070.json")).unwrap();
-    assert!(
-        frozen
-            .producer
-            .contains("ic-storage 0.70.0 / Runtime 0.20.3")
-    );
-    let payload = unhex(frozen.queue_hex.as_ref().unwrap());
-    let snapshot = decode(&payload).unwrap();
-    assert_eq!(
-        serde_json::to_value(&snapshot).unwrap(),
-        serde_json::from_str::<serde_json::Value>(&frozen.snapshot).unwrap()
-    );
-    assert_blocked_receipts(&snapshot, 100);
-    assert_frozen_memory_refused(&frozen);
+fn retired_backing_formats_preserve_blocked_effects_without_writes() {
+    for (bytes, producer) in [
+        (
+            include_str!("../fixtures/stable-image-storage070.json"),
+            "ic-storage 0.70.0 / Runtime 0.20.3",
+        ),
+        (
+            include_str!("../fixtures/stable-image-storage071.json"),
+            "ic-storage 0.71.2 / Runtime 0.21.2",
+        ),
+    ] {
+        let frozen: FrozenMemory = serde_json::from_str(bytes).unwrap();
+        assert!(frozen.producer.contains(producer));
+        let payload = unhex(frozen.queue_hex.as_ref().unwrap());
+        let snapshot = decode(&payload).unwrap();
+        assert_eq!(
+            serde_json::to_value(&snapshot).unwrap(),
+            serde_json::from_str::<serde_json::Value>(&frozen.snapshot).unwrap()
+        );
+        assert_blocked_receipts(&snapshot, 100);
+        assert_frozen_memory_refused(&frozen);
+    }
 }
 
 #[test]

@@ -115,8 +115,8 @@ consumer builds select canonical Types directly for Serde DTOs
 and Wire contracts. Jobs, Storage and Timers remain Wasm/test dependencies; JSON
 is limited to native fixtures and tooling. Parser, Agent,
 certification and crypto features are not selected. Runtime 0.21 owns the
-deployed executor, IC0 adapters and generator shared with Timers, Storage 0.71
-and Wire Endpoint 0.10. The qualification Wasm
+deployed executor, IC0 adapters and generator shared with Timers, Storage 0.73
+and Wire Endpoint 0.12 / Wire 0.21. The qualification Wasm
 selects neither Candid nor full `ic-cdk`.
 Owned native DTO principals exclude external Principal and SHA-2 dependencies.
 The Wasm application selects neither registry Principal conversion nor SHA-2 hashing.
@@ -151,7 +151,8 @@ This is an unpublished fixture protocol cut. Quiesce management/delivery activit
 dispose of outstanding old management requests and rebuild the fixture and native
 harness together. Delivery identities remain unchanged. The queue now stores
 bounded Wire under `JQW\x01`; retained JSON refuses without conversion or reset.
-Storage 0.71 requires fresh whole-store backing. It rejects earlier physical
+Storage 0.73 requires fresh whole-store backing, including replacement of 0.71
+installations. It rejects earlier physical
 images without writes or growth; no automatic migration or reset is added.
 Use fresh qualification state after explicitly retiring the old installation;
 resolve its Running/Uncertain effects with the old binary and exact evidence first.
@@ -160,6 +161,9 @@ The [consumer guide](qualification/ic-jobs-test-consumer/README.md) describes th
 uses its published Platform facade for external simulator interfaces. The
 harness keeps the upstream Principal for PocketIC calls and converts to its
 owned Principal when constructing application DTOs. No decoder or transport is replaced.
+Wire 0.21 uses upstream Postcard acceptance: redundant varints within width bounds
+decode successfully, while over-width values still refuse. Encoder bytes, method
+identities and budgets are unchanged; retain original frames for exact retries or hashes.
 
 For the production library, locked normal/build graphs on native Linux and Wasm,
 with all features selected, contain Serde and its macro dependencies and exclude
@@ -291,11 +295,16 @@ only the root [Toko baseline](TOKO-TOOLING.md), required executable tooling and
 runtime inputs are installed here. The snapshot receipt identifies those managed
 files. See the [online-reference migration](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/migrations.md#online-reference-documentation-in-0395).
 
-Both workspace catalogs pin `toko-tooling = "=0.39.12"`; every real
+Both workspace catalogs pin `toko-tooling = "=0.39.15"`; every real
 member inherits it as a dev-dependency with an intentional cargo-machete exemption.
 Cargo.lock selects its registry checksum, and `.toko-tooling.snapshot` records
 the authenticated installed files. After editing the root pin, run
 `cargo update -p toko-tooling` in both workspaces, then `make toko-tooling-update`.
+For deliberate dependency maintenance, `make deps-update` runs `cargo update -v`
+first in the product workspace, then in `qualification/`, stopping on failure.
+Use `DEPENDENCY_PACKAGE=name DEPENDENCY_PRECISE=version` to narrow both updates.
+Completed lockfile changes remain if a later update fails; review both locks.
+This command does not change manifests or install tooling after a pin change.
 `make toko-tooling-install` installs the existing Cargo selection; neither
 installation command edits Cargo.lock. CI, release and publication entrypoints
 require `make toko-tooling-check` before effects. See the

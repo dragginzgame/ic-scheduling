@@ -1,6 +1,8 @@
 //! Consumer recipes; IC Build owns Cargo execution and exact Wasm artifacts.
 
-use ic_build::artifacts::{CacheRetentionLimits, WasmBuildEvidence, WasmBuildSpec};
+use ic_build::artifacts::{
+    CacheRetentionLimits, WasmBuildEvidence, WasmBuildSpec, prune_wasm_build_cache,
+};
 use ic_build::cargo::{
     environment::ConfigurationLimits,
     selection::{CargoFeatureSelection, CargoSelection},
@@ -332,15 +334,18 @@ pub fn run(qualification: &Qualification) -> Result<(), Box<dyn std::error::Erro
             std::env::vars_os(),
             CONFIGURATION_LIMITS,
         )
-        .with_isolated_builds()
-        .with_prune_policy(
-            CacheRetentionLimits::new()
-                .with_max_age(Duration::from_secs(7 * 24 * 60 * 60))
-                .with_max_size_bytes(512 * 1024 * 1024),
-        )
+        .with_shared_incremental_target(root.join("target/timers").join(format!("cargo-{label}")))
         .with_cargo_program("cargo")
         .with_rustc_identity_program("rustc")
         .with_cargo_selection(selection);
+        // Build 0.83 leaves cache maintenance with the caller. Preserve the
+        // existing exact-cache limits at this qualification-build boundary.
+        prune_wasm_build_cache(
+            &target,
+            CacheRetentionLimits::new()
+                .with_max_age(Duration::from_secs(7 * 24 * 60 * 60))
+                .with_max_size_bytes(512 * 1024 * 1024),
+        )?;
         let built =
             WasmBuildEvidence::acquire(spec, ic_host_process::child::OwnedChild::spawn_direct)?;
         let [artifact] = built.record().artifacts() else {

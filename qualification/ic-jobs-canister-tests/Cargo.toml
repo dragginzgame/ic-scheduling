@@ -45,6 +45,7 @@ serde = { workspace = true, optional = true }
 ic-host-fs = { workspace = true, features = ["test-support"] }
 ic-host-process = { workspace = true, features = ["test-support"] }
 ic-platform-types = { workspace = true, features = ["principal-self-authenticating"] }
+serde_json.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 toko-tooling.workspace = true
 
