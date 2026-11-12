@@ -18,7 +18,7 @@ ic-jobs = { path = "crates/ic-jobs", version = "0.35.3" }
 
 # Timers
 # Changelog : releases/timers/CHANGELOG.md
-ic-timers = { path = "crates/ic-timers", version = "0.43.3" }
+ic-timers = { path = "crates/ic-timers", version = "0.43.4" }
 
 # Production dependencies
 # Metrics and Serde also serve qualification consumers.
