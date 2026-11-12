@@ -26,13 +26,14 @@ Timers. It is a qualification fixture with deliberate fault endpoints, and must
 not be deployed as a production service. The Jobs library acquires no storage,
 authentication, payload, lifecycle or direct CDK timer ownership.
 
-The fixture and native callers use Wire 0.7's one-pass decoder. Decode success
+The fixture and native callers use Wire 0.21's one-pass decoder. Decode success
 does not prove that re-encoding reproduces the original frame: Serde visitors
 can normalize inputs. Current RPC DTOs use ordered records, enums, sequences,
 strings and Principals; receipt reconciliation compares every typed delivery
 field, rather than re-encoded bytes or a hash. Request/reply budgets remain
-explicit and apply independently to encoding and decoding. Nonminimal integers
-are refused as malformed. Rebuild the fixture and harness together; retained management/delivery layouts
+explicit and apply independently to encoding and decoding. Redundant varints
+within width bounds are accepted; over-width integers are refused as malformed.
+Rebuild the fixture and harness together; retained management/delivery layouts
 are unchanged, and the log-browsing method is retired. The queue format cut
 below is separate.
 Future exact-frame retries or signatures must retain the original immutable
@@ -40,8 +41,8 @@ frame bytes.
 
 Native codec tests retain Jobs' envelope shapes, method selection, resource
 limits and refusal/uncertainty behavior. Exhaustive prefix truncation and generic
-integer canonicality proofs stay with the selected Wire 0.7.23
-[native tests](https://github.com/dragginzgame/ic-wire/blob/e90aed4f7dc0cd7ee31a9bcfb211044220ab0cec/crates/ic-wire/tests/native/mod.rs).
+integer-decoder coverage stay with the selected Wire 0.21.4
+[native tests](https://github.com/dragginzgame/ic-wire/blob/a7e9f63888629655f3722b43d2cfb225fa7b87dc/crates/ic-wire/src/native/tests/mod.rs).
 Jobs keeps representative truncated payloads and malformed replies at its own
 request/reply boundaries, alongside the separately selected live endpoint tests.
 
@@ -228,14 +229,13 @@ frames, 16 KiB allocation accounting, 128 nodes and depth 16. Responses admit
 Wire traversal allowances, not Candid decoding quotas or measured peak memory.
 An endpoint guard checks the raw request length before Platform copies it.
 The shared DTO declaration order defines the Postcard layout. Identity, direction,
-canonicality and complete consumption are checked before result admission.
+integer width and complete consumption are checked before result admission.
 Transport, decode and remote application errors remain unreadable evidence;
 they do not become an authoritative absent receipt or a safe retry.
-The endpoints delegate codecs to `ic_wire::endpoint` through Platform's explicit
-hooks. The Wasm-only Wire `endpoint` feature supplies these helpers; its generated
-attributes and default IDs/budgets are not selected. Local length guards preserve
-the existing oversized-RPC rejection codes before copying; init still traps on
-invalid arguments. Codec failures and response encoding failures trap, with a
+The endpoints use `ic-wire-endpoint` attributes with explicit method identities
+and request/response budgets. Endpoint checks raw request length before copying;
+init uses its own length guard and traps on invalid arguments. Codec failures
+and response encoding failures trap, with a
 response failure rolling back the synchronous receipt write. No Candid service
 is generated. Manager-only diagnostic endpoints use the same authorized queue
 accessor as other management calls, without loading durable state for heap reads.
@@ -263,7 +263,7 @@ system helpers and protected spawning. Timers shares that Runtime owner and its
 exact singleton guard; full upstream `ic-cdk` and a second executor are excluded.
 Canonical Types owns application identities. Native DTO normal/build graphs stay
 independent of the runtime; external client conversions remain at their boundary.
-The root dependency catalog owns the selected Runtime, Types and Metrics versions.
+Each owning workspace's catalog and lock select Runtime, Types and Metrics.
 The consumer selects Metrics arithmetic and reset bookkeeping only on Wasm and in
 tests; RPCs project consumer-owned numeric DTOs. The Wasm timer subtree contains
 neither Wire nor Candid. No stable-structures substrate remains in the workspace.

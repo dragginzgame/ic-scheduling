@@ -10,6 +10,19 @@ entry alone does not establish publication.
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.43.4] - Unreleased
+
+### 📦 Dependencies
+
+- Select Platform Runtime and its exact guard 0.21.3. Qualification uses Types
+  0.19.5, Wire 0.21.4 and Endpoint 0.12.2; timer ownership, encoded frames and
+  callback/recovery behavior retain their existing contracts.
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.39.17 and its directory-module layout throughout product
+  and qualification sources, preserving Rust module paths and installed callers.
+
 ## [0.43.3] - 2026-11-12
 
 ### 🧪 Testing

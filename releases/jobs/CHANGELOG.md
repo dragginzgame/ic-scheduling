@@ -7,6 +7,19 @@ and [coordinated history through 0.33.1](../history.md).
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.35.4] - Unreleased
+
+### 🧪 Testing
+
+- Align consumer qualification with Platform Runtime 0.21.3, Types 0.19.5,
+  Wire 0.21.4 and Endpoint 0.12.2, retaining the Serde-only Jobs library and
+  existing storage refusal and recovery boundaries.
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.39.17 and its directory-module layout in the private
+  consumer, preserving Rust module paths and installed callers.
+
 ## [0.35.3] - 2026-11-12
 
 ### 🧪 Testing

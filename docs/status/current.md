@@ -1,5 +1,54 @@
 # Current handoff
 
+## Prepared Timers 0.43.4 and Jobs 0.35.4 — 2026-11-12
+
+The normal checkout selects Platform Runtime/exact guard 0.21.3 in both locks.
+Qualification also selects matching macros, Types 0.19.5, native Platform 0.31.3,
+Wire 0.21.4 and Endpoint/macros 0.12.2. Both catalogs and locks select exact
+Toko Tooling 0.39.17, archive SHA-256
+`aaeab49adb84ea0d66cf86ecc48d826125f9c3ac6eafaf2a362bccfeba7acbfd`.
+The installer retained all 60 entrypoints and 108 managed files. Only the shared
+baseline changed in the installed payload; common CI/release admission remains
+enforced, including the independent qualification workspace.
+
+Fourteen modules with child directories moved into `mod.rs`, retaining identical
+Rust bytes and module paths. Current architecture/source links follow the moves;
+historical source/hash records retain their original identities. Corrected the
+consumer guide's older Wire 0.7 and endpoint-feature descriptions: current Wire
+admits redundant varints within width bounds and uses explicit Endpoint budgets.
+There are no maintained generated browser clients to regenerate for Wire 0.21.4.
+
+The incoming dirty locks already contained these Platform/Wire versions plus
+Host 0.76.5, Storage 0.73.5 and errno 0.3.15. They were preserved; Cargo changed
+only Toko's selected entry relative to those starting locks. Product and private
+package versions remain unchanged until release preparation. The authorized
+frozen patch batch selects Timers 0.43.4 followed by Jobs 0.35.4, including
+crates.io publication. Timers changes its packaged source layout and Runtime
+requirement; both products' normalized dev-dependency contracts change from
+Toko 0.39.15 to 0.39.17. Both public groups therefore receive a release; private
+qualification packages retain their versions. Publication is not yet claimed.
+
+Focused qualification and supplier review evidence:
+`target/evidence/platform-wire-tooling-20261112.zbX1s2/`. Both full locked metadata
+observations, graph/provider boundaries, native/Wasm Clippy, 176 Timers native
+tests, nine doctests and 82 private native tests passed. The actual inheritance,
+dependency-update and tooling-admission callers passed, including 56 refusal
+routes. LOC reports retain zero uncategorized lines. All 11 installed Jobs
+recovery tests and four focused Timers Wire/Runtime/ownership subjects passed,
+along with all four policy and two calibration cohorts. Jobs capture is
+`qualification/target/tmp/jobs-recovery.wLGcXu/`; Timers receipts are
+`target/tmp/timer-qualification-2955620-0/runtime.json` and
+`target/tmp/timer-qualification-2976790-0/cohorts.json`.
+No full repository gate, macOS or Canic execution is claimed for this adoption.
+
+Published direct supplier review confirms the selected Platform/Wire/Toko,
+Build 0.83.0, Testkit 0.101.0, Metrics 0.29.11, Host 0.76.5 and Storage 0.73.5.
+Direct Serde/JSON/test, Clap and Tokio selections remain current. Qualification
+Thiserror 2.0.18 is retained by PocketIC 16.1.0's exact requirement; root selects
+2.0.21. Unrelated Generic Array 0.14.9 remains deferred with the existing 0.14.7
+selection. Cargo Sort Derives stays at the managed catalog's 0.14.1; review its
+previously observed 0.15.0 at the next Toko catalog refresh.
+
 ## Published Timers 0.43.3 and Jobs 0.35.3 — 2026-11-12
 
 Both groups were delivered to origin/main and published to crates.io through
@@ -32,18 +81,18 @@ Installed receipts under `target/release-frozen/batch-StU1JTG0/`:
 `target/tmp/timer-qualification-1066411-0/runtime.json` (Jobs).
 Latest cohort receipt: `qualification/target/timer-cohorts.json` there.
 
-## Tooling and qualification suppliers
+## Suppliers qualified for the published batch
 
-Both catalogs/locks select exact crates.io Toko Tooling 0.39.15, archive SHA-256
+That batch selected exact crates.io Toko Tooling 0.39.15, archive SHA-256
 `6cc984822e80e52ff7203aadcaf293a13f9fcf33f84175871321cb3a7de703a9`.
 Its 60 entrypoints admit 108 managed files. Shared references stay revision-bound;
 everything under `docs/` is native Scheduling documentation; see [its index](../README.md).
 `make deps-update` runs Cargo sequentially for product and qualification, forwards
 package/version selectors and preserves completed lock edits on failure.
 
-Qualification selects Build 0.83.0, Storage 0.73.4, Wire 0.21.2 and Endpoint/macros
-0.12.1. Both workspace locks select Runtime/exact guard 0.21.2; qualification also
-selects matching macros, Types 0.19.4, Host 0.76.4 and Testkit 0.101.0.
+Qualification selected Build 0.83.0, Storage 0.73.4, Wire 0.21.2 and Endpoint/macros
+0.12.1. Both workspace locks selected Runtime/exact guard 0.21.2; qualification also
+selected matching macros, Types 0.19.4, Host 0.76.4 and Testkit 0.101.0.
 Metrics remains 0.29.11. Application DTOs use canonical Types; PocketIC native
 identities are converted explicitly. Transport panics propagate without replay.
 

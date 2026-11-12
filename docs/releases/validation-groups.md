@@ -6,7 +6,7 @@ its literal private versions remain unchanged by product releases. The existing
 stage roster still maps group changes to the same native, Wasm, installed-runtime
 and policy-cohort obligations through explicit qualification manifest selections.
 
-Toko Tooling 0.39.15 supplies shared multi-lock rendering, admission and
+Toko Tooling 0.39.17 supplies shared multi-lock rendering, admission and
 all-or-rollback preparation. `ci/cargo-release-groups.json` opts in through
 `qualification_workspace: "qualification"`; its admitted plan owns both
 qualification manifests/locks alongside the selected product files. Remove the
@@ -158,7 +158,7 @@ is performed by this adoption.
 
 ## Shared release batch contract
 
-The installed tooling is crates.io `toko-tooling` 0.39.15, selected by one exact
+The installed tooling is crates.io `toko-tooling` 0.39.17, selected by one exact
 Cargo dependency pin in each workspace, inherited by its members. Both normal
 Cargo locks select the same archive checksum and are admitted against one snapshot.
 Its installed archive checksum is recorded in `.toko-tooling.snapshot`.

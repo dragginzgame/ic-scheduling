@@ -33,9 +33,9 @@ canister graphs must still exclude older providers that lack that key.
 | Capability | Canonical owner | Local integration |
 | --- | --- | --- |
 | Volatile scheduling, claim/generation authority, policy arbitration and timer observations | `crates/ic-timers/src/{runtime,registry,control,schedule,snapshot}` | Public crate facade |
-| Watchdog control state and request/cancel/dispatch/completion transitions | Private `crates/ic-timers/src/registry/watchdog.rs` | Parent registry retains claim admission, declaration lifetime, observations and provider-handle ownership |
+| Watchdog control state and request/cancel/dispatch/completion transitions | Private `crates/ic-timers/src/registry/watchdog/mod.rs` | Parent registry retains claim admission, declaration lifetime, observations and provider-handle ownership |
 | One-shot dispatch, pending queue and authenticated IC callbacks | Private `crates/ic-timers/src/platform`; `ic-platform-runtime` owns the shared executor for future polling and call-context cleanup | Only `platform/ffi.rs` owns unsafe exports/callback registration |
-| Measurement arithmetic | `ic-metrics` | Timer-specific event names, recording/sample boundaries and memory extents in `snapshot/metrics.rs` |
+| Measurement arithmetic | `ic-metrics` | Timer-specific event names, recording/sample boundaries and memory extents in `snapshot/metrics/mod.rs` |
 | Durable jobs, readiness, lifecycle order and operator-health labels | Consuming application/framework | Registration claims and snapshots; no durable task database or application lifecycle exports here |
 | Wasm compilation and artifact-cache custody | `ic-build`, with explicit child custody from `ic-host-process` | `qualification/ic-timers-pocketic/src/build/mod.rs` selects packages, profile, features and artifact lifetime |
 | Native report alias admission and atomic publication | `ic-host-fs` | The qualification driver protects its reviewed baseline and selects report schema, path and permissions |
@@ -444,8 +444,8 @@ and arm kind; they do not store another deadline representation.
 
 The registry and runtime transition functions remain cohesive even where they
 are long: each audited function owns one atomic transition or one provider
-binding path. Their tests live in directory-local `tests.rs` files so test
-volume does not obscure production flow.
+binding path. Their tests live in directory-local `tests.rs` files or
+`tests/mod.rs` modules so test volume does not obscure production flow.
 
 ## Canonical runtime
 

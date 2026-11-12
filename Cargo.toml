@@ -23,14 +23,14 @@ ic-timers = { path = "crates/ic-timers", version = "0.43.3" }
 # Production dependencies
 # Metrics and Serde also serve qualification consumers.
 ic-metrics = { version = "0.29.11", default-features = false }
-ic-platform-runtime = { version = "0.21.1", default-features = false }
+ic-platform-runtime = { version = "0.21.3", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"
 
 # Tests and tooling only
 serde_json = "1.0"
 serde_test = "1.0"
-toko-tooling = "=0.39.15"
+toko-tooling = "=0.39.17"
 
 [workspace.lints.rust]
 missing_docs = "deny"

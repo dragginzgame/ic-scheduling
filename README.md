@@ -295,7 +295,7 @@ only the root [Toko baseline](TOKO-TOOLING.md), required executable tooling and
 runtime inputs are installed here. The snapshot receipt identifies those managed
 files. See the [online-reference migration](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/migrations.md#online-reference-documentation-in-0395).
 
-Both workspace catalogs pin `toko-tooling = "=0.39.15"`; every real
+Both workspace catalogs pin `toko-tooling = "=0.39.17"`; every real
 member inherits it as a dev-dependency with an intentional cargo-machete exemption.
 Cargo.lock selects its registry checksum, and `.toko-tooling.snapshot` records
 the authenticated installed files. After editing the root pin, run
