@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "ic-jobs"
-version = "0.35.1"
+version = "0.35.2"
 dependencies = [
  "serde",
  "serde_json",
