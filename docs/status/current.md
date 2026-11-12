@@ -1,90 +1,72 @@
 # Current handoff
 
-## Release preparation — cached baseline blocker cleared
-
-Published Testkit 0.101.0 corrects the cached snapshot defect tracked by
-[Timers #87](https://github.com/dragginzgame/ic-timers/issues/87) and
-[Tooling #263](https://github.com/dragginzgame/ic-tooling/issues/263). The mandatory,
-unignored same-instance regression passes unchanged restoration and both mutated
-restore/rearm/callback cycles. The competing-owner negative control still passes;
-production guard code is intact. All ten installed Jobs recovery tests pass too.
-Both native harnesses pass Clippy; tooling, pins, native/Wasm graphs and docs pass.
-
-Evidence: `target/evidence/deploy-retry-20261112.iuLa37/`; focused runtime receipt:
-`target/tmp/timer-qualification-704322-0/runtime.json`. Earlier 0.100.2 failures
-remain in `target/evidence/timer-baseline-87-20261112.FT14fd/`. They are not passes.
-The authorized next batch selects compatible Timers 0.43.2 and Jobs 0.35.2;
-full release qualification and publication are pending. Canic's exact two-case
-integration remains separately owned. No sibling source or release was changed.
-
-## Published Timers 0.43.1 and Jobs 0.35.1 — 2026-11-11
+## Published Timers 0.43.2 and Jobs 0.35.2 — 2026-11-12
 
 Both groups were delivered to origin/main and published to crates.io through
-completed, reconciled `batch-t4HsIlVh`, captured from
-`5bb381437a2d128f70f068a0928b80e1ef98495c`. Do not replay publication.
-Both release commits are reconciled; the local tooling/harness refresh below is pending.
+completed, reconciled `batch-LYs1wQ6P`, captured from
+`7fd064d5d4444f83615299f7ae4251566b4608d0`. Do not replay publication.
+Both release commits are reconciled into the normal main checkout.
 All six private qualification versions remain unchanged. No sibling repository
 was edited or released; Canic adoption remains separately qualified.
 
-- Timers release commit: `38a8b6f64c924a517965ac1cab20ec28f29cced2`.
-  Annotated `timers-v0.43.1` tag: `abb679d68631bef9e5a9cd524d1c8e028165e0e4`.
-  Archive SHA-256: `1a039360710679965194cb7aa2955898607cc88334504b59824ccbd425fdbc86`.
-- Jobs release commit: `17bf5ab5fa7b79c7d3d94448bf1c1aa7dc44394e`.
-  Annotated `jobs-v0.35.1` tag: `68b8eba0e08f7cb14dfca3e7ecbfd14ab64accf2`.
-  Archive SHA-256: `a7772955bcba396daa8a3d2f313e05595892746c3c73632e823f7e800d94793f`.
+- Timers release commit: `be653c74f9a6e5fae71f9102b559921565af25ea`.
+  Annotated `timers-v0.43.2` tag: `032fff2c71f818833ea290ce567e02920ce51081`.
+  Archive SHA-256: `e941ec1d73cc48b903bdf809f8da3902f4a6e998d8ab5e198aca38003756a2a9`.
+- Jobs release commit: `23e817f981d8004a76ede73f9f71f36cba2ed152`.
+  Annotated `jobs-v0.35.2` tag: `933dc508f6fae83ad3456f8df19082ca1526d3d7`.
+  Archive SHA-256: `18a459a58063aa3cb2758dcf1d0037db2a50dd961780ad890af5a81df590c9ab`.
 
 Both complete 36-stage release gates passed on Linux/Rust 1.99.1 with PocketIC
-16.1.0, including native/Wasm/archive checks, 36 installed watchdog/runtime
+16.1.0, including native/Wasm/archive checks, 37 installed watchdog/runtime
 subjects, four policy and two calibration cohorts per gate. The validation-plan
 fixture executed for Timers and was admitted for Jobs through the qualified
 exact-input reuse contract. Other required stages executed. Registry archives
 match upload bytes and registry checksums and identify their release commits;
 source metadata, required files, origin/main and both tags were independently verified.
-No macOS execution or new complete Jobs installed-recovery pass is claimed.
+No macOS execution is claimed. The ten installed Jobs recovery tests separately
+passed on the pre-release source/graph before version preparation; their capture
+is `qualification/target/tmp/jobs-recovery.ylbrb4/`.
 
 Delivery, registry verification and reconciliation evidence:
-`target/evidence/deploy-patches-20261111/`.
+`target/evidence/deploy-retry-20261112.iuLa37/`.
 Durable batch, source, journals and sealed validation:
-`.git/release-state/frozen/batch-t4HsIlVh/`.
-Installed runtime receipts under `target/release-frozen/batch-t4HsIlVh/`:
-`target/tmp/timer-qualification-3107941-0/runtime.json` (Timers) and
-`target/tmp/timer-qualification-1106739-0/runtime.json` (Jobs).
+`.git/release-state/frozen/batch-LYs1wQ6P/`.
+Installed runtime receipts under `target/release-frozen/batch-LYs1wQ6P/`:
+`target/tmp/timer-qualification-2027386-0/runtime.json` (Timers) and
+`target/tmp/timer-qualification-3213211-0/runtime.json` (Jobs).
 Latest cohort receipt: `qualification/target/timer-cohorts.json` there.
+
+## Cached baseline qualification
+
+Published Testkit 0.101.0 corrects the cached snapshot defect tracked by
+[Timers #87](https://github.com/dragginzgame/ic-timers/issues/87) and
+[Tooling #263](https://github.com/dragginzgame/ic-tooling/issues/263). The mandatory,
+unignored same-instance regression passes unchanged restoration and both mutated
+restore/rearm/callback cycles in both complete gates. The competing-owner
+negative control still passes; production guard code is intact. Canic's exact
+two-case integration remains separately owned and was not executed here.
+
+The initial paired passing receipt is `target/tmp/timer-qualification-704322-0/runtime.json`.
+Earlier 0.100.2 failures remain in
+`target/evidence/timer-baseline-87-20261112.FT14fd/`; they are not passes.
 
 ## Tooling, cleanup and workspace ownership
 
-Both catalogs/locks locally select exact crates.io Toko Tooling 0.39.12, archive SHA-256
+Both catalogs/locks select exact crates.io Toko Tooling 0.39.12, archive SHA-256
 `acb1fd3f459a63940669e925d427fd6821abf02a7525bf9ef38d323dc778a8d2`.
 Its 59-entrypoint selection admits 106 managed files. Shared references remain
 at immutable upstream revisions. Everything under `docs/` is native Scheduling
 documentation; use [its index](../README.md).
 
-The refresh is local and uncommitted. Both locked fetches, standard installation,
-snapshot/pin/group admission and dependency/source boundaries pass. The 0.39.12
-payload changes only the baseline from 0.39.11, adding explicit supplier review.
-Direct product/qualification suppliers and Cargo tools were compared with stable,
-non-yanked registry releases. Dispositions appear below and in both pending ledgers.
-
-Both native harness packages pass Clippy with all targets. Testkit's CLI/server
-setup, offline admission and focused selection/failure callers pass. All ten
-installed Jobs recovery tests and four exact Timers subjects pass on Linux/Rust
-1.99.1/PocketIC 16.1.0. Evidence: `target/evidence/tooling-testkit-adoption-20261111.PqzKOB/`;
-Jobs capture: `qualification/target/tmp/jobs-recovery.ztaY9w/`; focused Timers
-receipt: `target/tmp/timer-qualification-595050-0/runtime.json`.
-The published groups retain their 0.39.9/Testkit 0.96 source and graph. No new full
-release/watchdog/cohort gate or macOS execution is claimed for this refresh.
+Both locked fetches, standard installation, snapshot/pin/group admission and
+dependency/source boundaries pass. Direct product/qualification suppliers and
+Cargo tools were compared with stable, non-yanked registry releases before
+capture. Dispositions appear below and in both released group ledgers.
 
 Six private qualification packages remain outside the Jobs/Timers product groups.
 Their independent catalog/lock uses standard `qualification_workspace` preparation,
 preserving private versions and suppliers. `TOKO_TOOLING_RELEASE := 1` enables releases.
 See [release operations](../releases/README.md) and [validation groups](../releases/validation-groups.md).
-
-The published test cleanup reduced Rust LOC from 29,011 to 28,762, retaining
-all scenarios, 126 exact counter expectations and 31 receipt-corruption cases.
-Production logic and its 5,444 app/library lines are unchanged by the cleanup.
-Focused evidence: `target/evidence/test-cleanup-20261111/` and
-`target/evidence/qualification-cleanup-20261111/`. Both full release gates above
-qualify that original source/graph; those counts precede this harness migration.
 
 ## Supplier and persistence boundaries
 
@@ -124,8 +106,10 @@ See the [fixture guide](../../crates/ic-jobs/tests/fixtures/README.md) and
 
 ## Earlier evidence and recovery custody
 
-The [previous handoff](https://github.com/dragginzgame/ic-scheduling/blob/5bb381437a2d128f70f068a0928b80e1ef98495c/docs/status/current.md)
+The [previous handoff](https://github.com/dragginzgame/ic-scheduling/blob/0ef8d81c2e87766cf6823d95c7480a72b5a5ad83/docs/status/current.md)
 retains earlier release identities, qualification limits and evidence locations.
+Preserve completed `batch-t4HsIlVh` (Timers 0.43.1 / Jobs 0.35.1), its original
+graph and `target/evidence/deploy-patches-20261111/` delivery evidence.
 Preserve completed `batch-vqHkyqbM` (Timers 0.43.0 / Jobs 0.35.0) and its original graph.
 Timers 0.42.0 completed in `batch-zgh_z6sJ`; its Runtime 0.21 adoption and all ten
 explicit Jobs installed-recovery subjects retain their original source/graph in
