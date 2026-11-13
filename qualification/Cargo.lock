@@ -1067,7 +1067,7 @@ dependencies = [
 
 [[package]]
 name = "ic-timers"
-version = "0.44.0"
+version = "0.44.1"
 dependencies = [
  "ic-metrics",
  "ic-platform-runtime",

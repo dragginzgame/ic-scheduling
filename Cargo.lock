@@ -37,7 +37,7 @@ checksum = "bf31cb93b4ece0be8a5ddc0bc522a49b2ff3d7a67294fe6c806b7a15104d56d6"
 
 [[package]]
 name = "ic-timers"
-version = "0.44.0"
+version = "0.44.1"
 dependencies = [
  "ic-metrics",
  "ic-platform-runtime",
