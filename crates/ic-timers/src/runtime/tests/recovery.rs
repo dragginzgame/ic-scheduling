@@ -182,10 +182,6 @@ fn watchdog_successor_retires_an_unacknowledged_dispatched_attempt() {
 }
 
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "One ordered reconstruction and external-demand sequence."
-)]
 fn reconstruction_and_external_demand_are_synchronous_and_idempotent() {
     let _fixture = setup();
     let timer = identity("reconstructed-watchdog");

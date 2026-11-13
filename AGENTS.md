@@ -50,18 +50,24 @@ Read [the current handoff](docs/status/current.md).
   changelog is an index. Release starts require an explicit group or complete
   frozen group roster; batch recovery/publication use the saved group context
   selected by an explicit `BATCH`. Standalone publication requires an explicit group.
-  The grouped root catalog lists product paths/full versions and ledgers;
-  qualification owns its complete catalog, current product source paths and lock.
-  Policy alias rosters cover each product catalog entry. Sibling Timers source is provenance,
+  Group membership and ledgers belong to the release JSON policy; `make deps-list`
+  reports every product and private package. Catalogs retain only used dependency
+  entries; group alias rosters cover those remaining product entries. Qualification
+  owns its used catalog, current product source paths and lock. Sibling Timers source is provenance,
   not a build input. Grouping does not relax runtime or combined-consumer checks.
 - The private Jobs qualification canister is `qualification/ic-jobs-test-consumer`;
   it is qualification-only, not a product or Canic fleet. Timers owns downstream
   Runtime composition qualification; see [its acceptance map](docs/timers/development.md#runtime-composition-qualification)
   when changing the selected Runtime cohort or call/executor integration.
-- Rust floor and pinned compiler: 1.99.1, approved in [#87](https://github.com/dragginzgame/ic-scheduling/issues/87).
-  This owner-approved policy supersedes the old lowest-floor promise. Qualify core
+- Rust floor and pinned compiler: 1.100.0, approved in [#93](https://github.com/dragginzgame/ic-scheduling/issues/93).
+  This supersedes the 1.99.1 policy in [#87](https://github.com/dragginzgame/ic-scheduling/issues/87). Qualify core
   and consumer-owned Timers integration separately with the same compiler; preserve
   native host, Wasm, archive and explicitly selected installed-runtime coverage.
+- Both roots own the common lint minimum and retain missing-docs denial and
+  unsafe-code prohibition. Timers cannot inherit `unsafe_code=forbid`: its local
+  table mirrors the minimum with `deny` and a private FFI expectation. Its reviewed
+  pedantic, const-constructor and formatting checks remain; IC-local futures carry
+  no Send promise. All other packages inherit their owning root's lint table.
 - Host workflows support Linux and macOS Intel/Apple Silicon. Bind native and
   live IC recovery qualification to their tested source and dependency graph;
   native tests do not establish IC recovery.
@@ -74,3 +80,7 @@ Timers and CDK probes select Runtime directly; native DTOs use canonical Types.
 Each owning workspace manifest/lock owns its supplier cohort. Preserve the exact Runtime
 guard and explicitly selected installed IC recovery qualification. Supplier
 adoption or a dependency blocker never authorizes another repository's release.
+Storage's IC0-only Runtime may differ from Timers' executor generation; graph
+admission must retain one executor guard and one IC0 backend. Native Testkit's
+identity generation stays isolated from deployed DTO/entrypoint identities,
+with explicit transport conversions and executor-free native harness checks.

@@ -85,6 +85,10 @@ fn queue_memory<M: MemoryBacking>(memory: M) -> Result<RuntimeMemory<M>, Error> 
         .map_err(memory_error)
 }
 
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Converting a request consumes its timing policy at the queue boundary."
+)]
 fn schedule(timing: Timing) -> Result<Schedule, Error> {
     Ok(match timing {
         Timing::Once(at_ns) => Schedule::Once { at_ns },
@@ -173,6 +177,10 @@ impl<M: Memory> Queue<M> {
         Ok(snapshot)
     }
 
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "Commit consumes staged state so a caller cannot reuse it after publication."
+    )]
     fn commit<T>(&mut self, snapshot: Snapshot<Job>, value: T) -> Result<Committed<T>, Error> {
         let next_due_ns = snapshot.next_due_ns();
         let bytes = encode(&snapshot)?;

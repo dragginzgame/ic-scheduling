@@ -3,7 +3,7 @@
 This package also owns the native effect/transaction composition harness
 in `tests/composition.rs`, plus stored-record Wire checks in `tests/stored_wire.rs`.
 `make test-consumers` aggregates both targets and the packaged adapter example;
-`check-msrv` qualifies core and consumer targets separately on Rust 1.99.1. Storage and
+`check-msrv` qualifies core and consumer targets separately on Rust 1.100.0. Storage and
 Timers integration dependencies belong here, outside the core package tests.
 
 Ordinary native library builds expose `api` DTOs and management/delivery identities/limits,
@@ -26,7 +26,7 @@ Timers. It is a qualification fixture with deliberate fault endpoints, and must
 not be deployed as a production service. The Jobs library acquires no storage,
 authentication, payload, lifecycle or direct CDK timer ownership.
 
-The fixture and native callers use Wire 0.21's one-pass decoder. Decode success
+The fixture and native callers use Wire 0.22's one-pass decoder. Decode success
 does not prove that re-encoding reproduces the original frame: Serde visitors
 can normalize inputs. Current RPC DTOs use ordered records, enums, sequences,
 strings and Principals; receipt reconciliation compares every typed delivery
@@ -41,8 +41,8 @@ frame bytes.
 
 Native codec tests retain Jobs' envelope shapes, method selection, resource
 limits and refusal/uncertainty behavior. Exhaustive prefix truncation and generic
-integer-decoder coverage stay with the selected Wire 0.21.4
-[native tests](https://github.com/dragginzgame/ic-wire/blob/a7e9f63888629655f3722b43d2cfb225fa7b87dc/crates/ic-wire/src/native/tests/mod.rs).
+integer-decoder coverage stay with the selected Wire 0.22.0
+[native tests](https://github.com/dragginzgame/ic-wire/blob/468d81f490074f6c31fdc8646717a398e26ba369/crates/ic-wire/src/native/tests/mod.rs).
 Jobs keeps representative truncated payloads and malformed replies at its own
 request/reply boundaries, alongside the separately selected live endpoint tests.
 
@@ -271,11 +271,11 @@ The consumer's own Wire dependency supplies its endpoint codecs. Metrics has no
 optional `wire` feature; its optional keyed heap `recording` feature stays disabled.
 Published `ic-jobs` remains independent of Metrics.
 Metrics now lives in the IC Observability repository with the same published
-crate identity and arithmetic. Runtime 0.21 and Wire 0.21 supply explicit endpoint
+crate identity and arithmetic. Runtime 0.22 and Wire 0.22 supply explicit endpoint
 codecs and bounded decoding for this consumer and its host harness.
 Its transport boundary is separate from Storage's installation cut above.
-Native DTOs select canonical Types 0.19. Native tests explicitly select
-`principal-self-authenticating`; the recovery harness uses Testkit 0.101's upstream
+Native DTOs select canonical Types 0.20. Native tests explicitly select
+`principal-self-authenticating`; the recovery harness uses Testkit 0.102's upstream
 `ic_testkit::pocket_ic::nonblocking` client with explicit native identity conversion.
 Managed `PocketIcStartupConfig::build_instance` supplies the required server URL
 and keeps server/instance custody together; clients do not implicitly provision it.
@@ -283,8 +283,8 @@ The harness owns its Tokio runtime and awaits instance closure before the server
 stops; updates are not automatically retried or replayed.
 The application uses its owned Principal;
 PocketIC calls use upstream native identities, explicitly converted at the
-transport boundary. Runtime 0.21, Endpoint and application DTOs share canonical
-Types 0.19. The DTO owner has no external conversion feature or alias. The
+transport boundary. Runtime 0.22, Endpoint and application DTOs share canonical
+Types 0.20. The DTO owner has no external conversion feature or alias. The
 composed Wasm retains the sole executor and exact guard.
 Native DTO normal/build graphs exclude registry Principal and hashing;
 Wasm excludes registry conversion and SHA-2. Principal/Wire/stored bytes are unchanged.

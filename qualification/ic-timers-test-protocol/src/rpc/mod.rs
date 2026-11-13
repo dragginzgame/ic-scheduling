@@ -20,54 +20,71 @@ pub const RESPONSE_LIMITS: ic_wire::Limits = ic_wire::Limits {
 /// Ordinary callback policy selected by a probe request.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum OrdinaryPolicy {
+    /// One callback with no recurring successor.
     Once,
+    /// A successor scheduled relative to callback completion.
     AfterCompletion,
 }
 
 impl OrdinaryPolicy {
+    /// Complete policy roster used by shared qualification cases.
     pub const ALL: [Self; 2] = [Self::Once, Self::AfterCompletion];
 }
 
 /// Proposal consumed by the next successful watchdog work message.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum WorkDecision {
+    /// Request another work message without a future deadline.
     ContinueImmediately,
+    /// Request work at the supplied absolute nanosecond deadline.
     ScheduleAt(u64),
+    /// Stop requesting work after successful completion.
     Stop,
 }
 
 /// All policies exercised by registration-failure and removal probes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ProbePolicy {
+    /// One-shot ordinary registration.
     Once,
+    /// Ordinary recurrence scheduled after completion.
     AfterCompletion,
+    /// Synchronous scheduler with separately dispatched work.
     Watchdog,
 }
 
 impl ProbePolicy {
+    /// Complete registration-policy roster exercised by the probes.
     pub const ALL: [Self; 3] = [Self::Once, Self::AfterCompletion, Self::Watchdog];
 }
 
 /// Declaration retention selected by a probe request.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ProbeLifetime {
+    /// Keep the declaration available for later reconciliation after stopping.
     Retained,
+    /// Remove the declaration when its registration stops.
     RemoveWhenStopped,
 }
 
 impl ProbeLifetime {
+    /// Both declaration lifetimes supported by the registration probes.
     pub const ALL: [Self; 2] = [Self::Retained, Self::RemoveWhenStopped];
 }
 
 /// Owner reconciliation contracts exercised after confirmed scheduler abandonment.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SchedulerReconcileMode {
+    /// Reconcile through the scheduled-demand contract.
     Scheduled,
+    /// Reconcile with an immediate scheduling request.
     ScheduledImmediately,
+    /// Reconcile with an explicit absolute deadline.
     ScheduledAt,
 }
 
 impl SchedulerReconcileMode {
+    /// All reconciliation contracts checked by scheduler recovery subjects.
     pub const ALL: [Self; 3] = [
         Self::Scheduled,
         Self::ScheduledImmediately,

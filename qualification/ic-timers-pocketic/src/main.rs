@@ -1,3 +1,5 @@
+//! Supervised command entrypoint for private Timers qualification and receipts.
+
 use clap::Parser;
 use ic_timers_pocketic::{Qualification, qualify, run};
 

@@ -9,75 +9,50 @@ use super::{
     TimerCompletion, TimerControlFailure, TimerError, WakeupToken, WatchdogRunResult,
     clear_provider_handles, finish_transition, platform, with_registry_mut,
 };
-use std::future::Future;
+use std::{future::Future, mem::DropGuard};
 
-#[expect(
-    clippy::future_not_send,
-    reason = "IC callbacks and canister-local state are single-threaded."
-)]
 pub(super) fn dispatch_wakeup(token: WakeupToken) -> impl Future<Output = ()> {
     // Construct outside the async body: a provider rejection can discard the
     // future before its first poll, after rolling registry acceptance back.
-    let mut delivery = WakeupDelivery {
-        token,
-        completed: false,
-    };
+    let delivery = DropGuard::new(token, |token| abandon_wakeup(&token));
     async move {
-        match &delivery.token {
+        match &*delivery {
             WakeupToken::Ordinary(token) => dispatch_ordinary(token).await,
             WakeupToken::Scheduler(token) => dispatch_watchdog_scheduler(token),
         }
-        delivery.completed = true;
-        // Capture the whole guard until normal completion.
-        drop(delivery);
+        drop(DropGuard::dismiss(delivery));
     }
 }
 
-struct WakeupDelivery {
-    token: WakeupToken,
-    completed: bool,
-}
-
-impl Drop for WakeupDelivery {
-    fn drop(&mut self) {
-        if self.completed {
-            return;
-        }
-        let removed = RUNTIME.with(|runtime| {
-            let Ok(mut runtime) = runtime.try_borrow_mut() else {
-                // Rejected binding may clear a detached scheduled handle
-                // while another shared borrow exists. Its transition owns
-                // cleanup; do not turn that typed failure into a Drop trap.
-                let runtime = runtime.try_borrow().map_err(|_| TimerError::RuntimeBusy)?;
-                return if runtime.as_ref().is_some_and(|registry| match &self.token {
-                    WakeupToken::Ordinary(token) => registry.owns_ordinary_delivery(token),
-                    WakeupToken::Scheduler(token) => registry.owns_scheduler_delivery(token),
-                }) {
-                    Err(TimerError::RuntimeBusy)
-                } else {
-                    Ok(None)
-                };
+fn abandon_wakeup(token: &WakeupToken) {
+    let removed = RUNTIME.with(|runtime| {
+        let Ok(mut runtime) = runtime.try_borrow_mut() else {
+            // Rejected binding may clear a detached scheduled handle
+            // while another shared borrow exists. Its transition owns
+            // cleanup; do not turn that typed failure into a Drop trap.
+            let runtime = runtime.try_borrow().map_err(|_| TimerError::RuntimeBusy)?;
+            return if runtime.as_ref().is_some_and(|registry| match token {
+                WakeupToken::Ordinary(token) => registry.owns_ordinary_delivery(token),
+                WakeupToken::Scheduler(token) => registry.owns_scheduler_delivery(token),
+            }) {
+                Err(TimerError::RuntimeBusy)
+            } else {
+                Ok(None)
             };
-            Ok(runtime.as_mut().and_then(|registry| match &self.token {
-                WakeupToken::Ordinary(token) => {
-                    registry.abandon_ordinary(token, platform::time_ns())
-                }
-                WakeupToken::Scheduler(token) => {
-                    registry.abandon_scheduler(token);
-                    None
-                }
-            }))
-        });
-        let removed = removed
-            .unwrap_or_else(|error| trap_callback_failure("wakeup delivery abandonment", &error));
-        drop(removed);
-    }
+        };
+        Ok(runtime.as_mut().and_then(|registry| match token {
+            WakeupToken::Ordinary(token) => registry.abandon_ordinary(token, platform::time_ns()),
+            WakeupToken::Scheduler(token) => {
+                registry.abandon_scheduler(token);
+                None
+            }
+        }))
+    });
+    let removed = removed
+        .unwrap_or_else(|error| trap_callback_failure("wakeup delivery abandonment", &error));
+    drop(removed);
 }
 
-#[expect(
-    clippy::future_not_send,
-    reason = "IC callbacks and canister-local state are single-threaded."
-)]
 async fn dispatch_ordinary(token: &CallbackToken) {
     let measurement = CallbackMeasurementStart::capture();
     let callback = with_registry_mut(|registry| Ok(registry.begin_ordinary(token)));

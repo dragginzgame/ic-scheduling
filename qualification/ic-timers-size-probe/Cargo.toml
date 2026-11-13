@@ -31,5 +31,5 @@ ic-wire-endpoint.workspace = true
 [dev-dependencies]
 toko-tooling.workspace = true
 
-[lints.rust]
-unsafe_code = "forbid"
+[lints]
+workspace = true

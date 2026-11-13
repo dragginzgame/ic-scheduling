@@ -316,10 +316,6 @@ fn suspended_once_work_allows_other_timers_and_arbitrates_external_commands() {
 }
 
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "Keep both policy paths and their arbitration observations in one decision matrix."
-)]
 fn policy_specific_results_schedule_through_live_runtime() {
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     enum ResultCase {

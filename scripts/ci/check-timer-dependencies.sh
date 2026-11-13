@@ -21,11 +21,11 @@ open my $cargo, '-|', 'cargo', 'metadata', '--locked', '--offline', '--format-ve
 my $bytes = do { local $/; <$cargo> };
 close $cargo or die "Cargo runtime identity observation failed\n";
 my $metadata = decode_json($bytes);
-my @platform = grep { $_->{name} eq 'ic-platform-runtime' && $_->{version} =~ /^0\.21\./ }
+my @platform = grep { $_->{name} eq 'ic-platform-runtime' && $_->{version} =~ /^0\.22\./ }
     @{$metadata->{packages}};
 @platform == 1
     && ($platform[0]{source} // '') eq 'registry+https://github.com/rust-lang/crates.io-index'
-    or die "expected one qualified registry ic-platform-runtime 0.21 runtime owner\n";
+    or die "expected one qualified registry ic-platform-runtime 0.22 runtime owner\n";
 my @guard = grep { $_->{name} eq 'ic-platform-runtime-guard' } @{$metadata->{packages}};
 @guard == 1 && $guard[0]{version} eq $platform[0]{version}
     && ($guard[0]{source} // '') eq 'registry+https://github.com/rust-lang/crates.io-index'

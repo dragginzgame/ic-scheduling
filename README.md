@@ -79,14 +79,12 @@ with an independent lock and unchanged private versions. They are validation
 obligations, not product release-group members. Product packages never depend
 on qualification. `make cloc` includes both workspaces; `make cloc-qualification`
 reports the private workspace separately with its existing LOC categories.
-The catalog labels `Production dependencies` and `Tests and tooling only`
-describe use here, independently of registry publication. Serde is shared by
-production and tests, so it belongs to production. The qualification Wasm and
-capture/recovery harness are `Tests and tooling packages`; `ic-jobs` and
-`ic-timers` are the production packages. Metrics, Platform and Thiserror are
-production dependencies of Timers. Paired grouped sort commands preserve these
-boundaries in `make fmt`, `make fmt-check` and the formatting hook. Release
-metadata checks use the same grouped policy for working and selected commits.
+`make deps-list` reports all eight local packages, their versions and product
+release groups without network access. Cargo catalogs contain used dependencies;
+the release JSON policy owns complete product group membership. Metrics, Platform
+and Thiserror are production dependencies of Timers. Paired grouped sort commands
+run in `make fmt`, `make fmt-check` and the formatting hook; release metadata checks
+use the same sorting policy for working and selected commits.
 
 | Built artifact | Candid exposure | CDK exposure |
 | --- | --- | --- |
@@ -114,26 +112,28 @@ The qualification app selects Runtime's `cdk` feature only on Wasm. Native
 consumer builds select canonical Types directly for Serde DTOs
 and Wire contracts. Jobs, Storage and Timers remain Wasm/test dependencies; JSON
 is limited to native fixtures and tooling. Parser, Agent,
-certification and crypto features are not selected. Runtime 0.21 owns the
-deployed executor, IC0 adapters and generator shared with Timers, Storage 0.73
-and Wire Endpoint 0.12 / Wire 0.21. The qualification Wasm
+certification and crypto features are not selected. Runtime 0.22.1 owns the
+deployed executor and generator shared with Timers and Wire Endpoint 0.13 /
+Wire 0.22. Storage 0.74 uses that same Runtime through its IC0-only dependency.
+The qualification Wasm
 selects neither Candid nor full `ic-cdk`.
 Owned native DTO principals exclude external Principal and SHA-2 dependencies.
 The Wasm application selects neither registry Principal conversion nor SHA-2 hashing.
 Storage supplies native IO metering under its test-support feature.
 Native tests select `principal-self-authenticating` explicitly;
-DTOs select Types 0.19 without the retired `principal-external` feature. The
+DTOs select Types 0.20 without the retired `principal-external` feature. The
 native harness uses canonical Types Principal for application DTOs and Testkit
-0.101.0's upstream `ic_testkit::pocket_ic::nonblocking` client. Callers own their
+0.102.0's upstream `ic_testkit::pocket_ic::nonblocking` client. Callers own their
 Tokio runtime and retain the managed server through awaited best-effort closure.
 Each client selects a 60-second polling budget, separate from its server startup
 deadline. Upstream transport panics and logging behavior apply.
 Managed `PocketIcStartupConfig::build_instance` supplies its
 explicit server endpoint and retains server custody. The deployed
-graph has one Runtime 0.21 owner and exact matching executor guard.
-Runtime, Endpoint and application DTOs share canonical Types 0.19. Native
+graph has one Runtime 0.22 executor, exact matching guard and IC0 backend.
+Runtime, Endpoint and application DTOs share canonical Types 0.20. Native
 transport converts these identities explicitly to upstream PocketIC identities;
-its management DTOs remain at that native boundary. DTO-only graphs stay free of
+its management DTOs use Types 0.20.1 / Platform 0.32.1 at that native
+boundary. DTO-only graphs stay free of
 registry Principal, Candid and runtime dependencies. Stored identities and Wire
 frames are unchanged.
 
@@ -161,7 +161,7 @@ The [consumer guide](qualification/ic-jobs-test-consumer/README.md) describes th
 uses its published Platform facade for external simulator interfaces. The
 harness keeps the upstream Principal for PocketIC calls and converts to its
 owned Principal when constructing application DTOs. No decoder or transport is replaced.
-Wire 0.21 uses upstream Postcard acceptance: redundant varints within width bounds
+Wire 0.22 retains upstream Postcard acceptance: redundant varints within width bounds
 decode successfully, while over-width values still refuse. Encoder bytes, method
 identities and budgets are unchanged; retain original frames for exact retries or hashes.
 
@@ -226,7 +226,7 @@ snapshot check alone does not establish deployment admission.
 ## Consumer qualification
 
 `make test-consumers` aggregates native notification/maintenance scenarios, stored
-Wire conformance and the packaged adapter example on Rust 1.99.1. They cover commit
+Wire conformance and the packaged adapter example on Rust 1.100.0. They cover commit
 failures, reconstruction, exact receipt reconciliation, stale continuations and
 bounded recurring work. The composition fixtures request IC Storage allocations
 through the [qualification-selected dependency](qualification/Cargo.toml); the host fixture reopens actual
@@ -253,6 +253,14 @@ components and Wasm target once, after preparing the host parsers. Full CI retai
 independent core, consumer, Wasm and archive coverage on that compiler; the focused
 `check-msrv` target remains available without repeating it in the aggregate.
 
+Both workspace roots define the common Rust, Clippy and Rustdoc lint minimum.
+Safe packages inherit their root's unsafe prohibition and missing-docs denial.
+Timers mirrors the minimum in its documented package exception so its private FFI
+can use a narrow expectation; its reviewed pedantic and individual style checks
+remain. Line-count advice and whole nursery/restriction groups are excluded.
+`bash scripts/ci/test-consumer-tooling.sh lint-policy` checks every actual member
+and compiles disposable consumers that reject ignored Results and unsafe declarations.
+
 `make clippy`, `make check-wasm`, `make check-msrv` and the other package-group
 targets aggregate several checks. `make ci` runs the full release suite and
 requires an explicit request or release authorization for local execution.
@@ -274,7 +282,7 @@ Release-adapter fixtures can be selected independently with
 aggregate still runs every group and the publication eligibility fixture.
 The retention selection needs no prepared metadata editor or formatters.
 
-The package and its direct Timers qualification consumer require Rust 1.99.1. Compiler
+The package and its direct Timers qualification consumer require Rust 1.100.0. Compiler
 selections are recorded in [rust-toolchain.toml](rust-toolchain.toml) and
 [the local tool catalog](ci/tool-versions.env). Linux and macOS Intel/Apple Silicon
 host workflows are maintained. See [the current handoff](docs/status/current.md)
@@ -295,7 +303,7 @@ only the root [Toko baseline](TOKO-TOOLING.md), required executable tooling and
 runtime inputs are installed here. The snapshot receipt identifies those managed
 files. See the [online-reference migration](https://github.com/dragginzgame/toko-tooling/blob/12459b6029115b830b8477879d3bea2f030b6e63/docs/adoption/migrations.md#online-reference-documentation-in-0395).
 
-Both workspace catalogs pin `toko-tooling = "=0.39.17"`; every real
+Both workspace catalogs pin `toko-tooling = "=0.41.1"`; every real
 member inherits it as a dev-dependency with an intentional cargo-machete exemption.
 Cargo.lock selects its registry checksum, and `.toko-tooling.snapshot` records
 the authenticated installed files. After editing the root pin, run
@@ -305,6 +313,10 @@ first in the product workspace, then in `qualification/`, stopping on failure.
 Use `DEPENDENCY_PACKAGE=name DEPENDENCY_PRECISE=version` to narrow both updates.
 Completed lockfile changes remain if a later update fails; review both locks.
 This command does not change manifests or install tooling after a pin change.
+`make deps-list` is the installed offline package/version/group inventory for both
+workspaces. Cargo dependency/metadata lints are denied in both roots and Timers'
+equivalent local table. Ordinary Clippy recipes use `CARGO_BUILD_WARNINGS=deny`;
+Rustdoc retains explicit warning denial, including malformed table checks.
 `make toko-tooling-install` installs the existing Cargo selection; neither
 installation command edits Cargo.lock. CI, release and publication entrypoints
 require `make toko-tooling-check` before effects. See the

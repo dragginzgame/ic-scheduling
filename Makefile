@@ -187,12 +187,12 @@ clippy:
 	+$(MAKE) --no-print-directory clippy-timers
 
 clippy-jobs: rust-policy-check
-	+cargo clippy -p ic-jobs --all-targets --all-features --locked --offline -- -D warnings
-	+cargo clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline -- -D warnings
-	+cargo clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline -- -D warnings
+	+CARGO_BUILD_WARNINGS=deny cargo clippy -p ic-jobs --all-targets --all-features --locked --offline
+	+CARGO_BUILD_WARNINGS=deny cargo clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline
+	+CARGO_BUILD_WARNINGS=deny cargo clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline
 
 clippy-timers: rust-policy-check
-	+cargo clippy -p ic-timers --all-targets --locked --offline -- -D warnings
+	+CARGO_BUILD_WARNINGS=deny cargo clippy -p ic-timers --all-targets --locked --offline
 
 docs-check:
 	+$(MAKE) --no-print-directory docs-jobs
@@ -238,7 +238,8 @@ QUALIFICATION_GRAPH_FORBIDDEN := ic-cdk-executor ic-platform ic-platform-pocket-
 # Jobs and Timers share one Runtime owner; Storage keeps its allocation facade.
 # Keep one executor, raw-system provider and entrypoint generator, without
 # registry Principal conversion or hashing in the deployed graph.
-# DTOs, Runtime, Endpoint and Testkit share canonical Types 0.19.
+# Deployed DTOs, entrypoints and native Testkit select Types 0.20.
+# Storage shares the selected Runtime without introducing another executor.
 .PHONY: check-dependency-graphs
 check-dependency-graphs:
 	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)" --package ic-jobs \
@@ -272,7 +273,9 @@ check-dependency-graphs:
 	+perl scripts/ci/check-cargo-graph.pl --consumer "$(CURDIR)/qualification" --package ic-jobs-canister-tests \
 		--target "$$(rustc -vV | sed -n 's/^host: //p')" --features harness --edges normal \
 		--require ic-testkit=1 --require ic-platform-types=1 --forbid ic-platform-pocket-ic --require pocket-ic=1 \
-		--require ic-platform=1 --forbid-feature ic-platform/cdk --require ic-wire=1
+		--require ic-platform=1 --require ic-wire=1 --forbid ic-platform-runtime \
+		--forbid ic-platform-runtime-guard --forbid ic-platform-macros --forbid ic0 \
+		--forbid-feature ic-platform/cdk --forbid-feature ic-platform/runtime --forbid-feature ic-platform/executor
 
 check-release-commands:
 	RELEASE_BATCH_ACTIVE=1 RELEASE_GROUP=jobs bash scripts/ci/check-release-commands.sh . make/consumer.mk make/cargo-dependencies.mk make/tools.mk make/release.mk make/rust-format.mk make/execution.mk scripts/ci/check-make-execution.sh scripts/ci/run-formatting.sh scripts/ci/check-release-delivery.sh ci/release-delivery.txt scripts/ci/check-qualification-tooling.sh Cargo.toml Cargo.lock qualification/Cargo.lock $(shell rg --files crates qualification -g '*.rs' -g Cargo.toml)
@@ -409,10 +412,10 @@ test-timers:
 test-timer-tooling:
 	+$(MINIMUM_RUST) cargo test --manifest-path qualification/Cargo.toml -p ic-timers-pocketic --lib --bin ic-timers-pocketic --locked --offline
 check-timer-probes:
-	+$(MINIMUM_RUST) cargo clippy --manifest-path qualification/Cargo.toml -p ic-timers-pocketic -p ic-timers-runtime-probe -p ic-timers-test-protocol --all-targets --locked --offline -- -D warnings
+	+CARGO_BUILD_WARNINGS=deny $(MINIMUM_RUST) cargo clippy --manifest-path qualification/Cargo.toml -p ic-timers-pocketic -p ic-timers-runtime-probe -p ic-timers-test-protocol --all-targets --locked --offline
 	+$(MINIMUM_RUST) cargo check --manifest-path qualification/Cargo.toml -p ic-timers -p ic-timers-runtime-probe --target wasm32-unknown-unknown --locked --offline
 	+@set -e; for selection in baseline once after-completion watchdog; do \
-		$(MINIMUM_RUST) cargo clippy --manifest-path qualification/Cargo.toml -p ic-timers-size-probe --no-default-features --features "$$selection" --all-targets --locked --offline -- -D warnings; \
+		CARGO_BUILD_WARNINGS=deny $(MINIMUM_RUST) cargo clippy --manifest-path qualification/Cargo.toml -p ic-timers-size-probe --no-default-features --features "$$selection" --all-targets --locked --offline; \
 	done
 test-timer-watchdog: consumer-server-check
 	+@cli="$$( $(TESTKIT_TOOL) --check )" && server="$$( "$$cli" check )" && \

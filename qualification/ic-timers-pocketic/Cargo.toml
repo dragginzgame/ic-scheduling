@@ -37,5 +37,5 @@ ic-wire.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
 toko-tooling.workspace = true
 
-[lints.rust]
-unsafe_code = "forbid"
+[lints]
+workspace = true

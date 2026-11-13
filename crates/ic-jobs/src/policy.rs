@@ -74,7 +74,7 @@ impl Schedule {
                 missed: MissedRunPolicy::Skip,
                 ..
             } => {
-                let steps = (finished_ns - scheduled_ns) / every_ns.get();
+                let steps = (finished_ns - scheduled_ns) / every_ns;
                 steps
                     .checked_add(1)
                     .and_then(|steps| steps.checked_mul(every_ns.get()))
@@ -130,16 +130,19 @@ impl RetryPolicy {
     }
 
     /// Total allowed attempts, including the initial dispatch.
+    #[must_use]
     pub const fn max_attempts(self) -> u32 {
         self.0.max_attempts
     }
 
     /// First retry delay, in nanoseconds.
+    #[must_use]
     pub const fn initial_delay_ns(self) -> u64 {
         self.0.initial_delay_ns
     }
 
     /// Maximum retry delay, in nanoseconds.
+    #[must_use]
     pub const fn max_delay_ns(self) -> u64 {
         self.0.max_delay_ns
     }

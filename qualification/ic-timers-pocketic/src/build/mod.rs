@@ -31,15 +31,20 @@ const CONFIGURATION_LIMITS: ConfigurationLimits = ConfigurationLimits {
 /// Full qualification or an explicitly narrower development selection.
 #[derive(clap::Subcommand, Debug, Eq, PartialEq)]
 pub enum Qualification {
+    /// Run the complete installed watchdog and runtime subject roster.
     Watchdog,
     /// Run exact runtime subjects; does not replace watchdog qualification.
     Focused {
+        /// Exact test paths selected by the caller.
         #[arg(required = true, num_args = 1..)]
         subjects: Vec<String>,
     },
+    /// Measure every policy cohort and both watchdog calibration subjects.
     Cohorts {
+        /// Output receipt path, relative to the qualification workspace.
         #[arg(long, default_value = "target/timer-cohorts.json")]
         report: PathBuf,
+        /// Optional admitted report used for a measurement comparison.
         #[arg(long)]
         baseline: Option<PathBuf>,
     },
@@ -63,6 +68,8 @@ impl Qualification {
         }
     }
 
+    /// Command name used when re-entering the supervised worker.
+    #[must_use]
     pub const fn name(&self) -> &'static str {
         match self {
             Self::Watchdog => "watchdog",
@@ -235,6 +242,7 @@ pub(crate) fn scratch_parent() -> std::io::Result<PathBuf> {
     Ok(parent)
 }
 
+/// Build the selected artifacts, run admitted subjects and publish their receipt.
 pub fn run(qualification: &Qualification) -> Result<(), Box<dyn std::error::Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("..")
@@ -392,8 +400,8 @@ pub fn run(qualification: &Qualification) -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
-// One parent process group covers builds, Cargo tests and synchronous instance
-// deletion. Separately grouped Testkit servers also have their own hard TTL.
+/// Supervise builds, Cargo tests and synchronous instance deletion in one group.
+/// Separately grouped Testkit servers also have their own hard TTL.
 pub fn qualify(command: &mut Command, timeout: Duration) -> Result<(), ToolError> {
     run_group_command(
         command,

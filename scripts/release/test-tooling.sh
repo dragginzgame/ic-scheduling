@@ -264,7 +264,7 @@ qualify_group() (
     local suite="$1" selected="$2" mode="$3"
     local repo="$suite/$selected"
     local ledger other_ledger package other previous candidate other_group other_version
-    local base plan requirement
+    local base plan
     cp -R "$suite/source" "$repo"
     cd "$repo"
     # These fixtures exercise the inner standard runner. The frozen fixture
@@ -316,7 +316,6 @@ qualify_group() (
     cargo metadata --locked --offline --format-version 1 > "$suite/$selected-before.json"
     cargo metadata --manifest-path qualification/Cargo.toml --locked --offline --format-version 1 > "$suite/$selected-qualification-before.json"
     yq -p toml -o json qualification/Cargo.lock | jq -S '[.package[] | select(.source != null)]' > "$suite/$selected-suppliers-before.json"
-    requirement="$(yq -p toml -o yaml -r '.workspace.dependencies.ic-timers.version' Cargo.toml)"
     case "$mode" in
         all|metadata|retention)
             check_metadata_rollback "$suite" "$selected" "$previous" "$candidate" "$base" ;;
@@ -349,11 +348,11 @@ qualify_group() (
     grep -Fx 'qualification/Cargo.toml' "$suite/$selected-files" >/dev/null
     grep -Fx 'qualification/Cargo.lock' "$suite/$selected-files" >/dev/null
     jq -e --arg other "$other" --arg version "$other_version" '.packages[] | select(.name == $other and .source == null) | .version == $version' "$suite/$selected-after.json" > /dev/null
-    if [[ "$selected" == jobs ]]; then
-        [[ "$(yq -p toml -o yaml -r '.workspace.dependencies.ic-timers.version' Cargo.toml)" == "$requirement" ]]
-    else
+    # Release membership comes from policy/metadata; preparation must not restore
+    # display-only dependency aliases removed under the installed baseline.
+    yq -p toml -o json Cargo.toml | jq -e '.workspace.dependencies | (has("ic-jobs") or has("ic-timers")) | not' >/dev/null
+    if [[ "$selected" == timers ]]; then
         [[ "$(yq -p toml -o yaml -r '.package.version' crates/ic-jobs/Cargo.toml)" == "$other_version" ]]
-        [[ "$(yq -p toml -o yaml -r '.workspace.dependencies.ic-timers.version' Cargo.toml)" == "$candidate" ]]
         # The unchanged standalone Jobs consumer still builds against Jobs
         # its retained version after the independent Timers upgrade.
         CARGO_TARGET_DIR="$suite/jobs-consumer-target" bash scripts/dev/minimum-rust.sh cargo check \

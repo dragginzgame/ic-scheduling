@@ -7,6 +7,34 @@ and [coordinated history through 0.33.1](../history.md).
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.36.0] - Unreleased
+
+### 🧪 Testing
+
+- Select Metrics 0.30.2 in the private consumer qualification graph, preserving
+  the Serde-only Jobs library and existing recovery/uncertain-effect boundaries.
+- Adopt qualification Storage 0.74, Testkit 0.102, Build 0.84.1 and Host 0.77.1.
+  Wire 0.22.0 / Endpoint 0.13.0 align with Runtime/macros/exact guard 0.22.1,
+  Types 0.20.1 and native Platform 0.32.1. Retain one Runtime/executor/IC0
+  backend and preserve Wire bytes, backing formats, allocation and restore admission.
+
+### ⚠️ Breaking
+
+- Require Rust 1.100.0 for product and qualification builds. Preserve Jobs'
+  Serde-only model, stored records and restore/uncertain-effect boundaries
+  ([#93 — Adopt the common compiler and lint policy](https://github.com/dragginzgame/ic-scheduling/issues/93)).
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.41.1 and the common strict Rust/Clippy/Rustdoc minimum.
+  Inherit owning workspace policies, annotate value-returning APIs and reject
+  unsafe declarations and ignored Results through real consumer fixtures.
+- Remove unused Cargo catalog entries and private workspace metadata; preserve
+  complete release-group membership and expose versions through `make deps-list`.
+- Deny unused Cargo declarations/metadata, missing inheritance, unknown Cargo
+  lints and malformed Rustdoc tables. Qualify Cargo warning refusal on fresh and
+  reused Clippy artifacts while preserving structured-diagnostic checks.
+
 ## [0.35.4] - 2026-11-12
 
 ### 🧪 Testing

@@ -76,6 +76,7 @@ pub fn install_spec(wasm: Vec<u8>, config: &Init) -> Result<InstallSpec, ic_wire
 }
 
 /// Project one consumer-owned management method into the host transport spec.
+#[must_use]
 pub const fn control(method: Method) -> WireCallSpec {
     WireCallSpec {
         method: method.name(),

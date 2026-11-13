@@ -3,10 +3,11 @@
 Jobs and Timers stay in one development workspace with two independent release
 identities, approved in [#82 — Version Jobs and Timers independently](https://github.com/dragginzgame/ic-scheduling/issues/82).
 The policy is [ci/cargo-release-groups.json](../../ci/cargo-release-groups.json).
-The root Cargo dependency catalog lists each product's full version and path
-once, beside its group's ledger. The separate qualification workspace owns the
-six private members and its own catalog/lock. Policy alias rosters cover their
-own complete catalogs, including private members that no other member uses.
+The release JSON policy owns complete product membership and ledger paths;
+`make deps-list` reports local versions in both workspaces. Cargo catalogs retain
+used dependencies rather than display-only entries. The separate qualification
+workspace owns six private members and its own catalog/lock. Group dependency
+alias rosters cover remaining product catalog entries and may be empty.
 
 | Group | Version authority | Canonical changelog | Published package |
 | --- | --- | --- | --- |
@@ -83,12 +84,12 @@ Each group admits the product manifest/lock, its ledger under `releases/`, its
 literal-version product manifest and the shared qualification manifest/lock
 transaction. The root index and shared history are
 outside every release file plan and are never finalized as group notes.
-The Timers path requirement in the root catalog follows a Timers release;
-Jobs' package identity stays unchanged. This updated consumer declaration is
-not republished under an existing Jobs version. Release Jobs separately when
-its own contract requires it. Jobs-only preparation preserves that requirement
-and all Timers versions and notes. Shared admission refuses incomplete group
-membership or unlisted local path/version requirements.
+Timers preparation updates its literal package version and the qualification
+lock's current product-source identity; Jobs' package identity stays unchanged.
+Release Jobs separately when its own contract requires it. Jobs-only preparation
+preserves all Timers versions and notes. Shared admission refuses incomplete group
+membership or unlisted local path/version requirements, without requiring unused
+root aliases.
 
 One queue serializes frozen batches, and each captured repository's release lock
 protects its Cargo graph. Its Git-owned `release-state/jobs-X.Y.Z.plan` or
@@ -108,7 +109,7 @@ receipts stop recovery rather than authorizing another effect.
 
 ## Preparation and verification
 
-Rust 1.99.1 is both the consumer floor and pinned release compiler. The release
+Rust 1.100.0 is both the consumer floor and pinned release compiler. The release
 CI gate runs `rust-policy-check` before product compilation and records actual
 Cargo/rustc identities. Native and Wasm package coverage, archive verification
 and the explicit installed watchdog/cohort gate remain required.

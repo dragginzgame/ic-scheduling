@@ -9,9 +9,7 @@
         "ic-jobs"
       ],
       "changelog": "releases/jobs/CHANGELOG.md",
-      "dependencies": [
-        "ic-jobs"
-      ]
+      "dependencies": []
     },
     {
       "name": "timers",
@@ -21,9 +19,7 @@
         "ic-timers"
       ],
       "changelog": "releases/timers/CHANGELOG.md",
-      "dependencies": [
-        "ic-timers"
-      ]
+      "dependencies": []
     }
   ],
   "qualification_workspace": "qualification"

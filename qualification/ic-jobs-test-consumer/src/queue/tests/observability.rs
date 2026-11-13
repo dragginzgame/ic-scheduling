@@ -84,7 +84,7 @@ fn job_metrics_separate_retries_uncertainty_and_receipt_reconciliation() {
 #[test]
 fn job_metrics_exclude_rejected_mutations_and_leave_running_intent_blocked() {
     let backing = VectorMemory::default();
-    let mut queue = fresh_queue(backing.clone());
+    let mut queue = fresh_queue(backing);
     queue
         .create(Create {
             timing: Timing::AfterCompletion {

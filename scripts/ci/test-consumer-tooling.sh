@@ -4,11 +4,11 @@ set -euo pipefail
 # only their affected caller phases, without replaying installer/hosted suites.
 phases=("$@")
 if [[ $# == 0 ]]; then
-    phases=(workspace-inheritance candid-boundary fixture-scratch batch-commands deps-update tooling-admission cli-admission server-commands workflow-selection input-admission artifact-capture ci-admission rust-policy group-recipes)
+    phases=(workspace-inheritance candid-boundary fixture-scratch batch-commands deps-update tooling-admission cli-admission server-commands workflow-selection input-admission artifact-capture ci-admission rust-policy lint-policy group-recipes)
 fi
 for phase in "${phases[@]}"; do
     case "$phase" in
-        workspace-inheritance|candid-boundary|fixture-scratch|batch-commands|deps-update|tooling-admission|cli-admission|server-commands|workflow-selection|input-admission|artifact-capture|ci-admission|rust-policy|group-recipes) ;;
+        workspace-inheritance|candid-boundary|fixture-scratch|batch-commands|deps-update|tooling-admission|cli-admission|server-commands|workflow-selection|input-admission|artifact-capture|ci-admission|rust-policy|lint-policy|group-recipes) ;;
         *) echo "unknown consumer tooling phase: $phase" >&2; exit 2 ;;
     esac
 done
@@ -94,7 +94,7 @@ phase_workspace_inheritance() (
         case "$invalid" in
             product-version) perl -pi -e 's/^version = "[^"]+"/version = "0.0.0"/' "$fixture/crates/ic-timers/Cargo.toml" ;;
             missing-private-version) perl -ni -e 'print unless /^version = /' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
-            private-dependency) perl -pi -e 's/^toko-tooling.workspace = true/toko-tooling = "=0.39.17"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
+            private-dependency) perl -pi -e 's/^toko-tooling.workspace = true/toko-tooling = "=0.41.1"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
             target-dependency) printf '\n%s\n%s\n' "[target.'cfg(unix)'.dev-dependencies]" 'serde = "1.0"' >> "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
             published-qualification) perl -pi -e 's/^publish = false/publish = ["crates-io"]/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
         esac
@@ -121,11 +121,11 @@ exit "${JOBS_DEPENDENCY_UPDATE_FAILURE:-0}"
 CARGO
     chmod +x "$fixture/.tools/rust/common/bin/cargo"
     PATH="$fixture/.tools/rust/common/bin:$PATH" make --no-print-directory -C "$fixture" deps-update \
-        DEPENDENCY_PACKAGE=toko-tooling DEPENDENCY_PRECISE=0.39.17 > "$fixture/update.log" 2>&1
+        DEPENDENCY_PACKAGE=toko-tooling DEPENDENCY_PRECISE=0.41.1 > "$fixture/update.log" 2>&1
     printf '%s\0' "$fixture" update -v --manifest-path "$fixture/Cargo.toml" \
-        --package toko-tooling --precise 0.39.17 \
+        --package toko-tooling --precise 0.41.1 \
         "$fixture/qualification" update -v --manifest-path "$fixture/qualification/Cargo.toml" \
-        --package toko-tooling --precise 0.39.17 > "$fixture/expected"
+        --package toko-tooling --precise 0.41.1 > "$fixture/expected"
     cmp "$fixture/events" "$fixture/expected"
     : > "$fixture/events"
     status=0
@@ -196,7 +196,7 @@ for invalid in missing-lock version-drift checksum-drift missing-member independ
         missing-member)
             perl -0pi -e 's/^toko-tooling\.workspace = true\n//m' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
         independent-member)
-            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.39.17"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
+            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.41.1"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
     esac
     for target in ci release-patch release-preflight publish publish-check clean-empty-source-dirs; do
         status=0
@@ -691,6 +691,89 @@ make --no-print-directory -C "$fixture" build-consumer > "$fixture/invalid.log" 
 echo 'Unified compiler policy reaches Make/hosted setup once; drift and wrong Cargo/rustc refuse (substitute compiler only)'
 )
 
+phase_lint_policy() (
+local fixture workspace member package selection lint_manifest diagnostic
+fixture="$suite/lint-policy"
+mkdir -p "$fixture/consumer/src"
+cp "$root/qualification/ic-jobs-test-consumer/tests/fixtures/rust-policy/consumer.toml" "$fixture/consumer/Cargo.toml"
+cp "$root/qualification/ic-jobs-test-consumer/tests/fixtures/rust-policy/src/lib.rs" "$fixture/consumer/src/lib.rs"
+for workspace in "$root" "$root/qualification"; do
+    yq -p toml -o json '.' "$workspace/Cargo.toml" > "$fixture/workspace.json"
+    cargo "+$JOBS_CONSUMER_RUST_VERSION" metadata --manifest-path "$workspace/Cargo.toml" \
+        --locked --offline --no-deps --format-version 1 > "$fixture/metadata.json"
+    while IFS= read -r member; do
+        yq -p toml -o json '.' "$member" > "$fixture/member.json"
+        package="$(jq -r .package.name "$fixture/member.json")"
+        jq -e --slurpfile workspace "$fixture/workspace.json" '
+            def level: if type == "object" then .level else . end;
+            .package.name as $name |
+            (if .lints.workspace == true then $workspace[0].workspace.lints
+             elif $name == "ic-timers" then .lints
+             else error("member must inherit workspace lints") end) |
+            select([.rust.dead_code, .rust.unused_must_use,
+                    .rust.unfulfilled_lint_expectations, .rust.unsafe_op_in_unsafe_fn]
+                   | all(level == "deny")) |
+            select((.rust.missing_docs | level) == "deny" or (.rust.missing_docs | level) == "warn") |
+            select((.rust.unsafe_code | level) == (if $name == "ic-timers" then "deny" else "forbid" end)) |
+            select([.cargo.unused_dependencies, .cargo.unused_workspace_dependencies,
+                    .cargo.unused_workspace_package_fields, .cargo.missing_lints_inheritance,
+                    .cargo.unknown_lints] | all(level == "deny")) |
+            select([.rustdoc.broken_intra_doc_links, .rustdoc.invalid_markdown_table]
+                   | all(level == "deny")) |
+            select(.clippy.all == {level:"warn", priority:-2}) |
+            select(.clippy.correctness == {level:"deny", priority:-1}) |
+            select([.clippy.redundant_clone, .clippy.needless_pass_by_value,
+                    .clippy.wildcard_imports, .clippy.missing_panics_doc,
+                    .clippy.must_use_candidate] | all(level == "warn")) |
+            select((.clippy.too_many_lines | level) == "allow") |
+            select(.clippy.nursery == null and .clippy.restriction == null and .clippy.future_not_send == null)
+        ' "$fixture/member.json" > "$fixture/effective.json"
+        lint_manifest="$member"
+        if jq -e '.lints.workspace == true' "$fixture/member.json" > /dev/null; then
+            lint_manifest="$workspace/Cargo.toml"
+        fi
+        {
+            printf '[workspace]\nmembers = ["consumer"]\nresolver = "3"\n\n'
+            jq -r '.workspace.package | "[workspace.package]\nedition = \(.edition | tojson)\nrust-version = \(."rust-version" | tojson)\n"' "$fixture/workspace.json"
+            # Copy actual tables; yq intentionally has no general TOML encoder.
+            awk '/^\[/ {emit = ($0 ~ /^\[(workspace\.)?lints\.(cargo|rust|rustdoc|clippy)\]$/)}
+                 emit {sub(/^\[lints\./, "[workspace.lints."); print}' "$lint_manifest"
+        } > "$fixture/Cargo.toml"
+        cargo "+$JOBS_CONSUMER_RUST_VERSION" check --manifest-path "$fixture/Cargo.toml" \
+            --offline --features valid > "$fixture/$package-valid.log" 2>&1
+        for selection in must-use unsafe; do
+            if cargo "+$JOBS_CONSUMER_RUST_VERSION" check --manifest-path "$fixture/Cargo.toml" \
+                --locked --offline --features "$selection" --message-format=json \
+                > "$fixture/$package-$selection.jsonl" 2> "$fixture/$package-$selection.stderr"; then exit 1; fi
+            case "$selection" in
+                must-use) diagnostic=unused_must_use ;;
+                unsafe) diagnostic=unsafe_code ;;
+            esac
+            jq -se --arg code "$diagnostic" 'any(.[]; .reason == "compiler-message" and .message.level == "error" and .message.code.code == $code)' \
+                "$fixture/$package-$selection.jsonl" > /dev/null
+        done
+    done < <(jq -r '.workspace_members as $members | .packages[] | select(.id as $id | $members | index($id)) | .manifest_path' "$fixture/metadata.json")
+done
+# Qualify the warning mode used by the actual Make recipes without changing
+# compiler flags. These records distinguish reused artifacts from a new compile.
+CARGO_TARGET_DIR="$fixture/target" CARGO_BUILD_WARNINGS=warn \
+    cargo "+$JOBS_CONSUMER_RUST_VERSION" clippy --manifest-path "$fixture/Cargo.toml" \
+    --locked --offline --features warning --message-format=json-render-diagnostics \
+    > "$fixture/warning-permitted.jsonl" 2> "$fixture/warning-permitted.stderr"
+for selection in warm fresh; do
+    warning_target="$fixture/target"
+    [[ "$selection" != fresh ]] || warning_target="$fixture/fresh-warning-target"
+    if CARGO_TARGET_DIR="$warning_target" CARGO_BUILD_WARNINGS=deny \
+        cargo "+$JOBS_CONSUMER_RUST_VERSION" clippy --manifest-path "$fixture/Cargo.toml" \
+        --locked --offline --features warning --message-format=json-render-diagnostics \
+        > "$fixture/warning-$selection.jsonl" 2> "$fixture/warning-$selection.stderr"; then exit 1; fi
+    # Rendered mode sends diagnostics to stderr and artifact records to stdout.
+    grep -F 'warning: unused variable: `unused_value`' "$fixture/warning-$selection.stderr" > /dev/null
+done
+jq -se 'any(.[]; .reason == "compiler-artifact" and .fresh == true)' "$fixture/warning-warm.jsonl" > /dev/null
+echo 'Every actual member admits safe documented code and rejects ignored Results/unsafe declarations; Cargo warning admission rejects fresh and reused Clippy diagnostics (real compiler)'
+)
+
 phase_group_recipes() (
 local fixture
 trap - EXIT
@@ -702,6 +785,7 @@ cat > "$fixture/.tools/rust/common/bin/cargo" <<'CARGO'
 #!/usr/bin/env bash
 set -euo pipefail
 printf '%s\n' "$*" >> "$GROUP_CI_RECIPE_EVENTS"
+if [[ "$1" == clippy ]]; then [[ "${CARGO_BUILD_WARNINGS:-}" == deny ]] || exit 47; fi
 if [[ "${GROUP_CI_RECIPE_FAIL:-}" == timers && "$*" == 'clippy -p ic-timers '* ]]; then exit 31; fi
 CARGO
 chmod +x "$fixture/.tools/rust/common/bin/cargo"
@@ -714,9 +798,9 @@ shift
 exec cargo "$@"
 POLICY
 cat > "$fixture/expected-jobs" <<'JOBS'
-clippy -p ic-jobs --all-targets --all-features --locked --offline -- -D warnings
-clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline -- -D warnings
-clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline -- -D warnings
+clippy -p ic-jobs --all-targets --all-features --locked --offline
+clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline
+clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline
 doc -p ic-jobs --all-features --locked --offline --no-deps
 test -p ic-jobs --doc --all-features --locked --offline
 package -p ic-jobs --all-features --locked --offline --allow-dirty
@@ -724,10 +808,10 @@ JOBS
 make --no-print-directory -C "$fixture" clippy-jobs docs-jobs package-jobs > "$fixture/jobs.log" 2>&1
 cmp "$fixture/events" "$fixture/expected-jobs"
 cat > "$fixture/expected-full" <<'FULL'
-clippy -p ic-jobs --all-targets --all-features --locked --offline -- -D warnings
-clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline -- -D warnings
-clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline -- -D warnings
-clippy -p ic-timers --all-targets --locked --offline -- -D warnings
+clippy -p ic-jobs --all-targets --all-features --locked --offline
+clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer -p ic-jobs-canister-tests --all-targets --features ic-jobs-canister-tests/harness --locked --offline
+clippy --manifest-path qualification/Cargo.toml -p ic-jobs-test-consumer --target wasm32-unknown-unknown --locked --offline
+clippy -p ic-timers --all-targets --locked --offline
 doc -p ic-jobs --all-features --locked --offline --no-deps
 test -p ic-jobs --doc --all-features --locked --offline
 doc -p ic-timers --all-features --locked --offline --no-deps

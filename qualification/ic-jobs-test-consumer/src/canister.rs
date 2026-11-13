@@ -102,6 +102,10 @@ fn admit_control_input() -> Result<(), String> {
     Ok(())
 }
 
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Lifecycle admission consumes the owned IC argument frame."
+)]
 fn decode_control<T: DeserializeOwned, const ID: u64>(bytes: Vec<u8>) -> T {
     ic_wire_endpoint::decode_request(&bytes, ID, control::REQUEST_LIMITS)
 }

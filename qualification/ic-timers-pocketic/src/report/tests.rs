@@ -118,10 +118,7 @@ fn missing_or_incomplete_candidate_never_replaces_a_previous_report() {
         artifacts: complete.artifacts.clone(),
     };
     let previous = serde_json::to_vec_pretty(&complete).unwrap();
-    let completed = expected
-        .clone()
-        .complete(complete.measurements.clone())
-        .unwrap();
+    let completed = expected.clone().complete(complete.measurements).unwrap();
     assert_eq!(serde_json::to_vec_pretty(&completed).unwrap(), previous);
     let mut incomplete = expected.clone();
     incomplete.context.rustc.clear();

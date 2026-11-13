@@ -147,10 +147,6 @@ fn watchdog_cancellation_at_maximum_generation_clears_the_selected_callbacks() {
 }
 
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "One terminal-failure matrix checks both ordinary policies and lifetimes."
-)]
 fn ordinary_terminal_failures_respect_declaration_lifetime() {
     for lifetime in [
         DeclarationLifetime::Retained,
@@ -268,10 +264,6 @@ fn ordinary_terminal_failures_respect_declaration_lifetime() {
 }
 
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "One terminal-failure matrix checks both lifetimes and policy cleanup."
-)]
 fn watchdog_terminal_failures_respect_declaration_lifetime() {
     for lifetime in [
         DeclarationLifetime::Retained,

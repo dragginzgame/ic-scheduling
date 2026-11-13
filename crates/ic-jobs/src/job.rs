@@ -189,7 +189,7 @@ impl JobRecord {
                 missed,
             } => {
                 let delta = self.scheduled_ns - first_at_ns;
-                let intervals = delta / every_ns.get();
+                let intervals = delta / every_ns;
                 if !delta.is_multiple_of(every_ns.get())
                     || match missed {
                         MissedRunPolicy::CatchUp => intervals != occurrences_since_origin,
@@ -398,6 +398,7 @@ impl Job {
     /// Create a pending job with an application-assigned identity.
     ///
     /// Schedule intervals and retry configuration are checked before construction.
+    #[must_use]
     pub const fn new(id: JobId, schedule: Schedule, retry: RetryPolicy) -> Self {
         Self(JobRecord {
             id,

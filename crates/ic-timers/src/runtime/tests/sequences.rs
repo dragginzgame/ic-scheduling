@@ -37,10 +37,6 @@ fn declaration(
 }
 
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "Keep the bounded trace driver and its invariant checks together."
-)]
 fn generated_command_sequences_preserve_authority_and_handle_ownership() {
     #[derive(Clone, Copy, Debug, Eq, PartialEq)]
     enum Command {
@@ -279,10 +275,6 @@ fn generated_command_sequences_preserve_authority_and_handle_ownership() {
 }
 
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "Keep each suspended trace, its independent outcome oracle and cleanup together."
-)]
 fn suspended_command_sequences_retire_authority_across_completion_and_abandonment() {
     #[derive(Clone, Copy, Debug)]
     enum Command {

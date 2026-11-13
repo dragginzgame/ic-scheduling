@@ -60,7 +60,7 @@ but it does not promise that a task will happen exactly once.
 | API line | `0.40` |
 
 IC Timers is written in Rust 2024 and supports Rust
-1.99.1 and newer. The private backend owns one-shot dispatch through IC
+1.100.0 and newer. The private backend owns one-shot dispatch through IC
 system calls and the shared executor through `ic-platform-runtime`. See the
 [backend design](../../docs/timers/design/0.26-owned-timer-backend.md)
 for implementation and qualification boundaries.
@@ -211,13 +211,14 @@ does not make inspection an authorization or zero-cost guarantee.
 
 ## Minimal `Once` example
 
-The examples require Timers 0.41.0 with Runtime 0.20 and Metrics 0.29.
+The examples work with published Timers 0.43.4, Runtime 0.21 and Metrics 0.29.
+This checkout's pending Timers 0.44 release selects Runtime 0.22 and Metrics 0.30.
 Align the complete canister graph with the
 [runtime compatibility requirements](#runtime-compatibility):
 
 ```toml
 [dependencies]
-ic-timers = "0.41.0"
+ic-timers = "0.43.4"
 ```
 
 Every framework and application crate linked into the same canister must resolve
@@ -385,8 +386,9 @@ the overflow flags when projecting reports; clipped count/total fields alone los
 quality information. Report owners decide mean/rounding, interval admission and
 transport validation after establishing units and registration continuity.
 
-Timers **0.40** uses
-`ic_timers::{MeasurementCounter, MeasurementSummary}` from Metrics **0.29**.
+The pending Timers **0.44** release uses
+`ic_timers::{MeasurementCounter, MeasurementSummary}` from Metrics **0.30**.
+Published Timers 0.40 through 0.43 use Metrics 0.29.
 Align direct Metrics dependencies when exchanging these values with other
 libraries. Recorders implement neither Serde nor Wire and expose no means,
 deltas or interval queries. Consumers own their report DTOs and codecs.
@@ -525,17 +527,22 @@ for commands and qualification. The [architecture](../../docs/timers/architectur
 
 ## Runtime compatibility
 
-Timers 0.41 selects Runtime 0.20.0 or a compatible 0.20 patch
-for IC0 and execution. Runtime requires its exact matching executor guard.
-Applications retaining Runtime 0.19 must align all executor and Endpoint
-suppliers together before adopting it. Timers 0.40 remains on Runtime 0.19;
+Published Timers 0.43 selects Runtime 0.21.3. The pending 0.44 release selects
+Runtime 0.22.1 or a compatible 0.22 patch for IC0 and execution.
+Runtime requires its exact matching executor guard.
+Applications must align executor and Endpoint suppliers before changing their
+Runtime generation. Storage's IC0-only adapter may use a newer Runtime without
+introducing another executor;
 removing or overriding the singleton guard is not a compatibility fix.
 
-Consumers exchanging Timers 0.41's public measurement types with a direct
-Metrics dependency select Metrics 0.29. Canister entrypoints select Runtime's `cdk`
-feature; canonical identities come from Types 0.18. The qualification consumer
-selects Storage 0.68, Wire Core 0.17 and Endpoint 0.8. The native harness selects
-Testkit 0.93, which owns the PocketIC client at `ic_testkit::pocket_ic`; no separate
+Consumers exchanging pending Timers 0.44's public measurement types with a direct
+Metrics dependency select Metrics 0.30 and Rust 1.100.0. Published Timers 0.43
+uses Metrics 0.29. Canister entrypoints select Runtime's `cdk`
+feature; canonical identities come from Types 0.20.1. The qualification consumer
+selects Storage 0.74.0, Wire Core 0.22.0 and Endpoint 0.13.0, sharing Runtime
+0.22.1 with Timers. The native harness selects Testkit 0.102.0 with Types 0.20.1 /
+Platform 0.32.1, and Build 0.84.1 / Host 0.77. Testkit owns the PocketIC client at
+`ic_testkit::pocket_ic`; no separate
 client dependency is needed. Managed startup supplies the client's explicit server
 endpoint and retains server custody. No retired Testkit Native or Memory crate is used.
 

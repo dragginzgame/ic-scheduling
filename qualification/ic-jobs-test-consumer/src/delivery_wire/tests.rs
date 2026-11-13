@@ -44,7 +44,7 @@ fn requests_preserve_the_envelope_and_reject_other_protocols() {
             native::decode_request::<Delivery>(method, &bytes[..bytes.len() - 1], REQUEST_LIMITS)
                 .is_err()
         );
-        let mut trailing = bytes.clone();
+        let mut trailing = bytes;
         trailing.push(0);
         assert_eq!(
             native::decode_request::<Delivery>(method, &trailing, REQUEST_LIMITS),
@@ -78,7 +78,7 @@ fn replies_preserve_exact_evidence_and_distinguish_absence_from_failure() {
     trailing.push(0);
     assert_eq!(decode_reply::<Delivery, ()>(RECEIVE_ID, Ok(trailing)), None);
 
-    for value in [Some(delivery.clone()), None] {
+    for value in [Some(delivery), None] {
         let bytes =
             native::encode_response(RECEIPT_ID, &Ok::<_, Error>(&value), RESPONSE_LIMITS).unwrap();
         assert_eq!(

@@ -7,7 +7,6 @@ license-file.workspace = true
 authors = ["borovan <84897664+borovan@users.noreply.github.com>"]
 description = "Observable and recovery-aware timers for Internet Computer canisters"
 repository.workspace = true
-homepage = "https://github.com/dragginzgame/ic-scheduling"
 documentation = "https://docs.rs/ic-timers"
 keywords = ["internet-computer", "canister", "timer", "dfinity", "icp"]
 categories = ["asynchronous", "wasm"]
@@ -26,14 +25,35 @@ thiserror.workspace = true
 [dev-dependencies]
 toko-tooling.workspace = true
 
+# Cargo cannot merge inherited and package lint tables. Timers mirrors the
+# common minimum, but admits only its private FFI under unsafe_code=deny;
+# the safe product and qualification workspaces retain unsafe_code=forbid.
+[lints.cargo]
+unused_dependencies = "deny"
+unused_workspace_dependencies = "deny"
+unused_workspace_package_fields = "deny"
+missing_lints_inheritance = "deny"
+unknown_lints = "deny"
+
 [lints.rust]
+dead_code = "deny"
+unused_must_use = "deny"
+unfulfilled_lint_expectations = "deny"
 missing_docs = "warn"
 unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.rustdoc]
+broken_intra_doc_links = "deny"
+invalid_markdown_table = "deny"
 
 [lints.clippy]
-all = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
-nursery = { level = "warn", priority = -1 }
+all = { level = "warn", priority = -2 }
+correctness = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -2 }
+needless_pass_by_value = "warn"
+wildcard_imports = "warn"
+too_many_lines = "allow"
 missing_const_for_fn = "warn"
 missing_panics_doc = "warn"
 must_use_candidate = "warn"

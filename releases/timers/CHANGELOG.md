@@ -10,6 +10,44 @@ entry alone does not establish publication.
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.44.0] - Unreleased
+
+### 📦 Dependencies
+
+- Select Metrics 0.30.2 in both owning workspaces and align consumer-facing
+  measurement-type guidance.
+- Adopt Runtime/macros/exact guard 0.22.1, Wire 0.22.0, Endpoint 0.13.0 and
+  Types 0.20.1. Unify Storage and Timers on one Runtime, retaining the sole
+  executor, IC0 backend and generator, with unchanged Wire bytes and limits.
+- Adopt private Testkit 0.102, Build 0.84.1 and Host 0.77.1, with native Platform
+  0.32.1. Preserve explicit transport conversions and executor-free native
+  harness boundaries.
+
+### 🧹 Cleanup
+
+- Replace the custom wakeup-delivery destructor and completion flag with Rust
+  1.100's `DropGuard`, preserving pre-poll abandonment, cancellation, borrow-safe
+  capture cleanup and normal-completion dismissal.
+
+### ⚠️ Breaking
+
+- Require Rust 1.100.0 for product and qualification builds. Preserve timer
+  ownership, callback/recovery behavior and existing wire/checkpoint layouts
+  ([#93 — Adopt the common compiler and lint policy](https://github.com/dragginzgame/ic-scheduling/issues/93)).
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.41.1 and the common strict Rust/Clippy/Rustdoc minimum.
+  Retain the isolated FFI exception and reviewed individual checks, replacing
+  blanket nursery selection and stale line-count/IC-future expectations.
+- Document existing private probe/report interfaces, including macro-generated
+  records, and inherit the qualification workspace's stronger safety/docs policy.
+- Remove unused Cargo catalog entries and private workspace metadata; preserve
+  complete release-group membership and expose versions through `make deps-list`.
+- Deny unused Cargo declarations/metadata, missing inheritance, unknown Cargo
+  lints and malformed Rustdoc tables. Qualify Cargo warning refusal on fresh and
+  reused Clippy artifacts while preserving structured-diagnostic checks.
+
 ## [0.43.4] - 2026-11-12
 
 ### 📦 Dependencies

@@ -53,7 +53,7 @@ earlier executions do not qualify a changed Storage format.
 
 `make test-consumers` aggregates the small effect and transaction fixtures in
 [the integration fixture](../../qualification/ic-jobs-test-consumer/tests/composition.rs), stored Wire
-conformance and the packaged adapter example on Rust 1.99.1, using the selected
+conformance and the packaged adapter example on Rust 1.100.0, using the selected
 locked graph. Select `--test composition` or `--test stored_wire` directly for
 focused consumer work; run the example separately with
 `bash scripts/dev/minimum-rust.sh cargo run -p ic-jobs --example persisted_job --locked --offline`.
@@ -159,14 +159,15 @@ The fault-injection consumers retain their bounded byte store. A separate native
 host fixture uses IC Storage allocation leases and cells: namespace grants admit the
 two namespaces without component ranges or numeric IDs; the host bootstraps once
 before component adoption/open. Stable cells persist the same bounded snapshot
-bytes. Same-format Storage 0.73 cold reopens retain allocation IDs, payloads and pending deadlines; reads
+bytes. Storage 0.74 retains the 0.73 format; same-format cold reopens retain
+allocation IDs, payloads and pending deadlines; reads
 restore through the existing `Job::restore` boundary. Running/Uncertain intent
 remains blocked while an independent local-job cancellation persists across a
 subsequent cold reopen, without changing the blocked effect bytes.
 Foreign-owner bootstrap fails without changing backing bytes or granting opens.
 This is actual Storage collection persistence on native VectorMemory, not an IC
 upgrade, message rollback, final Canic/IcyDB composition or live timer evidence.
-Storage 0.73 rejects earlier whole-store backing, including 0.71, without writes/growth. The
+Storage 0.74 rejects earlier whole-store backing, including 0.71, without writes/growth. The
 [consumer's installation boundary](../../qualification/ic-jobs-test-consumer/README.md)
 requires fresh backing or explicit owner-authorized retirement, preserving
 unresolved effects and evidence; it supplies no automatic reset or migration.
@@ -192,7 +193,7 @@ stays blocked. It owns a new test installation rather than changing these native
 consumers' existing snapshots or any deployed format.
 
 `make check-consumer` runs native queue and endpoint-codec tests, builds the Rust
-1.99.1 Wasm, and compiles the separate Testkit harness while executing its native
+1.100.0 Wasm, and compiles the separate Testkit harness while executing its native
 tests. Native/Wasm Clippy is a separate CI selection. Ordinary CI includes these
 checks without launching a server. Explicit Testkit CLI/server
 preparation and `make test-canister` select the live upgrade, rollback, watchdog

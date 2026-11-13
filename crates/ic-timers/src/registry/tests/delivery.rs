@@ -124,10 +124,6 @@ fn running_work_boundaries_reject_unstarted_stale_and_completed_tokens() {
 }
 
 #[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "One ownership matrix checks all provider roles, claims and slot generations."
-)]
 fn provider_roles_keep_paired_handles_distinct_and_reject_policy_mismatches() {
     let provider_count_before = crate::platform::timer_count();
     let mut registry = registry();

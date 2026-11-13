@@ -16,11 +16,12 @@ const SCHEMA: u32 = 2;
 
 // Each field is declared once for construction, strict decoding and comparison.
 macro_rules! metrics {
-    ($name:ident { $($field:ident),* $(,)? }) => {
+    ($(#[$doc:meta])* $name:ident { $($(#[$field_doc:meta])* $field:ident),* $(,)? }) => {
+        $(#[$doc])*
         #[derive(Clone, Debug, Default, Serialize, Deserialize)]
         #[serde(deny_unknown_fields)]
         pub struct $name {
-            $(pub $field: u128,)*
+            $($(#[$field_doc])* pub $field: u128,)*
         }
         impl $name {
             fn deltas(&self, baseline: &Self, subject: &str, changes: &mut BTreeMap<String, i128>) -> Result<()> {
@@ -35,25 +36,46 @@ macro_rules! metrics {
     };
 }
 
-metrics!(PolicyMetrics {
-    start_instructions,
-    duplicate_instructions,
-    cancel_instructions,
-    snapshot_instructions,
-    inventory_instructions,
-    scheduler_instructions,
-    work_instructions,
-    memory_sampling_empty,
-    memory_sampling_sampled,
-    memory_sampling_overhead,
-    dispatch_cycles,
-    wasm_bytes,
-});
-metrics!(CalibrationMetrics {
-    scheduler_instructions,
-    work_instructions,
-    dispatch_cycles
-});
+metrics!(
+    /// Control-operation costs, callback measurements and artifact size for one policy.
+    PolicyMetrics {
+        /// Instructions consumed by initial registration.
+        start_instructions,
+        /// Instructions consumed by duplicate registration.
+        duplicate_instructions,
+        /// Instructions consumed by cancellation.
+        cancel_instructions,
+        /// Instructions consumed by snapshot observation.
+        snapshot_instructions,
+        /// Instructions consumed by inventory observation.
+        inventory_instructions,
+        /// Instructions sampled in scheduler callbacks.
+        scheduler_instructions,
+        /// Instructions sampled in work callbacks.
+        work_instructions,
+        /// Instructions in the empty memory-sampling calibration bracket.
+        memory_sampling_empty,
+        /// Instructions in the memory-sampling bracket.
+        memory_sampling_sampled,
+        /// Additional instructions attributed to memory sampling.
+        memory_sampling_overhead,
+        /// Cycles consumed by the measured dispatch.
+        dispatch_cycles,
+        /// Exact cohort artifact length, in bytes.
+        wasm_bytes,
+    }
+);
+metrics!(
+    /// Scheduler/work instruction and dispatch-cycle costs for a calibration subject.
+    CalibrationMetrics {
+        /// Instructions sampled in scheduler callbacks.
+        scheduler_instructions,
+        /// Instructions sampled in application work.
+        work_instructions,
+        /// Cycles consumed by the measured dispatch.
+        dispatch_cycles
+    }
+);
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -77,6 +99,7 @@ struct Artifact {
     feature: String,
 }
 
+/// Admitted compiler, lock, server and exact artifact identities for a build.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BuildContext {

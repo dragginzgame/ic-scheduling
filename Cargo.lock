@@ -14,15 +14,15 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.29.11"
+version = "0.30.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45009e4547025d669c579899d17332fdcd00c34429d43bc1795297978b8eb21d"
+checksum = "c47441b65ed7436bba6edeff5af5208c312463baeaaae4c432612c2669b25d5f"
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.21.3"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30b250e59766678bc54f25f3d1591e2df4671a7e6a66cfa9f9d6945650bb1bc8"
+checksum = "5ebaa0505656efa68c8d84cf1eed7051deaa79006767e35992bf631007164461"
 dependencies = [
  "ic-platform-runtime-guard",
  "ic0",
@@ -31,9 +31,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.21.3"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57b0c9a1fc1fc07b003a48f66f616740942c0801e3cf472ca922f584df78f4d8"
+checksum = "a3d6e8d2e054ba19865129d04ea65b98c024f05758758611bea3572677831560"
 
 [[package]]
 name = "ic-timers"
@@ -175,9 +175,9 @@ dependencies = [
 
 [[package]]
 name = "toko-tooling"
-version = "0.39.17"
+version = "0.41.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aaeab49adb84ea0d66cf86ecc48d826125f9c3ac6eafaf2a362bccfeba7acbfd"
+checksum = "93c16a4886a3f48275cf6518a99d98f3f189ae493ed8bf2af21344820c4ab2a0"
 
 [[package]]
 name = "unicode-ident"

@@ -1,3 +1,6 @@
+//! Installed canister subjects for Timers ownership, callbacks, rollback and upgrades.
+//! Deliberate fault controls belong to this unpublished qualification canister.
+
 use ic_timers::{
     AfterCompletionDecision, AfterCompletionRegistration, AfterCompletionRunResult,
     MAX_TIMER_REGISTRATIONS, MemoryPageSummary, TimerCadence, TimerCompletion, TimerIdentity,

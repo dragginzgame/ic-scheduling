@@ -1,3 +1,6 @@
+//! Matched policy cohorts and instruction/memory calibration for installed Timers.
+//! Exactly one cohort feature selects the private measurement canister.
+
 use ic_timers::{TimerIdentity, initialize_runtime, timer_inventory, timer_snapshot};
 use ic_timers_test_protocol::{
     CohortObservation, CounterObservation, MemorySamplingMeasurement, OperationMeasurement,

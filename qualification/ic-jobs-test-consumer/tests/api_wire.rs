@@ -78,7 +78,7 @@ fn principal_adoption_preserves_wire_frames_and_stored_json() {
             fixture.delivery_json
         );
         assert_eq!(
-            serde_json::from_value::<Delivery>(fixture.delivery_json.clone()).unwrap(),
+            serde_json::from_value::<Delivery>(fixture.delivery_json).unwrap(),
             delivery
         );
     }

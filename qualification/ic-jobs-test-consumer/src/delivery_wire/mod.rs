@@ -11,9 +11,9 @@ use serde::de::DeserializeOwned;
 #[cfg(any(test, target_arch = "wasm32"))]
 use crate::api::Error;
 
-/// `receive_delivery`: Delivery -> Result<Delivery, Error>.
+/// `receive_delivery`: `Delivery -> Result<Delivery, Error>`.
 pub const RECEIVE_ID: u64 = u64::from_le_bytes(*b"JOBSRCV1");
-/// `delivery_receipt`: Delivery -> Result<Option<Delivery>, Error>.
+/// `delivery_receipt`: `Delivery -> Result<Option<Delivery>, Error>`.
 pub const RECEIPT_ID: u64 = u64::from_le_bytes(*b"JOBSRCP1");
 
 /// Closed outbound selection keeps each exported name with its Wire identity.

@@ -38,7 +38,7 @@ For changes to local release-group fixtures, select
 publication admission. The latter substitutes uploads and the full release gate
 inside disposable repositories; it never publishes a real crate.
 
-The root owns one Cargo lock, Rust 1.99.1 floor, development toolchain, formatting,
+The root owns one Cargo lock, Rust 1.100.0 floor, development toolchain, formatting,
 CI and publication path. The `timer-probe` profile retains its previous optimization
 settings. Ordinary builds default to both published crates. Probe packages remain
 unpublished. The timer registry, callbacks and unsafe IC dispatch remain private
@@ -55,14 +55,16 @@ handoff for what was actually run on this combined source and graph.
 
 Scheduling owns Timers' composition with its root-selected Platform Runtime,
 instead of gating Platform's releases on a downstream Timers dependency
-([#91](https://github.com/dragginzgame/ic-scheduling/issues/91)). Runtime 0.21
-adoption and delivery are tracked separately in
+([#91](https://github.com/dragginzgame/ic-scheduling/issues/91)). Earlier Runtime
+0.21 adoption and delivery are recorded in
 [#92](https://github.com/dragginzgame/ic-scheduling/issues/92). The supported
-cohort is Runtime 0.21 with the matching exact guard; the current lock selects
-0.21.3 in both independent workspace locks. Runtime
+cohort is Runtime 0.22.1 with the matching exact guard in both workspace locks.
+Wire Endpoint 0.13 and Storage 0.74 share that Runtime, with Storage declaring
+IC0 only. Deployed and native identities now select Types 0.20.1. Native Testkit
+0.102's Platform 0.32.1 management codec remains outside the deployed graph. Runtime
 owns its transitive registry IC0 backend; Scheduling packages
 cannot declare direct SDK dependencies. The mandatory installed subjects and
-policy cohorts qualify this selected source and lock; earlier Runtime 0.20
+policy cohorts qualify this selected source and lock; earlier Runtime 0.21
 evidence does not substitute for that gate.
 
 | Required observation | Scheduling owner |
@@ -80,8 +82,8 @@ roster. Its private controls select the call transport and repeat initialization
 they add no product API, timer provider, persisted state or Candid facade.
 Testkit continues to own simulator/server lifecycle.
 
-The qualification workspace selects Build 0.83, Storage 0.73 and Wire 0.21 /
-Endpoint 0.12. Probe recipes use a distinct shared Cargo target per label and
+The qualification workspace selects Build 0.84.1, Storage 0.74 and Wire 0.22 /
+Endpoint 0.13. Probe recipes use a distinct shared Cargo target per label and
 explicit exact-cache pruning with the existing seven-day/512-MiB limits.
 Build fingerprints include complete workspace manifest/lock bytes; old cache
 entries cannot establish freshness for a changed qualification graph.
@@ -92,7 +94,7 @@ only a control; mutated reuse must rearm and execute callbacks twice. This
 mandatory, unignored regression covers the Testkit 0.100.2 defect tracked by
 [Timers #87](https://github.com/dragginzgame/ic-timers/issues/87) and
 [Tooling #263](https://github.com/dragginzgame/ic-tooling/issues/263). The selected
-Testkit 0.101.0 prepares metadata-upload snapshots with coherent heap, timer and
+Testkit 0.102.0 prepares metadata-upload snapshots with coherent heap, timer and
 hook state. Capture requires two free snapshot slots per target and transfer
 cycles; warm restore reuses the prepared snapshot. Canic's exact two-case cached-fixture
 sequence remains separate consumer integration evidence.

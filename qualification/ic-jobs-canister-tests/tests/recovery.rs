@@ -243,7 +243,7 @@ fn native_principal(principal: Principal) -> CanisterId {
     CanisterId::from_slice(principal.as_slice())
 }
 
-fn assert_canister_trap(error: RejectResponse) {
+fn assert_canister_trap(error: &RejectResponse) {
     assert_eq!(
         error.error_code,
         ErrorCode::CanisterCalledTrap,
@@ -309,7 +309,7 @@ async fn management_wire_refuses_retired_and_invalid_unit_requests() {
             .reinstall_canister(canister, fixture.wasm.clone(), init_bytes, None)
             .await
             .unwrap_err();
-        assert_canister_trap(error);
+        assert_canister_trap(&error);
     }
     let id = Method::DispatchDue as u64;
     let mut trailing = native::encode_request(id, &(), control::REQUEST_LIMITS).unwrap();
@@ -324,7 +324,7 @@ async fn management_wire_refuses_retired_and_invalid_unit_requests() {
         vec![0; control::REQUEST_LIMITS.bytes + 1],
     ] {
         assert_canister_trap(
-            fixture
+            &fixture
                 .raw_update(
                     fixture.sender,
                     fixture.manager,
@@ -368,7 +368,7 @@ async fn delivery_wire_endpoints_refuse_candid_and_preserve_authorized_receipts(
             vec![0; REQUEST_LIMITS.bytes + 1],
         ] {
             assert_canister_trap(
-                fixture
+                &fixture
                     .raw_update(receiver, fixture.sender, method, bytes)
                     .await
                     .unwrap_err(),
@@ -519,7 +519,7 @@ async fn synchronous_trap_rolls_back_storage_identity_and_timer_changes() {
             (increment(fixture.now_ns().await + 30_000_000_000, 9),),
         )
         .await;
-    assert_canister_trap(failed.unwrap_err());
+    assert_canister_trap(&failed.unwrap_err());
     assert_eq!(fixture.summary(fixture.sender).await, before);
     let page: Vec<View> = fixture
         .query(fixture.sender, Method::List, (None::<u64>, 8_u8))
@@ -661,7 +661,7 @@ async fn lost_result_keeps_intent_blocked_and_receipt_resolution_does_not_redeli
     let failed = fixture
         .update_as::<Result<(), Error>, _>(fixture.manager, Method::DispatchTrapResult, (input,))
         .await;
-    assert_canister_trap(failed.unwrap_err());
+    assert_canister_trap(&failed.unwrap_err());
     let page: Vec<View> = fixture
         .query(fixture.sender, Method::List, (None::<u64>, 8_u8))
         .await
@@ -784,7 +784,7 @@ async fn retired_storage_backing_refuses_upgrade_without_changing_stable_bytes()
     )
     .await;
     assert_eq!(pic.get_stable_memory(canister).await, bytes);
-    assert_canister_trap(fixture.upgrade(fixture.sender).await.unwrap_err());
+    assert_canister_trap(&fixture.upgrade(fixture.sender).await.unwrap_err());
     assert_eq!(pic.get_stable_memory(canister).await, bytes);
     fixture.close().await;
 }
@@ -816,7 +816,7 @@ async fn invalid_restore_refuses_upgrade_and_preserves_the_controller_snapshot()
         Error::InvalidStorage
     ));
     let rejected = fixture.upgrade(fixture.sender).await.unwrap_err();
-    assert_canister_trap(rejected);
+    assert_canister_trap(&rejected);
     fixture.restore_snapshot(fixture.sender, backup).await;
     // Snapshot loading consumes installation resources too. Testkit owns the
     // bounded rate-limit retry; every other rejection must fail immediately.
@@ -973,13 +973,13 @@ async fn durable_management_reconstructs_wakeups_and_traps_roll_back_changes() {
             (id, Timing::Once(fixture.now_ns().await + 5_000_000_000)),
         )
         .await;
-    assert_canister_trap(failed.unwrap_err());
+    assert_canister_trap(&failed.unwrap_err());
     assert_eq!(fixture.view(id).await, before);
     assert_eq!(fixture.summary(fixture.sender).await, summary);
     let failed = fixture
         .update_as::<(), _>(fixture.manager, Method::TrapAfterPause, (id,))
         .await;
-    assert_canister_trap(failed.unwrap_err());
+    assert_canister_trap(&failed.unwrap_err());
     assert_eq!(fixture.view(id).await, before);
     assert_eq!(fixture.summary(fixture.sender).await, summary);
     fixture.upgrade(fixture.sender).await.unwrap();

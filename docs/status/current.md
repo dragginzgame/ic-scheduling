@@ -1,5 +1,322 @@
 # Current handoff
 
+## Authorized release preparation — 2026-11-13
+
+The selected batch is Timers 0.44.0 followed by Jobs 0.36.0, including GitHub
+delivery to `origin/main` and crates.io publication. Both groups require their
+complete 36-stage plans because compiler, tooling and shared inputs changed.
+The common frozen batch owns validation and publication; no separate full CI
+run is added before it. Minor versions account for Rust 1.100 and the public
+Metrics generation change. Private package versions remain unchanged.
+
+Release freshness review confirms the selected Runtime 0.22.1, Types 0.20.1,
+Platform 0.32.1, Wire 0.22.0 / Endpoint 0.13.0, Storage 0.74.0, Testkit 0.102.0,
+Build 0.84.1, Host 0.77.1, Metrics 0.30.2 and Toko 0.41.1 are published current
+suppliers. Metrics 0.30.2 and Host 0.77.1 were already in the qualified graph;
+their patch ledgers concern tooling/policy and preserve production contracts.
+Cargo freshness probes did not change either lock. Qualification retains
+Thiserror 2.0.18 for PocketIC 16.1's exact constraint; the product selects 2.0.21.
+Managed native tools retain the authenticated Toko catalog. Optional Cargo Sort
+Derives 0.15.0 and native catalog refreshes are deferred to catalog maintenance;
+the installed Cloc invocation counts selected source files rather than archives.
+
+Preparation evidence and timing: `target/evidence/deploy-scheduling-20261113.9RHB0R/`.
+Formatting passes; release validation, delivery and publication are pending.
+
+## Local Wire/Platform/Build adoption; executor blocker resolved — 2026-11-13
+
+Both roots select Runtime 0.22.1 and its exact guard; qualification's entrypoint
+macros also select 0.22.1. Qualification selects Wire 0.22.0, Endpoint/macros
+0.13.0, Types 0.20.1, native
+Platform 0.32.1 and Build 0.84.1. Endpoint 0.13's Runtime 0.22 support removes
+the prior executor-adoption blocker. Old Runtime 0.21 and Types 0.19 records are
+gone from the selected locks; Storage and Timers share one Runtime/guard/IC0
+backend. Native DTOs and Testkit share one Types generation, while native harness
+graphs remain executor-free and the facade stays outside deployed graphs.
+
+The graph policy and negative fixtures admit the new 0.22 owner and preserve
+exact guard/source matching. The temporary two-Runtime/two-Types counts are
+removed; composed checks require one identity each. Storage 0.74, Testkit 0.102,
+Host 0.77, Metrics 0.30 and Toko 0.41.1 are retained. Unrelated selected package
+versions/checksums are unchanged. Wire frame bytes, method IDs, budgets, storage
+formats and blocked/uncertain-effect behavior retain their existing contracts.
+
+Evidence: `target/evidence/wire-platform-build-20261113.Px76dw/`. Strict native/
+Wasm Clippy, affected Rustdoc, 258 native tests (including five CLI tests),
+dependency rejection fixtures and tooling/pin/group/boundary admission pass.
+All 11 installed Jobs recovery tests pass; capture:
+`qualification/target/tmp/jobs-recovery.OBwu7q/`. All 37 installed Timers runtime
+subjects pass; receipt: `target/tmp/timer-qualification-1640490-0/runtime.json`.
+Four policy and two calibration cohorts pass; diagnostics:
+`target/tmp/timer-qualification-1709791-0/`, with the report copied into the
+adoption evidence. The runtime receipt binds the final qualification lock
+`f67e3cab375449a62a4ada91425afed7b0b9fdf1f029191b5b9346bf55561ff2`.
+Package inputs stayed fixed during installed qualification.
+
+The Build 0.84.1 editor is prepared. Both groups' focused metadata preparation,
+rollback, private-version and foreign-supplier preservation fixtures pass with
+real Cargo/editor/Git receipts and substituted product/upload effects.
+Owned current integration docs and pending ledgers reflect the aligned cohort;
+historical records remain source-bound. These are Linux/Rust 1.100 checks, not
+full CI/release or fresh macOS/Canic qualification. Product/private versions are
+unchanged; no commit, push, publication or sibling edit occurred.
+
+## Local Toko 0.41.1 refresh — 2026-11-13
+
+Both workspace pins/locks and the installed receipt select published Toko Tooling
+0.41.1, archive SHA-256
+`93c16a4886a3f48275cf6518a99d98f3f189ae493ed8bf2af21344820c4ab2a0`.
+The installer retained 60 entrypoints and 108 files, updating only the baseline,
+dependency-list helper and tooling-selection reader. `make deps-list` now labels
+the product workspace `(root)` and the private workspace `qualification/`.
+
+The release permits an exact source-only tooling marker for affected binary-only
+tests. Both current binary-owning packages passed without it (four artifact CLI
+tests and one supervised-runner CLI test), so their existing declarations remain.
+No dummy imports, new library targets or unused-dependency allowances were added.
+
+Installed selection, pin/group admission, read-only group versions and focused
+inheritance/dependency-update/tooling callers pass, including 56 refusal routes.
+Only Toko changed relative to the incoming locks; the supplier adoption and
+DropGuard cleanup below are preserved. Evidence:
+`target/evidence/tooling-refresh-20261113.8IPLlv/`.
+No full CI/live qualification, commit, push or publication was performed.
+
+## Local supplier adoption and Rust 1.100 cleanup — 2026-11-13
+
+Qualification now selects Testkit 0.102.0, Storage 0.74.0, Build 0.84.0 and the
+three used Host packages at 0.77.0. Native Testkit selects Platform 0.32.0 /
+Types 0.20.0 independently of deployed DTO/entrypoint Types 0.19.5. Storage's
+Runtime 0.22.0 enables IC0 only; Timers and Wire Endpoint still use Runtime
+0.21.3 with its sole exact guard. Both use one IC0 backend. The product root
+selection is unchanged; no supplier was forced outside its published range.
+
+This resolves the earlier Storage/Testkit adoption blockers by checking actual
+capabilities rather than requiring one generation throughout the lock. Full
+Timers executor/CDK adoption of Runtime 0.22 remains blocked by the latest
+published Wire Endpoint 0.12.2's `^0.21.0` requirement. The direct Types 0.19
+selection remains necessary at that deployed typed boundary. Graph admission
+checks the composed consumer, Storage's IC0-only leaf and executor-free native
+harness; the existing dependency rejection fixture passes.
+
+Rust 1.100's `std::mem::DropGuard` replaces the private `WakeupDelivery` type,
+its manual destructor and completion flag. Construction still precedes the
+first poll; dismissal occurs only on normal completion. The abandonment body,
+borrow-safe capture cleanup, uncertain-effect policy and private FFI are retained.
+Other named fault/resource guards retain their domain invariants; no allocator
+or never-type rewrite was justified by the reviewed code.
+
+Evidence: `target/evidence/supplier-rust-20261113.AqkMfQ/`. Strict native/Wasm
+Clippy, affected Rustdoc, 176 Timers unit tests and 77 private tests pass. Installed
+Jobs recovery passed 11 tests; 37 Timers runtime subjects passed with receipt
+`target/tmp/timer-qualification-3185218-0/runtime.json`. The subsequent cohort
+test executed successfully, but its collector refused because the library README
+was edited during execution. Preserve the refused attempt at
+`target/tmp/timer-qualification-3290841-0/`; it is not an admitted cohort report.
+Its source-sensitive collector has no qualified post-processing recovery.
+Only the affected cohorts were rerun after finishing the package README edits;
+the fresh four-policy/two-calibration report passed and was published at
+`qualification/target/timer-cohorts.json`, with diagnostics under
+`target/tmp/timer-qualification-3700887-0/`. The earlier successful runtime and
+Jobs evidence retains its original captured inputs; it was not rewritten.
+Both groups' real metadata/editor rollback and private/supplier preservation
+fixtures pass with Build 0.84. Tooling, pin/group/boundary admission and
+documentation links pass. No full repository/release or new macOS/Canic gate is
+claimed from these Linux checks.
+
+The updated release editor and Testkit CLI/server were explicitly prepared.
+Product/private versions remain unchanged; Jobs 0.36.0 and Timers 0.44.0 notes
+describe the pending batch. No commit, push, publication or sibling edit occurred.
+
+## Local Toko 0.41.0 adoption and warning-mode qualification — 2026-11-13
+
+Both workspace pins/locks and the installed receipt select Toko Tooling 0.41.0,
+archive SHA-256 `4aaafc699324611501e051132e971288c16392a3ece605e9909e88e0c7e80a2f`.
+The installer retained 60 entrypoints and 108 files, changing the baseline and
+Cargo tool-build helper. Installed `make deps-list` reports all eight packages.
+Only Toko changed relative to the incoming locks; no supplier upgrade was added.
+
+Both roots and Timers' equivalent local table deny the new Cargo dependency,
+metadata, inheritance and unknown-lint checks, plus invalid Rustdoc tables.
+Ordinary Clippy recipes use `CARGO_BUILD_WARNINGS=deny`; the existing consumer
+fixture proves warning refusal for fresh and reused artifacts and checks actual
+recipe selection. Plain JSON rejection and explicit Rustdoc denial remain.
+Product/private native and maintained Wasm/feature Clippy and Rustdoc pass without
+warnings. Tooling/pin/group admission, inheritance/update/refusal callers and both
+focused publication-admission fixtures pass. Publication fixtures use real
+tooling/Git/tag admission with substitute transport/uploads.
+
+The changed installer policy required readmission of the same locked IC Build
+0.83.0 editor and Testkit 0.101.0 CLI; both explicit setups reused admitted cache
+artifacts and their checks pass. The [deployment notes](../releases/validation-groups.md#deployment-sequencing-and-recovery-limits)
+explain captured-lock setup, independent native suppliers and optional upgrade
+probes versus actual required-qualification failures. No release gate was removed.
+
+Evidence: `target/evidence/tooling-0410-20261113.cgXk9H/`. These are local Linux
+checks on Rust 1.100.0, not fresh macOS, full CI or installed-runtime qualification.
+No product/private versions, commits, pushes or publications changed. Earlier
+pending compiler, Metrics and manifest cleanup work remains in the checkout.
+
+## Local Toko 0.40.2 and clean Cargo/Clippy manifests — 2026-11-13
+
+Both workspace pins, locks and the installed receipt select published Toko
+Tooling 0.40.2, archive SHA-256
+`7881b793f4754148fd9b24705a7772243076cd1a298f0e64c757c087ba153d4b`.
+The root installer preserved 60 entrypoints and 108 files, updating the baseline,
+dependency Make module/listing helper and group parser. Only Toko changed in the
+incoming locks; Metrics 0.30 and the working supplier graph remain selected.
+
+Removed unused product aliases, three private probe aliases, qualification's
+unused Thiserror declaration and unused description/repository workspace fields.
+The product group dependency-alias rosters are empty; both member rosters and all
+eight packages remain intact. Real qualification product/source dependencies
+remain. `make deps-list` reports all package versions and group ownership offline;
+owned instructions and the metadata fixture now use those actual boundaries.
+
+Strict Clippy passes without compiler or Cargo manifest warnings for products,
+private qualification, all four size-probe modes and maintained Wasm selections.
+Tooling, pin/group admission and focused inheritance, dependency-update,
+tooling-refusal and group-recipe callers pass. Evidence:
+`target/evidence/tooling-clippy-20261113.MdR0di/`.
+Both groups' focused metadata fixture passed with the real Cargo/editor/Git
+and plan receipts, including product/qualification rollback, private/supplier
+preservation and refusal to recreate unused aliases. Product suites, setup and
+uploads were substituted in that fixture. Documentation links also passed.
+
+Cargo also observed Testkit 0.102.0 during this scoped Toko refresh; defer that
+optional adoption to the next Platform/Storage maintenance batch, which must
+recheck current Wire/Endpoint requirements. The failed optional upgrade probes
+below do not block release of the existing qualified selection. No full CI/live
+runtime suite, product version change, commit, push or publication was performed.
+
+## Local Metrics 0.30 adoption; Platform/Storage upgrade blocked — 2026-11-13
+
+Both root catalogs and locks select published Metrics 0.30.0, archive SHA-256
+`aa71da71d785f922a85cf412be796c8b7946c3dfb35461eda3274aed334d34c0`.
+The existing Rust 1.100.0 floor meets its requirement. Pending Timers 0.44 exposes
+Metrics 0.30 recorder identities; published Timers 0.43 exposes Metrics 0.29.
+The public README distinguishes those identities and current integration choices.
+Jobs remains Serde-only; its Metrics dependency belongs to private qualification.
+
+Published Platform Runtime 0.22.0, Types 0.20.0 and facade 0.32.0 were reviewed.
+The requested retry also reviewed newly published Storage 0.74.0: it requires
+Rust 1.100.0 and Runtime 0.22 for stable IO, with unchanged APIs/stored formats.
+Storage's previous Runtime requirement is therefore aligned in the new release.
+Runtime 0.22 resolved in the product root, but actual combined qualification
+resolution still failed: current Wire Endpoint 0.12.2 requires Runtime `^0.21.0`,
+whose exact executor guard conflicts with 0.22.0's singleton guard.
+Testkit 0.101.0 retains Types `^0.19.3` and facade
+`^0.31.2`, and Wire 0.21.5's identity support retains Types `^0.19.0`.
+These are the latest stable non-yanked supplier releases observed through Cargo's
+refreshed registry index. The separate crates.io HTTP API returned 403; the
+published Cargo records and resolver diagnostics are retained in the evidence.
+
+The attempted Platform/Storage changes were removed without overriding guards, patching
+suppliers or breaking qualification. Runtime/exact guard 0.21.3 and Types 0.19.5
+remain selected, with Storage 0.73.6; the native transitive facade remains 0.31.3. Revisit Platform/Storage
+when the affected suppliers publish compatible Runtime/identity requirements.
+This is an unresolved adoption request, not qualification of Platform 0.22 or
+Storage 0.74. Retry evidence: `target/evidence/platform-storage-20261113.GRO32R/`.
+Both manifests and locks were compared byte-for-byte with the incoming state;
+locked metadata and tooling/pin admission passed. No runtime suite was repeated
+for these unchanged inputs. Earlier Metrics evidence below remains applicable.
+
+Evidence: `target/evidence/platform-metrics-20261113.p4kmbC/`. Strict Timers and
+consumer native/Wasm lint passed, as did all 176 Timers unit tests, four consumer
+observability tests and five report tests. The focused installed watchdog
+trap/recovery/upgrade subject passed with real instruction and memory recording;
+receipt: `target/tmp/timer-qualification-4163092-0/runtime.json`. It binds the
+new lock, Rust 1.100.0 and exact Wasm bytes on Linux. It is not a complete
+watchdog/cohort release gate or new macOS/Canic qualification.
+
+Both locked fetches, tooling/pin checks and native/Wasm dependency graph admission
+passed. Only Metrics changed relative to the incoming locks; pending supplier,
+compiler and tooling work is preserved. No product versions, sibling sources,
+commits, remote refs or publications changed.
+
+## Local Toko 0.40.1 deployment-guidance adoption — 2026-11-13
+
+Both catalogs and Cargo locks now select published Toko Tooling 0.40.1,
+archive SHA-256 `fb884b05e2e5bbca2388dd0b757833fb5ad37e91b3ced09f6a37b454c7fe9f90`.
+The root installer preserved all 60 entrypoints and 108 managed files; only the
+baseline payload changed. All non-Toko lock selections are unchanged. This
+supersedes the 0.40.0 tooling selection below and preserves its Rust 1.100.0 work.
+
+The patch adds deployment sequencing and failure-specific recovery guidance;
+it supplies no new executable recovery mechanism. The [local adapter review](../releases/validation-groups.md#deployment-sequencing-and-recovery-limits)
+records one selected gate per group, fresh publication admission and the current
+post-processing recovery limit. Prior full release-tooling fixtures took 1,159
+and 1,133 seconds across the two groups. Only the validation-plan fixture has
+qualified stage reuse; do not infer arbitrary runtime recovery from the new rule.
+
+Evidence: `target/evidence/tooling-0401-20261113.m1tInu/`. Both locked fetches and
+metadata graphs, installed snapshot/member admission, pin checks, documentation
+links and focused dependency-update/tooling-admission callers passed, including
+56 refusal routes before compiler, Git or network effects. No executable payload
+or product code changed in this refresh; the previous compiler/product evidence
+remains applicable. No full gate, commit, push or publication was performed.
+
+## Local Toko 0.40.0 and Rust 1.100.0 migration — 2026-11-13
+
+The fix for [#93](https://github.com/dragginzgame/ic-scheduling/issues/93) is present
+in the normal checkout; the issue is closed with the local proof and host limits.
+Both owning roots and the development/release pin select
+Rust 1.100.0. Explicit setup prepared rustfmt, Clippy and Wasm; actual identities
+are rustc `0ef1bc386059596dada8fb65b50425aab2ea637a` and Cargo
+`3acc79c0c841844675bc53a605922dbfc441e750` on x86_64 Linux.
+Hosted CI/recovery selectors derive the same pin; older mocked policy vectors
+remain deliberate normalization/refusal inputs, not selected real compilers.
+
+Both catalogs and locks select crates.io Toko Tooling 0.40.0, archive SHA-256
+`9c1758c3c04e2754d97fd38d29177d73fc03d3d414d654f689d8b75cbc7ed918`.
+The root installer preserved all 60 entrypoints and 108 managed files. Only the
+baseline changed in the payload; no snapshot-owned file was patched manually.
+The prior unpublished 0.39.18 adoption is superseded; its evidence remains at
+`target/evidence/tooling-adoption-20261112.hdn7tt/`.
+
+Seven packages inherit their owning root's common Rust/Clippy/Rustdoc minimum.
+Timers mirrors it in the documented local table so only its private FFI can use
+the existing unsafe expectation. Safe packages still forbid unsafe code; roots
+retain missing-docs denial. Timers retains reviewed pedantic/individual checks,
+with warning denial in blocking commands. Blanket nursery and obsolete line-count
+and IC-local Send expectations are removed. Existing protocol/report fields and
+macro-generated interfaces are documented; no missing-docs exemption was added.
+Owned queue commits, timing conversion and lifecycle frames retain narrow
+ownership expectations. Jobs value APIs now expose their must-use contract.
+Record layouts, callback semantics and blocked/uncertain effects are unchanged.
+
+Evidence: `target/evidence/tooling-rust-20261113.ElypLV/`. Strict native/Wasm Clippy
+and Rustdoc passed, including every size-probe feature. All 224 product tests,
+15 doctests and 82 private/native consumer tests passed; both local product
+archives verified with the new compiler. The actual Make/hosted selector and
+admission callers passed, including 56 tooling refusal routes. A real disposable
+consumer verifies every member's effective table, safe-code admission and rejected
+ignored Results/unsafe declarations. Private LOC retains zero uncategorized lines.
+
+Installed Jobs recovery passed all 11 tests; capture:
+`qualification/target/tmp/jobs-recovery.yOUl8V/`. All 37 installed Timers runtime
+subjects passed with receipt `target/tmp/timer-qualification-172770-0/runtime.json`.
+Four policy and two calibration cohorts passed; diagnostics:
+`target/tmp/timer-qualification-248486-0/`, with the cohort receipt retained in the
+adoption evidence. These checks qualify this selected local graph on Linux.
+Fresh macOS Intel/Apple Silicon execution is unavailable here; selector checks
+do not establish native macOS behavior. No full repository/release gate or new
+Canic execution is claimed.
+
+Both locks retain every incoming supplier selection byte-for-byte except Toko:
+Metrics 0.29.12, qualification Storage 0.73.6/Wire 0.21.5 and the prior Runtime,
+Types, Host, Build and Testkit selections. Current native/installed checks apply
+to that graph; no unrelated supplier refresh was performed. Registry freshness
+observations and deferred newer versions are retained in `supplier-freshness.txt`
+in the adoption evidence. Keep the exact PocketIC Thiserror constraint and managed
+tool selections until their own maintenance; compiler/Cargo catalog warnings do
+not authorize deleting required group/catalog entries.
+
+Product versions remain Jobs 0.35.4 and Timers 0.43.4; all private versions stay
+unchanged. The compiler-support cut selects pending Jobs 0.36.0 and Timers 0.44.0
+notes. This migration is uncommitted, unpushed and unpublished. No sibling source
+or release was changed; existing frozen batches and deferred refs remain protected.
+
 ## Published Timers 0.43.4 and Jobs 0.35.4 — 2026-11-12
 
 Both groups were delivered to origin/main and published to crates.io through
@@ -81,7 +398,7 @@ Thiserror 2.0.18 is retained by PocketIC 16.1.0's exact requirement; root select
 selection. Cargo Sort Derives stays at the managed catalog's 0.14.1; review its
 previously observed 0.15.0 at the next Toko catalog refresh.
 
-## Pending Metrics 0.29.12
+## Deferred Metrics after the previous delivery
 
 An updater changed both normal-checkout locks to Metrics 0.29.12 during Jobs'
 gate. The captured graph and both releases retained qualified Metrics 0.29.11.
@@ -92,8 +409,9 @@ The deferred change is preserved locally on
 `78fea9dff2f9201d5919ed1f504e32c21832187d`. After the standard guarded
 fast-forward, only its two Metrics hunks were reapplied. Product versions remain
 Timers 0.43.4 and Jobs 0.35.4; no old lockfile was restored. Both locks are dirty
-with this pending refresh, and that branch was not pushed. Metrics 0.29.12 has
-not been qualified here or included in a release; qualify it before further delivery.
+with this pending refresh, and that branch was not pushed. At that delivery,
+Metrics 0.29.12 was not qualified or released. The newer compiler/consumer
+qualification above now covers the selected local graph; it is still unpublished.
 
 ## Previous Timers 0.43.3 and Jobs 0.35.3 — 2026-11-12
 

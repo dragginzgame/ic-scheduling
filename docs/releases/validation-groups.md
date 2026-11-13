@@ -6,7 +6,7 @@ its literal private versions remain unchanged by product releases. The existing
 stage roster still maps group changes to the same native, Wasm, installed-runtime
 and policy-cohort obligations through explicit qualification manifest selections.
 
-Toko Tooling 0.39.17 supplies shared multi-lock rendering, admission and
+Toko Tooling 0.41.1 supplies shared multi-lock rendering, admission and
 all-or-rollback preparation. `ci/cargo-release-groups.json` opts in through
 `qualification_workspace: "qualification"`; its admitted plan owns both
 qualification manifests/locks alongside the selected product files. Remove the
@@ -158,7 +158,7 @@ is performed by this adoption.
 
 ## Shared release batch contract
 
-The installed tooling is crates.io `toko-tooling` 0.39.17, selected by one exact
+The installed tooling is crates.io `toko-tooling` 0.41.1, selected by one exact
 Cargo dependency pin in each workspace, inherited by its members. Both normal
 Cargo locks select the same archive checksum and are admitted against one snapshot.
 Its installed archive checksum is recorded in `.toko-tooling.snapshot`.
@@ -204,6 +204,58 @@ The first `clippy-jobs` command covers the former core `check` stage's identical
 packages, targets, features, profile and compiler. That duplicate roster entry is
 removed; standalone `make check` remains available. Wasm, default-feature,
 installed and archive obligations remain distinct.
+
+### Deployment sequencing and recovery limits
+
+The installed [deployment guidance](../../TOKO-TOOLING.md#release-commands)
+applies to this adapter. Each selected group invokes `release-verify` once before
+version preparation. Preparation admits its sealed receipt; publication checks
+current source, tags, remote/registry state and archives, with fresh selected lint.
+Neither preparation nor publication invokes another complete product gate.
+Shared inputs, including this compiler/tooling adoption, still select all 36
+stages for each group; Jobs-only omissions require the proven ownership boundary.
+
+Candidate setup fetches the captured root and qualification graphs with
+`--locked`; it does not run `cargo update` or select a newer Testkit. It prepares
+missing tools and re-admits saved selections offline during recovery. Product
+and qualification keep their separate manifests/locks. Native test suppliers may
+retain a different dependency generation where explicit conversions and actual
+executor/protocol boundaries admit it. A failed optional Platform/Storage/Testkit
+upgrade probe is not a failure of the currently selected release graph.
+An incompatibility in required qualification or installed recovery still blocks
+that selected release; no Testkit, combined-consumer or runtime gate is removed.
+
+Toko 0.41 adoption changes ordinary Clippy recipes to
+`CARGO_BUILD_WARNINGS=deny`, qualified with fresh and reused warning-producing
+artifacts in the existing consumer fixture. This enforces warnings without adding
+`-D warnings` to those compilation flags. Rustdoc retains its explicit denial;
+plain JSON diagnostic collectors retain their existing strict checks. Source,
+archive, remote/registry admission and fresh publication lint remain required.
+No new release stage or cross-source runtime reuse is introduced.
+
+The 0.41 shared installer uses Cargo 1.100's default packaged lock and omits the
+install-only `--locked` no-op. Archive/version/checksum and build-lock admission
+remain. Its changed build-policy fingerprint can refuse an older prepared tool
+selection even at the same package version. Candidate setup already handles this
+by preparing missing release tools; the adoption explicitly re-prepares the
+lock-selected IC Build editor. Testkit setup remains selected from qualification's
+lock, rather than resolving its latest release during deployment.
+
+In completed `batch-dZQHGKiw`, `test-release-tooling` alone took 1,159 seconds
+for Timers and 1,133 seconds for Jobs. Those are historical Linux timings, not a
+prediction for another host or the new compiler. Its nested Jobs, Timers and
+frozen-release fixtures remain required by the current full plan. Changed release
+wiring has separate focused fixture entrypoints described below.
+
+`verify.sh` currently creates a new attempt, dispatches its plan, seals it, copies
+the evidence into the selected Git receipt directory and records validation.
+There is no supported command to finish sealing or receipt publication after a
+post-execution failure, or to resume arbitrary successful runtime stages from a
+failed plan. Preserve the original attempt and identify the failed phase before
+choosing a retry; existing release-journal recovery admits completed receipts,
+not partially collected gates. The bounded fixture contract below is the only
+qualified stage reuse. General post-processing recovery would need its own
+admission and failure-injection coverage before it could avoid rerunning stages.
 
 ### Bounded fixture reuse
 

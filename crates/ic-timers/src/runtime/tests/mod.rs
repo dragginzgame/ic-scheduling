@@ -141,10 +141,6 @@ struct SuspendedWork {
 }
 
 impl SuspendedWork {
-    #[expect(
-        clippy::future_not_send,
-        reason = "The native executor models single-threaded IC callbacks with canister-local state."
-    )]
     async fn wait(&self) {
         std::future::poll_fn(|context| {
             self.polls.set(self.polls.get() + 1);
