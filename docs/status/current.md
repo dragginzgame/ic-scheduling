@@ -1,5 +1,46 @@
 # Current handoff
 
+## Timers 0.44.0 and Jobs 0.36.0 published and reconciled — 2026-11-13
+
+Frozen `batch-OpbeLrxp` completed GitHub delivery and crates.io publication from
+source `fe7c7d4dbdccd5d03c413ca7a3b7754b2a41b5ea`. The normal `main` checkout
+was reconciled through the guarded batch command. Both annotated remote tags and
+registry index entries were independently verified; downloaded crate bytes match
+the actual upload archives and registry checksums. Both declare Rust 1.100.0.
+
+- Timers 0.44.0: commit `ba8d055a22d11edcc1d155b0690382351744ea0e`, tag object
+  `32aa270b23cc1bc61f7d21b5e114a6b4afefe948`, archive SHA-256
+  `0db52eb4fab46b8dfab283687ce457235a8445f2a8fe928b7e13648ea49a09a1`.
+- Jobs 0.36.0: commit `91db54b340472a34f9f2c20af4039296ad79269a`, tag object
+  `d020d18bc7e23cc7d770da14d8c22b2ca0a182c3`, archive SHA-256
+  `3f8689dcefb01760fcce0df6ecf531e13a51c747612142a9322b5ff01d97d8f7`.
+
+Both complete 36-stage Linux/Rust 1.100 plans passed. Each ran 37 installed
+runtime subjects and all four policy/two calibration cohorts. Timers runtime
+receipt: `target/release-frozen/batch-OpbeLrxp/target/tmp/timer-qualification-2388049-0/runtime.json`;
+Jobs gate runtime receipt: the same batch's `target/tmp/timer-qualification-2022254-0/runtime.json`.
+Cohort diagnostics are `timer-qualification-2523014-0` and
+`timer-qualification-2062979-0` under that batch's `target/tmp/`. Only the pure
+validation-runner fixture reused exact-input evidence in Jobs; other obligations
+executed. Fresh selected-source lint and upload-archive verification also passed.
+This is not fresh macOS, Canic or hosted-CI evidence.
+
+Evidence: `target/evidence/deploy-scheduling-20261113.9RHB0R/`; release exit 0.
+Observed preparation began 15:20:03 UTC; release ran 15:25:31–16:24:52 UTC.
+Recorded validation stages total 1,839 seconds for Timers and 1,517 for Jobs,
+including 9/8 seconds of archive-verification stages. Release-tooling fixtures
+dominated at 1,198/1,193 seconds; the validation-runner fixture took 222/10 seconds
+(executed/reused). No finer upload/network phase timing is claimed.
+
+During validation, another writer refreshed normal-checkout Metrics to 0.30.3
+and qualification Wire to 0.22.1. Frozen delivery retained the qualified Metrics
+0.30.2 / Wire 0.22.0 graph. Preserve the unpublished local branch
+`deferred/dependencies-during-batch-OpbeLrxp`, commit
+`a097f945bc69136573420b086018725a79a8d0e7`, and its patch in release evidence.
+Reapply only its lock hunks after reconciliation, retaining released product
+versions; these supplier refreshes remain pending qualification and publication.
+Keep all prior batch, stash and deferred-ref recovery evidence.
+
 ## Authorized release preparation — 2026-11-13
 
 The selected batch is Timers 0.44.0 followed by Jobs 0.36.0, including GitHub
