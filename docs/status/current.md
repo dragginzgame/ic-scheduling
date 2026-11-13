@@ -1,5 +1,52 @@
 # Current handoff
 
+## Timers 0.44.1 and Jobs 0.36.1 published and reconciled — 2026-11-13
+
+Frozen `batch-YIisA7LB` completed GitHub and crates.io delivery from repaired
+source `93e21bd3e1348455f37ddcd5e3488c86eb0c2672`. The normal `main` checkout
+was reconciled with the guarded batch command. Both annotated remote tags and
+registry entries were independently verified; downloaded archives match actual
+upload bytes, registry checksums and embedded release source identities.
+
+- Timers 0.44.1: commit `5cdefe12c81a65aced5c8eb000fef8ac2a3e8341`, tag object
+  `8f2204b496cd4a43d52b797da943dcd49a236d2a`, archive SHA-256
+  `5a6d38ea900adf725693d6950fbed363301620ad92168714a7fa95670ce98716`.
+- Jobs 0.36.1: commit `d53e1b23666c503e1f21d96287c40a22398737a8`, tag object
+  `1654ea4c314d92432fa5492e127674087519909d`, archive SHA-256
+  `99fa9d8f3201c0d924f42ae610518c336915f048a35a89a3eb300f1e89323edd`.
+
+Both complete 36-stage Linux/Rust 1.100 plans passed, including the repaired
+dependency fixture, 37 installed runtime subjects and four policy/two calibration
+cohorts in each gate. Only the pure validation-runner fixture reused its qualified
+exact-input proof in Jobs. Fresh publication lint/source/archive checks passed.
+This does not establish fresh macOS, Canic or hosted-CI qualification.
+
+Timers gate: `target/release-frozen/batch-YIisA7LB/target/release-validation/validation.2u5m7dda/`;
+Jobs gate: the same batch's `target/release-validation/validation.GcD1Gzy1/`.
+Runtime receipts are under its `target/tmp/timer-qualification-2561182-0/runtime.json`
+and `target/tmp/timer-qualification-326255-0/runtime.json`; cohort diagnostics are
+`timer-qualification-2627239-0` and `timer-qualification-358248-0` there. The final
+cohort receipt is also copied into delivery evidence.
+
+Evidence: `target/evidence/deploy-scheduling-20261113.uvS7gR/`. Preparation began
+17:51:28 UTC. The first attempt ran 17:53:35–18:22:06, failing before preparation
+on the retired Make-directory fixture copy described below. Its evidence remains
+intact. The repaired fresh batch ran 18:24:03–19:22:29, exit 0. Recorded validation
+stages total 1,823/1,490 seconds for Timers/Jobs, including 9 seconds of archive
+verification each. Release-tooling fixtures took 1,200/1,165 seconds; the pure
+validation fixture took 217/10 seconds (executed/reused). No finer upload/network
+phase timing is claimed.
+
+The released graph retains Metrics 0.30.4, Runtime/macros/guard 0.22.2, Types
+0.20.2, native Platform 0.32.2, Wire 0.22.1 / Endpoint 0.13.1, Host 0.77.1 and
+Toko 0.42.5. Concurrent normal-checkout Metrics 0.30.5 and Host 0.77.2 refreshes
+are preserved on unpublished local branch
+`deferred/dependencies-during-batch-YIisA7LB`, commit
+`172f00f51981d4132f0cbbe79765e4a30bc8680a`, and in `deferred-final-locks.patch`
+inside the evidence. Restore only these lock hunks after reconciliation, retaining
+released product versions; the refreshes remain pending qualification. Keep the
+earlier Metrics-only deferred branch, failed batch and all older recovery refs.
+
 ## Release fixture repair; fresh batch required — 2026-11-13
 
 Frozen `batch-j7ESjtM_`, source `6802fb9bf8343b13945e95bfbd011ed8bef3e9d6`,
