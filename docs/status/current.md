@@ -1,5 +1,32 @@
 # Current handoff
 
+## Release fixture repair; fresh batch required — 2026-11-13
+
+Frozen `batch-j7ESjtM_`, source `6802fb9bf8343b13945e95bfbd011ed8bef3e9d6`,
+stopped at `test-timer-dependencies` before version preparation or delivery.
+The full release-tooling and validation-runner fixtures, admission, Clippy and
+176 Timers unit tests passed. Preserve the failed attempt and its source-bound
+evidence at `target/evidence/deploy-scheduling-20261113.uvS7gR/` and
+`target/release-frozen/batch-j7ESjtM_/target/release-validation/validation.2YV46vtq/`.
+
+The dependency fixture still copied the retired root `make/` directory. Replace
+that copy with the installed fixture preparer's explicit consumer/dependency/
+release Make roots and companion closure. The complete focused dependency
+fixture now passes, including its later graph and static-provider refusals.
+Other local callers contain no remaining copies of the retired Make/hook/action
+directories. No managed payload changed.
+
+This repair changes captured source, so do not resume the failed batch with new
+inputs. Stage-level reuse is qualified only for the pure validation fixture;
+there is no general admission for the earlier successful stages after this
+source change. A fresh batch must retain both full 36-stage plans.
+
+Concurrent normal-lock Metrics 0.30.5 is preserved on unpublished local branch
+`deferred/metrics-during-batch-j7ESjtM_`, commit
+`e752ab9e59e594ca553037c6d17864cf53337e18`, plus the patch in release evidence.
+The fresh release retains the reviewed Metrics 0.30.4 graph; reapply the deferred
+lock hunks after final reconciliation without restoring old product versions.
+
 ## Authorized patch release preparation — 2026-11-13
 
 Release Timers 0.44.1, then Jobs 0.36.1, through the frozen batch with explicit

@@ -301,7 +301,9 @@ reset_manifests
 # The actual Make admission must reject a new Host family member without
 # needing that concrete package name in another exclusion roster.
 cp "$root/Makefile" Makefile
-cp -R "$root/make/." make/
+bash "$root/vendor/toko-tooling/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" \
+    vendor/toko-tooling/make/consumer.mk vendor/toko-tooling/make/cargo-dependencies.mk \
+    vendor/toko-tooling/make/release.mk
 mkdir -p future-host/src
 printf '[package]\nname="ic-host-unlisted-fixture"\nversion="0.0.0"\nedition="2024"\n' > future-host/Cargo.toml
 printf '' > future-host/src/lib.rs
