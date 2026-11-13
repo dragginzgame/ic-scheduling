@@ -7,6 +7,20 @@ and [coordinated history through 0.33.1](../history.md).
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.36.1] - Unreleased
+
+### 🧪 Testing
+
+- Select qualification Metrics 0.30.4, Runtime/macros/exact guard 0.22.2,
+  Types 0.20.2, native Platform 0.32.2 and Wire 0.22.1 / Endpoint 0.13.1.
+  Preserve Jobs' Serde-only library, retained records and recovery boundaries.
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.42.5 with managed executables under `vendor/toko-tooling/`.
+  Migrate local Make, workflow, hook and qualification/release callers, preserving
+  explicit consumer roots, group selection and input-drift refusal.
+
 ## [0.36.0] - 2026-11-13
 
 ### 🧪 Testing

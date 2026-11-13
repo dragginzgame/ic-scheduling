@@ -39,7 +39,7 @@ jobs:
           cp .toko-tooling.snapshot "$evidence/toko-tooling.snapshot"
       - name: Restore pinned tool downloads
         id: restore-downloads
-        uses: ./.github/actions/cache-tool-downloads
+        uses: ./vendor/toko-tooling/.github/actions/cache-tool-downloads
       - name: Prepare host parsers for Rust policy selection
         id: host-tools
         run: make install-host-tools
@@ -51,7 +51,7 @@ jobs:
           printf 'toolchain=%s\n' "$toolchain" >> "$GITHUB_OUTPUT"
       - name: Prepare the declared compiler once
         id: rust-setup
-        run: bash scripts/dev/prepare-rust-toolchain.sh --toolchain-file rust-toolchain.toml
+        run: bash vendor/toko-tooling/scripts/dev/prepare-rust-toolchain.sh --toolchain-file rust-toolchain.toml
       - name: Record prepared toolchain identities
         run: |
           {
@@ -65,7 +65,7 @@ jobs:
           make toko-tooling-check check-pins
       - name: Save pinned tool downloads
         id: save-downloads
-        uses: ./.github/actions/cache-tool-downloads
+        uses: ./vendor/toko-tooling/.github/actions/cache-tool-downloads
         with:
           mode: save
       - name: Prepare the selected dependency cache
@@ -115,7 +115,7 @@ jobs:
           if-no-files-found: error
       - name: Retain failed setup and tool evidence
         if: failure()
-        uses: ./.github/actions/retain-failure-evidence
+        uses: ./vendor/toko-tooling/.github/actions/retain-failure-evidence
         with:
           name: jobs-recovery-tools-${{ matrix.os }}-${{ github.run_id }}-${{ github.run_attempt }}
           temp-root: ${{ runner.temp }}

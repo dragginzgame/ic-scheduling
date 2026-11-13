@@ -179,8 +179,8 @@ of the common dependency-boundary stage, including CI and selected release plans
 It does not replace review of generated code or cross-module aliases.
 
 `make check-dependency-boundaries` runs the reviewed shared checker and is part of
-CI/release validation. It composes the [shared IC inventory](ci/external-ic-dependencies.txt),
-[CBOR package inventory](ci/cbor-dependencies.json)
+CI/release validation. It composes the [shared IC inventory](vendor/toko-tooling/ci/external-ic-dependencies.txt),
+[CBOR package inventory](vendor/toko-tooling/ci/cbor-dependencies.json)
 with [local bans](ci/cargo-dependency-boundaries.json) on direct generator and
 retired decoder dependencies, including aliases,
 across member normal/build/dev/target declarations. It does not enforce feature
@@ -284,7 +284,7 @@ The retention selection needs no prepared metadata editor or formatters.
 
 The package and its direct Timers qualification consumer require Rust 1.100.0. Compiler
 selections are recorded in [rust-toolchain.toml](rust-toolchain.toml) and
-[the local tool catalog](ci/tool-versions.env). Linux and macOS Intel/Apple Silicon
+[the local tool catalog](vendor/toko-tooling/ci/tool-versions.env). Linux and macOS Intel/Apple Silicon
 host workflows are maintained. See [the current handoff](docs/status/current.md)
 for source-bound checks and outstanding native/live qualification; native tests
 do not establish IC message rollback or upgrade recovery.
@@ -342,8 +342,9 @@ this repository has no frontend formatter integration.
 qualification packages declare their roles in Cargo metadata; see
 [source layout and LOC reporting](docs/operations/source-layout.md).
 Use `make cloc CLOC_DEPTH=1` for module rows, or
-`bash scripts/dev/cloc.sh -d 1 ic-timers::runtime` to inspect one source branch.
-Use `bash scripts/dev/cloc.sh --wide .` to show full names in table output;
+`bash vendor/toko-tooling/scripts/dev/cloc.sh -d 1 ic-timers::runtime` to inspect one source branch.
+Direct script calls require the prepared `.tools/host/bin` directory on `PATH`.
+Use `bash vendor/toko-tooling/scripts/dev/cloc.sh --wide .` to show full names in table output;
 JSON reports always retain full names.
 
 Standard formatting reports each manifest/Rustfmt pass and its elapsed time.

@@ -21,8 +21,7 @@ if [[ -z "$GROUP_TEST_REAL_EDITOR" && "$fixture_mode" != frozen && "$fixture_mod
 fi
 mkdir "$fixture_suite/source" "$fixture_suite/bin"
 cp "$root"/{Cargo.toml,Cargo.lock,CHANGELOG.md,README.md,LICENSE.md,CONTRIBUTING.md,Makefile,.gitignore,.toko-tooling.snapshot,rust-toolchain.toml,TOKO-TOOLING.md,AGENTS.md} "$fixture_suite/source/"
-tar -C "$root" --exclude=target -cf - crates qualification scripts make ci docs releases .github | tar -C "$fixture_suite/source" -xf -
-cp -R "$root/.githooks" "$fixture_suite/source/"
+tar -C "$root" --exclude=target -cf - crates qualification scripts vendor ci docs releases .github | tar -C "$fixture_suite/source" -xf -
 if [[ "$fixture_mode" == frozen ]]; then
     # shellcheck source=scripts/release/test-frozen.sh
     source "$root/scripts/release/test-frozen.sh"
@@ -157,7 +156,7 @@ resume_release() (
     LC_ALL=C sort "$suite/$selected-changed" > "$suite/$selected-expected"
     cmp "$suite/$selected-committed" "$suite/$selected-expected"
     [[ "$(git log -1 --format=%s)" == "Release $selected $candidate" ]]
-    bash scripts/ci/check-release-tag.sh "$(git rev-parse HEAD)" "$candidate" "$selected"
+    bash vendor/toko-tooling/scripts/ci/check-release-tag.sh "$(git rev-parse HEAD)" "$candidate" "$selected"
     [[ "$(git --git-dir="$suite/$selected-remote.git" rev-parse main)" == "$(git rev-parse HEAD)" ]]
 )
 
@@ -279,7 +278,7 @@ qualify_group() (
         ledger=releases/timers/CHANGELOG.md; other_ledger=releases/jobs/CHANGELOG.md; package=ic-timers; other=ic-jobs
     fi
     previous="$(bash scripts/release/group.sh version)"
-    candidate="$(bash scripts/ci/next-release-version.sh "$previous" patch)"
+    candidate="$(bash vendor/toko-tooling/scripts/ci/next-release-version.sh "$previous" patch)"
     other_group=timers; [[ "$selected" != timers ]] || other_group='jobs'
     other_version="$(RELEASE_GROUP="$other_group" bash scripts/release/group.sh version)"
     printf '# Fixture ledger\n\n## [%s] - 2026-10-30\n\n### 🩹 Fixed\n\n- Qualified fixture baseline.\n' "$previous" > "$ledger"

@@ -15,13 +15,13 @@ trap 'fixture_finish "$?" "$fixture" "Formatting evidence fixture retained"' EXI
 mkdir "$fixture/temp" "$fixture/repository" "$fixture/unpacked"
 (umask 077; mkdir "$fixture/store")
 yq -o json '.' "$root/.github/workflows/ci.yml" > "$fixture/workflow.json"
-yq -o json '.' "$root/.github/actions/retain-failure-evidence/action.yml" > "$fixture/collector.json"
+yq -o json '.' "$root/vendor/toko-tooling/.github/actions/retain-failure-evidence/action.yml" > "$fixture/collector.json"
 jq '.jobs.validate.steps' "$fixture/workflow.json" > "$fixture/workflow-steps.json"
 jq '.runs.steps' "$fixture/collector.json" > "$fixture/collector-steps.json"
 jq -e '
     .jobs.validate.steps as $steps |
     [$steps | to_entries[] | select(.value.id == "validate")] as $gates |
-    [$steps | to_entries[] | select(.value.uses == "./.github/actions/retain-failure-evidence")] as $collectors |
+    [$steps | to_entries[] | select(.value.uses == "./vendor/toko-tooling/.github/actions/retain-failure-evidence")] as $collectors |
     ($gates | length) == 1 and ($collectors | length) == 1 and
     $gates[0].value["continue-on-error"] != true and
     $collectors[0].key > $gates[0].key and $collectors[0].value.if == "failure()"
@@ -29,7 +29,7 @@ jq -e '
 
 # Execute the actual workflow gate with a failed fixture. Its temporary root
 # must be one the actual collector archives, and the child status must survive.
-bash "$root/scripts/ci/extract-workflow-step.sh" "$fixture/workflow-steps.json" validate \
+bash "$root/vendor/toko-tooling/scripts/ci/extract-workflow-step.sh" "$fixture/workflow-steps.json" validate \
     > "$fixture/gate.sh"
 temporary_selection="$(jq -er '.[] | select(.id == "validate") | .env.TMPDIR' "$fixture/workflow-steps.json")"
 # Substitute the literal GitHub expression, not a shell variable.
@@ -62,11 +62,13 @@ consumer="$fixture/jobs"
 mkdir -p "$consumer/.tools/rust/common/bin" "$consumer/src"
 printf '[package]\nname = "formatting-fixture"\nversion = "0.0.0"\nedition = "2024"\n' > "$consumer/Cargo.toml"
 printf 'pub fn fixture() {}\n' > "$consumer/src/lib.rs"
-bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$consumer" make/consumer.mk make/cargo-dependencies.mk
+bash "$root/vendor/toko-tooling/scripts/ci/prepare-script-fixture.sh" "$root" "$consumer" \
+    vendor/toko-tooling/make/consumer.mk vendor/toko-tooling/make/cargo-dependencies.mk \
+    vendor/toko-tooling/make/release.mk
 cp "$root/Makefile" "$consumer/"
 cp -R "$root/ci" "$consumer/"
-cp "$root/scripts/ci/check-format-tools.sh" "$consumer/scripts/ci/"
-export JOBSERVER_PROBE="$root/scripts/ci/check-pipe-jobserver.pl"
+cp "$root/vendor/toko-tooling/scripts/ci/check-format-tools.sh" "$consumer/vendor/toko-tooling/scripts/ci/"
+export JOBSERVER_PROBE="$root/vendor/toko-tooling/scripts/ci/check-pipe-jobserver.pl"
 cat > "$consumer/.tools/rust/common/bin/formatting-fixture-cargo" <<'CARGO'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -97,7 +99,7 @@ CARGO
 chmod +x "$consumer/.tools/rust/common/bin/formatting-fixture-cargo"
 # The pin catalog is selected from the resolved consumer root at runtime.
 # shellcheck disable=SC1091
-. "$root/ci/tool-versions.env"
+. "$root/vendor/toko-tooling/ci/tool-versions.env"
 export FORMAT_EVIDENCE_VERSION="$TOKO_TOOLING_CARGO_SORT_VERSION"
 export FORMAT_EVIDENCE_EVENTS="$fixture/events"
 : > "$FORMAT_EVIDENCE_EVENTS"
@@ -127,11 +129,11 @@ printf 'Manifest sorting [.]... ok\nRust formatting [.]... ok\n' > "$fixture/exp
 sed -E 's/ \([0-9]+[.][0-9]+s\)$//' "$fixture/make-success" > "$fixture/normalized-success"
 cmp "$fixture/expected" "$fixture/normalized-success"
 
-bash "$root/scripts/ci/extract-workflow-step.sh" "$fixture/collector-steps.json" archive \
+bash "$root/vendor/toko-tooling/scripts/ci/extract-workflow-step.sh" "$fixture/collector-steps.json" archive \
     > "$fixture/collect.sh"
 TOKO_TOOLING_STORE="$fixture/store" \
     EVIDENCE_TEMP_ROOT="$fixture/temp" EVIDENCE_REPOSITORY_ROOT="$fixture/repository" \
-    EVIDENCE_ACTION_ROOT="$root/.github/actions/retain-failure-evidence" \
+    EVIDENCE_ACTION_ROOT="$root/vendor/toko-tooling/.github/actions/retain-failure-evidence" \
     RUNNER_TEMP="$fixture/temp" GITHUB_OUTPUT="$fixture/archive-output" \
     bash "$fixture/collect.sh" > "$fixture/collection.log" 2>&1
 archive="$(sed -n 's/^path=//p' "$fixture/archive-output")"

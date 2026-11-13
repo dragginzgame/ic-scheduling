@@ -10,6 +10,20 @@ entry alone does not establish publication.
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.44.1] - Unreleased
+
+### 📦 Dependencies
+
+- Select Metrics 0.30.4 and Runtime/macros/exact guard 0.22.2. Qualification
+  selects Types 0.20.2, native Platform 0.32.2 and Wire 0.22.1 / Endpoint 0.13.1,
+  preserving timer ownership, wire bytes and recovery behavior.
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.42.5 with managed executables under `vendor/toko-tooling/`.
+  Migrate local Make, workflow, hook and qualification/release callers, preserving
+  explicit consumer roots, group selection and input-drift refusal.
+
 ## [0.44.0] - 2026-11-13
 
 ### 📦 Dependencies

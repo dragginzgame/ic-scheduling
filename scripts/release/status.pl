@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use FindBin;
-use lib "$FindBin::Bin/../ci";
+use lib "$FindBin::Bin/../../vendor/toko-tooling/scripts/ci";
 use StableVersion qw(stable version_cmp);
 use JSON::PP qw(decode_json encode_json);
 use Getopt::Long qw(GetOptions);

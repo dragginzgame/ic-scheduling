@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared companions: ci/timer-dependency-boundaries.json scripts/ci/check-cargo-graph.pl
+# Shared companions: ci/timer-dependency-boundaries.json vendor/toko-tooling/scripts/ci/check-cargo-graph.pl
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
@@ -38,7 +38,7 @@ for my $target ('wasm32-unknown-unknown', $host) {
     for my $root (qw(ic-timers ic-timers-runtime-probe ic-timers-size-probe ic-timers-test-protocol)) {
         my $library = $root eq 'ic-timers';
         my $protocol = $root eq 'ic-timers-test-protocol';
-        my @check = ('perl', 'scripts/ci/check-cargo-graph.pl', '--consumer', ($library ? getcwd() : getcwd().'/qualification'),
+        my @check = ('perl', 'vendor/toko-tooling/scripts/ci/check-cargo-graph.pl', '--consumer', ($library ? getcwd() : getcwd().'/qualification'),
             '--package', $root, '--target', $target, '--all-features');
         for my $rule (@$rules) {
             my $name = $rule->{dependency};
@@ -76,7 +76,7 @@ for my $target ('wasm32-unknown-unknown', $host) {
 }
 # Only the test binary owns simulator calls and probe codecs. The normal native
 # coordinator builds artifacts, supervises the worker and handles JSON receipts.
-my @worker = ('perl', 'scripts/ci/check-cargo-graph.pl', '--consumer', getcwd().'/qualification',
+my @worker = ('perl', 'vendor/toko-tooling/scripts/ci/check-cargo-graph.pl', '--consumer', getcwd().'/qualification',
     '--package', 'ic-timers-pocketic', '--target', $host, '--all-features');
 push @worker, map { ('--forbid', $_) }
     qw(ic-platform-runtime ic-platform-runtime-guard ic-platform-pocket-ic ic-cdk-executor ic0 ic-testkit pocket-ic candid ic-wire ic-timers ic-timers-test-protocol);

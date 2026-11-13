@@ -17,8 +17,8 @@ bash "$root/scripts/release/group.sh" validate
 make --no-print-directory -C "$root" toko-tooling-check
 # Capture identity before admission so network observations and linting must
 # authorize the same release. Source admission still precedes metadata reads.
-bash "$root/scripts/ci/check-make-execution.sh"
-bash "$root/scripts/ci/check-release-source.sh"
+bash "$root/vendor/toko-tooling/scripts/ci/check-make-execution.sh"
+bash "$root/vendor/toko-tooling/scripts/ci/check-release-source.sh"
 commit="$(git rev-parse --verify HEAD)"
 version="$(bash "$root/scripts/release/group.sh" version)"
 package="$(bash "$root/scripts/release/group.sh" package)"
@@ -33,5 +33,5 @@ current_tag="$(git rev-parse --verify "$tag")"
     echo 'publication refused: release identity changed during admission or lint; upload has not started' >&2
     exit 1
 }
-bash "$root/scripts/ci/check-release-source.sh"
+bash "$root/vendor/toko-tooling/scripts/ci/check-release-source.sh"
 cargo publish -p "$package" --all-features --locked --registry crates-io

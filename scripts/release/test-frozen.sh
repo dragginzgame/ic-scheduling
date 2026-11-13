@@ -76,7 +76,7 @@ archive="target/package/tmp-crate/ic-$RELEASE_GROUP-$RELEASE_VERSION.crate"
 [[ -f "$archive" ]] || archive="target/package/ic-$RELEASE_GROUP-$RELEASE_VERSION.crate"
 tar -xOf "$archive" "ic-$RELEASE_GROUP-$RELEASE_VERSION/.cargo_vcs_info.json" |
     jq -e --arg commit "$RELEASE_COMMIT" '.git.sha1 == $commit and ((.git.dirty // false) == false)'
-checksum="$(bash scripts/ci/verify-file-checksum.sh --print sha256 "$archive")"
+checksum="$(bash vendor/toko-tooling/scripts/ci/verify-file-checksum.sh --print sha256 "$archive")"
 jq -n --arg group "$RELEASE_GROUP" --arg version "$RELEASE_VERSION" --arg commit "$RELEASE_COMMIT" --arg checksum "$checksum" \
     '{group:$group,version:$version,commit:$commit,archive_sha256:$checksum}' > "$FROZEN_TEST_SUITE/frozen-publications/$RELEASE_GROUP.json"
 printf '%s\n' "$RELEASE_GROUP" >> "$FROZEN_TEST_SUITE/frozen-uploads"
@@ -106,7 +106,7 @@ CURL
     for group in timers jobs; do
         version="$(RELEASE_GROUP="$group" bash scripts/release/group.sh version)"
         ledger="$(RELEASE_GROUP="$group" bash scripts/release/group.sh plan | jq -er .changelog)"
-        candidate="$(bash scripts/ci/next-release-version.sh "$version" patch)"
+        candidate="$(bash vendor/toko-tooling/scripts/ci/next-release-version.sh "$version" patch)"
         printf '# Fixture ledger\n\n## [%s] - Unreleased\n\n### 🧪 Testing\n\n- Captured patch delivery.\n\n## [%s] - 2026-10-30\n\n### 🧪 Testing\n\n- Qualified fixture baseline.\n' \
             "$candidate" "$version" > "$ledger"
     done
@@ -149,7 +149,7 @@ CURL
     [[ "$(git rev-parse HEAD)" == "$base" ]]
     [[ "$(cat Cargo.lock)" == 'concurrent normal lock write in progress' ]]
     [[ "$(git --git-dir="$suite/frozen-remote.git" rev-parse delivery)" == "$base" ]]
-    [[ "$(git -C "$work" config --get core.hooksPath)" == .githooks ]]
+    [[ "$(git -C "$work" config --get core.hooksPath)" == vendor/toko-tooling/.githooks ]]
     (
         cd "$work"
         export RELEASE_GROUP=timers RELEASE_VERSION="$version"

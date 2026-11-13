@@ -18,14 +18,14 @@ case "$root" in *$'\n'*|*$'\r'*) echo 'resolved publication directory contains C
 physical_cwd="$(cd -P -- . && printf '%s/.' "$PWD")"
 case "$physical_cwd" in *$'\n'*|*$'\r'*) echo 'resolved publication directory contains CR/LF' >&2; exit 2 ;; esac
 fail() { echo "publication refused: $*" >&2; exit 1; }
-bash "$root/scripts/ci/check-make-execution.sh"
+bash "$root/vendor/toko-tooling/scripts/ci/check-make-execution.sh"
 
 # Publication allows no metadata exceptions; retain the helper's full diagnostics.
-bash "$root/scripts/ci/check-release-source.sh" || fail 'source admission failed before registry observation or upload'
+bash "$root/vendor/toko-tooling/scripts/ci/check-release-source.sh" || fail 'source admission failed before registry observation or upload'
 commit="$(git rev-parse --verify HEAD)" || fail 'publication requires a committed release'
 version="$(bash "$root/scripts/release/group.sh" version)"
 packages=("$(bash "$root/scripts/release/group.sh" package)")
-bash "$root/scripts/ci/check-release-tag.sh" "$commit" "$version"
+bash "$root/vendor/toko-tooling/scripts/ci/check-release-tag.sh" "$commit" "$version"
 tag="refs/tags/$RELEASE_GROUP-v$version"
 tag_object="$(git rev-parse --verify "$tag")"
 destination="$(git remote get-url --push --all "$remote" && printf '.')" || fail 'cannot inspect push destination'
@@ -39,7 +39,7 @@ observed="$(git ls-remote --exit-code -- "$destination" "$tag")" || fail 'cannot
 # immutable at crates.io; an interrupted upload is observed again on invocation.
 for package in "${packages[@]}"; do
 registry_status=0
-bash "$root/scripts/ci/check-crates-io-version.sh" "$package" "$version" || registry_status=$?
+bash "$root/vendor/toko-tooling/scripts/ci/check-crates-io-version.sh" "$package" "$version" || registry_status=$?
 case "$registry_status" in
     0) fail "$package $version already exists on crates.io; reconcile any earlier upload" ;;
     1) ;;
@@ -51,4 +51,4 @@ done
 current_commit="$(git rev-parse --verify HEAD)"
 current_tag="$(git rev-parse --verify "$tag")"
 [[ "$current_commit" == "$commit" && "$current_tag" == "$tag_object" ]] || fail 'release identity changed during preflight'
-bash "$root/scripts/ci/check-release-source.sh" || fail 'source admission failed after publication preflight; upload has not started'
+bash "$root/vendor/toko-tooling/scripts/ci/check-release-source.sh" || fail 'source admission failed after publication preflight; upload has not started'

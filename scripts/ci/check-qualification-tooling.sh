@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Shared companions: scripts/dev/tooling-lock.pl ci/workspace-manifests.txt
+# Shared companions: vendor/toko-tooling/scripts/dev/tooling-lock.pl ci/workspace-manifests.txt
 set -euo pipefail
 root="$(cd -P "${BASH_SOURCE[0]%/*}/../.." && pwd -P)"
 export PATH="$root/.tools/host/bin:$PATH"
-product="$(perl "$root/scripts/dev/tooling-lock.pl" "$root")"
-qualification="$(perl "$root/scripts/dev/tooling-lock.pl" "$root/qualification")"
+product="$(perl "$root/vendor/toko-tooling/scripts/dev/tooling-lock.pl" "$root")"
+qualification="$(perl "$root/vendor/toko-tooling/scripts/dev/tooling-lock.pl" "$root/qualification")"
 [[ "$product" == "$qualification" ]] || {
     echo 'product and qualification must select the same authenticated Tooling release' >&2
     exit 1

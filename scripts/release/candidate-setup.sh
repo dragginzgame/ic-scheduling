@@ -19,7 +19,7 @@ if [[ "$RELEASE_SETUP_MODE" == prepare ]]; then
 else
     # Never fetch or install against partially prepared working metadata.
     make --no-print-directory tools-check
-    [[ "$(git config --get core.hooksPath)" == .githooks ]] || { echo 'saved candidate hooks are not admitted' >&2; exit 1; }
+    [[ "$(git config --get core.hooksPath)" == vendor/toko-tooling/.githooks ]] || { echo 'saved candidate hooks are not admitted' >&2; exit 1; }
     select_release_source_lock "$root" "${RELEASE_SOURCE:?saved group source required}"
     make --no-print-directory release-tools-check "RELEASE_METADATA_LOCKFILE=$RELEASE_METADATA_LOCKFILE"
 fi

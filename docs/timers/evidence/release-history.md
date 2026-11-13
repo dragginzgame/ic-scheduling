@@ -1763,9 +1763,9 @@ make install-host-tools
 make host-tools-check
 ```
 
-The root [common Make include](../../../make/tools.mk) selects jq 1.8.2, Mike Farah yq
+The root [common Make include](../../../vendor/toko-tooling/make/tools.mk) selects jq 1.8.2, Mike Farah yq
 4.47.2, ripgrep 15.2.0 with PCRE2 and cloc 2.10 from the single
-[host pin owner](../../../ci/tool-versions.env). The shared installer authenticates all
+[host pin owner](../../../vendor/toko-tooling/ci/tool-versions.env). The shared installer authenticates all
 selected payloads before executing any, checks versions, and activates the bundle
 together. Previous/failed candidates remain under ignored `.tools/`.
 `actions-check` depends on this offline bundle check before reading declarations;
@@ -1806,7 +1806,7 @@ Ordinary checks never download tools.
 
 `make install-ic-tools` explicitly prepares Quill 0.5.4, ICP CLI 1.6.0, didc
 0.6.2, ic-wasm 0.11.1 and wasm-opt 132 from
-[`ci/ic-tools.tsv`](../../../ci/ic-tools.tsv). `make ic-tools-check` verifies this
+[`ci/ic-tools.tsv`](../../../vendor/toko-tooling/ci/ic-tools.tsv). `make ic-tools-check` verifies this
 five-tool bundle offline. `make install-tools` / `make tools-check` run host,
 IC and Cargo tools, then `install-testkit-server` / `pocketic-check` through the
 ordered local target lists. Standalone owner targets remain available, and the

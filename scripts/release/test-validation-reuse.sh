@@ -52,7 +52,7 @@ git config user.name 'Scheduling reuse fixture'
 git config user.email 'fixture@example.invalid'
 git config core.hooksPath /dev/null
 git config commit.gpgsign false
-git add -- .gitignore Cargo.toml Cargo.lock rust-toolchain.toml Makefile ci scripts
+git add -- .gitignore Cargo.toml Cargo.lock rust-toolchain.toml Makefile ci scripts vendor
 git commit -qm 'Fixture inputs'
 git tag -a jobs-v1.0.0 -m baseline
 git tag -a timers-v1.0.0 -m baseline
@@ -66,7 +66,7 @@ select_attempt() {
 run_plan() {
     select_attempt "$1" || return
     SCHEDULING_VALIDATION_ATTEMPT="$attempt" VALIDATION_LOG_DIR="$attempt/logs" \
-        bash scripts/ci/run-validation-targets.sh --plan "$attempt/plan.json" > "$attempt/console.log" 2>&1 || return
+        VALIDATION_REPOSITORY_ROOT="$PWD" bash vendor/toko-tooling/scripts/ci/run-validation-targets.sh --plan "$attempt/plan.json" > "$attempt/console.log" 2>&1 || return
     perl scripts/release/validation.pl seal "$attempt" || return
     perl scripts/release/validation.pl check "$attempt" || return
 }

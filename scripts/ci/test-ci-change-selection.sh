@@ -27,7 +27,7 @@ for selection in 'classify classify' 'classification-admission admission' 'docum
     read -r step_id script_name <<< "$selection"
     step_file=validate
     [[ "$step_id" != classify ]] || step_file=classify
-    bash "$root/scripts/ci/extract-workflow-step.sh" "$fixture/$step_file-steps.json" "$step_id" > "$fixture/$script_name.sh"
+    bash "$root/vendor/toko-tooling/scripts/ci/extract-workflow-step.sh" "$fixture/$step_file-steps.json" "$step_id" > "$fixture/$script_name.sh"
 done
 
 docs_condition="needs.change-scope.outputs.scope == 'docs'"
@@ -52,7 +52,7 @@ jq -e --arg docs "$docs_condition" --arg native "$native_condition" \
         if .id == "documentation" or .id == "save-doc-downloads" then .if == $docs
         elif .id == "classification-admission" or (.uses // "" | startswith("actions/checkout@"))
             or .id == "restore-downloads" or .run == "make install-host-tools" then has("if") | not
-        elif .if == "failure()" then .uses == "./.github/actions/retain-failure-evidence"
+        elif .if == "failure()" then .uses == "./vendor/toko-tooling/.github/actions/retain-failure-evidence"
         else .if == $native end) and
     ((.on.pull_request // {}) | has("paths") | not) and
     ((.on.push // {}) | has("paths") | not)
@@ -69,7 +69,7 @@ jq -e '
     all(.steps[]; has("if") | not)
 ' "$fixture/workflow.json" > "$fixture/secrets-contract.txt"
 jq '.jobs.secrets.steps' "$fixture/workflow.json" > "$fixture/secrets-steps.json"
-bash "$root/scripts/ci/extract-workflow-step.sh" "$fixture/secrets-steps.json" scan-secrets > "$fixture/scan.sh"
+bash "$root/vendor/toko-tooling/scripts/ci/extract-workflow-step.sh" "$fixture/secrets-steps.json" scan-secrets > "$fixture/scan.sh"
 cat > "$fixture/scanner" <<'SCANNER'
 #!/usr/bin/env bash
 [[ "$*" == 'git --redact=100 --no-banner --no-color --log-level error' ]] || exit 91
@@ -90,7 +90,7 @@ jq -e --slurpfile recovery "$fixture/recovery.json" '
     def position($id): map(.id) | index($id);
     def cache_steps:
         all(.[] | select(.id == "restore-downloads" or .id == "save-downloads" or .id == "save-doc-downloads");
-            .uses == "./.github/actions/cache-tool-downloads" and
+            .uses == "./vendor/toko-tooling/.github/actions/cache-tool-downloads" and
             (if .id == "restore-downloads" then (.with.mode // "restore") == "restore"
              else .with.mode == "save" end));
     .jobs.validate.steps as $steps |
@@ -112,8 +112,8 @@ jq -e --slurpfile recovery "$fixture/recovery.json" '
 
 mkdir -p "$fixture/repo/ci" "$fixture/repo/scripts/ci" "$fixture/bin"
 cp "$root/ci/docs-only-paths.txt" "$fixture/repo/ci/"
-bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture/repo" \
-    scripts/ci/classify-ci-change.pl
+bash "$root/vendor/toko-tooling/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture/repo" \
+    vendor/toko-tooling/scripts/ci/classify-ci-change.pl
 while IFS= read -r path; do
     case "$path" in ''|'#'*) continue ;; esac
     # Admission review guard: prose must stay outside executable/packaged inputs
@@ -138,7 +138,7 @@ git config user.name 'CI selection fixture'
 git config user.email 'fixture@example.invalid'
 git config core.hooksPath /dev/null
 git config commit.gpgsign false
-git add -- ci scripts README.md docs
+git add -- ci vendor README.md docs
 git commit -qm 'Baseline policy and prose'
 base="$(git rev-parse HEAD)"
 
@@ -222,11 +222,11 @@ run_case invalid-doc-whitespace failure "$base" "$(git rev-parse HEAD)"
 for kind in failure invalid-output; do
     git checkout -q --detach "$base"
     if [[ "$kind" == failure ]]; then
-        printf 'die "classifier execution failed\\n";\n' > scripts/ci/classify-ci-change.pl
+        printf 'die "classifier execution failed\\n";\n' > vendor/toko-tooling/scripts/ci/classify-ci-change.pl
     else
-        printf 'print "unknown\\n";\n' > scripts/ci/classify-ci-change.pl
+        printf 'print "unknown\\n";\n' > vendor/toko-tooling/scripts/ci/classify-ci-change.pl
     fi
-    git add -- scripts/ci/classify-ci-change.pl
+    git add -- vendor/toko-tooling/scripts/ci/classify-ci-change.pl
     git commit -qm 'Failed classification producer'
     run_case "classifier-$kind" failure "$base" "$(git rev-parse HEAD)"
 done

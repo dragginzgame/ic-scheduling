@@ -32,15 +32,18 @@ trap 'fixture_finish "$?" "$fixture" "Consumer tooling fixture retained"' EXIT
 suite="$fixture"
 prepare_phase() {
     fixture="$suite/$1"
-    mkdir -p "$fixture/scripts/dev" "$fixture/.tools/rust/common/bin"
-    bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" make/consumer.mk make/cargo-dependencies.mk
+    mkdir -p "$fixture/scripts/dev" "$fixture/scripts/ci" "$fixture/.tools/rust/common/bin"
+    bash "$root/vendor/toko-tooling/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" \
+        vendor/toko-tooling/make/consumer.mk vendor/toko-tooling/make/cargo-dependencies.mk \
+        vendor/toko-tooling/make/release.mk vendor/toko-tooling/make/cargo-publication.mk \
+        vendor/toko-tooling/scripts/ci/fixture-lifecycle.sh
     cp "$root/Makefile" "$fixture/"
     cp -R "$root/ci" "$fixture/"
-    cp "$root/scripts/dev/"{install-rust-tools,tool-store,cargo-tool-build,testkit-tool}.sh "$fixture/scripts/dev/"
+    cp "$root/scripts/dev/testkit-tool.sh" "$fixture/scripts/dev/"
     cp "$root/scripts/dev/minimum-rust.sh" "$fixture/scripts/dev/"
-    cp "$root/scripts/ci/read-cargo-workspace-rust-version.sh" "$fixture/scripts/ci/"
+    cp "$root/vendor/toko-tooling/scripts/ci/read-cargo-workspace-rust-version.sh" "$fixture/vendor/toko-tooling/scripts/ci/"
     cp "$root/Cargo.toml" "$root/rust-toolchain.toml" "$fixture/"
-    cp "$root/scripts/ci/"{verify-file-checksum,test-canister,fixture-lifecycle}.sh "$fixture/scripts/ci/"
+    cp "$root/scripts/ci/test-canister.sh" "$fixture/scripts/ci/"
     cp "$root/Cargo.lock" "$fixture/"
     cp "$root/"{LICENSE.md,CONTRIBUTING.md,README.md} "$fixture/"
     mkdir -p "$fixture/qualification"
@@ -52,9 +55,11 @@ prepare_phase() {
 
 stub_testkit_selection() {
     export JOBS_CONSUMER_ADMISSION_FAILURE=0
-cat > "$fixture/scripts/dev/install-rust-tools.sh" <<'INSTALLER'
+cat > "$fixture/vendor/toko-tooling/scripts/dev/install-rust-tools.sh" <<'INSTALLER'
 #!/usr/bin/env bash
 set -euo pipefail
+[[ "$1" == --consumer && "$2" == "$PWD" ]] || exit 49
+shift 2
 case "$*" in
     '--package ic-testkit --lockfile qualification/Cargo.lock --bin ic-testkit-server --profile release --features cli')
         printf 'setup\n' >> "$JOBS_CONSUMER_TOOLING_EVENTS" ;;
@@ -83,7 +88,7 @@ phase_workspace_inheritance() (
     mkdir -p "$fixture/releases/jobs" "$fixture/releases/timers"
     cp "$root/releases/jobs/CHANGELOG.md" "$fixture/releases/jobs/"
     cp "$root/releases/timers/CHANGELOG.md" "$fixture/releases/timers/"
-    bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" scripts/ci/check-dependency-pins.sh
+    bash "$root/vendor/toko-tooling/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" vendor/toko-tooling/scripts/ci/check-dependency-pins.sh
     cp "$root/AGENTS.md" "$fixture/"
     git init -q "$fixture"
     git -C "$fixture" add -- AGENTS.md Cargo.lock qualification/Cargo.lock
@@ -94,7 +99,7 @@ phase_workspace_inheritance() (
         case "$invalid" in
             product-version) perl -pi -e 's/^version = "[^"]+"/version = "0.0.0"/' "$fixture/crates/ic-timers/Cargo.toml" ;;
             missing-private-version) perl -ni -e 'print unless /^version = /' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
-            private-dependency) perl -pi -e 's/^toko-tooling.workspace = true/toko-tooling = "=0.41.1"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
+            private-dependency) perl -pi -e 's/^toko-tooling.workspace = true/toko-tooling = "=0.42.5"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
             target-dependency) printf '\n%s\n%s\n' "[target.'cfg(unix)'.dev-dependencies]" 'serde = "1.0"' >> "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
             published-qualification) perl -pi -e 's/^publish = false/publish = ["crates-io"]/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
         esac
@@ -121,11 +126,11 @@ exit "${JOBS_DEPENDENCY_UPDATE_FAILURE:-0}"
 CARGO
     chmod +x "$fixture/.tools/rust/common/bin/cargo"
     PATH="$fixture/.tools/rust/common/bin:$PATH" make --no-print-directory -C "$fixture" deps-update \
-        DEPENDENCY_PACKAGE=toko-tooling DEPENDENCY_PRECISE=0.41.1 > "$fixture/update.log" 2>&1
+        DEPENDENCY_PACKAGE=toko-tooling DEPENDENCY_PRECISE=0.42.5 > "$fixture/update.log" 2>&1
     printf '%s\0' "$fixture" update -v --manifest-path "$fixture/Cargo.toml" \
-        --package toko-tooling --precise 0.41.1 \
+        --package toko-tooling --precise 0.42.5 \
         "$fixture/qualification" update -v --manifest-path "$fixture/qualification/Cargo.toml" \
-        --package toko-tooling --precise 0.41.1 > "$fixture/expected"
+        --package toko-tooling --precise 0.42.5 > "$fixture/expected"
     cmp "$fixture/events" "$fixture/expected"
     : > "$fixture/events"
     status=0
@@ -196,7 +201,7 @@ for invalid in missing-lock version-drift checksum-drift missing-member independ
         missing-member)
             perl -0pi -e 's/^toko-tooling\.workspace = true\n//m' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
         independent-member)
-            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.41.1"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
+            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.42.5"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
     esac
     for target in ci release-patch release-preflight publish publish-check clean-empty-source-dirs; do
         status=0
@@ -320,7 +325,7 @@ stub_testkit_selection
 # Execute the hosted selection step against the actual Make adapter. Its checked
 # stdout is the executable path; diagnostics must stay out of that selection.
 yq -o json '.jobs.recovery.steps' "$root/.github/workflows/recovery.yml" > "$fixture/recovery-steps.json"
-bash "$root/scripts/ci/extract-workflow-step.sh" "$fixture/recovery-steps.json" testkit \
+bash "$root/vendor/toko-tooling/scripts/ci/extract-workflow-step.sh" "$fixture/recovery-steps.json" testkit \
     > "$fixture/testkit-step.sh"
 # shellcheck disable=SC2030,SC2031 # Stub inputs intentionally stay inside this phase.
 local -x JOBS_CONSUMER_CLI="$fixture/testkit selected/bin/ic-testkit-server"
@@ -421,8 +426,10 @@ printf '{}\n' > "$fixture/selected/selection.json"
 local -x JOBS_CONSUMER_CLI="$fixture/selected/bin/ic-testkit-server"
 export JOBS_CONSUMER_IC_BIN="$fixture/ic-bin" JOBS_CONSUMER_FROZEN="$fixture/input"
 export JOBS_CONSUMER_PRODUCER="$input" JOBS_CONSUMER_CAPTURED="$fixture/consumed"
-cat > "$fixture/scripts/dev/install-ic-tools.sh" <<'INSTALLER'
+cat > "$fixture/vendor/toko-tooling/scripts/dev/install-ic-tools.sh" <<'INSTALLER'
 #!/usr/bin/env bash
+[[ "$1" == --consumer && "$2" == "$PWD" ]] || exit 49
+shift 2
 [[ "$*" == '--tool wasm-opt --check' ]] || exit 49
 printf '%s\n' "$JOBS_CONSUMER_IC_BIN"
 INSTALLER
@@ -479,7 +486,7 @@ for mode in original optimized; do
    { cat "$fixture/input"; printf '%s\n' "-$variant"; } > "$fixture/expected.wasm"
    cmp "$fixture/expected.wasm" "$JOBS_CONSUMER_CAPTURED/$variant.wasm"
   fi
-  actual="$(bash "$root/scripts/ci/verify-file-checksum.sh" --print sha256 "$JOBS_CONSUMER_CAPTURED/$variant.wasm")"
+  actual="$(bash "$root/vendor/toko-tooling/scripts/ci/verify-file-checksum.sh" --print sha256 "$JOBS_CONSUMER_CAPTURED/$variant.wasm")"
   [[ "$(cat "${evidence[0]}/$variant/consumer-wasm.sha256")" == "$actual" && -s "${evidence[0]}/$variant/test.log" && -s "${evidence[0]}/$variant/server.stdout" && -s "${evidence[0]}/$variant/server.stderr" ]] || exit 1
  done
  [[ "$(cat "$input")" == 'replaced mutable producer' ]] || exit 1
@@ -516,10 +523,12 @@ phase_ci_admission() (
 local fixture
 trap - EXIT
 prepare_phase ci-admission
+bash "$root/vendor/toko-tooling/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" \
+    vendor/toko-tooling/scripts/ci/check-cargo-dependency-boundaries.sh
 # These local release inputs are part of Make's common checkpoint inventory.
 mkdir -p "$fixture/scripts/release"
 cp "$root/scripts/release/"{validation.pl,verify.sh,ci.sh,candidate-setup.sh,source-lock.sh,metadata.sh,publish.sh,publication-lint.sh} "$fixture/scripts/release/"
-cp "$root/scripts/ci/"{ValidationPlan.pm,validation-evidence.pl} "$fixture/scripts/ci/"
+cp "$root/vendor/toko-tooling/scripts/ci/"{ValidationPlan.pm,validation-evidence.pl} "$fixture/vendor/toko-tooling/scripts/ci/"
 # Run Jobs' actual CI route only through its first admission stage. Substitute
 # tool effects and mutate a selected input there; the logger must block all
 # subsequent product checks without compilation, installation or server effects.
@@ -529,11 +538,11 @@ for member in crates/ic-jobs qualification/ic-jobs-test-consumer qualification/i
     cp "$root/$member/Cargo.toml" "$fixture/$member/"
     if [[ -f "$root/$member/README.md" ]]; then cp "$root/$member/README.md" "$fixture/$member/"; fi
 done
-cp "$root/scripts/ci/"{run-validation-targets,check-format-tools}.sh "$fixture/scripts/ci/"
-cp "$root/scripts/ci/classify-ci-change.pl" "$fixture/scripts/ci/"
+cp "$root/vendor/toko-tooling/scripts/ci/"{run-validation-targets,check-format-tools}.sh "$fixture/vendor/toko-tooling/scripts/ci/"
+cp "$root/vendor/toko-tooling/scripts/ci/classify-ci-change.pl" "$fixture/vendor/toko-tooling/scripts/ci/"
 mkdir -p "$fixture/.github/workflows"
 cp "$root/.github/workflows/"{ci,recovery}.yml "$fixture/.github/workflows/"
-cat > "$fixture/scripts/dev/toko-tooling.sh" <<'VERIFY'
+cat > "$fixture/vendor/toko-tooling/scripts/dev/toko-tooling.sh" <<'VERIFY'
 #!/usr/bin/env bash
 # Snapshot admission is substituted here; this phase owns later input drift.
 [[ "$*" == "check --consumer $PWD --manifest .toko-tooling.snapshot" ]]
@@ -544,7 +553,7 @@ cat > "$fixture/scripts/ci/check-qualification-tooling.sh" <<'VERIFY'
 exit 0
 VERIFY
 for toolset in host ic rust; do
-    cat > "$fixture/scripts/dev/install-$toolset-tools.sh" <<'ADMISSION'
+    cat > "$fixture/vendor/toko-tooling/scripts/dev/install-$toolset-tools.sh" <<'ADMISSION'
 #!/usr/bin/env bash
 set -euo pipefail
 [[ "$1" == --consumer && "${@: -1}" == --check ]] || exit 49
@@ -557,7 +566,7 @@ esac
 ADMISSION
 done
 # shellcheck disable=SC1091
-. "$root/ci/tool-versions.env"
+. "$root/vendor/toko-tooling/ci/tool-versions.env"
 export JOBS_CONSUMER_SORT_VERSION="$TOKO_TOOLING_CARGO_SORT_VERSION"
 cat > "$fixture/.tools/rust/common/bin/cargo" <<'CARGO'
 #!/usr/bin/env bash
@@ -626,7 +635,7 @@ for workflow in ci recovery; do
     job=validate
     [[ "$workflow" != recovery ]] || job=recovery
     yq -o json '.' "$root/.github/workflows/$workflow.yml" | jq --arg job "$job" '.jobs[$job].steps' > "$fixture/steps.json"
-    bash "$root/scripts/ci/extract-workflow-step.sh" "$fixture/steps.json" rust-policy > "$fixture/selection.sh"
+    bash "$root/vendor/toko-tooling/scripts/ci/extract-workflow-step.sh" "$fixture/steps.json" rust-policy > "$fixture/selection.sh"
     : > "$fixture/outputs"
     (cd "$fixture" && GITHUB_OUTPUT="$fixture/outputs" bash -e -o pipefail selection.sh)
     printf 'toolchain=1.92.0\n' > "$fixture/expected"
@@ -634,7 +643,7 @@ for workflow in ci recovery; do
 done
 
 # The actual hosted setup prepares components and Wasm exactly once.
-cp "$root/scripts/dev/prepare-rust-toolchain.sh" "$fixture/scripts/dev/"
+cp "$root/vendor/toko-tooling/scripts/dev/prepare-rust-toolchain.sh" "$fixture/vendor/toko-tooling/scripts/dev/"
 cat > "$fixture/.tools/rust/common/bin/rustup" <<'RUSTUP'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$JOBS_CONSUMER_TOOLING_EVENTS"
@@ -644,7 +653,7 @@ for workflow in ci recovery; do
     job=validate
     [[ "$workflow" != recovery ]] || job=recovery
     yq -o json '.' "$root/.github/workflows/$workflow.yml" | jq --arg job "$job" '.jobs[$job].steps' > "$fixture/steps.json"
-    bash "$root/scripts/ci/extract-workflow-step.sh" "$fixture/steps.json" rust-setup > "$fixture/setup.sh"
+    bash "$root/vendor/toko-tooling/scripts/ci/extract-workflow-step.sh" "$fixture/steps.json" rust-setup > "$fixture/setup.sh"
     : > "$fixture/events"
     (cd "$fixture" && PATH="$fixture/.tools/rust/common/bin:$PATH" bash -e -o pipefail setup.sh)
     printf 'toolchain install 1.92.0 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown\n' > "$fixture/expected"
@@ -837,7 +846,7 @@ phase_batch_commands() (
     unset RELEASE_GROUP RELEASE_BATCH_ACTIVE RELEASE_GROUPS RELEASE_PUBLISH_TARGET
     # Exercise the actual consumer Make includes; lifecycle effects stay with
     # Shared's producer suite. This is routing proof, not frozen-hook qualification.
-    cat > "$fixture/scripts/dev/toko-tooling.sh" <<'ADMISSION'
+    cat > "$fixture/vendor/toko-tooling/scripts/dev/toko-tooling.sh" <<'ADMISSION'
 #!/usr/bin/env bash
 [[ "${1:-}" == check ]]
 ADMISSION
@@ -846,10 +855,10 @@ ADMISSION
 # This phase owns batch routing; tooling-admission tests real member admission.
 exit 0
 ADMISSION
-    cat > "$fixture/scripts/dev/clean-empty-source-dirs.pl" <<'CLEANUP'
+    cat > "$fixture/vendor/toko-tooling/scripts/dev/clean-empty-source-dirs.pl" <<'CLEANUP'
 print "Cleanup substituted for batch routing qualification.\n";
 CLEANUP
-    cat > "$fixture/scripts/ci/run-release-batch.pl" <<'RUNNER'
+    cat > "$fixture/vendor/toko-tooling/scripts/ci/run-release-batch.pl" <<'RUNNER'
 use strict;
 use warnings;
 open my $events, '>>', $ENV{JOBS_CONSUMER_TOOLING_EVENTS} or die $!;
@@ -899,13 +908,13 @@ RUNNER
 
 phase_candid_boundary() (
     prepare_phase candid-boundary
-    bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" scripts/ci/check-candid-boundary.pl
+    bash "$root/vendor/toko-tooling/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" vendor/toko-tooling/scripts/ci/check-candid-boundary.pl
     mkdir -p "$fixture/crates/gate/src" "$fixture/crates/probe/src" "$fixture/qualification/probe/src"
     printf 'pub struct Qualification;\n' > "$fixture/qualification/probe/src/lib.rs"
     # Parser inputs only: these sample declarations are never compiled/injected.
     printf 'pub struct Owned;\nuse ic_platform::certification::cbor;\n' > "$fixture/crates/gate/src/lib.rs"
     printf 'pub struct Probe;\n' > "$fixture/crates/probe/src/lib.rs"
-    cat > "$fixture/scripts/ci/check-cargo-dependency-boundaries.sh" <<'BOUNDARY'
+    cat > "$fixture/vendor/toko-tooling/scripts/ci/check-cargo-dependency-boundaries.sh" <<'BOUNDARY'
 #!/usr/bin/env bash
 printf 'dependency admission\n' >> "$JOBS_CONSUMER_TOOLING_EVENTS"
 BOUNDARY
@@ -922,7 +931,8 @@ BOUNDARY
     done
     # Exercise the actual Cargo checker through Make, including renamed,
     # optional target-specific declarations and the independent common policy.
-    cp "$root/scripts/ci/check-cargo-dependency-boundaries.sh" "$fixture/scripts/ci/"
+    bash "$root/vendor/toko-tooling/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" \
+        vendor/toko-tooling/scripts/ci/check-cargo-dependency-boundaries.sh
     cat > "$fixture/Cargo.toml" <<'MANIFEST'
 [package]
 name = "boundary-probe"
@@ -946,7 +956,7 @@ phase_fixture_scratch() (
     # Exercise the real caller's transitive companion closure in a fresh shell.
     copied="$fixture/copied"
     mkdir "$copied"
-    bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$copied" scripts/ci/test-timer-dependencies.sh
+    bash "$root/vendor/toko-tooling/scripts/ci/prepare-script-fixture.sh" "$root" "$copied" scripts/ci/test-timer-dependencies.sh
     bash -c 'set -e; unset TMPDIR; source "$1/scripts/ci/fixture-scratch.sh"; fixture_create_workspace "$1" copied.XXXXXX' fixture "$copied" > "$fixture/copied.log"
     workspace="$fixture/workspace with spaces"
     created="$(unset TMPDIR; fixture_create_workspace "$workspace" 'default.XXXXXX')"

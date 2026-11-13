@@ -6,8 +6,8 @@ set -euo pipefail
 }
 complete=false
 status=0
-# shellcheck source=scripts/ci/fixture-lifecycle.sh
-source scripts/ci/fixture-lifecycle.sh
+# shellcheck source=vendor/toko-tooling/scripts/ci/fixture-lifecycle.sh
+source vendor/toko-tooling/scripts/ci/fixture-lifecycle.sh
 trap 'status=$?; fixture_completion_status "$status" "$complete" || status=$?; exit "$status"' EXIT
 
 # Caller explicitly selects this live gate. The canonical Cargo-tool checker and
@@ -20,7 +20,7 @@ capture="$target/debug/jobs-capture-artifact"
 [[ -f "$capture" && ! -L "$capture" && -x "$capture" ]] || exit 1
 variants=(original)
 if [[ $# == 1 ]]; then
-    bin="$(bash scripts/dev/install-ic-tools.sh --tool wasm-opt --check)"
+    bin="$(bash vendor/toko-tooling/scripts/dev/install-ic-tools.sh --consumer "$PWD" --tool wasm-opt --check)"
     variants+=(O3 Os Oz)
 fi
 # Explicit CI/operator evidence roots remain overrides; local scratch is cleanable.
@@ -38,13 +38,13 @@ cp "${cli%/bin/*}/selection.json" "$evidence/testkit-selection.json"
     git rev-parse HEAD
     uname -sm
     bash scripts/dev/minimum-rust.sh rustc --version --verbose
-    bash scripts/ci/verify-file-checksum.sh --print sha256 scripts/ci/test-canister.sh
-    bash scripts/ci/verify-file-checksum.sh --print sha256 "$capture"
+    bash vendor/toko-tooling/scripts/ci/verify-file-checksum.sh --print sha256 scripts/ci/test-canister.sh
+    bash vendor/toko-tooling/scripts/ci/verify-file-checksum.sh --print sha256 "$capture"
 } > "$evidence/source.txt"
 if [[ $# == 1 ]]; then
     cp .tools/ic/pins.tsv .tools/ic/files.sha256 "$evidence/"
     "$bin/wasm-opt" --version > "$evidence/optimizer.txt"
-    bash scripts/ci/verify-file-checksum.sh --print sha256 "$bin/wasm-opt" >> "$evidence/optimizer.txt"
+    bash vendor/toko-tooling/scripts/ci/verify-file-checksum.sh --print sha256 "$bin/wasm-opt" >> "$evidence/optimizer.txt"
 fi
 for variant in "${variants[@]}"; do
     mkdir "$evidence/$variant"
@@ -57,7 +57,7 @@ for variant in "${variants[@]}"; do
         "$capture" "$evidence/ic_jobs_test_consumer.wasm" "$IC_JOBS_CONSUMER_WASM" \
             --optimize "$bin/wasm-opt" "-$variant"
     fi
-    bash scripts/ci/verify-file-checksum.sh --print sha256 "$IC_JOBS_CONSUMER_WASM" \
+    bash vendor/toko-tooling/scripts/ci/verify-file-checksum.sh --print sha256 "$IC_JOBS_CONSUMER_WASM" \
         > "$evidence/$variant/consumer-wasm.sha256"
     printf 'Qualifying %s: %s\n' "$variant" "$(cat "$evidence/$variant/consumer-wasm.sha256")"
     # Testkit's run command checks the prepared server bundle; it never downloads.

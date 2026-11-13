@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared companions: scripts/ci/check-timer-dependencies.sh scripts/ci/fixture-scratch.sh scripts/ci/prepare-script-fixture.sh
+# Shared companions: scripts/ci/check-timer-dependencies.sh scripts/ci/fixture-scratch.sh vendor/toko-tooling/scripts/ci/prepare-script-fixture.sh
 set -euo pipefail
 root="$(git rev-parse --show-toplevel)"
 # shellcheck source=scripts/ci/fixture-scratch.sh
@@ -10,8 +10,8 @@ trap 'fixture_finish "$?" "$fixture" "Failed library-boundary fixture retained"'
 
 # Real Cargo resolution against the maintained catalog and lock. Empty fixture
 # source is never built; no sibling source or network dependency is introduced.
-bash "$root/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" \
-    scripts/ci/check-timer-dependencies.sh scripts/ci/check-timer-provider.sh scripts/ci/check-make-execution.sh scripts/ci/check-cargo-dependency-boundaries.sh ci/workspace-manifests.txt \
+bash "$root/vendor/toko-tooling/scripts/ci/prepare-script-fixture.sh" "$root" "$fixture" \
+    scripts/ci/check-timer-dependencies.sh scripts/ci/check-timer-provider.sh vendor/toko-tooling/scripts/ci/check-make-execution.sh vendor/toko-tooling/scripts/ci/check-cargo-dependency-boundaries.sh ci/workspace-manifests.txt \
     ci/cargo-dependency-boundaries.json
 RUSTUP_AUTO_INSTALL=0 cargo metadata --locked --offline --format-version 1 > "$fixture/workspace.json"
 platform_version="$(perl -MJSON::PP -0777 -e '
@@ -175,7 +175,7 @@ reset_manifests
 # The common direct guard composes with Timers' stricter deployment policy.
 # Principal is intentionally absent from the local declaration list: it must
 # still reject an optional renamed target/build edge through the common owner.
-direct_checker=scripts/ci/check-cargo-dependency-boundaries.sh
+direct_checker=vendor/toko-tooling/scripts/ci/check-cargo-dependency-boundaries.sh
 bash "$direct_checker" --consumer "$fixture" --external-ic
 perl -pi -e 's/^ic-platform-runtime = /external-principal = { package = "ic_principal", version = "0.1" }\nic-platform-runtime = /' Cargo.toml
 cat >> crates/ic-timers/Cargo.toml <<'EOF'

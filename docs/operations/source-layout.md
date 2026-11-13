@@ -5,16 +5,22 @@ This workspace uses the reviewed Shared Tooling classifier. Its canonical
 owns the reporting format and category rules. This page documents Scheduling's
 package roles and commands; it does not define a separate counting policy.
 
+Installed shared executables and operational inputs live in `vendor/toko-tooling/`
+and are recorded by `.toko-tooling.snapshot`. Scheduling owns the root Makefile,
+`scripts/`, workflows, product policies and `docs/`. Refresh managed files with
+`make toko-tooling-update`; edit local callers outside the vendor tree.
+
 ## Source classification
 
 Run from the repository root with the prepared host tools and Rust compiler:
 
 ```sh
+export PATH="$PWD/.tools/host/bin:$PATH"
 make cloc
-bash scripts/dev/cloc.sh -d 0 .
-bash scripts/dev/cloc.sh -d 1 ic-timers
-bash scripts/dev/cloc.sh --wide -d 1 .
-bash scripts/dev/cloc.sh --json .
+bash vendor/toko-tooling/scripts/dev/cloc.sh -d 0 .
+bash vendor/toko-tooling/scripts/dev/cloc.sh -d 1 ic-timers
+bash vendor/toko-tooling/scripts/dev/cloc.sh --wide -d 1 .
+bash vendor/toko-tooling/scripts/dev/cloc.sh --json .
 ```
 
 The product workspace contains Jobs and Timers. The independent `qualification/`

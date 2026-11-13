@@ -10,6 +10,8 @@ including scoped `git add -N` when validation requires new task-owned paths.
 Both workspace catalogs/locks select the same tooling release and installed
 receipt. Its exact-pin exception is in `ci/dependency-pinning-exceptions.json`.
 After changing both pins and locks, use the repository-root installer.
+Installed executable paths are under `vendor/toko-tooling/`; local callers stay
+under `scripts/`, and Git hooks select `vendor/toko-tooling/.githooks`.
 
 Product commands use the root manifest; private checks use
 `--manifest-path qualification/Cargo.toml`. `make cloc-qualification` reports the

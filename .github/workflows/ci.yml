@@ -23,14 +23,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Restore pinned tool downloads
-        uses: ./.github/actions/cache-tool-downloads
+        uses: ./vendor/toko-tooling/.github/actions/cache-tool-downloads
       - name: Prepare the pinned secret scanner
         id: gitleaks
         run: |
-          binary="$(bash scripts/ci/install-ci-tool.sh gitleaks --install-dir "$RUNNER_TEMP/ci-bin")"
+          binary="$(bash vendor/toko-tooling/scripts/ci/install-ci-tool.sh gitleaks --install-dir "$RUNNER_TEMP/ci-bin")"
           printf 'binary=%s\n' "$binary" >> "$GITHUB_OUTPUT"
       - name: Save pinned tool downloads
-        uses: ./.github/actions/cache-tool-downloads
+        uses: ./vendor/toko-tooling/.github/actions/cache-tool-downloads
         with:
           mode: save
       - name: Scan repository history for secrets
@@ -57,7 +57,7 @@ jobs:
           CHANGE_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           CHANGE_HEAD: ${{ github.sha }}
         run: |
-          scope="$(perl scripts/ci/classify-ci-change.pl --event "$CHANGE_EVENT" --ref "$CHANGE_REF" \
+          scope="$(perl vendor/toko-tooling/scripts/ci/classify-ci-change.pl --event "$CHANGE_EVENT" --ref "$CHANGE_REF" \
             --base "$CHANGE_BASE" --head "$CHANGE_HEAD" --policy ci/docs-only-paths.txt)"
           case "$scope" in docs|full) ;; *) exit 1 ;; esac
           if [[ "$scope" == docs ]]; then
@@ -86,14 +86,14 @@ jobs:
         run: test "$CLASSIFICATION_RESULT" = success
       - name: Restore pinned tool downloads
         id: restore-downloads
-        uses: ./.github/actions/cache-tool-downloads
+        uses: ./vendor/toko-tooling/.github/actions/cache-tool-downloads
       - name: Prepare host parsers for Rust policy selection
         id: host-tools
         run: make install-host-tools
       - name: Save documentation tool downloads
         id: save-doc-downloads
         if: needs.change-scope.outputs.scope == 'docs'
-        uses: ./.github/actions/cache-tool-downloads
+        uses: ./vendor/toko-tooling/.github/actions/cache-tool-downloads
         with:
           mode: save
       - name: Check documentation-only changes
@@ -113,7 +113,7 @@ jobs:
       - name: Prepare the declared compiler once
         id: rust-setup
         if: needs.change-scope.outputs.scope != 'docs'
-        run: bash scripts/dev/prepare-rust-toolchain.sh --toolchain-file rust-toolchain.toml
+        run: bash vendor/toko-tooling/scripts/dev/prepare-rust-toolchain.sh --toolchain-file rust-toolchain.toml
       - name: Prepare the complete selected toolset
         id: selected-tools
         if: needs.change-scope.outputs.scope != 'docs'
@@ -121,7 +121,7 @@ jobs:
       - name: Save pinned tool downloads
         id: save-downloads
         if: needs.change-scope.outputs.scope != 'docs'
-        uses: ./.github/actions/cache-tool-downloads
+        uses: ./vendor/toko-tooling/.github/actions/cache-tool-downloads
         with:
           mode: save
       - name: Check prepared tools offline
@@ -145,7 +145,7 @@ jobs:
           make ci
       - name: Retain failed formatting and tool evidence
         if: failure()
-        uses: ./.github/actions/retain-failure-evidence
+        uses: ./vendor/toko-tooling/.github/actions/retain-failure-evidence
         with:
           name: jobs-evidence-${{ matrix.os }}-${{ github.run_id }}-${{ github.run_attempt }}
           temp-root: ${{ runner.temp }}

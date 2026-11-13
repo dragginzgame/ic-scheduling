@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Shared companions: scripts/ci/fixture-lifecycle.sh
+# Shared companions: vendor/toko-tooling/scripts/ci/fixture-lifecycle.sh
 # Scheduling owns workspace defaults; Shared owns allocation and cleanup.
-# shellcheck source=scripts/ci/fixture-lifecycle.sh
-source "${BASH_SOURCE[0]%/*}/fixture-lifecycle.sh"
+# shellcheck source=vendor/toko-tooling/scripts/ci/fixture-lifecycle.sh
+source "${BASH_SOURCE[0]%/*}/../../vendor/toko-tooling/scripts/ci/fixture-lifecycle.sh"
 
 fixture_create_workspace() {
     [[ $# == 2 ]] || return 2

@@ -3,20 +3,20 @@ set -euo pipefail
 [[ $# == 0 || ( $# == 1 && "$1" == --scope-only ) ]] || { echo "usage: test-validation.sh [--scope-only]" >&2; exit 2; }
 root="$(cd -P "${BASH_SOURCE[0]%/*}/../.." && pwd -P)"
 export PATH="$root/.tools/host/bin:$PATH"
-# shellcheck source=scripts/ci/fixture-lifecycle.sh
-source "$root/scripts/ci/fixture-lifecycle.sh"
+# shellcheck source=vendor/toko-tooling/scripts/ci/fixture-lifecycle.sh
+source "$root/vendor/toko-tooling/scripts/ci/fixture-lifecycle.sh"
 mkdir -p "$root/target"
 fixture="$(fixture_create "$root/target/group-validation-fixture.XXXXXXXX")"
 fixture_complete=false
 trap 'fixture_finish "$?" "$fixture" "Group validation fixture retained"' EXIT
 unset MAKEFLAGS MFLAGS MAKEOVERRIDES GNUMAKEFLAGS MAKEFILES
 unset RELEASE_COMMIT RELEASE_VALIDATION_EVIDENCE
-mkdir -p "$fixture/scripts/release" "$fixture/scripts/ci" "$fixture/ci" \
+mkdir -p "$fixture/scripts/release" "$fixture/vendor/toko-tooling/scripts/ci" "$fixture/ci" \
     "$fixture/crates/ic-jobs/src" "$fixture/crates/ic-timers/src" \
     "$fixture/qualification/ic-jobs-test-consumer/src" "$fixture/target"
 cp "$root/scripts/release/"{validation.pl,ci.sh} "$fixture/scripts/release/"
 for name in run-validation-targets.sh check-make-execution.sh verify-file-checksum.sh validation-input-checkpoint.pl release-validation-plan.pl ValidationPlan.pm validation-evidence.pl; do
-    cp "$root/scripts/ci/$name" "$fixture/scripts/ci/"
+    cp "$root/vendor/toko-tooling/scripts/ci/$name" "$fixture/vendor/toko-tooling/scripts/ci/"
 done
 cp "$root/ci/"{cargo-release-groups.json,release-validation.json} "$fixture/ci/"
 printf '/target/\n' > "$fixture/.gitignore"
@@ -74,7 +74,7 @@ select_case() {
 run_case() {
     local status=0
     select_case || return
-    VALIDATION_LOG_DIR="$attempt/logs" bash scripts/ci/run-validation-targets.sh \
+    VALIDATION_REPOSITORY_ROOT="$PWD" VALIDATION_LOG_DIR="$attempt/logs" bash vendor/toko-tooling/scripts/ci/run-validation-targets.sh \
         --plan "${attempt#"$fixture/"}/plan.json" > "$attempt/console.log" 2>&1 || status=$?
     [[ "$status" == 0 ]] || return "$status"
     perl scripts/release/validation.pl seal "$attempt"
@@ -165,7 +165,7 @@ start_case
 select_case
 jq -cS '(.stages[] | select(.target == "test-jobs")) |= (.required = false | .reason = "tampered omission")' "$attempt/plan.json" > target/tampered
 mv target/tampered "$attempt/plan.json"
-VALIDATION_LOG_DIR="$attempt/logs" bash scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json" > "$attempt/console.log" 2>&1
+VALIDATION_REPOSITORY_ROOT="$PWD" VALIDATION_LOG_DIR="$attempt/logs" bash vendor/toko-tooling/scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json" > "$attempt/console.log" 2>&1
 refuse perl scripts/release/validation.pl seal "$attempt"
 grep -F 'validation selection differs' target/refusal.log > /dev/null
 [[ ! -e "$attempt/execution.json" ]]
@@ -255,7 +255,7 @@ start_case
 select_case
 jq -cS '.inputs -= ["crates/ic-jobs/src/lib.rs"]' "$attempt/plan.json" > target/incomplete
 mv target/incomplete "$attempt/plan.json"
-VALIDATION_LOG_DIR="$attempt/logs" bash scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json" > "$attempt/console.log" 2>&1
+VALIDATION_REPOSITORY_ROOT="$PWD" VALIDATION_LOG_DIR="$attempt/logs" bash vendor/toko-tooling/scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json" > "$attempt/console.log" 2>&1
 refuse perl scripts/release/validation.pl seal "$attempt"
 grep -F 'missing source inventory input' target/refusal.log > /dev/null
 [[ ! -e "$attempt/execution.json" ]]
@@ -266,7 +266,7 @@ jq -cS '.stages -= ["test-timer-watchdog"]' "$attempt/release-policy.json" > tar
 mv target/incomplete "$attempt/release-policy.json"
 jq -cS 'del(.stages[] | select(.target == "test-timer-watchdog"))' "$attempt/plan.json" > target/incomplete
 mv target/incomplete "$attempt/plan.json"
-VALIDATION_LOG_DIR="$attempt/logs" bash scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json" > "$attempt/console.log" 2>&1
+VALIDATION_REPOSITORY_ROOT="$PWD" VALIDATION_LOG_DIR="$attempt/logs" bash vendor/toko-tooling/scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json" > "$attempt/console.log" 2>&1
 refuse perl scripts/release/validation.pl seal "$attempt"
 grep -F 'release policy differs' target/refusal.log > /dev/null
 [[ ! -e "$attempt/execution.json" ]]
@@ -274,7 +274,7 @@ start_case
 select_case
 jq -cS 'del(.stages[-1])' "$attempt/plan.json" > target/incomplete
 mv target/incomplete "$attempt/plan.json"
-refuse env VALIDATION_LOG_DIR="$attempt/logs" bash scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json"
+refuse env VALIDATION_REPOSITORY_ROOT="$PWD" VALIDATION_LOG_DIR="$attempt/logs" bash vendor/toko-tooling/scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json"
 [[ ! -s target/events ]]
 # A new common obligation reaches both normal CI and selected Jobs plans.
 start_case
@@ -316,7 +316,7 @@ start_case
 select_case
 printf 'new source\n' >> crates/ic-jobs/src/lib.rs
 git add -- crates/ic-jobs/src/lib.rs; git commit -qm 'Moved source'
-refuse env VALIDATION_LOG_DIR="$attempt/logs" bash scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json"
+refuse env VALIDATION_REPOSITORY_ROOT="$PWD" VALIDATION_LOG_DIR="$attempt/logs" bash vendor/toko-tooling/scripts/ci/run-validation-targets.sh --plan "${attempt#"$fixture/"}/plan.json"
 [[ ! -s target/events ]]
 start_case
 DRIFT_STAGE=validation-tools-check refuse run_case

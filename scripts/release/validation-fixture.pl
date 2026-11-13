@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Cwd qw(abs_path);
 use FindBin qw($RealBin);
-use lib "$RealBin/../ci";
+use lib "$RealBin/../../vendor/toko-tooling/scripts/ci";
 use ValidationPlan qw(json document digest relative_path);
 use File::Path qw(make_path);
 use File::Copy qw(copy);
@@ -53,7 +53,7 @@ my %environment = (PATH=>$ENV{PATH}, LC_ALL=>'C', LANG=>'C', TZ=>'UTC',
     GIT_CONFIG_KEY_1=>'maintenance.auto', GIT_CONFIG_VALUE_1=>'false');
 $environment{$_} = $ENV{$_} for grep { defined $ENV{$_} } qw(HOME CARGO_HOME RUSTUP_HOME RUSTUP_TOOLCHAIN);
 save('environment.json', \%environment);
-my @command = ('perl', 'scripts/ci/run-validation-stage.pl', '--state', 'target/validation-fixture-cache',
+my @command = ('perl', 'vendor/toko-tooling/scripts/ci/run-validation-stage.pl', '--state', 'target/validation-fixture-cache',
     '--stage', 'test-release-validation', '--contract', 'scheduling-validation-fixture/1',
     '--source', $context->{source}, '--group', $context->{group},
     '--observe', "$root/scripts/release/observe-validation-fixture.pl",
@@ -65,7 +65,7 @@ exit($? & 127 ? 128 + ($? & 127) : $? >> 8) if $?;
 my $admission = document($root, "$destination/admission.json");
 my $proof = JSON::PP->new->decode(do { open my $in, '<', $admission->{execution_proof} or die $!; local $/; <$in> });
 my $identity = $proof->{context}{observation}{configuration}{identity};
-open my $seal, '-|', 'perl', 'scripts/ci/seal-validation-stage.pl', "$root/$destination/admission.json",
+open my $seal, '-|', 'perl', 'vendor/toko-tooling/scripts/ci/seal-validation-stage.pl', "$root/$destination/admission.json",
     $context->{source}, $context->{group}, $identity or die $!;
 my $raw = do { local $/; <$seal> };
 close $seal or die "fixture proof sealing failed\n";

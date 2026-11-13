@@ -3143,11 +3143,11 @@ Prepared undated 0.14.8 adopts clean detached exports of committed
 audit/setup and helper snapshots. Exact shared bytes and executable modes are
 retained. No sibling files change and no snapshot payload is patched.
 
-The root Makefile includes [make/tools.mk](../../../make/tools.mk) once. It replaces
+The root Makefile includes [make/tools.mk](../../../vendor/toko-tooling/make/tools.mk) once. It replaces
 six copied setup/check recipes and supplies the checkout-local PATH, `cloc` and
 `cloc-tooling`. Both setup and offline checks select jq 1.8.2, yq 4.47.2,
 ripgrep 15.2.0 with PCRE2, and cloc 2.10 using the reviewed
-[pin catalog](../../../ci/tool-versions.env). Only cloc is a new pin. IC pins and the
+[pin catalog](../../../vendor/toko-tooling/ci/tool-versions.env). Only cloc is a new pin. IC pins and the
 separate exact audited PocketIC admission remain unchanged. Existing two-parser
 bundles need explicit `make install-host-tools`; ordinary checks remain offline
 and fail closed. No tool installation ran during preparation.
@@ -3230,7 +3230,7 @@ modes are retained; dirty sibling work is excluded. Exact-source
 passed Linux, lint/security and both native macOS jobs.
 
 The baseline explicitly adds the canonical
-[Make execution guard](../../../scripts/ci/check-make-execution.sh). The release runner,
+[Make execution guard](../../../vendor/toko-tooling/scripts/ci/check-make-execution.sh). The release runner,
 validation logger and selected-index formatting hook invoke it before their
 protected effects. It exercises an isolated recipe's execution and failure
 propagation through actual GNU Make, clearing only that probe's `MAKEFILES`;

@@ -9,14 +9,14 @@ cd "$root"
 bash scripts/release/group.sh validate
 commit="$(git rev-parse --verify HEAD)"
 clean=false
-if bash scripts/ci/check-release-source.sh; then clean=true; fi
+if bash vendor/toko-tooling/scripts/ci/check-release-source.sh; then clean=true; fi
 select_target() (
     # Observe current metadata independently of inherited release hook context.
     unset RELEASE_COMMIT
     version="$(bash scripts/release/group.sh version)" || exit
     tag="refs/tags/$RELEASE_GROUP-v$version"
     [[ "$(git cat-file -t "$tag")" == tag && "$(git rev-parse "$tag^{commit}")" == "$commit" ]] || exit 1
-    plan="$(perl scripts/ci/release-plan.pl \
+    plan="$(perl vendor/toko-tooling/scripts/ci/release-plan.pl \
         --plan "$(git rev-parse --git-path "release-state/$RELEASE_GROUP-$version.plan")" \
         --group "$RELEASE_GROUP" --version "$version")" || exit
     export RELEASE_SOURCE RELEASE_PREVIOUS RELEASE_VERSION RELEASE_DATE RELEASE_REMOTE RELEASE_BRANCH RELEASE_DELIVERY RELEASE_COMMIT
@@ -40,5 +40,5 @@ fi
 "${RELEASE_MAKE:-make}" --no-print-directory -C "$root" "$target"
 if [[ "$clean" == true ]]; then
     [[ "$(git rev-parse --verify HEAD)" == "$commit" ]] || { echo 'publication source changed during lint' >&2; exit 1; }
-    bash scripts/ci/check-release-source.sh
+    bash vendor/toko-tooling/scripts/ci/check-release-source.sh
 fi

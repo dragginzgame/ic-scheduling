@@ -10,10 +10,10 @@ mkdir -p target/release-validation
 attempt="$(mktemp -d "$root/target/release-validation/validation.XXXXXXXX")"
 printf 'Release validation selection and evidence: %s\n' "$attempt"
 perl scripts/release/validation.pl select "$attempt"
-CARGO_NET_OFFLINE=true VALIDATION_LOG_DIR="$attempt/logs" \
+CARGO_NET_OFFLINE=true VALIDATION_REPOSITORY_ROOT="$root" VALIDATION_LOG_DIR="$attempt/logs" \
     SCHEDULING_VALIDATION_ATTEMPT="${attempt#"$root/"}" \
     VALIDATION_FAILURE_LOG_DIR="$(git rev-parse --git-path release-state)/validation-failures" \
-    bash scripts/ci/run-validation-targets.sh --plan "${attempt#"$root/"}/plan.json"
+    bash vendor/toko-tooling/scripts/ci/run-validation-targets.sh --plan "${attempt#"$root/"}/plan.json"
 perl scripts/release/validation.pl seal "$attempt"
 if [[ "$write_receipt" == true ]]; then
     state="$(git rev-parse --git-path release-state)/$RELEASE_GROUP-${RELEASE_VERSION:?}.receipts"

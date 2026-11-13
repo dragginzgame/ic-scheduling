@@ -4,4 +4,4 @@ set -euo pipefail
 stages=()
 selected="$(perl scripts/release/validation.pl ci-stages)"
 while IFS= read -r stage; do stages+=("$stage"); done <<< "$selected"
-exec bash scripts/ci/run-validation-targets.sh --fail-fast "$@" "${stages[@]}"
+VALIDATION_REPOSITORY_ROOT="$PWD" exec bash vendor/toko-tooling/scripts/ci/run-validation-targets.sh --fail-fast "$@" "${stages[@]}"

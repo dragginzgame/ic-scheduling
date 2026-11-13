@@ -9,7 +9,7 @@ root="${BASH_SOURCE[0]}"
 root="$(cd -P "${root%/*}/../.." && printf '%s/.' "$PWD")"
 root="${root%/.}"
 bash "$root/scripts/release/group.sh" validate
-bash "$root/scripts/ci/check-release-delivery.sh" \
+bash "$root/vendor/toko-tooling/scripts/ci/check-release-delivery.sh" \
     "$root/ci/release-delivery.txt" "${RELEASE_DELIVERY-direct}"
 if [[ "$operation" == version ]]; then
     exec bash "$root/scripts/release/group.sh" version
@@ -22,8 +22,8 @@ while IFS= read -r path; do release_files+=("$path"); done < <(printf '%s\n' "$g
 read_version() { bash "$root/scripts/release/group.sh" version; }
 # Shared owns receipt encoding/comparison; the runner owns exclusive release
 # state custody. No receipt is written for ordinary version/plan observations.
-# shellcheck source=scripts/ci/release-receipts.sh
-source "$root/scripts/ci/release-receipts.sh"
+# shellcheck source=vendor/toko-tooling/scripts/ci/release-receipts.sh
+source "$root/vendor/toko-tooling/scripts/ci/release-receipts.sh"
 # shellcheck source=scripts/release/source-lock.sh
 source "$root/scripts/release/source-lock.sh"
 publication_selection=''
@@ -41,7 +41,7 @@ receipt_state="$(git rev-parse --git-path release-state)/$RELEASE_GROUP-$RELEASE
 admit_files() {
     local arguments=() path
     for path in "${release_files[@]}"; do arguments+=(--allow "$path"); done
-    bash "$root/scripts/ci/check-release-source.sh" "${arguments[@]}"
+    bash "$root/vendor/toko-tooling/scripts/ci/check-release-source.sh" "${arguments[@]}"
 }
 # The runner binds the selected attempt before preparation. A present plan
 # selects its admitted source lock without granting setup authority here.
@@ -81,7 +81,7 @@ case "$operation" in
         done
         # Refuse conflicting pending notes before a gate or preparation intent.
         awk -v version="${RELEASE_VERSION:?}" -v previous="$RELEASE_PREVIOUS" -v date="${RELEASE_DATE:?}" \
-            -f scripts/ci/finalize-release-changelog.awk "$changelog" > /dev/null
+            -f vendor/toko-tooling/scripts/ci/finalize-release-changelog.awk "$changelog" > /dev/null
         select_release_tools
         if [[ "$prepare_tools" == 0 ]]; then
             # Recovery uses the saved lock without resolving live partial metadata
@@ -95,8 +95,8 @@ case "$operation" in
         # Frozen setup already prepared this captured source. Fresh preflight
         # re-admits it offline; exact-version recovery keeps the saved-lock path.
         [[ "${RELEASE_BATCH_ACTIVE:-}" != 1 ]] || cache_prepare=0
-        bash "$root/scripts/ci/cargo-release-preflight.sh" "$root" "$cache_prepare" \
-            --pin "$root/ci/tool-versions.env" --pin "$root/ci/ic-tools.tsv" \
+        bash "$root/vendor/toko-tooling/scripts/ci/cargo-release-preflight.sh" "$root" "$cache_prepare" \
+            --pin "$root/vendor/toko-tooling/ci/tool-versions.env" --pin "$root/vendor/toko-tooling/ci/ic-tools.tsv" \
             --check tools-check --prepare install-tools --prepare tools-check \
             --prepare install-release-tools || {
             status=$?
@@ -112,7 +112,7 @@ case "$operation" in
         release_receipt_check "$receipt_state/validated" validation_identity
         select_release_tools
         admit_editor
-        bash "$root/scripts/ci/cargo-release-metadata.sh" prepare "$primary"
+        bash "$root/vendor/toko-tooling/scripts/ci/cargo-release-metadata.sh" prepare "$primary"
         release_receipt_write "$receipt_state/prepared" release_receipt_payload '' "${release_files[@]}"
         ;;
     check|commit-check|publication-lint)
@@ -123,7 +123,7 @@ case "$operation" in
         fi
         release_receipt_check "$receipt_state/validated" validation_identity
         # Shared owns selected-tree metadata checks and retained failure custody.
-        bash "$root/scripts/ci/cargo-release-metadata.sh" check "$primary" --manifest-order-grouped >&2
+        bash "$root/vendor/toko-tooling/scripts/ci/cargo-release-metadata.sh" check "$primary" --manifest-order-grouped >&2
         release_receipt_check "$receipt_state/prepared" release_receipt_payload "${RELEASE_COMMIT:-}" "${release_files[@]}"
         admit_files
         if [[ "$operation" == commit-check ]]; then

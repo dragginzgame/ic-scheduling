@@ -14,7 +14,7 @@ root="${BASH_SOURCE[0]}"
 root="$(cd -P "${root%/*}/../.." && printf '%s/.' "$PWD")"
 root="${root%/.}"
 export PATH="$root/.tools/host/bin:$PATH"
-version="$(bash "$root/scripts/ci/read-cargo-workspace-rust-version.sh" "$root/Cargo.toml")"
+version="$(bash "$root/vendor/toko-tooling/scripts/ci/read-cargo-workspace-rust-version.sh" "$root/Cargo.toml")"
 [[ "$version" == *.*.* ]] || version="$version.0"
 [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || exit 2
 pin="$("${YQ:-yq}" -p toml -o json '.' "$root/rust-toolchain.toml" | jq -ers '

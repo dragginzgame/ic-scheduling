@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use FindBin qw($RealBin);
-use lib "$RealBin/../ci";
+use lib "$RealBin/../../vendor/toko-tooling/scripts/ci";
 use ValidationPlan qw(json bytes digest document relative_path);
 use JSON::PP;
 use File::Find;
@@ -72,7 +72,7 @@ sub read_json { document(file_location($_[0])) }
 sub read_bytes { bytes(file_location($_[0])) }
 sub relative { relative_path(File::Spec->abs2rel(File::Spec->rel2abs($_[0]), $root)) }
 sub hash_file { digest(file_location($_[0])) }
-sub shared { observe($^X, 'scripts/ci/validation-evidence.pl', $_[0], $root, @_[1..$#_]) }
+sub shared { observe($^X, 'vendor/toko-tooling/scripts/ci/validation-evidence.pl', $_[0], $root, @_[1..$#_]) }
 sub write_json {
     my ($path, $value) = @_;
     !-e $path && !-l $path or die "refuse to replace validation evidence: $path\n";
@@ -270,7 +270,7 @@ sub fixture_admission {
             or die "retained fixture proof changed\n";
     }
     if ($operation eq 'seal') {
-        my $current = $decoder->decode(observe($^X, 'scripts/ci/seal-validation-stage.pl',
+        my $current = $decoder->decode(observe($^X, 'vendor/toko-tooling/scripts/ci/seal-validation-stage.pl',
             File::Spec->rel2abs("$base/fixture-stage/admission.json"), $source, $group, $sealed->{candidate_identity}));
         json($current) eq json($sealed) or die "fixture proof changed before group sealing\n";
     }

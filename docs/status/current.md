@@ -1,5 +1,68 @@
 # Current handoff
 
+## Authorized patch release preparation — 2026-11-13
+
+Release Timers 0.44.1, then Jobs 0.36.1, through the frozen batch with explicit
+GitHub and crates.io delivery. Shared tooling/layout and locked supplier changes
+retain both complete 36-stage plans. Focused vendor caller/metadata/recovery
+qualification above is available; the release owns the full selected product and
+installed-runtime gate, without an extra full CI run first.
+
+The captured graph includes Metrics 0.30.4, Runtime/macros/exact guard 0.22.2,
+Types 0.20.2, native Platform 0.32.2, Wire 0.22.1 / Endpoint 0.13.1, Storage
+0.74.0, Testkit 0.102.0, Build 0.84.1, Host 0.77.1 and Toko 0.42.5. Registry
+freshness review confirms these selected first-party suppliers are current,
+stable and non-yanked. Their patch ledgers preserve production contracts;
+Runtime retains its exact singleton guard, and Endpoint preserves frame bytes,
+identities and rollback. Both locks remained unchanged during review. Serde,
+Serde JSON/Test, Tokio, Clap and Cargo Sort selections are current. Qualification
+retains Thiserror 2.0.18 for PocketIC 16.1's exact constraint; product uses 2.0.21.
+Optional Cargo Sort Derives 0.15.0 is deferred to the next reviewed Toko native
+catalog adoption, retaining authenticated 0.14.1 and the selected tool catalog.
+
+Preparation evidence: `target/evidence/deploy-scheduling-20261113.uvS7gR/`.
+Source commit, release validation and delivery are pending. Product/private
+versions have not changed during preparation; prior deferred refs remain intact.
+
+## Local Toko 0.42.5 vendor migration — 2026-11-13
+
+Both workspace pins/locks and the installed receipt select published Toko
+Tooling 0.42.5, archive SHA-256
+`071631f382cbdb682ab04242bb8022bea9f1fa237eaa273456433b95ad6f2aec`.
+The authenticated installer previewed and moved 105 managed executable/input
+files into `vendor/toko-tooling/`, retaining 108 recorded files overall. The
+complete selection explicitly includes release and publication components.
+Root governance files and Scheduling-owned scripts/configuration retain their
+ownership. No managed files or receipt were edited by hand; no old-path wrappers
+remain. Historical checksum/source records retain their original paths.
+
+Local Make, workflows/actions, shared Perl imports, fixture closures and release
+callers now use the vendor payload. Selected Cargo/IC tools receive the explicit
+consumer root; CI/release validation supplies `VALIDATION_REPOSITORY_ROOT` so
+checkpoints observe Scheduling inputs. The local hook configuration selects
+`vendor/toko-tooling/.githooks`. Common tools, Build's release editor and the
+unchanged Testkit CLI are prepared and admitted in the consumer's `.tools`.
+Direct LOC examples now state the host-tool PATH requirement. Endpoint/domain
+ownership clarification needs no product API change here.
+
+Focused checks pass: snapshot/pins/membership, dependency inventory, release Make
+adapters, affected consumer phases (including 56 tooling refusal routes and CI
+input drift), formatting hook/evidence, workflow classification and Actionlint,
+release-status refusal, validation-plan/recovery/exact-input reuse, and both
+groups' real metadata preparation/rollback/private-version preservation cases.
+Product checks and uploads are substituted in those release fixtures. The four
+artifact CLI tests and one runner CLI test pass on Rust 1.100 without source-only
+tooling markers. All 603 documentation links pass. Repository and qualification
+LOC callers report zero unclassified lines. Earlier failed fixture attempts are
+retained in the evidence; the corrected callers passed their affected reruns.
+
+Evidence: `target/evidence/tooling-refresh-20261113.C06MVz/`. Only Toko changed
+relative to the incoming locks; the separate Metrics 0.30.3, Wire 0.22.1 and
+Endpoint/macros 0.13.1 selections remain pending supplier qualification. Product
+versions remain Jobs 0.36.0 / Timers 0.44.0; patch notes are pending. This adoption
+has no full CI/live/macOS/Canic qualification, commit, push, publication or sibling
+edit. Preserve all earlier release and deferred-ref evidence.
+
 ## Timers 0.44.0 and Jobs 0.36.0 published and reconciled — 2026-11-13
 
 Frozen `batch-OpbeLrxp` completed GitHub delivery and crates.io publication from

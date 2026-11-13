@@ -10,9 +10,9 @@ export RELEASE_GROUP
 operation="${1:?select plan, version, files or package}"
 case "$operation" in
     validate) ;;
-    plan|version|files) exec bash scripts/ci/cargo-release-group.sh "$operation" "$RELEASE_GROUP" ;;
+    plan|version|files) exec bash vendor/toko-tooling/scripts/ci/cargo-release-group.sh "$operation" "$RELEASE_GROUP" ;;
     package)
-        plan="$(bash scripts/ci/cargo-release-group.sh plan "$RELEASE_GROUP")"
+        plan="$(bash vendor/toko-tooling/scripts/ci/cargo-release-group.sh plan "$RELEASE_GROUP")"
         printf '%s\n' "$plan" | jq -er .primary ;;
     *) exit 2 ;;
 esac

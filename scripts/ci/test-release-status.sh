@@ -19,9 +19,9 @@ finish() {
     exit "$status"
 }
 trap finish EXIT
-mkdir -p "$fixture/repo/scripts/release" "$fixture/repo/scripts/ci" "$fixture/repo/ci" "$fixture/bin"
+mkdir -p "$fixture/repo/scripts/release" "$fixture/repo/vendor/toko-tooling/scripts/ci" "$fixture/repo/ci" "$fixture/bin"
 cp "$root/scripts/release/status.pl" "$fixture/repo/scripts/release/"
-cp "$root/scripts/ci/StableVersion.pm" "$fixture/repo/scripts/ci/"
+cp "$root/vendor/toko-tooling/scripts/ci/StableVersion.pm" "$fixture/repo/vendor/toko-tooling/scripts/ci/"
 cat > "$fixture/repo/Cargo.toml" <<'TOML'
 [workspace.package]
 repository = "https://github.com/dragginzgame/ic-scheduling"
