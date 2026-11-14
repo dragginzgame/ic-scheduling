@@ -7,7 +7,7 @@ and [coordinated history through 0.33.1](../history.md).
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
-## [0.36.2] - Unreleased
+## [0.36.2] - 2026-11-14
 
 ### 🧪 Testing
 
