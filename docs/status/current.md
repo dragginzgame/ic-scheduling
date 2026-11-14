@@ -1,5 +1,128 @@
 # Current handoff
 
+## Authorized release preparation — 2026-11-14
+
+Release Timers 0.44.2, then Jobs 0.36.2, with explicit GitHub and crates.io
+delivery through the frozen batch. Shared tooling, Testkit and lock changes
+retain both complete 36-stage plans. Focused caller/CDPATH/LOC checks, native
+harness tests and selected installed recovery checks passed during adoption;
+the release now owns full selected qualification without an extra full CI run.
+
+Registry review confirms current, stable, non-yanked Metrics 0.30.5, Runtime/
+macros/guard 0.22.2, Types 0.20.2, native Platform 0.32.2, Storage 0.74.0,
+Testkit 0.104.0, Build 0.84.1, Host 0.77.2, Wire 0.22.1 / Endpoint 0.13.1 and
+Toko 0.43.0. Metrics/Host patch ledgers concern tooling and preserve production
+contracts. Raw PocketIC calls remain consumer-encoded; no Testkit Wire adapter
+was added. Both locks stayed fixed during freshness review. Serde/JSON/Test,
+Tokio, Clap and Cargo Sort selections are current. Qualification keeps Thiserror
+2.0.18 for PocketIC 16.1's exact constraint; product uses 2.0.21. Defer optional
+Cargo Sort Derives 0.15.0 to the next reviewed Toko native catalog adoption,
+retaining authenticated 0.14.1 and the selected tool catalog.
+
+Evidence: `target/evidence/deploy-scheduling-20261114.qVifmL/`. Pending source
+includes the new managed LOC launcher. No version preparation or delivery has
+occurred yet. Preserve all prior batches, stashes and deferred refs.
+
+## Local Toko 0.43.0 LOC command adoption — 2026-11-14
+
+Both workspace pins/locks and the installed receipt select published, non-yanked
+Toko Tooling 0.43.0, archive SHA-256
+`060d3507b66eb290ce12bc2572098f7e7cb1e12e9d6697a9b1a5d1552fcb2588`.
+The root installer retained the complete entrypoint selection and now admits
+109 managed files. It updated the Make tools module and LOC help text, and added
+`vendor/toko-tooling/scripts/dev/toko-cloc`; no payload or receipt was edited by
+hand. The existing user-PATH launcher already matches the published bytes, so
+no global launcher or shell-profile write was needed.
+
+Active commands/docs now use `toko-cloc`, `-d N` and
+`--manifest qualification/Cargo.toml`. Removed the local `cloc-qualification`
+wrapper along with the retired common `make cloc` interface; no compatibility
+aliases or `CLOC_*` settings remain in active callers. Historical evidence keeps
+its original commands. The new managed launcher is currently untracked; include
+it with the receipt during an authorized delivery.
+
+Snapshot/pin/member admission, dependency inventory, documentation links,
+formatting/hook preservation, release Make adapters and actual group recipes
+pass. The retired LOC Make targets refuse. Actual PATH calls pass for repository
+JSON, private-workspace JSON and the Timers runtime module selector. Root totals
+match the pre-migration reporter exactly: 28,746 lines across eight packages;
+qualification selects six packages. Both report zero unclassified lines. The
+launcher selects this checkout's reporter and prepared tools.
+
+Evidence: `target/evidence/tooling-043-20261114.Yqd779/`. Only Toko changed
+relative to incoming locks; preserve the earlier Testkit 0.104 adoption and
+Metrics/Host refreshes, plus all deferred/recovery refs. Product/private versions
+remain unchanged and patch notes are pending. No full CI/live/macOS/Canic
+qualification, commit, push, publication or sibling edit occurred.
+
+## Local Testkit 0.104.0 and Toko 0.42.8 adoption — 2026-11-14
+
+Registry review selects published stable, non-yanked Testkit 0.104.0 and Toko
+Tooling 0.42.8. Qualification owns the Testkit requirement/lock; both roots and
+the installed receipt select Toko 0.42.8, archive SHA-256
+`10dde4572301be0c5540b54a04ddeb71d3cee0fab68e6700e5c6866b6cb877e2`.
+The root updater retained all 108 managed files and existing entrypoints. The
+managed delta from 0.42.7 is the hook installer; no vendor file or receipt was
+edited by hand. The complete `CDPATH=.` formatting/preservation/hook-installation
+fixture passes, resolving the earlier relative-installer limitation below.
+
+Testkit 0.104 removes its optional Wire feature/typed calls into an independent
+adapter. Scheduling already uses raw upstream PocketIC calls and its own bounded
+Wire encoder/errors, so no feature/import migration or adapter dependency is
+needed. Keep that boundary, native client identities, explicit teardown, snapshot
+funding and existing recovery/uncertain-effect behavior. CLI and the paired
+PocketIC 16.1.0 server are explicitly prepared and admitted.
+
+Strict native all-target Clippy passes for the Jobs harness and Timers driver;
+their 16 library/binary tests pass. Actual selected native harness graph checks
+retain one Testkit/client/Types identity and no Runtime/guard/macros/IC0; the
+coordinator and default artifact-capture package retain their lightweight graphs.
+Earlier direct non-workspace Testkit feature queries were not admitted; they are
+not graph proof. The actual feature-enabled member profiles passed instead.
+
+All 11 installed Jobs recovery tests pass, including raw Wire refusal, rollback,
+retained storage rejection and snapshot restoration. Capture:
+`qualification/target/tmp/jobs-recovery.LdSsTV/`. Two focused installed Timers
+subjects pass: runtime composition/lifecycle and cached baseline restoration
+after mutation/rearming. Their receipt is
+`target/tmp/timer-qualification-2419299-0/runtime.json`, also copied into adoption
+evidence. This focused receipt does not replace the complete watchdog/cohort gate.
+Package inputs stayed fixed during installed qualification.
+
+Evidence: `target/evidence/testkit-tooling-20261114.ATatXq/`. Snapshot, pins,
+membership, inventory, release callers and documentation checks pass. Only the
+two requested suppliers changed relative to incoming locks; preserve existing
+Metrics 0.30.5 / Host 0.77.2 selections and all deferred/recovery refs. These
+checks bind the actual selected graph; no broad supplier-adoption claim is made.
+Product/private versions remain unchanged and patch notes are pending. No full
+CI/release/macOS/Canic qualification, commit, push, publication or sibling edit
+occurred.
+
+## Local Toko 0.42.7 adoption — 2026-11-13
+
+Both workspace pins/locks and the installed receipt select the explicitly
+requested published Toko Tooling 0.42.7, archive SHA-256
+`45e4485be56d9c550a634ed579dabb5f7884d9028042eaaca82847cc247300cb`.
+The reviewed installer preview changed only the managed pre-commit hook; all
+108 files and existing entrypoints remain admitted. Tools were prepared through
+the root updater. No payload or receipt was edited by hand.
+
+Snapshot/pin/member admission, package inventory, normal formatting preservation/
+hook-installation checks and release-command callers pass. With `CDPATH=.`,
+the actual pre-commit formatting/preservation cases passed; the broader fixture
+then failed at its relative invocation of the unchanged hook installer. Evidence
+is retained at `target/tmp/formatting-adoption.ORLmzQ/`. The real repository
+`CDPATH=. make install-hooks` caller passes because it uses an absolute helper
+path. Published 0.42.8 fixes relative installer invocation; it was not selected
+because the request explicitly named 0.42.7. Do not describe the complete
+CDPATH fixture as passing or modify the vendor payload to backport that fix.
+
+Evidence: `target/evidence/tooling-0427-20261113.28b0KG/`. Only Toko changed
+relative to incoming locks; preserve pending Metrics 0.30.5 / Host 0.77.2
+refreshes and their deferred branches. Product/private versions are unchanged;
+patch notes are pending. No full CI/live/macOS/Canic qualification, commit, push,
+publication or sibling edit occurred.
+
 ## Timers 0.44.1 and Jobs 0.36.1 published and reconciled — 2026-11-13
 
 Frozen `batch-YIisA7LB` completed GitHub and crates.io delivery from repaired

@@ -77,8 +77,9 @@ what they use. The product root contains Jobs and Timers and their release group
 Six private packages belong to [qualification/Cargo.toml](qualification/Cargo.toml),
 with an independent lock and unchanged private versions. They are validation
 obligations, not product release-group members. Product packages never depend
-on qualification. `make cloc` includes both workspaces; `make cloc-qualification`
-reports the private workspace separately with its existing LOC categories.
+on qualification. `toko-cloc` includes both workspaces;
+`toko-cloc --manifest qualification/Cargo.toml` reports the private workspace
+separately with its existing LOC categories.
 `make deps-list` reports all eight local packages, their versions and product
 release groups without network access. Cargo catalogs contain used dependencies;
 the release JSON policy owns complete product group membership. Metrics, Platform
@@ -338,13 +339,12 @@ This target exercises Jobs' actual manifests, Make recipes, hook refresh and
 preservation behavior. Shared Tooling owns the general hook/frontend test matrix;
 this repository has no frontend formatter integration.
 
-`make cloc` reports library, test, example and tooling source separately. Private
+`toko-cloc` reports library, test, example and tooling source separately. Private
 qualification packages declare their roles in Cargo metadata; see
-[source layout and LOC reporting](docs/operations/source-layout.md).
-Use `make cloc CLOC_DEPTH=1` for module rows, or
-`bash vendor/toko-tooling/scripts/dev/cloc.sh -d 1 ic-timers::runtime` to inspect one source branch.
-Direct script calls require the prepared `.tools/host/bin` directory on `PATH`.
-Use `bash vendor/toko-tooling/scripts/dev/cloc.sh --wide .` to show full names in table output;
+[source layout and LOC reporting](docs/operations/source-layout.md) for launcher setup.
+Use `toko-cloc -d 1` for module rows, or
+`toko-cloc -d 1 ic-timers::runtime` to inspect one source branch.
+Use `toko-cloc --wide` to show full names in table output;
 JSON reports always retain full names.
 
 Standard formatting reports each manifest/Rustfmt pass and its elapsed time.

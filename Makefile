@@ -15,11 +15,9 @@ include vendor/toko-tooling/make/consumer.mk
 include vendor/toko-tooling/make/cargo-dependencies.mk
 
 toko-tooling-check: check-qualification-tooling
-.PHONY: check-qualification-tooling cloc-qualification
+.PHONY: check-qualification-tooling
 check-qualification-tooling:
 	+bash scripts/ci/check-qualification-tooling.sh
-cloc-qualification:
-	+bash vendor/toko-tooling/scripts/dev/cloc.sh --manifest qualification/Cargo.toml
 # Source cleanup may write before capture; admit tooling before that prerequisite too.
 clean-empty-source-dirs: toko-tooling-check
 # Refuse absent, empty or unknown selections before prerequisites or setup run.

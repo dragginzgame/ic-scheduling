@@ -7,6 +7,22 @@ and [coordinated history through 0.33.1](../history.md).
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.36.2] - Unreleased
+
+### 🧪 Testing
+
+- Adopt qualification Testkit 0.104.0. Retain raw PocketIC calls and the existing
+  consumer-owned Wire encoding, without adding the separate typed-call adapter.
+- Select qualification Metrics 0.30.5 and Host 0.77.2 tooling patches, retaining
+  the Serde-only Jobs library and current runtime/codec boundaries.
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.43.0 and replace the retired Make LOC commands with the
+  `toko-cloc` launcher, including explicit private-workspace reporting.
+- Pre-commit discovery and hook installation ignore `CDPATH`, retaining
+  staged-only formatting and unrelated working edits.
+
 ## [0.36.1] - 2026-11-13
 
 ### 🧪 Testing

@@ -34,12 +34,12 @@ ic-host-fs = { version = "0.77.0", default-features = false }
 ic-host-process = { version = "0.77.0", default-features = false }
 ic-platform-types = { version = "0.20.1", default-features = false }
 ic-storage = "0.74.0"
-ic-testkit = "0.102.0"
+ic-testkit = "0.104.0"
 ic-wire = "0.22.0"
 ic-wire-endpoint = "0.13.0"
 serde_json = "1.0"
 tokio = { version = "1", default-features = false }
-toko-tooling = "=0.42.5"
+toko-tooling = "=0.43.0"
 
 [workspace.lints.cargo]
 unused_dependencies = "deny"

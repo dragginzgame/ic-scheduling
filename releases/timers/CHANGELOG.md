@@ -10,6 +10,25 @@ entry alone does not establish publication.
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
+## [0.44.2] - Unreleased
+
+### 📦 Dependencies
+
+- Select Metrics 0.30.5 and qualification Host 0.77.2 tooling patches, preserving
+  recording, timer ownership and the current runtime/codec boundaries.
+
+### 🧪 Testing
+
+- Adopt qualification Testkit 0.104.0. Retain raw PocketIC calls and the existing
+  consumer-owned Wire encoding, without adding the separate typed-call adapter.
+
+### 🛠️ Tooling
+
+- Adopt Toko Tooling 0.43.0 and replace the retired Make LOC commands with the
+  `toko-cloc` launcher, including explicit private-workspace reporting.
+- Pre-commit discovery and hook installation ignore `CDPATH`, retaining
+  staged-only formatting and unrelated working edits.
+
 ## [0.44.1] - 2026-11-13
 
 ### 📦 Dependencies

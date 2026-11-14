@@ -126,6 +126,10 @@ live harness uses IC Testkit's selected server setup/check contract; see the
 source-bound evidence in the handoff rather than treating native passes as live
 qualification or claiming that no live qualification has ever run.
 
+Testkit 0.104 owns lifecycle and the selected upstream PocketIC client. These
+harnesses use raw calls with their existing consumer-owned Wire encoder, budgets
+and error handling; they do not use the separate `ic-testkit-wire` adapter.
+
 ## Native composition and management owners
 
 The single-effect and local-effect fixtures keep failed-commit and storage

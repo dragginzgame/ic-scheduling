@@ -14,8 +14,9 @@ Installed executable paths are under `vendor/toko-tooling/`; local callers stay
 under `scripts/`, and Git hooks select `vendor/toko-tooling/.githooks`.
 
 Product commands use the root manifest; private checks use
-`--manifest-path qualification/Cargo.toml`. `make cloc-qualification` reports the
-private workspace separately. Release plans select the standard shared
+`--manifest-path qualification/Cargo.toml`.
+`toko-cloc --manifest qualification/Cargo.toml` reports the private workspace
+separately. Release plans select the standard shared
 `qualification_workspace` transaction; see `docs/releases/validation-groups.md`.
 `make check-pins` uses the common declaration/workflow/lock and inheritance
 checker, including explicitly admitted private qualification versions.

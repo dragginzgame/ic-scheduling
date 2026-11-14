@@ -12,15 +12,25 @@ and are recorded by `.toko-tooling.snapshot`. Scheduling owns the root Makefile,
 
 ## Source classification
 
-Run from the repository root with the prepared host tools and Rust compiler:
+Install the launcher once on your user PATH after preparing the repository's
+host tools and Rust compiler. It selects this checkout's installed reporter and
+tools on every invocation:
 
 ```sh
-export PATH="$PWD/.tools/host/bin:$PATH"
-make cloc
-bash vendor/toko-tooling/scripts/dev/cloc.sh -d 0 .
-bash vendor/toko-tooling/scripts/dev/cloc.sh -d 1 ic-timers
-bash vendor/toko-tooling/scripts/dev/cloc.sh --wide -d 1 .
-bash vendor/toko-tooling/scripts/dev/cloc.sh --json .
+mkdir -p "$HOME/.local/bin"
+install -m 755 vendor/toko-tooling/scripts/dev/toko-cloc "$HOME/.local/bin/toko-cloc"
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+From the repository root:
+
+```sh
+toko-cloc
+toko-cloc -d 0
+toko-cloc -d 1 ic-timers
+toko-cloc --wide -d 1
+toko-cloc --manifest qualification/Cargo.toml
+toko-cloc --json
 ```
 
 The product workspace contains Jobs and Timers. The independent `qualification/`

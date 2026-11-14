@@ -3,7 +3,7 @@
     "rule": "cargo-exact",
     "file": "Cargo.toml",
     "subject": "toko-tooling",
-    "value": "=0.42.5",
+    "value": "=0.43.0",
     "reason": "Tooling selection must remain intentional and match its authenticated installed receipt; changing the maintainer-selected pin requires Cargo resolution and explicit installation.",
     "evidence": "AGENTS.md"
   },
@@ -11,7 +11,7 @@
     "rule": "cargo-exact",
     "file": "qualification/Cargo.toml",
     "subject": "toko-tooling",
-    "value": "=0.42.5",
+    "value": "=0.43.0",
     "reason": "Tooling selection must remain intentional and match its authenticated installed receipt; changing the maintainer-selected pin requires Cargo resolution and explicit installation.",
     "evidence": "AGENTS.md"
   }
