@@ -1,5 +1,47 @@
 # Current handoff
 
+## Verified Timers 0.44.2 and Jobs 0.36.2 delivery — 2026-11-14
+
+Frozen `batch-gyn1u_EI` completed and the clean normal checkout was reconciled
+through the standard batch command. Captured source
+`d2a61cc4faa700ff84c4041ea9f6b69dada66da2` includes Testkit 0.104.0, Toko 0.43.0
+and the inheritance fixture repair below. Both groups' complete 36-stage plans
+passed on Linux/Rust 1.100.0. Timers' stage durations total 1,798 seconds and
+Jobs' total 1,460 seconds; release-tooling fixtures took 1,201 and 1,144 seconds
+respectively. The bounded validation fixture executed for Timers and reused its
+admitted exact-input proof for Jobs. All other required stages executed.
+Both plans passed 37 installed runtime subjects and all four policy cohorts
+plus both watchdog calibrations. Fresh publication lint, source/tag admission
+and selected package verification passed. The batch ran from 08:19:45 to
+09:17:06 UTC; the earlier failed attempt remains separately retained.
+
+Both crates are published and non-yanked. Independent official index/archive
+checks match the actual uploaded bytes and archive source commits:
+
+| Group | Release commit / peeled tag | Annotated tag object | Archive SHA-256 |
+| --- | --- | --- | --- |
+| Timers 0.44.2 | `52be1e4a9d121d2b726a058cf903305354bf1e2d` | `b112b076db43ac34c44ad60d2bc9e10b00a43053` | `eac91f25103cb232f1075c34a9516fc32bcfc9d01fb3a8a86d3ca5e77e2bac51` |
+| Jobs 0.36.2 | `fff934734e363120488c41eec9f831362f153464` | `b38bd99ec78fee38174981ea2bbd34f305385f61` | `cbee07d4dab47309b5489a0169d30ce4f88aebed95261e33f04239f93a1873f3` |
+
+Origin `main` and annotated `timers-v0.44.2` / `jobs-v0.36.2` refs were verified.
+The delivered graph retains Metrics 0.30.5, Storage 0.74.0, Runtime/macros/exact
+guard 0.22.2, Types 0.20.2, native Platform 0.32.2, Build 0.84.1, Host 0.77.2,
+Wire 0.22.1 / Endpoint 0.13.1, PocketIC 16.1.0 and Rust 1.100.0. Private package
+versions remain unchanged. This does not establish fresh macOS or Canic execution.
+
+Evidence: `target/evidence/deploy-scheduling-20261114.qVifmL/`, with both
+published archives, source metadata, remote refs, copied live receipts, timings,
+retry log and reconciliation log. Durable group proofs and the completed batch
+remain under `.git/release-state/frozen/batch-gyn1u_EI/`. Preserve the failed
+`batch-3XtS61u2`, all older batches, stashes and deferred refs.
+
+Next-candidate Metrics 0.30.6 and qualification Storage 0.74.1 updates remain
+preserved at `deferred/dependencies-during-batch-3XtS61u2`, commit
+`3c6105ee1594f8b3c1f1fe579b52de79584af05f`. Normal-checkout restoration uses only
+their saved lock hunks after committing this delivery record, retaining the new
+product versions. Those updates are outside this release's qualification and
+publication.
+
 ## Release caller repair — 2026-11-14
 
 Frozen `batch-3XtS61u2` captured source
