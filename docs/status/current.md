@@ -1,5 +1,25 @@
 # Current handoff
 
+## Release caller repair — 2026-11-14
+
+Frozen `batch-3XtS61u2` captured source
+`56b7efc1a3793b57b6c386ed67ea4528224872f7` and stopped at
+`test-consumer-tooling` before version preparation, Git delivery or upload.
+Release-tooling, validation-evidence and formatting fixtures passed. The first
+inheritance negative case pinned Toko 0.42.5 and was rejected by Cargo's locked
+graph before reaching the intended inheritance diagnostic. Both independent
+member cases now retain the selected root tooling requirement. Focused
+inheritance and 56 guarded tooling-admission caller routes pass.
+
+Concurrent Metrics 0.30.6 and qualification Storage 0.74.1 lock updates are
+preserved at `deferred/dependencies-during-batch-3XtS61u2`, with their patch and
+copies in `target/evidence/deploy-scheduling-20261114.qVifmL/`. They are deferred
+from this release; restore their exact hunks after delivery without restoring
+old product versions. Keep the failed frozen attempt and all older evidence.
+The repaired source requires a fresh batch with both complete 36-stage plans;
+no arbitrary stage reuse is supported. Complete consumer caller validation,
+shell syntax, diff checks and 603 documentation references pass before that retry.
+
 ## Authorized release preparation — 2026-11-14
 
 Release Timers 0.44.2, then Jobs 0.36.2, with explicit GitHub and crates.io

@@ -21,6 +21,8 @@ root="${root%/.}"
 export PATH="$root/.tools/host/bin:$PATH"
 JOBS_CONSUMER_RUST_VERSION="$(bash "$root/scripts/dev/minimum-rust.sh" --print)"
 export JOBS_CONSUMER_RUST_VERSION
+JOBS_CONSUMER_TOOLING_REQUIREMENT="$(yq -p toml -o json -r '.workspace.dependencies."toko-tooling"' "$root/Cargo.toml")"
+export JOBS_CONSUMER_TOOLING_REQUIREMENT
 # shellcheck source=scripts/ci/fixture-scratch.sh
 source "$root/scripts/ci/fixture-scratch.sh"
 fixture="$(fixture_create_workspace "$root" "jobs-consumer-tooling.XXXXXX")"
@@ -99,7 +101,7 @@ phase_workspace_inheritance() (
         case "$invalid" in
             product-version) perl -pi -e 's/^version = "[^"]+"/version = "0.0.0"/' "$fixture/crates/ic-timers/Cargo.toml" ;;
             missing-private-version) perl -ni -e 'print unless /^version = /' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
-            private-dependency) perl -pi -e 's/^toko-tooling.workspace = true/toko-tooling = "=0.42.5"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
+            private-dependency) perl -pi -e 's/^toko-tooling\.workspace = true$/toko-tooling = "$ENV{JOBS_CONSUMER_TOOLING_REQUIREMENT}"/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
             target-dependency) printf '\n%s\n%s\n' "[target.'cfg(unix)'.dev-dependencies]" 'serde = "1.0"' >> "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
             published-qualification) perl -pi -e 's/^publish = false/publish = ["crates-io"]/' "$fixture/qualification/ic-jobs-canister-tests/Cargo.toml" ;;
         esac
@@ -201,7 +203,7 @@ for invalid in missing-lock version-drift checksum-drift missing-member independ
         missing-member)
             perl -0pi -e 's/^toko-tooling\.workspace = true\n//m' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
         independent-member)
-            perl -0pi -e 's/toko-tooling\.workspace = true/toko-tooling = "=0.42.5"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
+            perl -pi -e 's/^toko-tooling\.workspace = true$/toko-tooling = "$ENV{JOBS_CONSUMER_TOOLING_REQUIREMENT}"/' "$fixture/qualification/ic-timers-size-probe/Cargo.toml" ;;
     esac
     for target in ci release-patch release-preflight publish publish-check clean-empty-source-dirs; do
         status=0

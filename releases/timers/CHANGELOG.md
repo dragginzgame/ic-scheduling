@@ -26,6 +26,8 @@ this product release group. Older entries retain their historical scope.
 
 - Adopt Toko Tooling 0.43.0 and replace the retired Make LOC commands with the
   `toko-cloc` launcher, including explicit private-workspace reporting.
+- Keep inheritance refusal fixtures on the selected tooling version so they
+  test declaration ownership without triggering unrelated lock drift.
 - Pre-commit discovery and hook installation ignore `CDPATH`, retaining
   staged-only formatting and unrelated working edits.
 
