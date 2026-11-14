@@ -10,7 +10,7 @@ entry alone does not establish publication.
 Private qualification packages now belong to their independent workspace, not
 this product release group. Older entries retain their historical scope.
 
-## [0.44.2] - Unreleased
+## [0.44.2] - 2026-11-14
 
 ### 📦 Dependencies
 
