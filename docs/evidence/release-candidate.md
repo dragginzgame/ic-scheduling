@@ -9,6 +9,15 @@ refresh is required. Timers retains its public API; Jobs changes checkpoint
 storage to schema 7 and consolidates progress ownership. Both groups must pass
 the complete captured-source gate and archive checks before publication.
 
+Maintainer exception, 2026-11-15: omit the Entropy integration journey for these
+two versions only. Batch `batch-9KO0urcM` stopped before version preparation or
+delivery because the external Entropy checkout's lockfiles changed during
+qualification. Its native, Wasm, installed lifecycle/resource and metrics checks
+passed; a separate archive check also passed. Preserve that failed batch as
+evidence. A new source capture records this exception and reruns the remaining
+release gate. Ordinary qualification and later versions still include Entropy;
+these releases do not claim fresh Entropy integration qualification.
+
 The record below describes the previous release.
 
 Local observation, 2026-11-15, from the implementation changes following GitHub

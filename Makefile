@@ -99,8 +99,11 @@ check-metrics: toko-tooling-check | toko-execution-check
 	$(_toko_recursive_prefix)POCKET_IC_BIN="$(POCKET_IC_BIN)" cargo run --manifest-path qualification/Cargo.toml -p once-driver --target-dir qualification/target --locked --offline -- --metrics-cost qualification/target/metrics_off.wasm qualification/target/metrics_on.wasm
 
 .PHONY: qualify qualify-rust qualify-archives qualify-entropy
+# Maintainer waived Entropy integration for these two releases only (2026-11-15).
+# Ordinary qualification and subsequent versions retain the consumer journey.
+QUALIFICATION_ENTROPY_TARGET := $(if $(filter timers:0.45.10 jobs:0.38.0,$(RELEASE_GROUP):$(RELEASE_VERSION)),,qualify-entropy)
 qualify:
-	$(_toko_recursive_prefix)VALIDATION_REPOSITORY_ROOT="$(CURDIR)" bash vendor/toko-tooling/scripts/ci/run-validation-targets.sh --fail-fast tools-check check fmt-check qualify-rust check-calendar-wasm check-executor check-once check-metrics qualify-entropy qualify-archives
+	$(_toko_recursive_prefix)VALIDATION_REPOSITORY_ROOT="$(CURDIR)" bash vendor/toko-tooling/scripts/ci/run-validation-targets.sh --fail-fast tools-check check fmt-check qualify-rust check-calendar-wasm check-executor check-once check-metrics $(QUALIFICATION_ENTROPY_TARGET) qualify-archives
 qualify-rust:
 	bash ci/qualify.sh rust
 qualify-archives:

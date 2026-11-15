@@ -25,7 +25,8 @@ case "${1:-}" in
     make tools-check
     editor --check > /dev/null
     test -x "${POCKET_IC_BIN:?Set POCKET_IC_BIN to the prepared 16.0.0 server}"
-    test -d "${ENTROPY_SOURCE:?Set ENTROPY_SOURCE to the pinned clean checkout}"
+    # Entropy source admission belongs to qualify-entropy; the maintainer waived
+    # that journey for Timers 0.45.10 / Jobs 0.38.0 only (see Makefile).
     ;;
   version|files) bash "$shared/cargo-release-group.sh" "$1" "$group" ;;
   preflight)
