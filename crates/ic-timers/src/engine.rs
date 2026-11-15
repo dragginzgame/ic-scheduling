@@ -81,6 +81,10 @@ impl OnceState {
         }
     }
 
+    pub(super) fn has_ticket(&self, ticket: Ticket) -> bool {
+        self.ticket == Some(ticket)
+    }
+
     /// Reserve one ticket for due work. Repeated selection retains that ticket;
     /// transport must track submission separately and must not submit it twice.
     pub(super) fn due(&mut self, now: u64) -> Result<Option<Ticket>, ControlError> {

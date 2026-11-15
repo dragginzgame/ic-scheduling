@@ -1,0 +1,23 @@
+[package]
+name = "once-driver"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[target.'cfg(any())'.dev-dependencies]
+toko-tooling.workspace = true
+
+[package.metadata.cargo-machete]
+ignored = ["toko-tooling"]
+
+[package.metadata.toko-tooling.loc]
+category = "tests"
+
+[dependencies]
+ic-testkit = { workspace = true, features = ["held-reply-fixtures"] }
+tokio.workspace = true
+
+[lints]
+workspace = true

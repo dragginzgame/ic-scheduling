@@ -7,7 +7,7 @@ include vendor/toko-tooling/make/cargo-dependencies.mk
 
 PACKAGE ?= ic-timers
 
-.PHONY: help check lint doc check-calendar-wasm check-executor
+.PHONY: help check lint doc check-calendar-wasm check-executor check-once
 help:
 	@printf '%s\n' \
 	  'Setup: make install-tools; make tools-check' \
@@ -16,6 +16,7 @@ help:
 	  'make doc PACKAGE=ic-timers     Check one package documentation, locked and offline' \
 	  'make check-calendar-wasm       Build/run the calendar Wasm probe (requires Node.js)' \
 	  'make check-executor            Installed runtime probe (requires POCKET_IC_BIN)' \
+	  'make check-once                Installed Once provider probe (requires POCKET_IC_BIN)' \
 	  'make fmt / fmt-check          Shared Rust and manifest formatting' \
 	  'make deps-list                List local package versions in maintained workspaces' \
 	  'make deps-update              Update maintained workspace locks using cargo update -v' \
@@ -41,3 +42,8 @@ check-executor: toko-tooling-check | toko-execution-check
 	@test -n "$(POCKET_IC_BIN)" || { echo "Set POCKET_IC_BIN to a prepared PocketIC 16.0.0 server" >&2; exit 1; }
 	$(_toko_recursive_prefix)cargo build --manifest-path qualification/Cargo.toml -p executor-probe --target-dir qualification/target --release --target wasm32-unknown-unknown --locked --offline
 	$(_toko_recursive_prefix)POCKET_IC_BIN="$(POCKET_IC_BIN)" cargo run --manifest-path qualification/Cargo.toml -p executor-driver --target-dir qualification/target --locked --offline -- qualification/target/wasm32-unknown-unknown/release/executor_probe.wasm
+
+check-once: toko-tooling-check | toko-execution-check
+	@test -n "$(POCKET_IC_BIN)" || { echo "Set POCKET_IC_BIN to a prepared PocketIC 16.0.0 server" >&2; exit 1; }
+	$(_toko_recursive_prefix)cargo build --manifest-path qualification/Cargo.toml -p once-probe --target-dir qualification/target --release --target wasm32-unknown-unknown --locked --offline
+	$(_toko_recursive_prefix)POCKET_IC_BIN="$(POCKET_IC_BIN)" cargo run --manifest-path qualification/Cargo.toml -p once-driver --target-dir qualification/target --locked --offline -- qualification/target/wasm32-unknown-unknown/release/once_probe.wasm

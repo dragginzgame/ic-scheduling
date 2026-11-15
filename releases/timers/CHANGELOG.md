@@ -2,7 +2,51 @@
 
 ## [0.45.1] - Unreleased
 
-Next development iteration. No changes recorded yet; crates.io publication remains disabled.
+### ✨ Added
+
+- Add the private watchdog state core: cadence advancement, coalesced work tickets,
+  owner precedence, settlement custody and checked exhaustion. Public binding and
+  installed watchdog execution remain unfinished.
+
+- Add the initial wasm32 Once provider: idempotent initialization, retained
+  binding, explicit owner control/status/recovery and isolated async execution.
+- Bound self-call flights and per-turn submission, authenticate dispatch, fence
+  upgrade-era messages, back off submission pressure and detect timer interference.
+  Retain flight evidence so initial and post-await traps cannot silently replay work.
+- Add the Cargo global-timer singleton guard. Watchdog and metrics remain unfinished.
+
+### 🐛 Fixed
+
+- Exclude already-submitted tickets from the next deadline calculation. Pending
+  work no longer adds a one-second delay to unrelated due declarations while
+  flight capacity is available; full capacity and submission refusal still back off.
+
+### 🧪 Testing
+
+- Hold a live Once attempt through a refused host upgrade, verify duplicate
+  dispatch is inert and the original reply settles once, then upgrade with fresh
+  armed demand. Unresolved-work upgrade reconciliation remains unqualified.
+
+- Exercise real low-cycle submission refusal: retain armed work without acceptance,
+  back off repeatedly, and complete once after funding and the retry deadline.
+
+- Verify that a consumer destructor trapping during cleanup leaves a terminal
+  fault with no replay. Exercise malformed/stale self-dispatch and host-owned
+  reconstruction of an armed future deadline across an actual upgrade.
+
+- Exercise all 64 declarations and the eight-flight limit using Testkit-held
+  replies. Check cancellation, repeated demand without overlap, reverse-order
+  settlement, later rearming, and visible faults on foreign global-timer writes.
+
+- Route installed drivers through `ic-testkit::pocket_ic`, following ic-platform’s
+  qualification boundary; remove direct PocketIC dependency selection.
+
+- Add actual-provider PocketIC scenarios for completion, initial/post-await traps,
+  explicit recovery and owner-command precedence across an await. Run with
+  `make check-once`; resource measurements and remaining lifecycle/failure gates
+  still block release.
+
+Crates.io publication remains disabled.
 
 ## [0.45.0] - Development checkpoint
 

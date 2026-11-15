@@ -16,7 +16,7 @@ ignored = ["toko-tooling"]
 category = "tests"
 
 [dependencies]
-pocket-ic.workspace = true
+ic-testkit.workspace = true
 
 [lints]
 workspace = true

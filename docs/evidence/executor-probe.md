@@ -66,3 +66,17 @@ successor is correctly pre-armed. It does not yet cover callback/cleanup traps,
 submission refusal, cancellation, pressure, bounded flights, stale wire authority,
 upgrade/snapshot reconstruction or consumer reconciliation. No instruction-cost
 or completed timer-provider qualification is claimed. Those gates remain open.
+
+## Platform qualification boundary follow-up — 2026-11-15
+
+Both host drivers now import ic-testkit::pocket_ic instead of depending on
+pocket-ic directly. This matches the inspected ic-platform qualification drivers;
+ic-platform's former PocketIC feature is retired. Testkit =0.106.0 selects
+PocketIC client 16.1.0 and also depends on ic-platform 0.33.7. The prepared server
+remains 16.0.0, within that client's supported server range.
+
+Both make check-executor and make check-once passed again using this dependency
+boundary. Driver Clippy and formatting passed. The qualification lock is now
+3ce1d8872984f45e73d2519f25d28e26db7a8941c46288c6468f4aad805d8c7b.
+The executor Wasm hash remains unchanged. This updates host qualification
+selection only; it does not add Testkit or PocketIC to the product graph.

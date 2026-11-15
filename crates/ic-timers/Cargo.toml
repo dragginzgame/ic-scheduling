@@ -1,5 +1,6 @@
 [package]
 name = "ic-timers"
+links = "ic-timers-global-timer"
 version = "0.45.1"
 edition.workspace = true
 rust-version.workspace = true
@@ -8,6 +9,9 @@ publish.workspace = true
 
 [target.'cfg(any())'.dev-dependencies]
 toko-tooling.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ic-platform-runtime.workspace = true
 
 [package.metadata.cargo-machete]
 ignored = ["toko-tooling"]

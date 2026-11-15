@@ -1,0 +1,26 @@
+[package]
+name = "once-probe"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[target.'cfg(any())'.dev-dependencies]
+toko-tooling.workspace = true
+
+[package.metadata.cargo-machete]
+ignored = ["toko-tooling"]
+
+[package.metadata.toko-tooling.loc]
+category = "tests"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ic-platform-runtime.workspace = true
+ic-timers.workspace = true
+
+[lints]
+workspace = true

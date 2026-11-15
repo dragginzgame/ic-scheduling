@@ -1,5 +1,11 @@
 [workspace]
-members = ["calendar-probe", "executor-driver", "executor-probe"]
+members = [
+    "calendar-probe",
+    "executor-driver",
+    "executor-probe",
+    "once-driver",
+    "once-probe",
+]
 resolver = "3"
 
 [workspace.package]
@@ -11,7 +17,9 @@ publish = false
 [workspace.dependencies]
 ic-jobs = { path = "../crates/ic-jobs", default-features = false, features = ["calendar"] }
 ic-platform-runtime = { version = "=0.22.5", default-features = false, features = ["runtime"] }
-pocket-ic = "=16.0.0"
+ic-testkit = { version = "=0.106.0", default-features = false }
+ic-timers = { path = "../crates/ic-timers" }
+tokio = { version = "1.54.1", default-features = false, features = ["rt"] }
 toko-tooling = "=0.44.3"
 
 [workspace.lints.cargo]

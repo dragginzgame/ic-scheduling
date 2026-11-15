@@ -11,15 +11,21 @@ until the rewrite is complete and crates.io publication is explicitly requested.
 Jobs delegates five-field UTC recurrence to Saffron, plus a
 standalone Wasm calendar probe. Calendar support is off by default behind the
 `calendar` feature. Named zones and seconds cron are outside scope; do not
-hand-code calendar logic or recurrence workarounds. Timers has a private Once
-state core and retained bindings; public initialization and transport remain
-unimplemented. A local installed executor probe covers normal completion and
-initial/post-await traps; it does not qualify the timer provider. The independent
-qualification workspace contains calendar and executor probes; see
-qualification/README.md.
+hand-code calendar logic or recurrence workarounds. Timers has a wasm32 Once
+provider with retained binding, authenticated isolated dispatch and explicit
+recovery. Installed local tests cover basic completion, initial/post-await traps
+and owner precedence, held-flight pressure, foreign timer detection, consumer
+cleanup traps, low-cycle submission deferral and host reconstruction of an armed
+deadline across upgrade. Watchdogs, metrics, instruction measurements and remaining
+failure/lifecycle gates remain
+unfinished. See qualification/README.md and docs/evidence/once-provider.md.
+The private watchdog core has native transition tests; its binding and transport
+integration are next. See docs/evidence/watchdog-state.md.
 
 The root Cargo.toml owns product dependencies. Qualification owns its own
 catalog and lockfile; dependencies point from qualification to products only.
+Follow ic-platform’s qualification boundary: use `ic-testkit::pocket_ic`, not
+a direct `pocket-ic` dependency. The old ic-platform PocketIC feature is retired.
 Use make lint PACKAGE=<name> and make doc PACKAGE=<name> for focused checks.
 Use the shared make deps-list/deps-update commands for dependency maintenance.
 

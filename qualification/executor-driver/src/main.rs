@@ -1,6 +1,6 @@
 //! Installed PocketIC checks for the selected Platform Runtime's trap contract.
 
-use pocket_ic::PocketIcBuilder;
+use ic_testkit::pocket_ic::PocketIcBuilder;
 
 fn main() {
     let path = std::env::args()

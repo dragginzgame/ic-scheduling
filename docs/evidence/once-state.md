@@ -1,5 +1,9 @@
 # Once state core — 2026-11-15
 
+Historical increment notes: the core and bindings are now integrated into the
+[initial Once provider](once-provider.md). Unwired descriptions below identify
+the state of each earlier checkpoint.
+
 Implemented a private per-declaration state core in ic-timers. This is one part
 of the planned Once vertical slice, not a usable timer runtime or a completed
 implementation review. No old scheduler code or tests were copied.

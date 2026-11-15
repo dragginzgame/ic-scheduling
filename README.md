@@ -16,10 +16,12 @@ framework are not carried forward.
 
 Status: early implementation. Jobs has Saffron-backed five-field UTC cron
 occurrence preview. Calendar support is opt-in via the
-`calendar` feature. IC instruction costs remain unqualified; see the Jobs design. Execution
-is not implemented. Timers has a tested private [Once state core](docs/evidence/once-state.md);
-retained bindings are private and tested, while public initialization and IC
-transport remain unimplemented. Development targets are
+`calendar` feature. Jobs execution is not implemented. Timers has an initial
+[wasm32 Once provider](docs/evidence/once-provider.md), with installed checks for
+completion, trap recovery, owner precedence, held-flight pressure, low-cycle
+submission deferral and armed-deadline upgrade reconstruction. Watchdog, metrics,
+instruction measurements and remaining failure/lifecycle qualification are open.
+Development targets are
 Timers `0.45.1` and Jobs `0.37.1`, following the initial development checkpoint
 (`0.45.0` / `0.37.0`). These remain unpublished; the last observed crates.io
 versions were `0.44.3` / `0.36.3` (registry checked 2026-11-15).
@@ -103,5 +105,6 @@ See the [UTC Wasm measurements](docs/evidence/calendar-saffron.md).
 The executor prerequisite probe runs with
 `make check-executor POCKET_IC_BIN=/absolute/path/to/pocket-ic` using a prepared
 PocketIC 16.0.0 server. It checks normal async completion and initial/post-await
-traps; see [the observed results](docs/evidence/executor-probe.md). Timer provider
-integration and the remaining failure-custody gates are still open.
+traps; see [the observed results](docs/evidence/executor-probe.md). The product Once slice has its own
+`make check-once POCKET_IC_BIN=/absolute/path/to/pocket-ic` target; see its
+[evidence and remaining gates](docs/evidence/once-provider.md).

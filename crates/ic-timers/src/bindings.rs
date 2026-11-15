@@ -12,7 +12,7 @@ use std::{
 
 use crate::engine::{Attempt, ControlError, Demand, OnceState, Recovery, State, Ticket};
 
-const CAPACITY: usize = 64;
+pub(super) const CAPACITY: usize = 64;
 type WorkFuture = Pin<Box<dyn Future<Output = Demand>>>;
 type Factory = Rc<RefCell<Box<dyn FnMut() -> WorkFuture>>>;
 
@@ -49,12 +49,14 @@ pub(super) struct Handle {
     slot: usize,
 }
 
+#[derive(Clone)]
 pub(super) struct Dispatch {
     table: Weak<RefCell<Table>>,
     slot: usize,
     ticket: Ticket,
 }
 
+#[derive(Clone)]
 pub(super) struct Accepted {
     table: Weak<RefCell<Table>>,
     slot: usize,
@@ -131,6 +133,49 @@ impl Bindings {
             }
         }
         None
+    }
+
+    pub(super) fn deadline(&self, submitted: &[&Dispatch]) -> Option<u64> {
+        self.0
+            .borrow()
+            .entries
+            .iter()
+            .enumerate()
+            .filter_map(|(slot, entry)| match entry.state.state() {
+                State::Armed(at)
+                    if !submitted.iter().any(|dispatch| {
+                        dispatch.slot == slot
+                            && Weak::ptr_eq(&dispatch.table, &Rc::downgrade(&self.0))
+                            && entry.state.has_ticket(dispatch.ticket)
+                    }) =>
+                {
+                    Some(at)
+                }
+                _ => None,
+            })
+            .min()
+    }
+
+    /// Initial-message rejection rolled acceptance back; reserve its attempt
+    /// without invoking user code, then block replay. Superseded tickets do nothing.
+    #[cfg(target_arch = "wasm32")]
+    pub(super) fn rejected(&self, dispatch: &Dispatch) -> Result<(), Error> {
+        if !Weak::ptr_eq(&dispatch.table, &Rc::downgrade(&self.0)) {
+            return Err(Error::StaleAuthority);
+        }
+        let mut table = self.0.borrow_mut();
+        let entry = table
+            .entries
+            .get_mut(dispatch.slot)
+            .ok_or(Error::StaleAuthority)?;
+        if let Some(attempt) = entry
+            .state
+            .accept(dispatch.ticket)
+            .map_err(Error::Control)?
+        {
+            entry.state.abandon(attempt);
+        }
+        Ok(())
     }
 
     /// Authenticate local authority and enter Running before invoking the factory.
@@ -229,3 +274,20 @@ impl Accepted {
 
 #[cfg(test)]
 mod tests;
+
+impl Dispatch {
+    #[cfg(target_arch = "wasm32")]
+    pub(super) fn same(&self, other: &Self) -> bool {
+        self.slot == other.slot
+            && self.ticket == other.ticket
+            && Weak::ptr_eq(&self.table, &other.table)
+    }
+}
+
+impl Accepted {
+    #[cfg(target_arch = "wasm32")]
+    pub(super) fn is_running(&self) -> Result<bool, Error> {
+        Handle { table: self.table.clone(), slot: self.slot }.with_state(|state|
+            matches!(state.state(), State::Running { attempt, .. } if attempt == self.attempt))
+    }
+}

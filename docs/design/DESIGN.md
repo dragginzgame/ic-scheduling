@@ -1,6 +1,6 @@
 Status: proposed replacement architecture, 15 November 2026. Scope: Canic management, buffered Entropy, and a new calendar-aware Jobs scheduler; Relay remains excluded. This replaces the supplied consumer-driven baseline as the proposed implementation contract; it does not certify an implementation.
 
-Implementation note: a private [Once core and retained bindings](../evidence/once-state.md) now have native state/ownership tests. An independent [installed executor probe](../evidence/executor-probe.md) establishes normal completion and initial/post-await trap outcomes for the selected runtime. The timer-provider vertical slice and remaining failure-custody gates remain open.
+Implementation note: the [initial Once provider](../evidence/once-provider.md) now connects retained state to actual global-timer/self-call execution. Installed local tests cover completion, initial/post-await recovery, owner precedence, held-flight pressure, consumer cleanup traps and armed-deadline upgrade reconstruction. Watchdog, metrics, measured resource bounds and remaining lifecycle/failure-custody gates are open.
 
 Build a small retained-timer service around the two observed consumer workflows, and a separate calendar-aware `ic-jobs` package above it. The [Jobs design](jobs.md) records the newly requested scope and proposed contract. Bind work once, update demand through a capability, and isolate business execution from timer control. Reuse requires proof that a small implementation fits this architecture. Existing modules, signatures and test organization have no presumption of survival.
 
@@ -159,6 +159,13 @@ No exactly-once guarantee extends to a remote management effect. The supported g
 A watchdog is a periodic opportunity for a synchronous admission check. It is not an async execution lease.
 
 Keep its current deadline, owner command revision, ticket identity and ticket state separately. Use one outstanding ticket across pending dispatch, accepted synchronous work and response settlement. Advancing cadence does not invalidate that ticket.
+
+The initial private core represents the owner revision as a per-running-callback
+`owner_changed` flag: every command immediately updates demand and sets the flag,
+including equal commands. One synchronous callback needs no unbounded revision
+counter to determine whether its result was superseded. See the
+[native state evidence](../evidence/watchdog-state.md); binding and IC transport
+integration remain unfinished.
 
 At a due control turn:
 

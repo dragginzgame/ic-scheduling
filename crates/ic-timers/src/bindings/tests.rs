@@ -153,3 +153,32 @@ fn bounded_admission_and_rotating_selection() {
     }
     assert_eq!(runtime.due(0).unwrap().slot, 0);
 }
+
+#[test]
+fn submitted_ticket_does_not_hide_new_due_work_or_a_replacement() {
+    let runtime = Bindings::new();
+    let first = runtime
+        .bind(["o", "g", "first"], || ready(Demand::Inactive))
+        .unwrap();
+    let second = runtime
+        .bind(["o", "g", "second"], || ready(Demand::Inactive))
+        .unwrap();
+    first.set(Demand::At(0)).unwrap();
+    second.set(Demand::At(10)).unwrap();
+    let submitted = runtime.due(0).unwrap();
+    assert_eq!(runtime.deadline(&[&submitted]), Some(10));
+    first.set(Demand::Inactive).unwrap();
+    first.set(Demand::At(0)).unwrap();
+    assert_eq!(runtime.deadline(&[&submitted]), Some(0));
+    let replacement = runtime.due(0).unwrap();
+    second.set(Demand::Inactive).unwrap();
+    assert_eq!(runtime.deadline(&[&replacement]), None);
+    // A ticket from another runtime cannot mask this runtime's deadline.
+    let other = Bindings::new();
+    other
+        .bind(["o", "g", "other"], || ready(Demand::Inactive))
+        .unwrap()
+        .set(Demand::At(0))
+        .unwrap();
+    assert_eq!(runtime.deadline(&[&other.due(0).unwrap()]), Some(0));
+}
