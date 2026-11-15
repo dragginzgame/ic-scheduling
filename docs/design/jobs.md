@@ -7,7 +7,7 @@ the existing off-by-default feature boundary and execution policies. Calendar
 calculation remains exclusively Saffron's responsibility.
 
 Status: implemented UTC scheduler, 2026-11-15. The first rewrite was published
-as 0.37.9; this tree targets 0.38.0 with the unified schema-7 checkpoint API. The maintainer explicitly selected
+as 0.37.9; published 0.38.0 has the unified schema-7 checkpoint API. The maintainer explicitly selected
 Saffron and UTC, superseding the earlier named-zone and seconds-dialect scope.
 The opt-in wasm32 executor binds one retained Once per job. It uses
 explicit SkipLate or bounded CatchUp policy; host-owned checkpoints support

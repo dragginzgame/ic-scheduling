@@ -1,5 +1,5 @@
 Status: implemented replacement architecture, 15 November 2026. The first rewrite
-releases are Timers 0.45.9 and Jobs 0.37.9; pending work targets 0.45.10 and 0.38.0.
+releases were Timers 0.45.9 and Jobs 0.37.9; current releases are 0.45.10 and 0.38.0.
 Scope: Canic management, buffered Entropy and UTC Jobs scheduling; Relay is
 excluded. This document records ownership and design constraints; dated evidence
 records qualification, and consumer adoption remains separate.

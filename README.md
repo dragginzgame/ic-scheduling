@@ -15,9 +15,8 @@ redesign. The [release scope](docs/design/release-scope.md) preserves legacy
 Timers/Jobs capabilities while deferring additional proposals. The old architecture,
 demo application and release framework are not carried forward.
 
-Status: the first rewrite is published; this working tree contains the next
-unreleased changes, targeting Timers 0.45.10 and Jobs 0.38.0. The API descriptions
-below follow this tree. In particular, schema 7 is not in published Jobs 0.37.9.
+Status: Timers 0.45.10 and Jobs 0.38.0 are published. The API descriptions
+below follow those releases. Schema 7 replaces Jobs 0.37.9's schema 6.
 Jobs supports Saffron-backed five-field UTC cron, one-shot deadlines, anchored
 fixed-rate intervals and completion-relative recurrence. Schedule support is opt-in via the
 `calendar` feature. Its separate opt-in `execution` feature provides wasm32
@@ -36,11 +35,12 @@ remain host responsibilities.
 Once callbacks can return `OnceNext::After(positive_delay)` to recur relative to
 completion, including awaits. Overflow stops recurrence; newer owner commands
 take precedence and traps still require explicit recovery.
-Published on 2026-11-15: [Timers 0.45.9](https://crates.io/crates/ic-timers/0.45.9)
-and [Jobs 0.37.9](https://crates.io/crates/ic-jobs/0.37.9). These replace the
+Published on 2026-11-15: [Timers 0.45.10](https://crates.io/crates/ic-timers/0.45.10)
+and [Jobs 0.38.0](https://crates.io/crates/ic-jobs/0.38.0). These replace the
 0.44 / 0.36 APIs with a breaking redesign. Both registry artifacts and GitHub
-release tags are verified; Linux/macOS CI and the local installed-canister suite
-passed for those releases. Pending changes have separate local qualification. See the [delivery evidence](docs/evidence/release-candidate.md) and
+release tags are verified. Native, Wasm, local installed-canister and archive
+release gates passed; Entropy integration was excluded by maintainer direction
+for these two versions. Hosted CI runs separately. See the [delivery evidence](docs/evidence/release-candidate.md) and
 [grouped changelogs](CHANGELOG.md).
 Existing Scheduling, Canic and Entropy
 are unchanged. Recorded local evidence does not establish deployment or production resource budgets.
@@ -120,7 +120,7 @@ explicitly opt-in (the default feature set is empty):
 
 ```toml
 [dependencies]
-ic-jobs = { version = "0.37.9", default-features = false, features = ["calendar"] }
+ic-jobs = { version = "0.38.0", default-features = false, features = ["calendar"] }
 ```
 
 Omit `calendar`
@@ -141,7 +141,7 @@ deadline, including zero and overdue deadlines; the explicit lateness/catch-up
 policy controls delivery. Bounded catch-up freezes an oldest-first batch and
 discards excess backlog; it does not promise to replay every missed occurrence.
 Cron binding continues to select after current time.
-In the pending Jobs 0.38.0 API, checkpoint schema 7 distinguishes no settled work from a settled zero timestamp
+In Jobs 0.38.0, checkpoint schema 7 distinguishes no settled work from a settled zero timestamp
 and preserves Active, Paused or Cancelled control state plus pending retry budgets.
 
 `Schedule::once(at_ns)` selects one deadline under the same delivery policies,

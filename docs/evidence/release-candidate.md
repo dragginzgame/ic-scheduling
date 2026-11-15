@@ -1,13 +1,13 @@
-# Candidate qualification: Timers 0.45.9 / Jobs 0.37.9
+# Scheduling release qualification and delivery
 
-## Subsequent release preparation: Timers 0.45.10 / Jobs 0.38.0
+## Completed: Timers 0.45.10 / Jobs 0.38.0
 
 Registry freshness reviewed on 2026-11-15 before source capture: the selected
 first-party suppliers remain the latest non-yanked stable releases: Runtime
 0.22.5, Metrics 0.30.8, Testkit 0.106.0 and Toko Tooling 0.44.4. No dependency
 refresh is required. Timers retains its public API; Jobs changes checkpoint
-storage to schema 7 and consolidates progress ownership. Both groups must pass
-the complete captured-source gate and archive checks before publication.
+storage to schema 7 and consolidates progress ownership. Both groups passed
+the captured-source Scheduling gate and archive checks before publication.
 
 Maintainer exception, 2026-11-15: omit the Entropy integration journey for these
 two versions only. Batch `batch-9KO0urcM` stopped before version preparation or
@@ -18,7 +18,35 @@ evidence. A new source capture records this exception and reruns the remaining
 release gate. Ordinary qualification and later versions still include Entropy;
 these releases do not claim fresh Entropy integration qualification.
 
-The record below describes the previous release.
+Both releases completed on 2026-11-15. Native feature variants, native/Wasm
+Clippy, Wasm documentation, calendar/executor/Once/metrics probes, installed
+failure/lifecycle/resource checks and extracted archive verification passed.
+Jobs additionally passed registry-only all-feature Wasm verification against
+published Timers before upload. The release metadata fixture was corrected to
+use declared pending versions rather than assume patch increments; both groups'
+transaction, preservation and refusal checks pass.
+
+| Package | Release commit | Registry SHA-256 |
+| --- | --- | --- |
+| ic-timers 0.45.10 | `bdce527484ccf3cede46f8f8330b71efe8be37d2` | `e9bc6f83f3b47cdfc531fb78ab9fab02781dd5e2709bee1de67829f1395cb2ac` |
+| ic-jobs 0.38.0 | `2e63eca87e1b778c6125ce5064b079fe55eca64d` | `0b7c292662ba6f40c136a1c32cf0472073f3d212142a83c39f6f68a5bdf66b97` |
+
+Independent registry downloads matched the sparse-index checksums and embedded
+source commits. Remote annotated tags `timers-v0.45.10` and `jobs-v0.38.0`
+resolve to those commits. Batches `batch-5gltZZ7C` and `batch-5wnJft7r` completed
+and were reconciled into the normal checkout. Their release/publication evidence
+is retained under `.git/release-state/frozen/` and `target/release-frozen/`;
+registry readback is under `target/publication/readback-04510-0380/`.
+The interrupted pre-delivery batch `batch-_ZWc1Z_4` is also retained; it was
+stopped to correct the metadata fixture and did not publish.
+
+Post-push review covered the delivered implementation, adapters, caller fixtures
+and release metadata; no further actionable finding remained. Hosted CI is
+asynchronous: the Timers run was superseded by the Jobs push; the
+[Jobs release run](https://github.com/dragginzgame/ic-scheduling/actions/runs/43764591401)
+was still running at this observation. No macOS success is claimed here.
+
+## Historical candidate: Timers 0.45.9 / Jobs 0.37.9
 
 Local observation, 2026-11-15, from the implementation changes following GitHub
 checkpoint `bc36b91`. This is source/installed-simulator evidence, not deployment

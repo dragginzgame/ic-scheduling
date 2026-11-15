@@ -10,9 +10,10 @@ Already accepted UTC cron, bounded catch-up and optional features remain in scop
 
 Completed on 2026-11-15: Timers 0.45.9 and Jobs 0.37.9 are published.
 See [qualification and delivery](../evidence/release-candidate.md). The ordered
-checklist below records the completed first-release scope. Pending simplification
-work targets Timers 0.45.10 and Jobs 0.38.0; schema 7 descriptions below refer to
-that pending tree, not the published Jobs 0.37.9 artifact.
+checklist below records the completed first-release scope. Subsequent releases
+Timers 0.45.10 and Jobs 0.38.0 are also published; schema 7 descriptions below
+refer to Jobs 0.38.0, not the Jobs 0.37.9 artifact. Entropy qualification was
+explicitly waived for these two subsequent versions; all Scheduling gates passed.
 
 Maintainer direction, 2026-11-15: finish this rewrite soon and publish both crates
 to crates.io. This replaces the GitHub-only delivery target, without waiving the
