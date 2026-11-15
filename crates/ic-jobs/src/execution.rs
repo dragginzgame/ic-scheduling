@@ -1,6 +1,6 @@
 //! Calendar Jobs adapter with explicit missed-run policy. One retained Once owns execution and recovery.
 use crate::{
-    Policy, Schedule,
+    Outcome, Policy, Schedule,
     progress::{Progress, Selection},
 };
 use ic_platform_runtime::ic0;
@@ -14,6 +14,9 @@ use std::{
 /// Calendar identity and actual start; combine revision/time with the host's job key.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Context {
+    /// Accepted attempt number for this occurrence, starting at one. The host's
+    /// job key, revision and scheduled time remain the same logical effect key.
+    pub attempt: u32,
     /// Schedule revision, preserved when the host restores a matching checkpoint.
     pub revision: u64,
     /// Intended UTC occurrence, in Unix nanoseconds.
@@ -21,14 +24,16 @@ pub struct Context {
     /// Actual callback start, in Unix nanoseconds.
     pub started_at: u64,
 }
-/// Business outcome. No variant automatically retries an occurrence.
-pub enum Outcome {
-    /// No business work was needed.
-    NoWork,
-    /// Business work completed successfully.
-    Success,
-    /// Expected business failure; future calendar occurrences remain independent.
-    ExpectedFailure,
+/// Owner disposition after reconciling the effects of an uncertain attempt.
+/// Neither choice resumes the job; call [`Job::resume`] separately.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RecoveryDisposition {
+    /// Retire this occurrence, discard its retry/batch and skip through now.
+    Retire,
+    /// The owner has established that repeating this occurrence's effects is
+    /// safe. Preserve its identity and consumed budget, with backoff from now.
+    /// Refuse if the definition changed, budget is exhausted or deadline overflows.
+    RetrySafe,
 }
 /// Admission or control failure.
 #[derive(Debug, Eq, PartialEq)]
@@ -39,6 +44,9 @@ pub enum Error {
     Timer(ic_timers::Error),
     /// Recovery belongs to a different job or obsolete occurrence.
     StaleRecovery,
+    /// Recovery cannot retry a replaced definition, exhausted budget or
+    /// overflowing deadline. The uncertain attempt remains blocked.
+    RetryUnavailable,
     /// Accepted or uncertain work must be settled before checkpointing.
     Unsettled,
     /// Selected checkpoint occurrence does not match the supplied schedule.
@@ -61,7 +69,7 @@ impl From<ic_timers::Error> for Error {
 pub struct Recovery {
     state: Weak<RefCell<State>>,
     selection: Selection,
-    timer: ic_timers::RecoveryToken,
+    timer: Option<ic_timers::RecoveryToken>,
 }
 /// Bounded projection of this job's eligibility and uncertainty.
 pub enum Status {
@@ -73,6 +81,10 @@ pub enum Status {
     Idle,
     /// An occurrence is selected for delivery.
     Armed {
+        /// Delivery eligibility, which may be a later retry deadline.
+        ready_at: u64,
+        /// Attempt that will be accepted next for this occurrence.
+        attempt: u32,
         /// Schedule revision.
         revision: u64,
         /// Intended occurrence time.
@@ -80,6 +92,8 @@ pub enum Status {
     },
     /// Consumer work has been accepted. Owner edits apply after settlement.
     Running {
+        /// Current accepted attempt number.
+        attempt: u32,
         /// Accepted schedule revision.
         revision: u64,
         /// Accepted occurrence time.
@@ -87,6 +101,8 @@ pub enum Status {
     },
     /// Reconcile business effects before resuming this job.
     RecoveryRequired {
+        /// Uncertain attempt number; time does not permit another attempt.
+        attempt: u32,
         /// Uncertain schedule revision.
         revision: u64,
         /// Uncertain intended occurrence time.
@@ -113,11 +129,13 @@ pub struct Job {
 /// freezes an age/count-bounded oldest-first batch when work becomes due; pause
 /// and reconstruction retain its remaining occurrences. Batch completion skips
 /// excess and newly arrived occurrences before selecting future work.
-/// Neither policy automatically retries an uncertain occurrence.
+/// RetryPolicy::NONE disables retries. Only Outcome::RetryableFailure permits
+/// bounded retries with the same effect identity; lateness is not reapplied.
+/// No policy automatically retries an uncertain occurrence.
 /// After-completion schedules have only one pending occurrence: CatchUp applies
 /// its age limit without building a batch. Every normal settlement, including
 /// skipping late work, schedules from settlement time; overflow leaves the job idle.
-/// Full calendar search budgets and unresolved-work persistence remain release gates.
+/// Hosts own storage, fresh-runtime reconstruction and business reconciliation.
 /// Timers must already be initialized. Each job consumes one timer declaration.
 /// # Errors
 /// Returns timer admission/control errors or terminal progress failure.
@@ -125,6 +143,7 @@ pub fn bind<F, Fut>(
     identity: [&str; 3],
     schedule: Schedule,
     policy: Policy,
+    retry_policy: crate::RetryPolicy,
     work: F,
 ) -> Result<Job, Error>
 where
@@ -139,12 +158,22 @@ where
         }
         None => Progress::new(ic0::time()),
     };
-    bind_progress(identity, schedule, policy, progress, None, work)
+    let checkpoint = progress.checkpoint().map_err(|_| Error::Faulted)?;
+    bind_checkpoint(
+        identity,
+        schedule,
+        policy,
+        retry_policy,
+        checkpoint,
+        None,
+        work,
+    )
 }
 
 /// Rebind fresh callbacks from host-owned progress in a fresh runtime.
 /// The host must supply the matching stable job identity, schedule and execution
-/// policy. This is not a heap-snapshot or unresolved-work restoration procedure.
+/// and retry policies. Use restore_unresolved for unresolved records; neither API
+/// supports heap snapshots or duplicating live execution.
 /// # Errors
 /// Rejects selected/batch occurrences inconsistent with the schedule or policy before admission;
 /// otherwise returns timer/control errors.
@@ -152,6 +181,7 @@ pub fn restore<F, Fut>(
     identity: [&str; 3],
     schedule: Schedule,
     policy: Policy,
+    retry_policy: crate::RetryPolicy,
     checkpoint: crate::Checkpoint,
     work: F,
 ) -> Result<Job, Error>
@@ -159,20 +189,61 @@ where
     F: FnMut(Context) -> Fut + 'static,
     Fut: Future<Output = Outcome> + 'static,
 {
-    if !checkpoint.matches_definition(&schedule, policy) {
+    if !checkpoint.matches_definition(&schedule, policy, retry_policy) {
         return Err(Error::InvalidCheckpoint);
     }
-    let progress = Progress::restore(&checkpoint);
-    let batch = checkpoint.catch_up;
-    bind_progress(identity, schedule, policy, progress, batch, work)
+    bind_checkpoint(
+        identity,
+        schedule,
+        policy,
+        retry_policy,
+        checkpoint,
+        None,
+        work,
+    )
 }
 
-fn bind_progress<F, Fut>(
+/// Reconstruct an unresolved job in a fresh runtime with no surviving old callbacks.
+/// Both Running and Uncertain records become RecoveryRequired with fresh local
+/// recovery authority. Time, resume and schedule edits cannot unblock them.
+/// Hosts must atomically associate the record with its stable key and definition;
+/// reconstruction does not prove that remote business effects have terminated.
+/// # Errors
+/// Rejects invalid definition/budget associations before timer admission, or returns
+/// provider admission errors. This is not a heap-snapshot or live-cloning API.
+pub fn restore_unresolved<F, Fut>(
     identity: [&str; 3],
     schedule: Schedule,
     policy: Policy,
-    progress: Progress,
-    batch: Option<crate::CatchUpProgress>,
+    retry_policy: crate::RetryPolicy,
+    record: crate::UnresolvedCheckpoint,
+    work: F,
+) -> Result<Job, Error>
+where
+    F: FnMut(Context) -> Fut + 'static,
+    Fut: Future<Output = Outcome> + 'static,
+{
+    if !record.matches_definition(&schedule, policy, retry_policy) {
+        return Err(Error::InvalidCheckpoint);
+    }
+    bind_checkpoint(
+        identity,
+        schedule,
+        policy,
+        retry_policy,
+        record.progress.clone(),
+        Some(record),
+        work,
+    )
+}
+
+fn bind_checkpoint<F, Fut>(
+    identity: [&str; 3],
+    schedule: Schedule,
+    policy: Policy,
+    retry_policy: crate::RetryPolicy,
+    checkpoint: crate::Checkpoint,
+    unresolved: Option<crate::UnresolvedCheckpoint>,
     mut work: F,
 ) -> Result<Job, Error>
 where
@@ -182,12 +253,19 @@ where
     let state = Rc::new(RefCell::new(State {
         schedule,
         policy,
-        progress,
-        batch,
+        progress: unresolved.as_ref().map_or_else(
+            || Progress::restore(&checkpoint),
+            Progress::restore_unresolved,
+        ),
+        batch: checkpoint.catch_up,
+        retry_policy,
+        retry: checkpoint.retry,
+        last_outcome: checkpoint.last_outcome,
+        restored_attempt: unresolved.map(|record| record.attempt),
         faulted: false,
     }));
     let captured = Rc::clone(&state);
-    let timer = ic_timers::bind_once(identity, move || {
+    let timer = ic_timers::bind_once(identity, ic_timers::Lifetime::Retained, move || {
         let now = ic0::time();
         let selected = {
             let mut state = captured.borrow_mut();
@@ -200,9 +278,10 @@ where
             }
         };
         // Accept before invoking the factory, but never hold job state across it.
-        let future = selected.and_then(|(selection, deliver)| {
+        let future = selected.and_then(|(selection, deliver, attempt)| {
             deliver.then(|| {
                 work(Context {
+                    attempt,
                     revision: selection.occurrence.revision,
                     scheduled_at: selection.occurrence.scheduled_at,
                     started_at: now,
@@ -211,7 +290,7 @@ where
         });
         let state = Rc::clone(&captured);
         async move {
-            let Some((selection, _)) = selected else {
+            let Some((selection, _, attempt)) = selected else {
                 return stopped();
             };
             let outcome = match future {
@@ -219,7 +298,31 @@ where
                 None => Outcome::NoWork,
             };
             let mut state = state.borrow_mut();
-            if state.finish(selection, ic0::time()).is_err() {
+            let finished_at = ic0::time();
+            if state
+                .finish(
+                    selection,
+                    finished_at,
+                    matches!(outcome, Outcome::RetryableFailure),
+                )
+                .is_err()
+            {
+                state.faulted = true;
+            }
+            state.last_outcome = crate::Attempt::new(
+                selection.occurrence.revision,
+                selection.occurrence.scheduled_at,
+                attempt,
+            )
+            .and_then(|attempt| {
+                crate::RecordedOutcome::new(
+                    attempt,
+                    crate::RecordedResult::Returned(outcome),
+                    finished_at,
+                )
+            })
+            .ok();
+            if state.last_outcome.is_none() {
                 state.faulted = true;
             }
             let next = match state.plan(ic0::time()) {
@@ -230,7 +333,9 @@ where
                 observation: match outcome {
                     Outcome::NoWork => ic_timers::Observation::NoWork,
                     Outcome::Success => ic_timers::Observation::Success,
-                    Outcome::ExpectedFailure => ic_timers::Observation::ExpectedFailure,
+                    Outcome::ExpectedFailure | Outcome::RetryableFailure => {
+                        ic_timers::Observation::ExpectedFailure
+                    }
                 },
                 next,
             }
@@ -248,6 +353,51 @@ fn stopped() -> OnceResult {
     }
 }
 impl Job {
+    /// Export unresolved work for host-owned reconstruction in a fresh runtime.
+    /// This does not stop live work. Capture at the upgrade-admission boundary and
+    /// store atomically with the matching definition; discard stale earlier exports.
+    /// The exported future progress is paused. Ordinary checkpoint export still
+    /// refuses unresolved work, so hosts must explicitly choose this lifecycle policy.
+    /// # Errors
+    /// Returns Unsettled unless work is Running/RecoveryRequired; returns provider
+    /// or terminal errors on invalid runtime state.
+    pub fn unresolved_checkpoint(&self) -> Result<crate::UnresolvedCheckpoint, Error> {
+        let (revision, scheduled_at, attempt, phase) = match self.status()? {
+            Status::Running {
+                revision,
+                scheduled_at,
+                attempt,
+            } => (
+                revision,
+                scheduled_at,
+                attempt,
+                crate::UnresolvedPhase::Running,
+            ),
+            Status::RecoveryRequired {
+                revision,
+                scheduled_at,
+                attempt,
+                ..
+            } => (
+                revision,
+                scheduled_at,
+                attempt,
+                crate::UnresolvedPhase::Uncertain,
+            ),
+            Status::Faulted => return Err(Error::Faulted),
+            _ => return Err(Error::Unsettled),
+        };
+        let state = self.state.borrow();
+        let mut progress = state
+            .progress
+            .unresolved_progress()
+            .map_err(|_| Error::Faulted)?;
+        progress.catch_up = state.batch.clone();
+        progress.last_outcome = state.last_outcome;
+        let attempt =
+            crate::Attempt::new(revision, scheduled_at, attempt).map_err(|_| Error::Faulted)?;
+        crate::UnresolvedCheckpoint::new(1, progress, attempt, phase).map_err(|_| Error::Faulted)
+    }
     /// Export reconstructable progress without persisting timer capabilities.
     /// Call synchronously from the host upgrade-admission boundary and store it
     /// atomically with the matching job definition. Running/uncertain work refuses.
@@ -264,6 +414,8 @@ impl Job {
         let state = self.state.borrow();
         let mut checkpoint = state.progress.checkpoint().map_err(|_| Error::Faulted)?;
         checkpoint.catch_up = state.batch.clone();
+        checkpoint.retry = state.retry.clone();
+        checkpoint.last_outcome = state.last_outcome;
         Ok(checkpoint)
     }
 
@@ -275,6 +427,23 @@ impl Job {
         let mut state = self.state.borrow_mut();
         if state.faulted || matches!(timer, OnceStatus::Faulted) {
             return Ok(Status::Faulted);
+        }
+        if let Some(attempt) = state.restored_attempt {
+            if !matches!(timer, OnceStatus::Inactive) {
+                state.faulted = true;
+                return Err(Error::Faulted);
+            }
+            let selection = state.progress.selection().ok_or(Error::Faulted)?;
+            return Ok(Status::RecoveryRequired {
+                attempt: attempt.number,
+                revision: attempt.revision,
+                scheduled_at: attempt.scheduled_at,
+                recovery: Recovery {
+                    state: Rc::downgrade(&self.state),
+                    selection,
+                    timer: None,
+                },
+            });
         }
         if matches!(timer, OnceStatus::Inactive) {
             return Ok(if state.progress.cancelled() {
@@ -297,20 +466,24 @@ impl Job {
                     .block(selection)
                     .map_err(|_| Error::Faulted)?;
                 Status::RecoveryRequired {
+                    attempt: state.attempt(),
                     revision: occurrence.revision,
                     scheduled_at: occurrence.scheduled_at,
                     recovery: Recovery {
                         state: Rc::downgrade(&self.state),
                         selection,
-                        timer: token,
+                        timer: Some(token),
                     },
                 }
             }
-            OnceStatus::Armed(_) => Status::Armed {
+            OnceStatus::Armed(ready_at) => Status::Armed {
+                ready_at,
+                attempt: state.attempt(),
                 revision: occurrence.revision,
                 scheduled_at: occurrence.scheduled_at,
             },
             OnceStatus::Running => Status::Running {
+                attempt: state.attempt(),
                 revision: occurrence.revision,
                 scheduled_at: occurrence.scheduled_at,
             },
@@ -374,10 +547,12 @@ impl Job {
         let mut state = self.state.borrow_mut();
         state.progress.cancel().map_err(|_| Error::Faulted)?;
         state.batch = None;
+        state.retry = None;
         Ok(())
     }
     /// Resume according to policy without bypassing unresolved work. A paused
-    /// catch-up batch retains its original selection and remaining count.
+    /// catch-up batch retains its original selection and remaining count; a pending
+    /// retry retains its consumed budget and deadline.
     /// # Errors
     /// Returns timer or terminal progress errors.
     pub fn resume(&self) -> Result<(), Error> {
@@ -391,15 +566,24 @@ impl Job {
             state.progress.edit(now)?;
             state.schedule = schedule;
             state.batch = None;
+            // An accepted or uncertain old revision still owns its attempt identity.
+            if state.progress.selection().is_none() {
+                state.retry = None;
+            }
             Ok(())
         })
     }
-    /// After effect reconciliation, retire the uncertain occurrence, discard any
-    /// remaining catch-up batch and skip through current time; remain paused.
-    /// Resume explicitly to select a new future occurrence; no replay is performed.
+    /// Apply an explicit owner disposition after effect reconciliation. Retire
+    /// discards the retry/batch and skips through now. RetrySafe preserves the
+    /// occurrence and consumed budget, with backoff from reconciliation time.
+    /// Both leave the job paused. A rejected disposition leaves it blocked.
     /// # Errors
-    /// Rejects wrong-job/obsolete recovery or timer/control faults.
-    pub fn recover(&self, recovery: Recovery) -> Result<(), Error> {
+    /// Rejects wrong-job/obsolete recovery, unavailable retries or timer/control faults.
+    pub fn recover(
+        &self,
+        recovery: Recovery,
+        disposition: RecoveryDisposition,
+    ) -> Result<(), Error> {
         if !Weak::ptr_eq(&recovery.state, &Rc::downgrade(&self.state)) {
             return Err(Error::StaleRecovery);
         }
@@ -408,18 +592,11 @@ impl Job {
             if state.faulted {
                 return Err(Error::Faulted);
             }
-            state
-                .progress
-                .reconcile(recovery.selection)
-                .map_err(|_| Error::StaleRecovery)?;
-            state.batch = None;
-            state
-                .progress
-                .skip_through(ic0::time())
-                .map_err(|_| Error::Faulted)?;
-            state.progress.pause().map_err(|_| Error::Faulted)?;
+            state.recover(recovery.selection, disposition, ic0::time())?;
         }
-        if let Err(error) = self.timer.recover(recovery.timer, OnceDemand::Inactive) {
+        if let Some(token) = recovery.timer
+            && let Err(error) = self.timer.recover(token, OnceDemand::Inactive)
+        {
             self.state.borrow_mut().faulted = true;
             return Err(error.into());
         }

@@ -34,6 +34,7 @@ pub extern "C" fn setup() {
         ic_jobs::Policy::SkipLate {
             lateness_ns: if mode == 5 { 0 } else { u64::MAX },
         },
+        ic_jobs::RetryPolicy::NONE,
         work,
     )
     .unwrap();
@@ -80,10 +81,12 @@ pub extern "C" fn state() {
                 Status::Armed {
                     revision,
                     scheduled_at,
+                    ..
                 } => (2, revision, scheduled_at),
                 Status::Running {
                     revision,
                     scheduled_at,
+                    ..
                 } => (3, revision, scheduled_at),
                 Status::RecoveryRequired {
                     revision,
@@ -126,9 +129,13 @@ pub extern "C" fn control() {
                 else {
                     ic0::trap(b"expected recovery");
                 };
-                job.recover(recovery).unwrap();
+                job.recover(recovery, ic_jobs::RecoveryDisposition::Retire)
+                    .unwrap();
                 assert!(matches!(job.status().unwrap(), Status::Paused));
-                assert_eq!(job.recover(stale), Err(ic_jobs::Error::StaleRecovery));
+                assert_eq!(
+                    job.recover(stale, ic_jobs::RecoveryDisposition::Retire),
+                    Err(ic_jobs::Error::StaleRecovery)
+                );
                 MODE.with(|value| value.set(0));
                 job.resume().unwrap();
             }
@@ -160,6 +167,7 @@ fn reject_foreign_recovery(source: &Job) {
             ["jobs", "foreign-recovery", &index.to_string()],
             Schedule::parse("* * * * *").unwrap(),
             policy,
+            ic_jobs::RetryPolicy::NONE,
             |_| async { ic0::trap(b"foreign recovery target must remain paused") },
         )
         .unwrap();
@@ -172,11 +180,15 @@ fn reject_foreign_recovery(source: &Job) {
                 revision,
                 scheduled_at,
                 recovery,
+                ..
             } = source.status().unwrap()
             else {
                 ic0::trap(b"source must remain uncertain");
             };
-            assert_eq!(target.recover(recovery), Err(ic_jobs::Error::StaleRecovery));
+            assert_eq!(
+                target.recover(recovery, ic_jobs::RecoveryDisposition::Retire),
+                Err(ic_jobs::Error::StaleRecovery)
+            );
             assert_eq!(target.checkpoint().unwrap(), before);
             assert!(
                 matches!(source.status().unwrap(), Status::RecoveryRequired {
@@ -273,6 +285,10 @@ pub(super) fn pre_upgrade() -> bool {
             return false;
         };
         let checkpoint = job.checkpoint().expect("host refuses unresolved job");
+        assert!(
+            checkpoint.retry().is_none(),
+            "fixture definition disables retries"
+        );
         assert!(matches!(
             checkpoint.control(),
             ic_jobs::ControlState::Active | ic_jobs::ControlState::Paused
@@ -280,8 +296,8 @@ pub(super) fn pre_upgrade() -> bool {
         // This fixed host schema owns the every-minute rule; mode records lateness.
         let mode = MODE.with(Cell::get);
         assert!(matches!(mode, 0 | 5), "unsupported fixture definition");
-        let mut bytes = [0; 35];
-        bytes[..8].copy_from_slice(b"JOBDATA5");
+        let mut bytes = vec![0; 35];
+        bytes[..8].copy_from_slice(b"JOBDATA7");
         bytes[8] = checkpoint.version();
         bytes[9..17].copy_from_slice(&checkpoint.revision().to_le_bytes());
         bytes[17..25].copy_from_slice(
@@ -294,6 +310,7 @@ pub(super) fn pre_upgrade() -> bool {
         bytes[33] =
             u8::from(checkpoint.selected_at().is_some()) | (u8::from(checkpoint.paused()) << 1);
         bytes[34] = mode;
+        super::outcomes::append(checkpoint.last_outcome(), &mut bytes);
         if ic0::stable64_size() == 0 {
             assert_eq!(ic0::stable64_grow(1), 0);
         }
@@ -302,9 +319,9 @@ pub(super) fn pre_upgrade() -> bool {
     })
 }
 pub(super) fn post_upgrade() -> bool {
-    let mut bytes = [0; 35];
+    let mut bytes = [0; 75];
     ic0::stable64_read(&mut bytes, 0);
-    if &bytes[..8] != b"JOBDATA5" {
+    if &bytes[..8] != b"JOBDATA7" {
         return false;
     }
     assert!(bytes[33] <= 3);
@@ -325,8 +342,10 @@ pub(super) fn post_upgrade() -> bool {
             ic_jobs::ControlState::Active
         },
         None,
+        None,
     )
     .unwrap();
+    let checkpoint = super::outcomes::restore(checkpoint, &bytes[35..]);
     ic_timers::initialize().unwrap();
     let job = ic_jobs::restore(
         ["jobs", "probe", "work"],
@@ -334,6 +353,7 @@ pub(super) fn post_upgrade() -> bool {
         ic_jobs::Policy::SkipLate {
             lateness_ns: if bytes[34] == 5 { 0 } else { u64::MAX },
         },
+        ic_jobs::RetryPolicy::NONE,
         checkpoint,
         work,
     )
@@ -349,25 +369,37 @@ pub(super) fn post_upgrade() -> bool {
 #[unsafe(export_name = "canister_update jobs_invalid_restore")]
 pub extern "C" fn invalid_restore() {
     ic_timers::initialize().unwrap();
-    let checkpoint =
-        ic_jobs::Checkpoint::new(4, 1, Some(0), Some(1), ic_jobs::ControlState::Active, None)
-            .unwrap();
+    let checkpoint = ic_jobs::Checkpoint::new(
+        6,
+        1,
+        Some(0),
+        Some(1),
+        ic_jobs::ControlState::Active,
+        None,
+        None,
+    )
+    .unwrap();
     assert!(matches!(
         ic_jobs::restore(
             ["invalid", "job", "restore"],
             Schedule::parse("* * * * *").unwrap(),
             ic_jobs::Policy::SkipLate { lateness_ns: 0 },
+            ic_jobs::RetryPolicy::NONE,
             checkpoint,
             work
         ),
         Err(ic_jobs::Error::InvalidCheckpoint)
     ));
-    let _handle = ic_timers::bind_once(["invalid", "job", "restore"], || async {
-        super::OnceResult {
-            observation: super::Observation::NoWork,
-            next: super::OnceNext::Stop,
-        }
-    })
+    let _handle = ic_timers::bind_once(
+        ["invalid", "job", "restore"],
+        ic_timers::Lifetime::Retained,
+        || async {
+            super::OnceResult {
+                observation: super::Observation::NoWork,
+                next: super::OnceNext::Stop,
+            }
+        },
+    )
     .unwrap();
     for (name, pending, policy) in [
         (
@@ -389,12 +421,13 @@ pub extern "C" fn invalid_restore() {
         ),
     ] {
         let checkpoint = ic_jobs::Checkpoint::new(
-            4,
+            6,
             1,
             Some(0),
             Some(pending[0]),
             ic_jobs::ControlState::Active,
             Some(ic_jobs::CatchUpProgress::new(&pending, 180_000_000_000).unwrap()),
+            None,
         )
         .unwrap();
         assert!(matches!(
@@ -402,17 +435,22 @@ pub extern "C" fn invalid_restore() {
                 ["invalid", "batch", name],
                 Schedule::parse("* * * * *").unwrap(),
                 policy,
+                ic_jobs::RetryPolicy::NONE,
                 checkpoint,
                 work
             ),
             Err(ic_jobs::Error::InvalidCheckpoint)
         ));
-        let _handle = ic_timers::bind_once(["invalid", "batch", name], || async {
-            super::OnceResult {
-                observation: super::Observation::NoWork,
-                next: super::OnceNext::Stop,
-            }
-        })
+        let _handle = ic_timers::bind_once(
+            ["invalid", "batch", name],
+            ic_timers::Lifetime::Retained,
+            || async {
+                super::OnceResult {
+                    observation: super::Observation::NoWork,
+                    next: super::OnceNext::Stop,
+                }
+            },
+        )
         .unwrap();
     }
     ic0::msg_reply();

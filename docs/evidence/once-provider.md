@@ -1,3 +1,6 @@
+> Current candidate: [0.45.9 / 0.37.9 qualification](release-candidate.md).
+> Earlier open-gate statements below describe their dated implementation slice.
+
 # Installed Once provider slice — 2026-11-15
 
 The ic-timers 0.45.1 development increment now connects its retained Once core

@@ -7,10 +7,14 @@ resolver = "3"
 edition = "2024"
 rust-version = "1.100.0"
 license-file = "LICENSE.md"
-publish = false
+publish = ["crates-io"]
+repository = "https://github.com/dragginzgame/ic-scheduling-new"
 
 [workspace.dependencies]
-ic-timers = { path = "crates/ic-timers" }
+# Jobs: releases/jobs/CHANGELOG.md
+ic-jobs = { version = "0.37.8", path = "crates/ic-jobs" }
+# Timers: releases/timers/CHANGELOG.md
+ic-timers = { version = "0.45.8", path = "crates/ic-timers" }
 
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 ic-metrics = { version = "=0.30.8", default-features = false }
@@ -20,7 +24,7 @@ toko-tooling = "=0.44.4"
 
 [workspace.lints.cargo]
 unused_dependencies = "deny"
-unused_workspace_dependencies = "deny"
+unused_workspace_dependencies = "allow" # Release catalog includes independently published members.
 unused_workspace_package_fields = "deny"
 missing_lints_inheritance = "deny"
 unknown_lints = "deny"

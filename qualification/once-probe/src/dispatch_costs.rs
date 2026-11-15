@@ -22,8 +22,10 @@ pub extern "C" fn setup() {
     assert!(matches!(args[0], 1 | 8 | 64));
     ic_timers::initialize().unwrap();
     for index in 0..usize::from(args[0]) {
-        let handle =
-            ic_timers::bind_once(["dispatch-cost", "once", &index.to_string()], move || {
+        let handle = ic_timers::bind_once(
+            ["dispatch-cost", "once", &index.to_string()],
+            ic_timers::Lifetime::Retained,
+            move || {
                 let factory_prefix = ic0::performance_counter(0);
                 SAMPLES.with(|samples| samples.borrow_mut()[index][0] = factory_prefix);
                 async move {
@@ -45,8 +47,9 @@ pub extern "C" fn setup() {
                         next: OnceNext::Stop,
                     }
                 }
-            })
-            .unwrap();
+            },
+        )
+        .unwrap();
         handle.set(OnceDemand::At(0)).unwrap();
         HANDLES.with(|handles| handles.borrow_mut().push(handle));
     }

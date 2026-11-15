@@ -16,19 +16,23 @@ fn bind(deadline: u64) {
     ic_timers::initialize().unwrap();
     EPOCH.with(|epoch| epoch.set(ic0::canister_version()));
     DEADLINE.with(|value| value.set(deadline));
-    let handle = ic_timers::bind_once(["lifecycle", "once", "future"], || async {
-        RUNS.with(|count| count.set(count.get() + 1));
-        if let Some(target) = TARGET.with(Cell::get) {
-            let response = Call::new(target, "hold", WaitPolicy::Unbounded)
-                .execute()
-                .await;
-            assert!(response.is_ok());
-        }
-        OnceResult {
-            observation: Observation::Success,
-            next: OnceNext::Stop,
-        }
-    })
+    let handle = ic_timers::bind_once(
+        ["lifecycle", "once", "future"],
+        ic_timers::Lifetime::Retained,
+        || async {
+            RUNS.with(|count| count.set(count.get() + 1));
+            if let Some(target) = TARGET.with(Cell::get) {
+                let response = Call::new(target, "hold", WaitPolicy::Unbounded)
+                    .execute()
+                    .await;
+                assert!(response.is_ok());
+            }
+            OnceResult {
+                observation: Observation::Success,
+                next: OnceNext::Stop,
+            }
+        },
+    )
     .unwrap();
     handle.set(OnceDemand::At(deadline)).unwrap();
     HANDLE.with(|slot| *slot.borrow_mut() = Some(handle));
@@ -54,10 +58,17 @@ pub extern "C" fn init() {
 /// This host fixture persists a Jobs checkpoint or an Armed Once declaration.
 /// It deliberately does not claim to reconcile accepted work across upgrades.
 /// # Panics
-/// Refuses unresolved Jobs work, non-Armed Once state or failed stable writes.
+/// Ordinary fixtures refuse unresolved work; the explicit unresolved fixture
+/// exports a blocked reconstruction record. Failed stable writes always refuse.
 #[expect(unsafe_code, reason = "qualification owns this lifecycle hook")]
 #[unsafe(export_name = "canister_pre_upgrade")]
 pub extern "C" fn pre_upgrade() {
+    if super::jobs_unresolved::pre_upgrade() {
+        return;
+    }
+    if super::jobs_retry::pre_upgrade() {
+        return;
+    }
     if super::jobs_completion::pre_upgrade() {
         return;
     }
@@ -88,6 +99,12 @@ pub extern "C" fn pre_upgrade() {
 #[expect(unsafe_code, reason = "qualification owns this lifecycle hook")]
 #[unsafe(export_name = "canister_post_upgrade")]
 pub extern "C" fn post_upgrade() {
+    if super::jobs_unresolved::post_upgrade() {
+        return;
+    }
+    if super::jobs_retry::post_upgrade() {
+        return;
+    }
     if super::jobs_completion::post_upgrade() {
         return;
     }

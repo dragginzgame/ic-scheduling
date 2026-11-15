@@ -30,6 +30,7 @@ pub extern "C" fn setup() {
             ic_jobs::Policy::SkipLate {
                 lateness_ns: u64::MAX,
             },
+            ic_jobs::RetryPolicy::NONE,
             move |context| async move {
                 COUNTS.with(|counts| counts.borrow_mut()[index] += 1);
                 TIMES.with(|times| times.borrow_mut()[index] = context.scheduled_at);
@@ -49,12 +50,14 @@ pub extern "C" fn setup() {
         ic_jobs::Policy::SkipLate {
             lateness_ns: u64::MAX,
         },
+        ic_jobs::RetryPolicy::NONE,
         Checkpoint::new(
-            4,
+            6,
             u64::MAX,
             Some(ic0::time()),
             None,
             ic_jobs::ControlState::Active,
+            None,
             None,
         )
         .unwrap(),
@@ -75,12 +78,14 @@ pub extern "C" fn setup() {
         ic_jobs::Policy::SkipLate {
             lateness_ns: u64::MAX,
         },
+        ic_jobs::RetryPolicy::NONE,
         Checkpoint::new(
-            4,
+            6,
             1,
             Some(u64::MAX),
             None,
             ic_jobs::ControlState::Active,
+            None,
             None,
         )
         .unwrap(),
@@ -221,12 +226,14 @@ pub extern "C" fn ahead_setup() {
             ["jobs", "ahead", &index.to_string()],
             minute(),
             policy,
+            ic_jobs::RetryPolicy::NONE,
             Checkpoint::new(
-                4,
+                6,
                 7,
                 Some(through),
                 None,
                 ic_jobs::ControlState::Active,
+                None,
                 None,
             )
             .unwrap(),

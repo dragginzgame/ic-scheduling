@@ -2,6 +2,9 @@
 name = "ic-timers"
 links = "ic-timers-global-timer"
 version = "0.45.8"
+description = "Isolated async timers and prearmed watchdogs for Internet Computer canisters"
+repository.workspace = true
+readme = "README.md"
 edition.workspace = true
 rust-version.workspace = true
 license-file.workspace = true

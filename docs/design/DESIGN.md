@@ -11,7 +11,8 @@ installed local qualification. See [Once evidence](../evidence/once-provider.md)
 [control costs](../evidence/control-costs.md) and
 [capture retention](../evidence/capture-retention.md). An isolated Entropy migration
 passes its existing installed journey. Actual consumer adoption, Canic integration,
-production resource budgets and remaining lifecycle gates are open; historical
+and production resource budgets are host-owned; the current local lifecycle
+suite passes (see [candidate evidence](../evidence/release-candidate.md)). Historical
 observations below do not establish completion.
 
 Build a small retained-timer service around the two observed consumer workflows, and a separate calendar-aware `ic-jobs` package above it. The [Jobs design](jobs.md) records the newly requested scope and proposed contract. Bind work once, update demand through a capability, and isolate business execution from timer control. Reuse requires proof that a small implementation fits this architecture. Existing modules, signatures and test organization have no presumption of survival.
@@ -53,7 +54,7 @@ The extra watchdog scheduler message may be restored only if a concrete installe
 # 3 Product and ownership boundaries
 
 Publish `ic-timers` and `ic-jobs` only after their respective qualification gates.
-Keep the workspace unpublished. Jobs' optional execution feature depends on
+Qualification packages remain unpublished. Jobs' optional execution feature depends on
 Timers; its calendar-only feature does not. Timers must not depend on Jobs or
 calendar logic. The module and API design below describes `ic-timers`; the
 [Jobs design](jobs.md) adds its separate obligations. Private timer modules are

@@ -27,6 +27,7 @@ pub extern "C" fn setup() {
             ic_jobs::Policy::SkipLate {
                 lateness_ns: u64::MAX,
             },
+            ic_jobs::RetryPolicy::NONE,
             move |context| async move {
                 CONTEXTS.with(|values| {
                     values.borrow_mut()[index] = (context.scheduled_at, context.started_at);
@@ -53,12 +54,16 @@ pub extern "C" fn setup() {
         JOBS.with(|jobs| jobs.borrow_mut().push(job));
     }
     for index in 0..52 {
-        let _once = ic_timers::bind_once(["jobs", "filler", &index.to_string()], || async {
-            super::OnceResult {
-                observation: super::Observation::NoWork,
-                next: super::OnceNext::Stop,
-            }
-        })
+        let _once = ic_timers::bind_once(
+            ["jobs", "filler", &index.to_string()],
+            ic_timers::Lifetime::Retained,
+            || async {
+                super::OnceResult {
+                    observation: super::Observation::NoWork,
+                    next: super::OnceNext::Stop,
+                }
+            },
+        )
         .unwrap();
     }
     assert!(matches!(
@@ -68,7 +73,8 @@ pub extern "C" fn setup() {
             ic_jobs::Policy::SkipLate {
                 lateness_ns: u64::MAX
             },
-            |_| async { Outcome::Success },
+            ic_jobs::RetryPolicy::NONE,
+            |_| async { Outcome::Success }
         ),
         Err(ic_jobs::Error::Timer(ic_timers::Error::Capacity))
     ));
@@ -146,6 +152,7 @@ pub extern "C" fn bulk_setup() {
             ["jobs", "bulk", &index.to_string()],
             schedule.clone(),
             ic_jobs::Policy::CatchUp(ic_jobs::CatchUpLimit::new(u64::MAX, 3).unwrap()),
+            ic_jobs::RetryPolicy::NONE,
             move |context| async move {
                 COUNTS.with_borrow_mut(|counts| {
                     assert_eq!(counts.0[index], counts.1[index], "overlapping job attempts");
@@ -176,7 +183,8 @@ pub extern "C" fn bulk_setup() {
             ["jobs", "bulk", "overflow"],
             Schedule::parse("* * * * *").unwrap(),
             ic_jobs::Policy::CatchUp(ic_jobs::CatchUpLimit::new(u64::MAX, 3).unwrap()),
-            |_| async { Outcome::Success },
+            ic_jobs::RetryPolicy::NONE,
+            |_| async { Outcome::Success }
         ),
         Err(ic_jobs::Error::Timer(ic_timers::Error::Capacity))
     ));

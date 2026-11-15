@@ -36,45 +36,49 @@ pub extern "C" fn arm() {
     ic_timers::initialize().expect("initialize");
     HANDLE.with(|slot| {
         if slot.borrow().is_none() {
-            let handle = ic_timers::bind_once(["probe", "once", "work"], || {
-                if MODE.with(Cell::get) == 1 {
-                    ic0::trap(b"factory trap")
-                }
-                async {
-                    let _cleanup = CleanupTrap(MODE.with(Cell::get) == 5);
-                    STARTS.with(|v| v.set(v.get() + 1));
-                    let calls = if MODE.with(Cell::get) == 6 && STARTS.with(Cell::get) == 1 {
-                        100
-                    } else {
-                        1
-                    };
-                    for _ in 0..calls {
-                        let result = Call::new(self_id(), "echo", WaitPolicy::Unbounded)
-                            .execute()
-                            .await;
-                        assert!(result.is_ok());
+            let handle = ic_timers::bind_once(
+                ["probe", "once", "work"],
+                ic_timers::Lifetime::Retained,
+                || {
+                    if MODE.with(Cell::get) == 1 {
+                        ic0::trap(b"factory trap")
                     }
-                    if matches!(MODE.with(Cell::get), 2 | 5) {
-                        ic0::trap(b"after await")
+                    async {
+                        let _cleanup = CleanupTrap(MODE.with(Cell::get) == 5);
+                        STARTS.with(|v| v.set(v.get() + 1));
+                        let calls = if MODE.with(Cell::get) == 6 && STARTS.with(Cell::get) == 1 {
+                            100
+                        } else {
+                            1
+                        };
+                        for _ in 0..calls {
+                            let result = Call::new(self_id(), "echo", WaitPolicy::Unbounded)
+                                .execute()
+                                .await;
+                            assert!(result.is_ok());
+                        }
+                        if matches!(MODE.with(Cell::get), 2 | 5) {
+                            ic0::trap(b"after await")
+                        }
+                        FINISHES.with(|v| v.set(v.get() + 1));
+                        FINISHED_AT.with(|v| v.set(ic0::time()));
+                        OnceResult {
+                            observation: Observation::Success,
+                            next: match MODE.with(Cell::get) {
+                                3 => OnceNext::At(0),
+                                6 if FINISHES.with(Cell::get) == 1 => OnceNext::After(
+                                    std::num::NonZeroU64::new(10_000_000_000).unwrap(),
+                                ),
+                                7 => OnceNext::After(
+                                    std::num::NonZeroU64::new(10_000_000_000).unwrap(),
+                                ),
+                                8 => OnceNext::After(std::num::NonZeroU64::new(u64::MAX).unwrap()),
+                                _ => OnceNext::Stop,
+                            },
+                        }
                     }
-                    FINISHES.with(|v| v.set(v.get() + 1));
-                    FINISHED_AT.with(|v| v.set(ic0::time()));
-                    OnceResult {
-                        observation: Observation::Success,
-                        next: match MODE.with(Cell::get) {
-                            3 => OnceNext::At(0),
-                            6 if FINISHES.with(Cell::get) == 1 => {
-                                OnceNext::After(std::num::NonZeroU64::new(10_000_000_000).unwrap())
-                            }
-                            7 => {
-                                OnceNext::After(std::num::NonZeroU64::new(10_000_000_000).unwrap())
-                            }
-                            8 => OnceNext::After(std::num::NonZeroU64::new(u64::MAX).unwrap()),
-                            _ => OnceNext::Stop,
-                        },
-                    }
-                }
-            })
+                },
+            )
             .expect("bind");
             *slot.borrow_mut() = Some(handle);
         }
@@ -193,5 +197,9 @@ mod jobs_pressure;
 mod jobs_boundaries;
 mod jobs_completion;
 mod jobs_initial;
+mod jobs_retry;
+mod jobs_unresolved;
+mod lifetimes;
+mod outcomes;
 
 mod jobs_catch_up;

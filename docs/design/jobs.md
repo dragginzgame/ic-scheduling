@@ -83,8 +83,8 @@ requires explicit recovery.
 
 `Schedule::after_completion(first_at_ns, every_ns)` selects the first deadline
 the same way, then waits a positive interval after each normal settlement.
-NoWork, ExpectedFailure and lateness skipping all settle; retry policy remains
-separate unfinished work. CatchUp applies its age limit to the single pending
+NoWork, ExpectedFailure and lateness skipping all settle. RetryableFailure settles
+only when its retry budget is exhausted or its next deadline would overflow. CatchUp applies its age limit to the single pending
 occurrence; there is no completion-relative backlog. Preview methods show only
 the first deadline because later ones depend on actual settlement time.
 
@@ -92,8 +92,9 @@ The settled cursor includes the completion horizon for this schedule. Pause and
 restoration retain it, so resuming does not restart the delay. Normal settlement
 of an old revision cannot advance a newer definition's cursor. An edit uses the
 new first deadline if it is after the edit horizon, otherwise horizon plus delay.
-Explicit recovery records the reconciliation horizon and pauses; later resume
-selects from that horizon without replaying the uncertain occurrence. Overflow
+Retiring recovery records the reconciliation horizon and pauses; later resume
+selects from that horizon without replaying the uncertain occurrence. Retry-safe
+recovery instead retains the occurrence until its final settlement. Overflow
 leaves the job idle. Completion-relative scheduling needs no additional checkpoint field: restore checks the exact
 selected deadline against this cursor and rejects accumulated batch records.
 They must not introduce a second cron engine. `*/N` steps within a field,
@@ -131,9 +132,10 @@ host restore continue that exact selection without resetting the count or age
 window. Completion retires the fixed window and skips through the then-current
 time, so excess and occurrences arriving during the batch cannot replenish it.
 The next occurrence is strictly in the future. An edit discards the old pending
-batch while preserving already accepted occurrence identity. Recovery explicitly
+batch while preserving already accepted occurrence identity. Retiring recovery
 retires the uncertain occurrence, discards remaining batch work, skips through
-current time and leaves the job paused; resume selects future work.
+current time and leaves the job paused; resume selects future work. Retry-safe
+recovery retains any committed batch and its remaining quota.
 
 Batch selection never replaces the committed occurrence immediately before a
 consumer factory call. An initial-message trap therefore retains the same
@@ -169,16 +171,46 @@ identity; its completion cannot overwrite a newer schedule or pause decision.
 `Job::cancel` terminally cancels pending, paused or idle work. Running and uncertain
 work returns Unsettled and must be settled or explicitly reconciled first.
 Cancellation invalidates timer eligibility, clears unaccepted selection and
-discards any remaining catch-up batch. Repeated cancellation succeeds; resume,
+discards any remaining catch-up batch and pending retry. Repeated cancellation succeeds; resume,
 pause and edit return Cancelled. Checkpoint restoration preserves the terminal
 state. This does not remove the retained timer registration or release its captures.
 
-Expected callback failure currently records an outcome; future calendar occurrences remain
-independent. Legacy bounded retries are now required by the release-scope decision
-but are not yet implemented. Confirmed abandonment blocks that job in recovery-required state, even
-when later occurrences become due. Only owner reconciliation can clear it. A
-calendar policy cannot bypass Timers' recovery barrier. No exactly-once remote
-effect guarantee is claimed.
+Jobs 0.37.9 requires an explicit RetryPolicy when binding or restoring. NONE
+disables retries. Only Outcome::RetryableFailure permits repeating the occurrence's
+effects after a normal return; ExpectedFailure remains final settlement. The
+positive total-attempt budget includes the initial attempt. Delays double from
+the positive initial delay, clamp to the configured cap and use checked addition
+from failure completion. Exhaustion or deadline overflow settles the occurrence.
+Calculation takes constant time even for maximum counters.
+
+Retries preserve the host job key, revision and scheduled time as their logical
+effect identity. Context and Armed/Running/RecoveryRequired status expose the
+one-based attempt; Armed also exposes ready_at separately from scheduled_at. A
+retry consumes a fresh local delivery token, retains its catch-up quota and
+bypasses the initial occurrence's lateness test. After-completion recurrence
+starts its next interval only after final settlement. Pause retains the consumed
+budget and retry deadline; resume does not reset either. Schedule edits discard
+pending retries but preserve any accepted old attempt's identity until settlement.
+An old revision cannot request retries or advance the new definition's cursor.
+
+Checkpoint schema 6 persists pending retry-safe work through RetryProgress:
+scheduled time, consumed-attempt count, last failure/reconciliation time and retry deadline.
+Restore checks the schedule, remaining budget and exact policy-derived deadline
+before admitting a timer. Hosts must atomically retain the matching retry policy.
+Explicit unresolved records preserve running/uncertain attempt identity. Factory/post-await
+traps block the same attempt for explicit reconciliation; time, pause/resume and
+calendar policy cannot bypass Timers' recovery barrier.
+
+Recovery requires an exact live recovery token and an explicit RecoveryDisposition.
+Retire discards the retry/batch, retires the occurrence and skips through now.
+RetrySafe is the owner's assertion, after reconciling business effects, that
+repeating the occurrence is safe. It preserves the logical identity and consumed
+budget, retains any committed batch and anchors backoff at reconciliation time.
+It refuses a replaced schedule revision, exhausted budget or overflowing deadline
+without changing the blocked state. Both choices leave the job paused; resume is
+separate. A failed retry request does not prevent later retirement. The latest normal result or reconciliation disposition is retained as a bounded
+RecordedOutcome keyed by Attempt; it is observation, not replay authority.
+No exactly-once remote effect guarantee is claimed.
 
 ## Persistence and composition gate
 
@@ -190,8 +222,7 @@ schedule and lateness policy. Running and recovery-required jobs refuse export;
 installed tests cover armed/paused reconstruction and refusal after both trap
 types. Three-day stopped-canister upgrades exercise overdue selection under
 generous and zero lateness tolerances: execute the selected occurrence once or
-skip it, then select a future occurrence without a catch-up burst. Restoring
-unresolved work remains an open gate.
+skip it, then select a future occurrence without a catch-up burst. Explicit unresolved reconstruction now has a separate lifecycle contract below.
 
 Installed qualification also restores settled progress ahead of current time
 under both policies. Pause/edit/resume preserves the cursor; no occurrence at or
@@ -199,7 +230,7 @@ before it executes, and future work resumes with the current revision. This
 qualifies that restored-state condition, not a replica clock rollback or heap
 snapshot. See the future-cursor observation in [execution evidence](../evidence/jobs-progress.md).
 
-Checkpoint schema 4 retains the bounded remaining-batch record and represents
+Checkpoint schema 6 retains the bounded remaining-batch record and represents
 the settled cursor as `Option<u64>`. None means nothing settled; Some(0) means
 timestamp zero has settled. Decoding validates strictly increasing timestamps
 after any settled cursor, the fixed
@@ -207,8 +238,8 @@ endpoint and agreement with selected/paused state. Restore checks every remainin
 timestamp against the schedule and rejects batches incompatible with the policy/count
 before timer admission. The host must retain the exact policy and definition
 association. `ControlState` records Active, Paused or Cancelled. Cancelled records
-cannot contain selected work or a remaining batch; they restore inactive without
-evaluating recurrence. Schemas 1–3 from earlier unpublished previews are rejected;
+cannot contain selected work, a remaining batch or a pending retry; they restore inactive without
+evaluating recurrence. Schemas 1–5 from earlier unpublished previews are rejected;
 no deployed-data migration is claimed.
 
 Timer handles and closures are volatile. Persist versioned job definitions and
@@ -271,3 +302,34 @@ applicable timer gates, not merely a cron parser that returns timestamps.
 [Saffron 0.1.0](https://docs.rs/saffron/0.1.0/saffron/) defines the selected cron
 dialect and UTC next-occurrence behavior. Supplier source was inspected, not
 copied. Reference reviewed 2026-11-15.
+
+## Explicit unresolved reconstruction
+
+`Job::unresolved_checkpoint` exports Running or RecoveryRequired work without
+stopping it. Hosts must capture it at the upgrade-admission boundary and atomically
+store its definition, stable job key, policies and record. An earlier export must
+not be reused after execution changes. Ordinary `checkpoint` still refuses
+unresolved work, preserving conservative hosts' upgrade guards.
+
+UnresolvedCheckpoint schema 1 wraps progress schema 6 and an Attempt
+(revision, scheduled time and one-based number), plus the export phase. Its inner
+progress is paused with no independently queued selection/retry. It preserves
+any committed catch-up batch, latest outcome and newer owner revision/cursor.
+Old accepted identity can therefore survive an owner edit without validating it
+against the replacement schedule. Same-revision records must match their schedule,
+budget, cursor and batch before admission.
+
+`restore_unresolved` is only for a fresh runtime after the old local execution has
+been discarded. It creates an inactive retained timer and a blocked Jobs attempt
+with fresh local recovery authority. Both Running and Uncertain exports restore
+RecoveryRequired; repeated upgrades retain that barrier. Resume, pause, cancel,
+time advances and owner edits cannot authorize replay. Retire or explicit RetrySafe
+reconciliation uses the same live recovery API; changed revisions cannot retry.
+Remote effects remain the owner's reconciliation responsibility. This does not
+support heap snapshots or live cloning.
+
+Checkpoint schema 6 includes an optional latest RecordedOutcome. Decode it with
+its validated constructor and attach it through `with_last_outcome`; preserve it
+when encoding either ordinary or unresolved progress. Returned business outcomes
+are distinct from Retired and RetryAuthorized owner dispositions. Observation
+never changes eligibility. Older outcome history belongs to application storage.

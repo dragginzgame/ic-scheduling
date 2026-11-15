@@ -7,7 +7,9 @@
 //! with explicit skip-late or bounded catch-up policy on
 //! retained Once timers. Default builds include neither calendar nor IC execution
 //! dependencies. Host-owned checkpoints support settled/queued reconstruction;
-//! legacy retry/unresolved-work persistence remains unfinished; coalescing is deferred.
+//! explicit retry-safe outcomes support bounded retries and pending-retry checkpoints.
+//! Explicit unresolved records reconstruct blocked in a fresh runtime; hosts own
+//! storage and lifecycle. Latest outcome records are bounded; coalescing is deferred.
 
 #[cfg(feature = "calendar")]
 mod schedule;
@@ -33,7 +35,24 @@ pub use checkpoint::{CatchUpProgress, Checkpoint, CheckpointError};
 #[cfg(feature = "execution")]
 pub use progress::ControlState;
 
+#[cfg(any(feature = "execution", test))]
+mod retry;
+#[cfg(feature = "execution")]
+pub use retry::{RetryPolicy, RetryPolicyError, RetryProgress};
+
+#[cfg(any(feature = "execution", test))]
+mod unresolved;
+#[cfg(feature = "execution")]
+pub use unresolved::{Attempt, UnresolvedCheckpoint, UnresolvedPhase};
+
+#[cfg(any(feature = "execution", test))]
+mod outcome;
+#[cfg(feature = "execution")]
+pub use outcome::{Outcome, RecordedOutcome, RecordedResult};
+
 #[cfg(all(feature = "execution", target_arch = "wasm32"))]
 mod execution;
 #[cfg(all(feature = "execution", target_arch = "wasm32"))]
-pub use execution::{Context, Error, Job, Outcome, Recovery, Status, bind, restore};
+pub use execution::{
+    Context, Error, Job, Recovery, RecoveryDisposition, Status, bind, restore, restore_unresolved,
+};

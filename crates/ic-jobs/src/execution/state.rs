@@ -1,5 +1,5 @@
 //! Selection policy and bounded catch-up state; Timers still owns execution custody.
-use super::{Error, OnceDemand, Policy, Progress, Schedule, Selection};
+use super::{Error, OnceDemand, Policy, Progress, RecoveryDisposition, Schedule, Selection};
 use crate::CatchUpProgress;
 
 pub(super) struct State {
@@ -7,6 +7,10 @@ pub(super) struct State {
     pub(super) policy: Policy,
     pub(super) progress: Progress,
     pub(super) batch: Option<CatchUpProgress>,
+    pub(super) retry_policy: crate::RetryPolicy,
+    pub(super) retry: Option<crate::RetryProgress>,
+    pub(super) restored_attempt: Option<crate::Attempt>,
+    pub(super) last_outcome: Option<crate::RecordedOutcome>,
     pub(super) faulted: bool,
 }
 impl State {
@@ -34,8 +38,21 @@ impl State {
     }
 
     pub(super) fn plan(&mut self, now: u64) -> OnceDemand {
-        if self.faulted || self.progress.paused() || self.progress.cancelled() {
+        if self.faulted
+            || self.restored_attempt.is_some()
+            || self.progress.paused()
+            || self.progress.cancelled()
+        {
             return OnceDemand::Inactive;
+        }
+        if let Some(retry) = &self.retry {
+            if self.progress.selection().is_none()
+                && self.progress.select(retry.scheduled_at).is_err()
+            {
+                self.faulted = true;
+                return OnceDemand::Inactive;
+            }
+            return OnceDemand::At(retry.retry_at);
         }
         if let Some(selection) = self.progress.selection() {
             return OnceDemand::At(selection.occurrence.scheduled_at);
@@ -68,16 +85,32 @@ impl State {
     }
 
     /// Commit the current selection before the adapter invokes consumer code.
-    pub(super) fn accept(&mut self, now: u64) -> Result<(Selection, bool), Error> {
+    pub(super) fn accept(&mut self, now: u64) -> Result<(Selection, bool, u32), Error> {
         if self.faulted {
             return Err(Error::Faulted);
         }
         let selection = self.progress.selection().ok_or(Error::Faulted)?;
-        let deliver = self.prepare(selection.occurrence.scheduled_at, now)?;
+        let deliver = if let Some(retry) = &self.retry {
+            if now < retry.retry_at || retry.scheduled_at != selection.occurrence.scheduled_at {
+                return Err(Error::Faulted);
+            }
+            true
+        } else {
+            self.prepare(selection.occurrence.scheduled_at, now)?
+        };
         self.progress
             .accept(selection, now)
             .map_err(|_| Error::Faulted)?;
-        Ok((selection, deliver))
+        Ok((selection, deliver, self.attempt()))
+    }
+
+    pub(super) fn attempt(&self) -> u32 {
+        if let Some(attempt) = self.restored_attempt {
+            return attempt.number;
+        }
+        self.retry
+            .as_ref()
+            .map_or(1, |retry| retry.failed_attempts + 1)
     }
 
     /// A frozen batch is never recomputed, including after pause or restoration.
@@ -115,11 +148,32 @@ impl State {
 
     /// Only the current definition may advance its completion horizon. A newer
     /// owner edit retains its own horizon even when old accepted work finishes.
-    pub(super) fn finish(&mut self, selection: Selection, now: u64) -> Result<(), Error> {
+    pub(super) fn finish(
+        &mut self,
+        selection: Selection,
+        now: u64,
+        retry_safe: bool,
+    ) -> Result<(), Error> {
         let current = selection.occurrence.revision == self.progress.revision();
+        if current
+            && retry_safe
+            && let Some(retry_at) = self.retry_policy.next_retry(self.attempt(), now)
+        {
+            let retry = crate::RetryProgress::new(
+                selection.occurrence.scheduled_at,
+                self.attempt(),
+                now,
+                retry_at,
+            )
+            .map_err(|_| Error::Faulted)?;
+            self.progress.retry(selection).map_err(|_| Error::Faulted)?;
+            self.retry = Some(retry);
+            return Ok(());
+        }
         self.progress
             .complete(selection)
             .map_err(|_| Error::Faulted)?;
+        self.retry = None;
         if current
             && self
                 .schedule
@@ -149,6 +203,64 @@ impl State {
                 .map_err(|_| Error::Faulted)?;
             self.batch = None;
         }
+        Ok(())
+    }
+
+    pub(super) fn recover(
+        &mut self,
+        selection: Selection,
+        disposition: RecoveryDisposition,
+        now: u64,
+    ) -> Result<(), Error> {
+        // Check exact authority before considering policy or mutating progress.
+        if self.progress.selection() != Some(selection) {
+            return Err(Error::StaleRecovery);
+        }
+        let attempt = crate::Attempt::new(
+            selection.occurrence.revision,
+            selection.occurrence.scheduled_at,
+            self.attempt(),
+        )
+        .map_err(|_| Error::Faulted)?;
+        let result = if disposition == RecoveryDisposition::RetrySafe {
+            crate::RecordedResult::RetryAuthorized
+        } else {
+            crate::RecordedResult::Retired
+        };
+        let record =
+            crate::RecordedOutcome::new(attempt, result, now).map_err(|_| Error::Faulted)?;
+        if disposition == RecoveryDisposition::RetrySafe {
+            if selection.occurrence.revision != self.progress.revision() {
+                return Err(Error::RetryUnavailable);
+            }
+            let retry_at = self
+                .retry_policy
+                .next_retry(self.attempt(), now)
+                .ok_or(Error::RetryUnavailable)?;
+            let retry = crate::RetryProgress::new(
+                selection.occurrence.scheduled_at,
+                self.attempt(),
+                now,
+                retry_at,
+            )
+            .map_err(|_| Error::RetryUnavailable)?;
+            self.progress
+                .reconcile_retry(selection)
+                .map_err(|_| Error::StaleRecovery)?;
+            self.retry = Some(retry);
+        } else {
+            self.progress
+                .reconcile(selection)
+                .map_err(|_| Error::StaleRecovery)?;
+            self.batch = None;
+            self.retry = None;
+            self.progress
+                .skip_through(now)
+                .map_err(|_| Error::Faulted)?;
+            self.progress.pause().map_err(|_| Error::Faulted)?;
+        }
+        self.restored_attempt = None;
+        self.last_outcome = Some(record);
         Ok(())
     }
 }

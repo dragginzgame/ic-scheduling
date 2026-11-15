@@ -32,6 +32,7 @@ pub extern "C" fn setup() {
     let handle = ic_timers::bind_watchdog(
         ["watchdog", "probe", "work"],
         NonZeroU64::new(if short { 10 } else { 1_000_000_000 }).unwrap(),
+        ic_timers::Lifetime::Retained,
         || {
             HANDLE.with(|slot| {
                 let slot = slot.borrow();
@@ -169,6 +170,7 @@ pub extern "C" fn block() {
     for index in 0..8 {
         let handle = ic_timers::bind_once(
             ["watchdog", "blocker", &index.to_string()],
+            ic_timers::Lifetime::Retained,
             move || async move {
                 let result = super::Call::new(target, "hold", super::WaitPolicy::Unbounded)
                     .execute()

@@ -1,0 +1,54 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Prepare pinned tools and locked sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup show
+          cargo fetch --locked
+          cargo fetch --manifest-path qualification/Cargo.toml --locked
+          make install-tools
+          bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$PWD" --package ic-build --version 0.73.0 --bin ic-build-release-metadata --profile debug --features cli
+      - name: Qualify native host and archive paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          uname -sm
+          make tools-check check fmt-check qualify-rust qualify-archives
+          node qualification/release-check.mjs
+  secrets:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Scan repository history once
+        shell: bash
+        run: |
+          set -euo pipefail
+          source vendor/toko-tooling/ci/tool-versions.env
+          mkdir -p target/gitleaks
+          archive="target/gitleaks/gitleaks.tar.gz"
+          curl --fail --location --retry 2 "https://github.com/gitleaks/gitleaks/releases/download/v${TOKO_TOOLING_GITLEAKS_VERSION}/gitleaks_${TOKO_TOOLING_GITLEAKS_VERSION}_linux_x64.tar.gz" -o "$archive"
+          printf '%s  %s\n' "$TOKO_TOOLING_GITLEAKS_SHA256_LINUX_X64" "$archive" | sha256sum --check --strict
+          tar -xzf "$archive" -C target/gitleaks gitleaks
+          test "$(target/gitleaks/gitleaks version)" = "$TOKO_TOOLING_GITLEAKS_VERSION"
+          target/gitleaks/gitleaks git --redact=100 --no-banner --no-color --log-level error

@@ -1,5 +1,30 @@
 # Jobs changelog
 
+## [0.37.9] - Unreleased
+
+### ✨ Added
+
+- Add bounded retries for explicit RetryableFailure outcomes, with a total-attempt
+  ceiling and capped exponential backoff. Preserve effect identity, catch-up quota
+  and owner precedence; traps still require explicit recovery.
+- Preserve pending retry counts and deadlines across pause and host-owned upgrades.
+- Add explicit Retire/RetrySafe recovery dispositions. Retry-safe reconciliation
+  preserves occurrence identity and consumed budget; both choices leave the job
+  paused. Unavailable retries leave the attempt blocked.
+
+### 💥 Changed
+
+- Require a RecoveryDisposition in recover.
+- Require RetryPolicy in bind/restore; NONE retains single-attempt behavior.
+  Context and status expose the attempt number; Armed separates ready_at from
+  the occurrence's scheduled time.
+- Checkpoint schema 6 retains pending retry data and the latest returned outcome
+  or explicit recovery disposition. Reject earlier preview schemas.
+- Add explicit unresolved checkpoint export and fresh-runtime reconstruction.
+  Preserve exact revision, occurrence and attempt number; restore blocked until
+  explicit Retire/RetrySafe reconciliation. Ordinary checkpoints still refuse
+  unresolved work. Hosts own atomic persistence and the upgrade boundary.
+
 ## [0.37.8] - Development checkpoint
 
 GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.

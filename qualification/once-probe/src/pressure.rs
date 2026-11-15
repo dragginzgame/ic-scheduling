@@ -22,6 +22,7 @@ pub extern "C" fn setup() {
     for index in 0..64 {
         let handle = ic_timers::bind_once(
             ["pressure", "once", &index.to_string()],
+            ic_timers::Lifetime::Retained,
             move || async move {
                 COUNTS.with(|counts| counts.borrow_mut().0[index] += 1);
                 let response = Call::new(target, "hold", WaitPolicy::Unbounded)
@@ -42,12 +43,16 @@ pub extern "C" fn setup() {
         HANDLES.with(|handles| handles.borrow_mut().push(handle));
     }
     assert!(matches!(
-        ic_timers::bind_once(["pressure", "once", "overflow"], || async {
-            OnceResult {
-                observation: Observation::NoWork,
-                next: OnceNext::Stop,
+        ic_timers::bind_once(
+            ["pressure", "once", "overflow"],
+            ic_timers::Lifetime::Retained,
+            || async {
+                OnceResult {
+                    observation: Observation::NoWork,
+                    next: OnceNext::Stop,
+                }
             }
-        }),
+        ),
         Err(ic_timers::Error::Capacity)
     ));
     ic0::msg_reply();

@@ -1,7 +1,7 @@
 //! One global timer and bounded isolated flights for Once and watchdog work.
 
 use crate::{
-    api::{Error, OnceDemand, OnceNext, OnceResult, WatchdogDemand, WatchdogResult},
+    api::{Error, Lifetime, OnceDemand, OnceNext, OnceResult, WatchdogDemand, WatchdogResult},
     bindings::{Accepted, Bindings, Handle, RecoveryKey, Scheduled},
     engine::{Demand, State},
     metrics::Event,
@@ -102,11 +102,28 @@ fn runtime() -> Result<Rc<Runtime>, Error> {
 pub fn metrics() -> Result<crate::Metrics, Error> {
     Ok(runtime()?.metrics.snapshot())
 }
+/// Read a coherent, identity-ordered inventory with at most 64 declarations.
+/// Observations never carry control/recovery authority. Incarnations are local
+/// to this runtime; hosts identify upgrade/reinstall boundaries when exporting.
+/// # Errors
+/// Returns Uninitialized before initialization. Faulted providers remain observable.
+#[cfg(feature = "metrics")]
+pub fn inventory() -> Result<crate::Inventory, Error> {
+    let runtime = runtime()?;
+    Ok(crate::Inventory {
+        provider_faulted: runtime.faulted.get(),
+        timers: runtime.bindings.inventory(),
+    })
+}
 /// Bind one inactive callback with nonempty owner/group/name components (64 bytes each).
 ///
 /// # Errors
 /// Returns initialization, identity, capacity or provider errors without replacing work.
-pub fn bind_once<F, Fut>(identity: [&str; 3], mut work: F) -> Result<Once, Error>
+pub fn bind_once<F, Fut>(
+    identity: [&str; 3],
+    lifetime: Lifetime,
+    mut work: F,
+) -> Result<Once, Error>
 where
     F: FnMut() -> Fut + 'static,
     Fut: Future<Output = OnceResult> + 'static,
@@ -115,7 +132,7 @@ where
     runtime.check()?;
     #[cfg(feature = "metrics")]
     let metrics = Rc::clone(&runtime.metrics);
-    let handle = runtime.bindings.bind(identity, move || {
+    let handle = runtime.bindings.bind(identity, lifetime, move || {
         #[cfg(feature = "metrics")]
         metrics.record(Event::Accepted);
         let future = work();
@@ -125,13 +142,14 @@ where
             let result = future.await;
             #[cfg(feature = "metrics")]
             metrics.record(Event::Returned(result.observation));
-            match result.next {
+            let next = match result.next {
                 OnceNext::Stop => Demand::Inactive,
                 OnceNext::At(at) => Demand::At(at),
                 OnceNext::After(delay) => ic0::time()
                     .checked_add(delay.get())
                     .map_or(Demand::Inactive, Demand::At),
-            }
+            };
+            (next, result.observation)
         }
     })?;
     Ok(Once {
@@ -140,6 +158,18 @@ where
     })
 }
 impl Once {
+    /// Remove unaccepted or settled work, releasing its declaration and captures.
+    /// Old handles and queued deliveries cannot control a replacement. Dropping
+    /// this handle alone never removes work.
+    /// # Errors
+    /// Refuses accepted work with Busy and uncertain work with RecoveryRequired;
+    /// otherwise returns stale authority or terminal provider errors.
+    pub fn remove(&self) -> Result<(), Error> {
+        let runtime = self.runtime()?;
+        runtime.check()?;
+        self.handle.remove()?;
+        runtime.arm()
+    }
     fn runtime(&self) -> Result<Rc<Runtime>, Error> {
         self.runtime.upgrade().ok_or(Error::StaleAuthority)
     }
@@ -335,7 +365,7 @@ extern "C" fn timer() {
                         // Synchronous work has no suspended provider-owned future.
                         // A trap rolls its work message back; either reply or reject
                         // definitively settles this flight, preserving its successor.
-                        match dispatch.settle() {
+                        match dispatch.settle(response.is_err()) {
                             Ok(true) if response.is_err() => {
                                 owner.record(Event::Accepted);
                                 owner.record(Event::Abandoned);
@@ -487,8 +517,8 @@ extern "C" fn dispatch() {
                 accepted,
                 finished: false,
             };
-            let next = future.await;
-            if guard.accepted.complete(next).is_err() {
+            let (next, observation) = future.await;
+            if guard.accepted.complete(next, observation).is_err() {
                 owner.fail();
             }
             guard.finished = true;
@@ -535,6 +565,7 @@ pub enum WatchdogStatus {
 pub fn bind_watchdog<F>(
     identity: [&str; 3],
     cadence: NonZeroU64,
+    lifetime: Lifetime,
     mut work: F,
 ) -> Result<Watchdog, Error>
 where
@@ -544,20 +575,33 @@ where
     runtime.check()?;
     #[cfg(feature = "metrics")]
     let metrics = Rc::clone(&runtime.metrics);
-    let handle = runtime.bindings.bind_watchdog(identity, cadence, move || {
-        #[cfg(feature = "metrics")]
-        metrics.record(Event::Accepted);
-        let result = work();
-        #[cfg(feature = "metrics")]
-        metrics.record(Event::Returned(result.observation));
-        result.next.into()
-    })?;
+    let handle = runtime
+        .bindings
+        .bind_watchdog(identity, cadence, lifetime, move || {
+            #[cfg(feature = "metrics")]
+            metrics.record(Event::Accepted);
+            let result = work();
+            #[cfg(feature = "metrics")]
+            metrics.record(Event::Returned(result.observation));
+            (result.next.into(), result.observation)
+        })?;
     Ok(Watchdog {
         runtime: Rc::downgrade(&runtime),
         handle,
     })
 }
 impl Watchdog {
+    /// Remove future and unaccepted work. Consumer-owned async effects remain
+    /// the consumer's responsibility; removal does not cancel them.
+    /// # Errors
+    /// Refuses accepted/settling callback custody with Busy; otherwise returns
+    /// stale authority or terminal provider errors.
+    pub fn remove(&self) -> Result<(), Error> {
+        let runtime = self.runtime.upgrade().ok_or(Error::StaleAuthority)?;
+        runtime.check()?;
+        self.handle.remove()?;
+        runtime.arm()
+    }
     /// Update eligibility without invoking consumer work inline.
     /// # Errors
     /// Returns stale authority or terminal entry/provider fault.

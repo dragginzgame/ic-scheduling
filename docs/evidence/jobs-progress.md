@@ -1,3 +1,6 @@
+> Current candidate: [0.45.9 / 0.37.9 qualification](release-candidate.md).
+> Earlier open-gate statements below describe their dated implementation slice.
+
 # Jobs occurrence progress — 0.37.2, 2026-11-15
 
 Implemented a private progress core before wiring Jobs into Once. Saffron remains
@@ -757,3 +760,124 @@ Reproduce with the focused commands in [qualification](../../qualification/READM
 Compiler, suppliers and locks remain those of the current 0.45.8/0.37.8 iteration.
 Combined probe SHA-256:
 `36374273fe5af238e83da5d8efa93adb600b0352fbcf085b523810b7bab5ec50`.
+
+### Retry budget planning — 0.37.9
+
+The legacy retry requirement now has a pure `RetryPolicy` planner under the
+execution feature. Admission rejects zero attempts/delays and a cap below the
+initial delay. The budget includes the initial accepted attempt. Retry delays
+double from the initial delay, clamp to the cap and add to normal failure
+completion with checked arithmetic. Evaluation is constant-time even for maximum
+u32 counters. None means no eligible deadline for a zero/exhausted count or
+timestamp overflow; there is no immediate retry or wrapped timestamp.
+
+All 32 all-feature native Jobs tests pass. New cases independently check invalid
+configuration, exact budget exhaustion, a non-power-of-two delay cap, completion
+anchoring, shift/multiplication overflow, maximum counters and unsigned deadline
+boundaries. Strict native Clippy, Rustdoc, formatting and diff checks pass. No
+dependency or execution path changed; this increment needs no installed probe.
+
+This completes only policy calculation. Automatic executor retries, accepted
+attempt persistence and recovery integration remain unfinished. ExpectedFailure
+still settles according to the existing schedule; the planner grants no replay
+authority for uncertain work. Reproduce with the focused Jobs native test command
+and `--all-features`; local versions are Timers 0.45.9 and Jobs 0.37.9, with
+unchanged compiler and suppliers.
+
+### Retry execution and pending reconstruction — 0.37.9
+
+Local observation, 2026-11-15. The planner above is now connected to execution.
+`bind`/`restore` require RetryPolicy; NONE disables retries. A normal
+RetryableFailure outcome may requeue the same job/revision/scheduled-time identity
+with a fresh delivery token and a one-based attempt number. ExpectedFailure,
+NoWork and Success settle normally. Exhaustion or deadline overflow also settles.
+Pending retries do not consume catch-up quota or reapply occurrence lateness;
+completion-relative intervals start after final settlement.
+
+Schema 5 retains RetryProgress (scheduled time, failed-attempt count, last failure
+completion and retry deadline). Decoding validates its shape and agreement with
+control, cursor and batch; restore validates schedule membership, budget and the
+policy-derived deadline before timer admission. Pause preserves the pending
+budget/deadline. Edits discard queued retries but retain accepted old-attempt
+identity; old settlement cannot request retries on the new definition. Cancellation
+and explicit reconciliation discard pending retries. Earlier preview schemas are
+rejected; no deployed-data migration is claimed.
+
+All 36 all-feature native Jobs tests and 19 default-feature tests pass. New cases
+check stale delivery authority, pause, old revisions, blocked-work refusal,
+sequence exhaustion and malformed retry records/policy associations. Strict native
+and wasm32 Clippy, driver Clippy, Rustdoc, formatting and diff checks pass.
+
+Installed `--jobs-retry` covers eleven modes with real self-call awaits:
+
+- Three-attempt exhaustion, ten-second initial delay and fifteen-second capped
+  delay; success ends at attempt two and ordinary ExpectedFailure ends at one.
+- Stable revision/scheduled identity and increasing attempts, including owner
+  edit during the second accepted attempt.
+- Armed and paused pending-retry upgrades, rejection of mismatched policies,
+  and pause during the callback. Delay and consumed budget survive reconstruction.
+- Queued cancellation, catch-up quota consumed only on final settlement, and
+  completion-relative recurrence anchored to final settlement. The completion
+  case admits retries after the original lateness tolerance has expired.
+- Factory and post-await traps on attempt two preserve uncertain attempt identity.
+  Time and pause/resume do not replay it; upgrade export refuses; explicit recovery
+  retires it and leaves the job paused.
+
+The affected existing `--jobs-initial` and `--jobs-completion` selections pass,
+including checkpoint lifecycle, downtime, bounded catch-up upgrades, owner edits,
+completion-relative settlement, cancellation and trap recovery with retries disabled.
+These passed with combined probe SHA-256
+`8e76f23e13f291a92c446ea152acea5730f09b23ee38cf6410ad2b0011b5481d`.
+The final retry fixture tightens the lateness check; its probe SHA-256 is
+`09c298d6fce47bd1f66d8d71dbef97976513e8080e5891f7894322eb51daabe7`.
+Reproduce using the focused selectors in [qualification](../../qualification/README.md).
+
+Compiler and suppliers are unchanged (Rust 1.100, Runtime 0.22.5, Testkit 0.106,
+PocketIC client 16.1 and prepared server 16.0). Product lock SHA-256:
+`f4a9eec05b30405b4af44b8b2b91d44cb6354d8f61b2ae8682def9009fc5b881`;
+qualification lock SHA-256:
+`bb9e961b782edbd6456b769c39a020905069f5299bede00b2ceb9270adce6911`.
+No dependency changes or consumer edits were needed. This qualifies pending
+normally failed work, not durable accepted/uncertain records, production resource
+bounds or consumer adoption. Running/uncertain checkpoint export still refuses.
+
+### Explicit live recovery disposition — 0.37.9
+
+Local observation, 2026-11-15. `Job::recover` now requires RecoveryDisposition.
+Retire preserves the previous retire/discard-batch/skip-through-now behavior.
+RetrySafe is an explicit owner assertion that effects have been reconciled and
+repeating the occurrence is safe. It preserves the occurrence, consumed attempt
+budget and any committed catch-up batch, and anchors backoff at reconciliation
+time. Both leave the job paused. The same exact job/selection/timer authority is
+required; this is not a second recovery mechanism or serializable replay token.
+
+RetrySafe refuses replaced revisions, exhausted/disabled retry budgets and
+unrepresentable deadlines before changing blocked progress. Refusal does not
+consume the live authority: a previously obtained matching token can still retire
+the uncertain attempt. Successful recovery invalidates old tokens. Pending retry
+checkpoints retain the reconciled budget/deadline using schema 5 without a new
+encoding. The retry timestamp now denotes normal failure completion or explicit
+retry-safe reconciliation; it never denotes an automatic uncertainty timeout.
+
+All 37 all-feature native tests and 20 default-feature tests pass. The new core
+case checks queued/running refusal, exact blocked authority, preserved cursor,
+forced pause, stale-token rejection and owner-edit precedence. Retry unit tests
+now live in their own test module under the installed Toko source-layout rules.
+Strict native/wasm32 Clippy, driver Clippy, wasm32 Rustdoc, formatting and diff
+checks pass.
+
+Installed `--jobs-retry` retains its eleven prior modes and adds seven recovery
+cases: factory/post-await uncertainty on attempt two, paused upgrade after
+retry-safe reconciliation, exhausted budget, changed revision, overflow, disabled
+retries and retained committed catch-up quota. Reconciled retries consume the
+uncertain attempt's budget rather than restarting at one. Existing
+`--jobs-initial` and `--jobs-completion` checks pass with explicit Retire, including
+foreign/stale recovery rejection, catch-up and completion-relative trap recovery.
+Combined probe SHA-256:
+`23bdafb2e61e2ebde84436c85c55b992a051c2a4a7f8b5aa333eb6daa87cbff0`.
+Compiler, suppliers and both lock hashes are unchanged from the preceding entry.
+
+This closes the live disposition step only. Persisted running/uncertain records,
+durable recorded business outcomes and consumer/resource qualification remain
+unfinished. Running/uncertain checkpoint export still refuses; recovery does not
+claim exactly-once effects or prove the owner's business reconciliation.

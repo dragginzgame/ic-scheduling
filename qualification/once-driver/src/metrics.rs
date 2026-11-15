@@ -28,5 +28,11 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
         pic.tick().await;
     }
     assert_eq!(read(pic, id, sender).await, [4, 4, 0, 2, 0, 0]);
+    assert!(
+        pic.query_call(id, sender, "inventory_check", vec![])
+            .await
+            .unwrap()
+            .is_empty()
+    );
     println!("metrics: ordinary outcomes, reentrant reads and initialization preservation pass");
 }

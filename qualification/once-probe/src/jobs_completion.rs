@@ -77,11 +77,18 @@ pub extern "C" fn setup() {
             ["completion", "jobs", "work"],
             schedule(),
             policy(),
-            Checkpoint::new(4, 1, None, None, ControlState::Paused, Some(pending)).unwrap(),
+            ic_jobs::RetryPolicy::NONE,
+            Checkpoint::new(6, 1, None, None, ControlState::Paused, Some(pending), None).unwrap(),
             work,
         )
     } else {
-        ic_jobs::bind(["completion", "jobs", "work"], schedule(), policy(), work)
+        ic_jobs::bind(
+            ["completion", "jobs", "work"],
+            schedule(),
+            policy(),
+            ic_jobs::RetryPolicy::NONE,
+            work,
+        )
     }
     .unwrap();
     if mode[0] >= 8 {
@@ -171,7 +178,8 @@ pub extern "C" fn resume() {
                 job.status().unwrap(),
                 Status::RecoveryRequired { .. }
             ));
-            job.recover(recovery).unwrap();
+            job.recover(recovery, ic_jobs::RecoveryDisposition::Retire)
+                .unwrap();
             MODE.with(|mode| mode.set(0));
         }
         job.resume().unwrap();
@@ -207,9 +215,13 @@ pub(super) fn pre_upgrade() -> bool {
         let checkpoint = job
             .checkpoint()
             .expect("host refuses unresolved completion job");
+        assert!(
+            checkpoint.retry().is_none(),
+            "fixture definition disables retries"
+        );
         let mode = MODE.with(Cell::get);
         assert!(matches!(mode, 0 | 1 | 7..=10));
-        let mut bytes = b"JOBSCMP2".to_vec();
+        let mut bytes = b"JOBSCMP4".to_vec();
         for value in [
             u64::from(mode),
             RUNS.with(Cell::get),
@@ -225,6 +237,7 @@ pub(super) fn pre_upgrade() -> bool {
         ] {
             bytes.extend(value.to_le_bytes());
         }
+        super::outcomes::append(checkpoint.last_outcome(), &mut bytes);
         if ic0::stable64_size() == 0 {
             assert_eq!(ic0::stable64_grow(1), 0);
         }
@@ -233,9 +246,9 @@ pub(super) fn pre_upgrade() -> bool {
     })
 }
 pub(super) fn post_upgrade() -> bool {
-    let mut bytes = [0; 64];
+    let mut bytes = [0; 104];
     ic0::stable64_read(&mut bytes, 0);
-    if &bytes[..8] != b"JOBSCMP2" {
+    if &bytes[..8] != b"JOBSCMP4" {
         return false;
     }
     let values: [u64; 7] = std::array::from_fn(|i| {
@@ -257,19 +270,22 @@ pub(super) fn post_upgrade() -> bool {
         assert_eq!(values[3], 0);
     }
     let checkpoint = Checkpoint::new(
-        4,
+        6,
         1,
         (values[6] == 1).then_some(values[3]),
         (control == ControlState::Active).then_some(values[4]),
         control,
         None,
+        None,
     )
     .unwrap();
+    let checkpoint = super::outcomes::restore(checkpoint, &bytes[64..]);
     ic_timers::initialize().unwrap();
     let job = ic_jobs::restore(
         ["completion", "jobs", "work"],
         schedule(),
         policy(),
+        ic_jobs::RetryPolicy::NONE,
         checkpoint,
         work,
     )

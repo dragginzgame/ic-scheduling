@@ -56,7 +56,7 @@
  }
 
  /// Reset volatile entropy and schedule bounded refill after host restoration.
-@@ -109,33 +113,42 @@
+@@ -109,33 +113,43 @@
      reconcile(false)
  }
 
@@ -95,6 +95,7 @@
 +            let handle = ic_timers::bind_watchdog(
 +                ["ic-entropy-ic", "buffer", "refill"],
 +                NonZeroU64::new(1_000_000_000).expect("one-second cadence"),
++                ic_timers::Lifetime::Retained,
 +                drive,
 +            )?;
 +            handle.set(desired)?;

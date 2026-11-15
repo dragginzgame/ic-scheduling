@@ -18,13 +18,17 @@ thread_local! {
 pub extern "C" fn setup() {
     ic_timers::initialize().unwrap();
     if ic0::msg_arg_data_size() == 0 {
-        let handle = ic_timers::bind_once(["refusal", "once", "work"], || async {
-            STARTS.with(|starts| starts.set(starts.get() + 1));
-            OnceResult {
-                observation: Observation::Success,
-                next: OnceNext::Stop,
-            }
-        })
+        let handle = ic_timers::bind_once(
+            ["refusal", "once", "work"],
+            ic_timers::Lifetime::Retained,
+            || async {
+                STARTS.with(|starts| starts.set(starts.get() + 1));
+                OnceResult {
+                    observation: Observation::Success,
+                    next: OnceNext::Stop,
+                }
+            },
+        )
         .unwrap();
         handle.set(OnceDemand::At(0)).unwrap();
         HANDLE.with(|slot| *slot.borrow_mut() = Some(handle));
@@ -36,6 +40,7 @@ pub extern "C" fn setup() {
         let handle = ic_timers::bind_watchdog(
             ["refusal", "watchdog", "work"],
             NonZeroU64::new(10).unwrap(),
+            ic_timers::Lifetime::Retained,
             || {
                 STARTS.with(|starts| starts.set(starts.get() + 1));
                 WatchdogResult {

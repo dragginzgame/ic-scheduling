@@ -77,6 +77,7 @@ pub extern "C" fn setup() {
         ["catch-up", "probe", "work"],
         Schedule::parse("* * * * *").unwrap(),
         policy(mode),
+        ic_jobs::RetryPolicy::NONE,
         work,
     )
     .unwrap();
@@ -120,7 +121,8 @@ pub extern "C" fn control() {
                 let Status::RecoveryRequired { recovery, .. } = job.status().unwrap() else {
                     ic0::trap(b"expected recovery");
                 };
-                job.recover(recovery).unwrap();
+                job.recover(recovery, ic_jobs::RecoveryDisposition::Retire)
+                    .unwrap();
                 ACTIVE.with(|active| active.set(false));
                 MODE.with(|value| value.set(0));
                 job.resume().unwrap();
@@ -169,6 +171,10 @@ pub(super) fn pre_upgrade() -> bool {
             return false;
         };
         let checkpoint = job.checkpoint().expect("host refuses unsettled catch-up");
+        assert!(
+            checkpoint.retry().is_none(),
+            "fixture definition disables retries"
+        );
         assert!(matches!(
             checkpoint.control(),
             ic_jobs::ControlState::Active | ic_jobs::ControlState::Paused
@@ -178,7 +184,7 @@ pub(super) fn pre_upgrade() -> bool {
         let pending = checkpoint
             .catch_up()
             .map_or(&[][..], CatchUpProgress::pending);
-        let mut bytes = b"CATCHUP3".to_vec();
+        let mut bytes = b"CATCHUP5".to_vec();
         bytes.extend([
             mode,
             u8::from(checkpoint.paused()),
@@ -206,6 +212,7 @@ pub(super) fn pre_upgrade() -> bool {
                 bytes.extend(at.to_le_bytes());
             }
         });
+        super::outcomes::append(checkpoint.last_outcome(), &mut bytes);
         assert!(bytes.len() <= 1024);
         bytes.resize(1024, 0);
         if ic0::stable64_size() == 0 {
@@ -218,7 +225,7 @@ pub(super) fn pre_upgrade() -> bool {
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 1024];
     ic0::stable64_read(&mut bytes, 0);
-    if &bytes[..8] != b"CATCHUP3" {
+    if &bytes[..8] != b"CATCHUP5" {
         return false;
     }
     assert!(matches!(bytes[8], 0 | 2 | 7) && bytes[9] <= 1 && bytes[11] <= 1 && bytes[12] <= 64);
@@ -246,7 +253,7 @@ pub(super) fn post_upgrade() -> bool {
     assert!(count <= 32);
     LOG.with(|log| *log.borrow_mut() = (0..count).map(|_| read(&bytes, &mut offset)).collect());
     let checkpoint = Checkpoint::new(
-        4,
+        6,
         revision,
         Some(through),
         (bytes[11] != 0).then_some(selected),
@@ -256,13 +263,16 @@ pub(super) fn post_upgrade() -> bool {
             ic_jobs::ControlState::Active
         },
         batch,
+        None,
     )
     .unwrap();
+    let checkpoint = super::outcomes::restore(checkpoint, &bytes[offset..offset + 40]);
     ic_timers::initialize().unwrap();
     let job = ic_jobs::restore(
         ["catch-up", "probe", "work"],
         Schedule::parse("* * * * *").unwrap(),
         policy(bytes[8]),
+        ic_jobs::RetryPolicy::NONE,
         checkpoint,
         work,
     )

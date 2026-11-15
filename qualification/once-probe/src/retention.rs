@@ -79,8 +79,10 @@ pub extern "C" fn setup() {
         let name = format!("{index:064}");
         let capture = Capture::new(false);
         if index % 2 == 0 {
-            let handle =
-                ic_timers::bind_once([&"o".repeat(64), &"g".repeat(64), &name], move || {
+            let handle = ic_timers::bind_once(
+                [&"o".repeat(64), &"g".repeat(64), &name],
+                ic_timers::Lifetime::Retained,
+                move || {
                     capture.touch();
                     async {
                         let _attempt = Attempt::new();
@@ -90,13 +92,15 @@ pub extern "C" fn setup() {
                             .unwrap();
                         result()
                     }
-                })
-                .unwrap();
+                },
+            )
+            .unwrap();
             HANDLES.with_borrow_mut(|handles| handles.0.push(handle));
         } else {
             let handle = ic_timers::bind_watchdog(
                 [&"o".repeat(64), &"g".repeat(64), &name],
                 NonZeroU64::new(1_000_000_000).unwrap(),
+                ic_timers::Lifetime::Retained,
                 move || {
                     capture.touch();
                     WatchdogResult {
@@ -147,16 +151,20 @@ pub extern "C" fn churn() {
             ),
         ] {
             let capture = Capture::new(true);
-            let binding =
-                ic_timers::bind_once(identity.each_ref().map(String::as_str), move || {
+            let binding = ic_timers::bind_once(
+                identity.each_ref().map(String::as_str),
+                ic_timers::Lifetime::Retained,
+                move || {
                     capture.touch();
                     async { result() }
-                });
+                },
+            );
             assert!(matches!(binding, Err(error) if error == expected));
             let capture = Capture::new(true);
             let binding = ic_timers::bind_watchdog(
                 identity.each_ref().map(String::as_str),
                 NonZeroU64::new(1_000_000_000).unwrap(),
+                ic_timers::Lifetime::Retained,
                 move || {
                     capture.touch();
                     WatchdogResult {
@@ -225,7 +233,7 @@ pub extern "C" fn drop_handles() {
         ),
     ] {
         assert!(matches!(
-            ic_timers::bind_once(identity.each_ref().map(String::as_str), || async { result() }),
+            ic_timers::bind_once(identity.each_ref().map(String::as_str), ic_timers::Lifetime::Retained, || async { result() }),
             Err(error) if error == expected
         ));
     }

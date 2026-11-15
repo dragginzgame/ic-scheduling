@@ -77,8 +77,30 @@ initial/post-await trap barriers. The aggregate `make check-once` includes it.
 Using `--jobs-initial` instead selects fixed-rate initial-deadline checks plus
 the affected Jobs checkpoint lifecycle, downtime and catch-up upgrade cases.
 It covers zero, overdue and future admission, both delivery policies, unstarted
-reconstruction and the schema 4 host fixtures. Their existing cron-only storage
+reconstruction and the schema 6 host fixtures. Their existing cron-only storage
 formats explicitly require a present cursor; the new zero fixture tests None.
+
+`--lifetimes` checks retained/removable declarations, transient settlement,
+reentrant capture destruction, cleanup traps and stale queued replacement for
+both Once and watchdog dispatch. `--diagnostics` checks bounded sorted inventory,
+normal-result counters, failure-streak resets and inert repeated reads.
+
+`--jobs-unresolved` explicitly persists running/factory-trapped/post-await-trapped
+attempts across actual upgrades. Repeated reconstruction remains blocked; owner
+edits, consumed retry budgets, catch-up custody and latest recorded outcomes survive.
+This opt-in host fixture is separate from ordinary checkpoint fixtures that refuse
+unresolved upgrades. Its encoding is fixture-owned, not a general serializer.
+
+`--jobs-retry` checks capped budgets, stable occurrence identity, success and
+ordinary failure settlement, pending armed/paused upgrades, pause during work,
+owner edits during attempt two, cancellation, catch-up quota and completion-relative
+settlement. Initial/post-await traps on attempt two must block despite later time
+and resume; unresolved upgrades refuse. Restore rejects mismatched retry policies.
+It also checks explicit retry-safe reconciliation, paused upgrades after recovery,
+retained catch-up quota and refusal for exhausted budgets, changed definitions,
+overflowing deadlines or disabled retries.
+The fixture owns its fixed definition and pending-only encoding, not a general
+application serializer.
 
 `--jobs-one-shot` runs the same admission fixture with one-shot schedules and
 adds initial/post-await trap recovery. It checks idle exhaustion, including
@@ -158,3 +180,12 @@ does not add a product fault-injection feature or test queue-full refusal.
 Its short-cadence watchdog variant verifies that cadence advances during the
 delivery retry delay, including after funding is restored, without early callback
 acceptance. The 10-nanosecond cadence is a simulator stress setting only.
+
+## Release adapters
+
+`node qualification/release-check.mjs` qualifies actual public selection refusals,
+all standard increment calculations, and each group's metadata transaction,
+including qualification lock synchronization and preservation of the other group.
+It uses the pinned prepared IC Build metadata editor and creates only ignored
+transaction fixtures; it never pushes, tags or publishes. Run `make qualify` for
+the complete local release gate, with prepared `POCKET_IC_BIN` and `ENTROPY_SOURCE`.

@@ -26,6 +26,8 @@ pub struct Checkpoint {
     pub(crate) selected_at: Option<u64>,
     pub(crate) control: ControlState,
     pub(crate) catch_up: Option<CatchUpProgress>,
+    pub(crate) retry: Option<crate::retry::RetryProgress>,
+    pub(crate) last_outcome: Option<crate::outcome::RecordedOutcome>,
 }
 
 /// Remaining oldest-first work and the fixed endpoint of a catch-up batch.
@@ -72,12 +74,23 @@ impl Checkpoint {
         &self,
         schedule: &crate::Schedule,
         policy: crate::Policy,
+        retry_policy: crate::retry::RetryPolicy,
     ) -> bool {
+        if let Some(retry) = &self.retry
+            && retry_policy.next_retry(retry.failed_attempts, retry.failed_at)
+                != Some(retry.retry_at)
+        {
+            return false;
+        }
         if self.control == ControlState::Cancelled {
             return true; // Constructor forbids any selected or remaining work.
         }
         if let Some(next) = schedule.after_settlement(self.through) {
             return self.catch_up.is_none()
+                && self
+                    .retry
+                    .as_ref()
+                    .is_none_or(|retry| Some(retry.scheduled_at) == next)
                 && (if self.control == ControlState::Paused {
                     self.selected_at.is_none()
                 } else {
@@ -85,6 +98,13 @@ impl Checkpoint {
                 });
         }
         let matches = |at| schedule.next_from(at, at) == Some(at);
+        if self
+            .retry
+            .as_ref()
+            .is_some_and(|retry| !matches(retry.scheduled_at))
+        {
+            return false;
+        }
         if self.selected_at.is_some_and(|at| !matches(at)) {
             return false;
         }
@@ -101,8 +121,8 @@ impl Checkpoint {
     /// # Errors
     /// Rejects unsupported schemas, revision zero, selected work while paused,
     /// a selected occurrence at/before settled progress, or a batch inconsistent
-    /// with the cursor/selection. Schema 4 records active, paused or cancelled
-    /// control state. Cancellation cannot retain selected work or a batch.
+    /// with the cursor/selection. Schema 6 includes pending retry identity and an optional latest outcome,
+    /// alongside consumed attempts and deadline. Cancellation cannot retain pending work.
     pub fn new(
         version: u8,
         revision: u64,
@@ -110,15 +130,25 @@ impl Checkpoint {
         selected_at: Option<u64>,
         control: ControlState,
         catch_up: Option<CatchUpProgress>,
+        retry: Option<crate::retry::RetryProgress>,
     ) -> Result<Self, CheckpointError> {
-        if version != 4 {
+        if version != 6 {
             return Err(CheckpointError::Version);
         }
         if revision == 0
             || selected_at.is_some_and(|at| {
                 control != ControlState::Active || through.is_some_and(|end| at <= end)
             })
-            || (control == ControlState::Cancelled && catch_up.is_some())
+            || (control == ControlState::Cancelled && (catch_up.is_some() || retry.is_some()))
+        {
+            return Err(CheckpointError::Progress);
+        }
+        if let Some(retry) = &retry
+            && (through.is_some_and(|end| retry.scheduled_at <= end)
+                || (control == ControlState::Active && selected_at != Some(retry.scheduled_at))
+                || catch_up
+                    .as_ref()
+                    .is_some_and(|batch| batch.pending[0] != retry.scheduled_at))
         {
             return Err(CheckpointError::Progress);
         }
@@ -134,12 +164,14 @@ impl Checkpoint {
             selected_at,
             control,
             catch_up,
+            retry,
+            last_outcome: None,
         })
     }
     /// Progress schema version for the host's encoded record.
     #[must_use]
     pub const fn version(&self) -> u8 {
-        4
+        6
     }
     /// Preserved schedule revision.
     #[must_use]
@@ -172,6 +204,29 @@ impl Checkpoint {
     #[must_use]
     pub const fn catch_up(&self) -> Option<&CatchUpProgress> {
         self.catch_up.as_ref()
+    }
+    /// Work explicitly deemed retry-safe and waiting for its next attempt, if any.
+    #[must_use]
+    pub const fn retry(&self) -> Option<&crate::retry::RetryProgress> {
+        self.retry.as_ref()
+    }
+    /// Attach the decoded latest observation; it does not change eligibility.
+    /// # Errors
+    /// Rejects an outcome from a revision newer than this job definition.
+    pub fn with_last_outcome(
+        mut self,
+        outcome: crate::outcome::RecordedOutcome,
+    ) -> Result<Self, CheckpointError> {
+        if outcome.attempt().revision() > self.revision {
+            return Err(CheckpointError::Progress);
+        }
+        self.last_outcome = Some(outcome);
+        Ok(self)
+    }
+    /// Latest completion/reconciliation observation; older history belongs to the host.
+    #[must_use]
+    pub const fn last_outcome(&self) -> Option<crate::outcome::RecordedOutcome> {
+        self.last_outcome
     }
 }
 

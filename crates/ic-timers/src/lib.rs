@@ -1,9 +1,10 @@
-//! Retained timers for isolated Internet Computer work.
+//! Timers for isolated Internet Computer work.
 //!
-//! The wasm32 API provides retained Once and synchronous watchdog callbacks.
-//! Local installed tests cover Once recovery and initial watchdog prearm safety.
-//! Opt-in `metrics` exposes inert aggregate counters; hosts own their export.
-//! Measured pressure limits and remaining lifecycle qualification are unfinished.
+//! The wasm32 API provides async Once and synchronous prearmed watchdog callbacks,
+//! with explicit retained or remove-on-stop lifetimes. Abandoned Once work requires
+//! owner reconciliation before another attempt. Hosts own upgrade reconstruction.
+//! Opt-in `metrics` exposes inert aggregate counters and bounded declaration
+//! inventory; observations never authorize scheduling or business-effect replay.
 
 // The IC provider is wasm32-only; native builds retain the pure engine tests.
 #[cfg_attr(
@@ -32,11 +33,17 @@ mod api;
 )]
 mod metrics;
 pub use api::{
-    Error, Observation, OnceDemand, OnceNext, OnceResult, WatchdogDemand, WatchdogNext,
+    Error, Lifetime, Observation, OnceDemand, OnceNext, OnceResult, WatchdogDemand, WatchdogNext,
     WatchdogResult,
 };
 #[cfg(feature = "metrics")]
 pub use metrics::Metrics;
+#[cfg(feature = "metrics")]
+mod diagnostics;
+#[cfg(feature = "metrics")]
+pub use diagnostics::{Inventory, TimerKind, TimerMeasurements, TimerPhase, TimerSnapshot};
+#[cfg(all(feature = "metrics", target_arch = "wasm32"))]
+pub use transport::inventory;
 #[cfg(all(feature = "metrics", target_arch = "wasm32"))]
 pub use transport::metrics;
 

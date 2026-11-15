@@ -217,6 +217,7 @@ fn bounded_command_sequences_preserve_progress_and_uncertainty() {
                         checkpoint.selected_at(),
                         checkpoint.control(),
                         None,
+                        None,
                     )
                     .unwrap();
                     assert_eq!(
@@ -327,4 +328,106 @@ fn cancellation_is_terminal_and_refuses_unsettled_work_without_mutation() {
         paused.checkpoint().unwrap().control(),
         ControlState::Cancelled
     );
+}
+
+#[test]
+fn retries_preserve_occurrence_but_replace_delivery_authority() {
+    let mut progress = Progress::unstarted();
+    let first = progress.select(0).unwrap();
+    assert_eq!(progress.retry(first), Err(Error::Stale));
+    progress.accept(first, 1).unwrap();
+    progress.retry(first).unwrap();
+    let second = progress.active.unwrap().selection;
+    assert_eq!(second.occurrence, first.occurrence);
+    assert_ne!(second, first);
+    assert_eq!(progress.through(), None);
+    assert_eq!(progress.complete(first), Err(Error::Stale));
+    progress.accept(second, 2).unwrap();
+    progress.pause().unwrap();
+    progress.retry(second).unwrap();
+    assert!(progress.active.is_none());
+    assert_eq!(progress.through(), None);
+    progress.resume().unwrap();
+    let third = progress.select(0).unwrap();
+    progress.block(third).unwrap();
+    assert_eq!(progress.retry(third), Err(Error::Stale));
+    progress.reconcile(third).unwrap();
+    assert_eq!(progress.through(), Some(0));
+}
+
+#[test]
+fn old_revisions_and_exhausted_delivery_sequences_cannot_retry() {
+    let mut progress = Progress::unstarted();
+    let selected = progress.select(0).unwrap();
+    progress.accept(selected, 1).unwrap();
+    progress.edit(2).unwrap();
+    assert_eq!(progress.retry(selected), Err(Error::Stale));
+    progress.complete(selected).unwrap();
+    let selected = progress.select(3).unwrap();
+    progress.accept(selected, 3).unwrap();
+    progress.sequence = u64::MAX;
+    assert_eq!(progress.retry(selected), Err(Error::Exhausted));
+    assert_eq!(progress.checkpoint(), Err(Error::Exhausted));
+}
+
+#[test]
+fn reconciled_retry_requires_exact_blocked_authority_and_stays_paused() {
+    let mut progress = Progress::unstarted();
+    let selected = progress.select(0).unwrap();
+    assert_eq!(progress.reconcile_retry(selected), Err(Error::Stale));
+    progress.accept(selected, 10).unwrap();
+    assert_eq!(progress.reconcile_retry(selected), Err(Error::Stale));
+    progress.block(selected).unwrap();
+    progress.reconcile_retry(selected).unwrap();
+    let checkpoint = progress.checkpoint().unwrap();
+    assert!(checkpoint.paused());
+    assert_eq!(checkpoint.through(), None);
+    assert_eq!(checkpoint.selected_at(), None);
+    assert_eq!(progress.reconcile_retry(selected), Err(Error::Stale));
+    assert_eq!(progress.select(0), Err(Error::Paused));
+    progress.resume().unwrap();
+    let next = progress.select(0).unwrap();
+    assert_eq!(next.occurrence, selected.occurrence);
+    assert_ne!(next, selected);
+    progress.block(next).unwrap();
+    assert_eq!(progress.reconcile_retry(selected), Err(Error::Stale));
+    progress.edit(20).unwrap();
+    assert_eq!(progress.reconcile_retry(next), Err(Error::Stale));
+    assert_eq!(progress.checkpoint(), Err(Error::RecoveryRequired));
+    progress.reconcile(next).unwrap();
+    assert_eq!(progress.through(), Some(20));
+}
+
+#[test]
+fn unresolved_reconstruction_blocks_old_identity_across_owner_edits() {
+    use crate::unresolved::{Attempt, UnresolvedCheckpoint, UnresolvedPhase};
+    for accepted in [false, true] {
+        let mut progress = Progress::unstarted();
+        assert_eq!(progress.unresolved_progress(), Err(Error::Stale));
+        let selection = progress.select(0).unwrap();
+        if accepted {
+            progress.accept(selection, 10).unwrap();
+        }
+        progress.block(selection).unwrap();
+        progress.edit(100).unwrap();
+        let record = UnresolvedCheckpoint::new(
+            1,
+            progress.unresolved_progress().unwrap(),
+            Attempt::new(1, 0, 2).unwrap(),
+            UnresolvedPhase::Uncertain,
+        )
+        .unwrap();
+        let mut restored = Progress::restore_unresolved(&record);
+        let blocked = restored.active.unwrap().selection;
+        assert_eq!(blocked.occurrence, selection.occurrence);
+        assert_eq!(restored.through(), Some(100));
+        restored.resume().unwrap();
+        assert_eq!(restored.select(200), Err(Error::RecoveryRequired));
+        assert_eq!(restored.accept(blocked, 200), Err(Error::Stale));
+        assert_eq!(restored.checkpoint(), Err(Error::RecoveryRequired));
+        assert_eq!(restored.reconcile_retry(blocked), Err(Error::Stale));
+        restored.reconcile(blocked).unwrap();
+        assert_eq!(restored.through(), Some(100));
+        assert_eq!(restored.select(200).unwrap().occurrence.revision, 2);
+    }
 }

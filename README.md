@@ -15,33 +15,32 @@ redesign. The [release scope](docs/design/release-scope.md) preserves legacy
 Timers/Jobs capabilities while deferring additional proposals. The old architecture,
 demo application and release framework are not carried forward.
 
-Status: early implementation. Jobs has Saffron-backed five-field UTC cron
+Status: release-candidate qualification. Jobs has Saffron-backed five-field UTC cron
 occurrence preview and anchored fixed-rate intervals. Schedule support is opt-in via the
 `calendar` feature. Its separate opt-in `execution` feature provides a wasm32
 skip-late and bounded catch-up execution on Once with host-owned settled/queued
-checkpoints; unresolved-work persistence remains unfinished and Jobs coalescing
+checkpoints and explicit blocked reconstruction of unresolved attempts; Jobs coalescing
 is deferred.
-Timers has an initial
+Timers has a
 [wasm32 Once provider](docs/evidence/once-provider.md), with installed checks for
 completion, trap recovery, owner precedence, held-flight pressure, low-cycle
-submission deferral and armed-deadline upgrade reconstruction. The initial
+submission deferral and armed-deadline upgrade reconstruction. The
 [watchdog provider](docs/evidence/watchdog-state.md) also has installed prearm,
 trap-survival and owner-precedence checks. Timers' opt-in `metrics` feature exposes
-aggregate counters using ic-metrics arithmetic, with host-owned export. Remaining
-resource, consumer and lifecycle qualification gates are open.
+aggregate counters and bounded per-declaration inventory using ic-metrics arithmetic,
+with host-owned export. Actual consumer adoption and production-specific budgets
+remain host responsibilities.
 Once callbacks can return `OnceNext::After(positive_delay)` to recur relative to
 completion, including awaits. Overflow stops recurrence; newer owner commands
 take precedence and traps still require explicit recovery.
 Development targets are
-Timers `0.45.8` and Jobs `0.37.8`, following the initial development checkpoint
+Timers `0.45.9` and Jobs `0.37.9`, following the initial development checkpoint
 (`0.45.0` / `0.37.0`). These remain unpublished; the last observed crates.io
 versions were `0.44.3` / `0.36.3` (registry checked 2026-11-15).
-Track changes in the [grouped changelogs](CHANGELOG.md). Development delivery is
-GitHub-only for now; both crates retain `publish = false` until the rewrite is
-complete and crates.io publication is explicitly requested.
+Track changes in the [grouped changelogs](CHANGELOG.md). Crates.io delivery is now requested. Registry metadata is prepared; publication
+requires the standard release checks and exact archive verification.
 Existing Scheduling, Canic and Entropy
-are unchanged. Size, performance and runtime safety remain unproven until the
-implementation and consumer qualification gates pass.
+are unchanged. Recorded local evidence does not establish deployment or production resource budgets.
 
 ## Development
 
@@ -89,7 +88,22 @@ Toko release, change its exact Cargo pin, update its lock selection, then run
 
 [Qualification](qualification/README.md) has its own manifest and lockfile and
 contains the calendar Wasm probe and installed executor probe. Dependency and formatting commands include
-both workspaces. No release pipeline or Git hook is installed.
+both workspaces. Standard Toko release/publication entrypoints are installed; see
+[release operations](docs/operations/releases.md). No Git hook is installed.
+
+## Timer lifetimes and observations
+
+Binding requires `Lifetime::Retained` or `Lifetime::RemoveWhenStopped`.
+Dropping a handle does not cancel work. Explicit `remove` refuses accepted or
+uncertain Once work and running/settling watchdog tickets. Transient declarations
+are removed after a committed stop and definitive settlement; newer owner demand
+wins. Old handles and queued deliveries cannot control replacement declarations.
+Callbacks and their captures are released outside registry borrows.
+
+With `metrics`, `inventory()` returns sorted bounded declaration snapshots,
+including eligibility, watchdog custody and normal-result/failure observations.
+Incarnations identify this runtime only; observations contain no recovery tokens
+and do not establish external-effect success. Hosts own export and history.
 
 ## Optional calendar support
 
@@ -118,20 +132,33 @@ See the [UTC Wasm measurements](docs/evidence/calendar-saffron.md).
 interval and preserves its original anchor. Binding selects the original first
 deadline, including zero and overdue deadlines; the explicit lateness/catch-up
 policy controls delivery. Cron binding continues to select after current time.
-Checkpoint schema 4 distinguishes no settled work from a settled zero timestamp
-and preserves Active, Paused or Cancelled control state.
+Checkpoint schema 6 distinguishes no settled work from a settled zero timestamp
+and preserves Active, Paused or Cancelled control state plus pending retry budgets.
 
 `Schedule::once(at_ns)` selects one deadline under the same delivery policies,
 including zero and overdue deadlines. After settlement or lateness skipping it
 becomes idle; an uncertain attempt still requires explicit recovery.
 
 `Job::cancel()` terminally cancels unaccepted work, including remaining catch-up
-occurrences. It survives restoration and refuses running/uncertain work. Timer
-registration removal remains unfinished.
+occurrences. It survives restoration and refuses running/uncertain work. Jobs keeps its retained timer declaration; timer clients can explicitly remove
+settled declarations.
 
 `Schedule::after_completion(first_at_ns, every_ns)` waits a positive interval
 after each normal settlement. Pause and restoration preserve the deadline;
 traps require explicit recovery. Preview methods can show only the first deadline.
+
+`bind` and `restore` take an explicit `RetryPolicy` (`NONE` disables retries).
+Only `Outcome::RetryableFailure` requests another attempt, using a total-attempt
+budget and capped exponential backoff. The job key, revision and scheduled time
+remain the same effect identity; `Context::attempt` starts at one. Pending retry
+counts and deadlines survive pause and host-owned checkpoints. Traps remain
+blocked for explicit recovery. `recover` requires `RecoveryDisposition::Retire`
+or `RetrySafe`; the latter asserts that repeating effects is safe and retains
+the attempt budget. Both leave the job paused. `unresolved_checkpoint` and `restore_unresolved`
+preserve running/uncertain attempt identity across fresh-runtime reconstruction;
+both restore blocked. Hosts own atomic encoding and the upgrade boundary.
+Checkpoints retain the latest returned outcome or recovery disposition, keyed
+by `Attempt`; older outcome history belongs to the host.
 
 The executor prerequisite probe runs with
 `make check-executor POCKET_IC_BIN=/absolute/path/to/pocket-ic` using a prepared

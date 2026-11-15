@@ -1,5 +1,19 @@
 # Timers changelog
 
+## [0.45.9] - Unreleased
+
+### ✨ Added
+
+- Require an explicit retained or remove-on-stop lifetime at binding. Add safe
+  removal, reusable bounded slots and checked declaration incarnations so stale
+  handles and queued deliveries cannot control replacements.
+- Keep running or uncertain Once work and unsettled watchdog tickets allocated.
+  Release detached callback captures outside internal borrows; qualify reentrant
+  destruction and cleanup traps in installed canisters.
+- Extend optional metrics with bounded, sorted declaration inventory and per-timer
+  acceptance, completion, abandonment and expected-failure observations. Inventory
+  carries no control or recovery authority and uses ic-metrics arithmetic.
+
 ## [0.45.8] - Development checkpoint
 
 GitHub-only version checkpoint; no Timers behavior changes in this iteration.

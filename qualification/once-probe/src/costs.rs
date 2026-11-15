@@ -27,12 +27,16 @@ pub extern "C" fn control_costs() {
     costs.push(measured(|| ()).0);
     costs.push(measured(|| ic_timers::initialize().unwrap()).0);
     let (cost, once) = measured(|| {
-        ic_timers::bind_once(["cost", "once", "primary"], || async {
-            OnceResult {
-                observation: Observation::NoWork,
-                next: OnceNext::Stop,
-            }
-        })
+        ic_timers::bind_once(
+            ["cost", "once", "primary"],
+            ic_timers::Lifetime::Retained,
+            || async {
+                OnceResult {
+                    observation: Observation::NoWork,
+                    next: OnceNext::Stop,
+                }
+            },
+        )
         .unwrap()
     });
     costs.push(cost);
@@ -40,6 +44,7 @@ pub extern "C" fn control_costs() {
         ic_timers::bind_watchdog(
             ["cost", "watchdog", "primary"],
             NonZeroU64::new(1_000_000_000).unwrap(),
+            ic_timers::Lifetime::Retained,
             || WatchdogResult {
                 observation: Observation::NoWork,
                 next: WatchdogNext::Stop,
@@ -52,12 +57,16 @@ pub extern "C" fn control_costs() {
     for index in 2..count[0] {
         let name = index.to_string();
         let (cost, _) = measured(|| {
-            ic_timers::bind_once(["cost", "filler", &name], || async {
-                OnceResult {
-                    observation: Observation::NoWork,
-                    next: OnceNext::Stop,
-                }
-            })
+            ic_timers::bind_once(
+                ["cost", "filler", &name],
+                ic_timers::Lifetime::Retained,
+                || async {
+                    OnceResult {
+                        observation: Observation::NoWork,
+                        next: OnceNext::Stop,
+                    }
+                },
+            )
             .unwrap()
         });
         last_bind = cost;
@@ -84,12 +93,16 @@ pub extern "C" fn control_costs() {
     ));
     if count[0] == 64 {
         assert!(matches!(
-            ic_timers::bind_once(["cost", "extra", "overflow"], || async {
-                OnceResult {
-                    observation: Observation::NoWork,
-                    next: OnceNext::Stop,
+            ic_timers::bind_once(
+                ["cost", "extra", "overflow"],
+                ic_timers::Lifetime::Retained,
+                || async {
+                    OnceResult {
+                        observation: Observation::NoWork,
+                        next: OnceNext::Stop,
+                    }
                 }
-            }),
+            ),
             Err(ic_timers::Error::Capacity)
         ));
     }

@@ -65,6 +65,41 @@ pub(super) struct Progress {
 }
 impl Progress {
     #[cfg(any(feature = "execution", test))]
+    pub(super) fn unresolved_progress(&self) -> Result<crate::checkpoint::Checkpoint, Error> {
+        self.check()?;
+        // The adapter supplies provider Running/RecoveryRequired evidence. A
+        // worker-message rollback can leave this local selection queued.
+        if self.active.is_none() {
+            return Err(Error::Stale);
+        }
+        Ok(crate::checkpoint::Checkpoint {
+            revision: self.revision,
+            through: self.through,
+            selected_at: None,
+            control: ControlState::Paused,
+            catch_up: None,
+            retry: None,
+            last_outcome: None,
+        })
+    }
+
+    #[cfg(any(feature = "execution", test))]
+    pub(super) fn restore_unresolved(record: &crate::unresolved::UnresolvedCheckpoint) -> Self {
+        let mut progress = Self::restore(&record.progress);
+        progress.sequence = 1;
+        progress.active = Some(Active {
+            selection: Selection {
+                occurrence: Occurrence {
+                    revision: record.attempt.revision,
+                    scheduled_at: record.attempt.scheduled_at,
+                },
+                sequence: 1,
+            },
+            phase: Phase::Blocked,
+        });
+        progress
+    }
+    #[cfg(any(feature = "execution", test))]
     pub(super) fn checkpoint(&self) -> Result<crate::checkpoint::Checkpoint, Error> {
         if self.faulted {
             return Err(Error::Exhausted);
@@ -87,6 +122,8 @@ impl Progress {
             selected_at,
             control: self.control,
             catch_up: None,
+            retry: None,
+            last_outcome: None,
         })
     }
 
@@ -232,6 +269,22 @@ impl Progress {
         Ok(())
     }
 
+    /// A normally returned retry-safe failure may queue a fresh delivery token
+    /// for the same occurrence. It does not retire progress or clear uncertainty.
+    pub(super) fn retry(&mut self, selection: Selection) -> Result<(), Error> {
+        self.check()?;
+        if selection.occurrence.revision != self.revision
+            || !matches!(self.active, Some(Active { selection: current, phase: Phase::Accepted { .. } }) if current == selection)
+        {
+            return Err(Error::Stale);
+        }
+        self.active = None;
+        if self.control == ControlState::Active {
+            self.select(selection.occurrence.scheduled_at)?;
+        }
+        Ok(())
+    }
+
     /// Timer recovery evidence may refer to queued state after an initial-message
     /// rollback. Neither a timeout nor a returned business error is such evidence.
     pub(super) fn block(&mut self, selection: Selection) -> Result<(), Error> {
@@ -262,6 +315,24 @@ impl Progress {
             return Err(Error::Stale);
         }
         self.retire(selection);
+        Ok(())
+    }
+
+    /// Explicit retry-safety evidence releases only this exact blocked attempt.
+    /// Leave selection to resume, retaining the cursor and forcing owner pause.
+    pub(super) fn reconcile_retry(&mut self, selection: Selection) -> Result<(), Error> {
+        self.check()?;
+        if selection.occurrence.revision != self.revision
+            || self.active
+                != Some(Active {
+                    selection,
+                    phase: Phase::Blocked,
+                })
+        {
+            return Err(Error::Stale);
+        }
+        self.active = None;
+        self.control = ControlState::Paused;
         Ok(())
     }
 

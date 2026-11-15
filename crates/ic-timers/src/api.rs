@@ -1,5 +1,15 @@
 //! Retained Once and synchronous watchdog scheduling contracts.
 
+/// Declaration lifetime, independent of whether a handle is retained by the host.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Lifetime {
+    /// Keep inactive declarations until explicitly removed.
+    Retained,
+    /// Release the declaration after stopping and settling accepted work.
+    /// Trapped Once work remains retained until explicit reconciliation.
+    RemoveWhenStopped,
+}
+
 /// Absolute Unix nanosecond demand. Zero is eligible, not disabled.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum OnceDemand {
@@ -48,6 +58,8 @@ pub enum Error {
     DuplicateIdentity,
     /// The provisional 64-declaration bound is full.
     Capacity,
+    /// Accepted or settling work still owns the declaration.
+    Busy,
     /// Authority is no longer current.
     StaleAuthority,
     /// Reconciliation is required before rearming.
@@ -71,6 +83,7 @@ impl From<crate::bindings::Error> for Error {
             B::InvalidIdentity => Self::InvalidIdentity,
             B::DuplicateIdentity => Self::DuplicateIdentity,
             B::Capacity => Self::Capacity,
+            B::Busy => Self::Busy,
             B::StaleAuthority => Self::StaleAuthority,
             B::Control(C::RecoveryRequired) => Self::RecoveryRequired,
             B::Control(C::StaleRecovery) => Self::StaleRecovery,

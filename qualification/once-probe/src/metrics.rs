@@ -36,6 +36,7 @@ pub extern "C" fn setup() {
     for index in 0..2 {
         let once = ic_timers::bind_once(
             ["metrics", "once", &index.to_string()],
+            ic_timers::Lifetime::Retained,
             move || async move {
                 let before = ic_timers::metrics().unwrap();
                 ic_timers::initialize().unwrap();
@@ -55,6 +56,7 @@ pub extern "C" fn setup() {
         let watchdog = ic_timers::bind_watchdog(
             ["metrics", "watchdog", &index.to_string()],
             std::num::NonZeroU64::new(1_000_000_000).unwrap(),
+            ic_timers::Lifetime::Retained,
             move || {
                 let _read = ic_timers::metrics().unwrap();
                 ic_timers::WatchdogResult {
@@ -69,6 +71,51 @@ pub extern "C" fn setup() {
         )
         .unwrap();
         watchdog.set(ic_timers::WatchdogDemand::At(0)).unwrap();
+    }
+    ic0::msg_reply();
+}
+
+/// Validate the bounded declaration inventory after the metrics fixture settles.
+/// # Panics
+/// Traps if diagnostic reads change data or mismatch committed outcomes.
+#[expect(unsafe_code, reason = "qualification owns this endpoint")]
+#[unsafe(export_name = "canister_query inventory_check")]
+pub extern "C" fn inventory_check() {
+    let inventory = ic_timers::inventory().unwrap();
+    assert!(!inventory.provider_faulted);
+    assert_eq!(inventory, ic_timers::inventory().unwrap());
+    assert_eq!(inventory.timers.len(), 4);
+    assert!(
+        inventory
+            .timers
+            .windows(2)
+            .all(|pair| pair[0].identity < pair[1].identity)
+    );
+    for timer in &inventory.timers {
+        assert_eq!(timer.identity[0], "metrics");
+        assert_eq!(timer.phase, ic_timers::TimerPhase::Inactive);
+        assert_eq!(timer.deadline, None);
+        assert!(!timer.outstanding);
+        assert_eq!(timer.lifetime, ic_timers::Lifetime::Retained);
+        let expected_failure = timer.identity[2] == "1";
+        assert_eq!(timer.measurements.accepted.exact_total(), Ok(1));
+        assert_eq!(timer.measurements.completed.exact_total(), Ok(1));
+        assert_eq!(timer.measurements.abandoned.exact_total(), Ok(0));
+        assert_eq!(
+            timer
+                .measurements
+                .consecutive_expected_failures
+                .exact_total(),
+            Ok(u128::from(expected_failure))
+        );
+        assert_eq!(
+            timer.measurements.last_observation,
+            Some(if expected_failure {
+                super::Observation::ExpectedFailure
+            } else {
+                super::Observation::NoWork
+            })
+        );
     }
     ic0::msg_reply();
 }

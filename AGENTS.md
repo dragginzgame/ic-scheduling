@@ -8,8 +8,10 @@ capabilities without copying the old architecture; defer additional proposals.
 
 The Rust workspace is unpublished, with product packages under
 crates/. Timers and Jobs have independent development versions and changelogs
-under releases/, mapped in ci/cargo-release-groups.json. Keep publish = false
-until the rewrite is complete and crates.io publication is explicitly requested.
+under releases/, mapped in ci/cargo-release-groups.json.
+The maintainer has now requested completion and crates.io delivery for both crates;
+follow the fixed completion checklist in docs/design/release-scope.md. Keep
+actual publication behind the qualified release and archive checks.
 Jobs delegates five-field UTC recurrence to Saffron, plus a
 standalone Wasm calendar probe. Calendar support is off by default behind the
 `calendar` feature. Named zones and seconds cron are outside scope; do not
@@ -19,18 +21,17 @@ recovery. Installed local tests cover basic completion, initial/post-await traps
 and owner precedence, held-flight pressure, foreign timer detection, consumer
 cleanup traps, low-cycle submission deferral and host reconstruction of an armed
 deadline across upgrade. Metrics are opt-in and inert, using ic-metrics arithmetic;
-recording must never invoke callbacks or change eligibility. Remaining consumer,
-resource and lifecycle gates are unfinished. See qualification/README.md and
+recording must never invoke callbacks or change eligibility. The complete local installed failure/lifecycle and resource suite passes; see the
+current candidate evidence for scope and remaining delivery checks. See qualification/README.md and
 docs/evidence/once-provider.md.
 Watchdog core, shared-table binding and IC transport are connected. Installed
 checks cover prearmed successor survival, owner precedence, full-flight delay and
-synthetic consumer physical-request admission. Consumer migration and measured
-resource bounds remain open.
+synthetic consumer physical-request admission. Actual consumer adoption and production budgets remain host-owned.
 See docs/evidence/watchdog-state.md.
 Jobs has occurrence-progress tests and an opt-in wasm32 Once adapter with explicit
 SkipLate or bounded CatchUp policy. Host-owned checkpoints support armed
-and paused reconstruction; running or recovery-required work refuses export.
-Schema 4 preserves control state, remaining catch-up batches and an optional settled cursor
+and paused reconstruction; ordinary export refuses running or recovery-required work.
+Schema 6 preserves control state, pending retry budgets/deadlines, remaining catch-up batches and an optional settled cursor
 across pause and upgrade. Explicit-deadline schedules admit their first deadline,
 including zero and overdue timestamps; cron starts after current time. Age is
 evaluated at batch selection; finishing skips excess and occurrences that arrived
@@ -39,7 +40,12 @@ After-completion Jobs use the cursor as their settlement horizon, preserve their
 deadline across pause/restore and have no accumulated catch-up batch.
 Terminal cancellation rejects running/uncertain work and survives checkpoints;
 it does not remove the retained timer declaration.
-Unresolved-work persistence remains unfinished; Jobs coalescing is deferred.
+Only explicit RetryableFailure outcomes or owner RetrySafe recovery permit bounded retries.
+Recovery requires an exact token and Retire/RetrySafe disposition; both leave the job paused.
+Explicit unresolved records now restore blocked with exact attempt identity; ordinary
+checkpoint export still refuses unresolved work. Schema 6 also retains the latest
+completion/reconciliation observation. Hosts own atomic storage and fresh-runtime
+reconstruction; heap snapshots are not supported. Jobs coalescing is deferred.
 See docs/evidence/jobs-progress.md.
 
 The root Cargo.toml owns product dependencies. Qualification owns its own

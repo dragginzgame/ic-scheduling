@@ -72,11 +72,27 @@ pub extern "C" fn setup() {
             ["initial", "fixed", "job"],
             schedule,
             policy,
-            Checkpoint::new(4, 1, None, Some(0), ic_jobs::ControlState::Active, None).unwrap(),
+            ic_jobs::RetryPolicy::NONE,
+            Checkpoint::new(
+                6,
+                1,
+                None,
+                Some(0),
+                ic_jobs::ControlState::Active,
+                None,
+                None,
+            )
+            .unwrap(),
             work,
         )
     } else {
-        ic_jobs::bind(["initial", "fixed", "job"], schedule, policy, work)
+        ic_jobs::bind(
+            ["initial", "fixed", "job"],
+            schedule,
+            policy,
+            ic_jobs::RetryPolicy::NONE,
+            work,
+        )
     }
     .unwrap();
     assert!(
@@ -138,7 +154,8 @@ pub extern "C" fn recover() {
         else {
             ic0::trap(b"lost one-shot uncertainty");
         };
-        job.recover(recovery).unwrap();
+        job.recover(recovery, ic_jobs::RecoveryDisposition::Retire)
+            .unwrap();
         job.resume().unwrap();
         assert!(matches!(job.status().unwrap(), Status::Idle));
         assert!(job.checkpoint().unwrap().through().is_some());

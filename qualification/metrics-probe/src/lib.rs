@@ -41,29 +41,34 @@ fn self_id() -> Principal {
 pub extern "C" fn setup() {
     let before = ic0::performance_counter(0);
     ic_timers::initialize().unwrap();
-    let once = ic_timers::bind_once(["metrics-cost", "once", "work"], || {
-        cost(1, ic0::performance_counter(0));
-        async {
-            count(0);
-            assert!(
-                Call::new(self_id(), "echo", WaitPolicy::Unbounded)
-                    .execute()
-                    .await
-                    .is_ok()
-            );
-            cost(2, ic0::performance_counter(0));
-            count(1);
-            OnceResult {
-                observation: Observation::ExpectedFailure,
-                next: OnceNext::Stop,
+    let once = ic_timers::bind_once(
+        ["metrics-cost", "once", "work"],
+        ic_timers::Lifetime::Retained,
+        || {
+            cost(1, ic0::performance_counter(0));
+            async {
+                count(0);
+                assert!(
+                    Call::new(self_id(), "echo", WaitPolicy::Unbounded)
+                        .execute()
+                        .await
+                        .is_ok()
+                );
+                cost(2, ic0::performance_counter(0));
+                count(1);
+                OnceResult {
+                    observation: Observation::ExpectedFailure,
+                    next: OnceNext::Stop,
+                }
             }
-        }
-    })
+        },
+    )
     .unwrap();
     once.set(OnceDemand::At(0)).unwrap();
     let watchdog = ic_timers::bind_watchdog(
         ["metrics-cost", "watchdog", "work"],
         NonZeroU64::new(1_000_000_000).unwrap(),
+        ic_timers::Lifetime::Retained,
         || {
             cost(3, ic0::performance_counter(0));
             count(2);

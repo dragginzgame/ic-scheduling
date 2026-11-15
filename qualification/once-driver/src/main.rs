@@ -22,7 +22,14 @@ async fn run() {
     let focused = args.next();
     assert!(focused.as_deref().is_none_or(|arg| matches!(
         arg,
-        "--after-completion" | "--jobs-initial" | "--jobs-one-shot" | "--jobs-completion"
+        "--after-completion"
+            | "--jobs-initial"
+            | "--jobs-one-shot"
+            | "--jobs-completion"
+            | "--jobs-retry"
+            | "--jobs-unresolved"
+            | "--lifetimes"
+            | "--diagnostics"
     )));
     let server = std::env::var_os("POCKET_IC_BIN").expect("prepared PocketIC 16.0.0 server");
     let pic = PocketIcBuilder::new()
@@ -37,7 +44,16 @@ async fn run() {
     }
     let external = pic.create_canister().await;
     if focused.is_some() {
-        if focused.as_deref() == Some("--jobs-completion") {
+        if focused.as_deref() == Some("--diagnostics") {
+            metrics::check(&pic, &wasm, external).await;
+        } else if focused.as_deref() == Some("--lifetimes") {
+            lifetimes::check(&pic, &wasm, external).await;
+        } else if focused.as_deref() == Some("--jobs-unresolved") {
+            jobs_unresolved::check(&pic, &wasm, external).await;
+        } else if focused.as_deref() == Some("--jobs-retry") {
+            jobs_retry::check(&pic, &wasm, external).await;
+            jobs_retry::recovery(&pic, &wasm, external).await;
+        } else if focused.as_deref() == Some("--jobs-completion") {
             jobs_completion::check(&pic, &wasm, external).await;
         } else if focused.as_deref() == Some("--jobs-one-shot") {
             jobs_initial::check(&pic, &wasm, external, true).await;
@@ -156,6 +172,10 @@ async fn run() {
     jobs_boundaries::check(&pic, &wasm, external).await;
     jobs_initial::check(&pic, &wasm, external, false).await;
     jobs_initial::check(&pic, &wasm, external, true).await;
+    lifetimes::check(&pic, &wasm, external).await;
+    jobs_unresolved::check(&pic, &wasm, external).await;
+    jobs_retry::check(&pic, &wasm, external).await;
+    jobs_retry::recovery(&pic, &wasm, external).await;
     jobs_completion::check(&pic, &wasm, external).await;
     jobs_boundaries::ahead(&pic, &wasm, external).await;
     jobs_catch_up::check(&pic, &wasm, external).await;
@@ -190,5 +210,8 @@ mod jobs_pressure;
 mod jobs_boundaries;
 mod jobs_completion;
 mod jobs_initial;
+mod jobs_retry;
+mod jobs_unresolved;
+mod lifetimes;
 
 mod jobs_catch_up;
