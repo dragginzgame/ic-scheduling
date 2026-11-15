@@ -19,8 +19,10 @@ occurrence preview. Calendar support is opt-in via the
 `calendar` feature. Jobs execution is not implemented. Timers has an initial
 [wasm32 Once provider](docs/evidence/once-provider.md), with installed checks for
 completion, trap recovery, owner precedence, held-flight pressure, low-cycle
-submission deferral and armed-deadline upgrade reconstruction. Watchdog, metrics,
-instruction measurements and remaining failure/lifecycle qualification are open.
+submission deferral and armed-deadline upgrade reconstruction. The initial
+[watchdog provider](docs/evidence/watchdog-state.md) also has installed prearm,
+trap-survival and owner-precedence checks. Watchdog pressure, metrics, instruction
+measurements and remaining failure/lifecycle qualification are open.
 Development targets are
 Timers `0.45.1` and Jobs `0.37.1`, following the initial development checkpoint
 (`0.45.0` / `0.37.0`). These remain unpublished; the last observed crates.io

@@ -19,8 +19,10 @@ cleanup traps, low-cycle submission deferral and host reconstruction of an armed
 deadline across upgrade. Watchdogs, metrics, instruction measurements and remaining
 failure/lifecycle gates remain
 unfinished. See qualification/README.md and docs/evidence/once-provider.md.
-The private watchdog core has native transition tests; its binding and transport
-integration are next. See docs/evidence/watchdog-state.md.
+Watchdog core, shared-table binding and IC transport are connected. Installed
+checks cover prearmed successor survival and owner precedence; delayed-flight
+pressure and consumer physical-request admission remain open.
+See docs/evidence/watchdog-state.md.
 
 The root Cargo.toml owns product dependencies. Qualification owns its own
 catalog and lockfile; dependencies point from qualification to products only.

@@ -87,6 +87,7 @@ async fn run() {
     lifecycle::check(&pic, &wasm, external).await;
     refusal::check(&pic, &wasm, external).await;
     held_upgrade::check(&pic, &wasm, external).await;
+    watchdog::check(&pic, &wasm, external).await;
     pic.drop().await;
     println!("Once installed lifecycle, authentication and pressure checks passed");
 }
@@ -98,3 +99,5 @@ mod lifecycle;
 mod refusal;
 
 mod held_upgrade;
+
+mod watchdog;

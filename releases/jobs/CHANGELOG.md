@@ -1,8 +1,10 @@
 # Jobs changelog
 
-## [0.37.1] - Unreleased
+## [0.37.1] - Development checkpoint
 
-Next development iteration. No changes recorded yet; crates.io publication remains disabled.
+GitHub-only checkpoint; not a crates.io release.
+
+No product changes in this iteration. Crates.io publication remains disabled.
 
 ## [0.37.0] - Development checkpoint
 

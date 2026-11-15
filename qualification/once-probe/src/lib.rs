@@ -146,3 +146,5 @@ impl Drop for CleanupTrap {
 mod lifecycle;
 
 mod refusal;
+
+mod watchdog;

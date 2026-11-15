@@ -1,19 +1,29 @@
 # Timers changelog
 
-## [0.45.1] - Unreleased
+## [0.45.1] - Development checkpoint
+
+GitHub-only checkpoint; not a crates.io release. Remaining qualification gates
+continue to block publication.
 
 ### ✨ Added
 
+- Connect watchdogs to the shared IC timer, bounded flights and authenticated
+  dispatch. Add synchronous binding, demand and status APIs; preserve cadence
+  advancement independently of delivery pressure and retain tickets until settlement.
+
 - Add the private watchdog state core: cadence advancement, coalesced work tickets,
-  owner precedence, settlement custody and checked exhaustion. Public binding and
-  installed watchdog execution remain unfinished.
+  owner precedence, settlement custody and checked exhaustion.
+- Retain private synchronous watchdog callbacks in the same bounded declaration
+  table as Once, with shared identity admission and callback execution outside
+  table borrows.
 
 - Add the initial wasm32 Once provider: idempotent initialization, retained
   binding, explicit owner control/status/recovery and isolated async execution.
 - Bound self-call flights and per-turn submission, authenticate dispatch, fence
   upgrade-era messages, back off submission pressure and detect timer interference.
   Retain flight evidence so initial and post-await traps cannot silently replay work.
-- Add the Cargo global-timer singleton guard. Watchdog and metrics remain unfinished.
+- Add the Cargo global-timer singleton guard. Watchdog pressure qualification and
+  metrics remain unfinished.
 
 ### 🐛 Fixed
 

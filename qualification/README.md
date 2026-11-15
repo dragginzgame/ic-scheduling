@@ -47,6 +47,11 @@ The Once fixture is wasm32-only. Lint it with
 `cargo clippy --manifest-path qualification/Cargo.toml -p once-probe --target wasm32-unknown-unknown --locked --offline -- -D warnings`.
 Lint its host driver separately with `-p once-driver --all-targets`.
 
+The same installed fixture/driver now exercises watchdogs through the shared
+product provider: prearmed successor survival across work traps, Continue cadence,
+and reentrant owner precedence. Run with `make check-once`; the historical target
+name is retained. See [watchdog evidence](../docs/evidence/watchdog-state.md).
+
 The Once pressure scenario uses Testkit’s `held-reply-fixtures` and its
 nonblocking client. It keeps simulated time fixed while HTTP barriers are held,
 releases exact requests explicitly, then awaits instance cleanup. This feature

@@ -1,8 +1,8 @@
-//! One global timer, bounded flights and authenticated isolated Once work.
+//! One global timer and bounded isolated flights for Once and watchdog work.
 
 use crate::{
-    api::{Error, OnceDemand, OnceNext, OnceResult},
-    bindings::{Accepted, Bindings, Dispatch, Handle, RecoveryKey},
+    api::{Error, OnceDemand, OnceNext, OnceResult, WatchdogDemand, WatchdogResult},
+    bindings::{Accepted, Bindings, Handle, RecoveryKey, Scheduled},
     engine::{Demand, State},
 };
 use ic_platform_runtime::{
@@ -13,6 +13,7 @@ use ic_platform_runtime::{
 use std::{
     cell::{Cell, RefCell},
     future::Future,
+    num::NonZeroU64,
     rc::{Rc, Weak},
 };
 
@@ -23,7 +24,7 @@ const METHOD: &str = "__ic_scheduling_once";
 
 struct Flight {
     id: u64,
-    dispatch: Dispatch,
+    dispatch: Scheduled,
     accepted: Option<Accepted>,
 }
 struct Runtime {
@@ -172,11 +173,30 @@ impl Runtime {
     }
     fn arm(&self) -> Result<(), Error> {
         self.check()?;
-        let (eligible, full) = {
+        let (eligible, cadence, full) = {
             let flights = self.flights.borrow();
-            let submitted: Vec<_> = flights.iter().map(|flight| &flight.dispatch).collect();
+            let submitted: Vec<_> = flights
+                .iter()
+                .filter_map(|flight| match &flight.dispatch {
+                    Scheduled::Once(dispatch) => Some(dispatch),
+                    _ => None,
+                })
+                .collect();
+            let watchdogs: Vec<_> = flights
+                .iter()
+                .filter_map(|flight| match &flight.dispatch {
+                    Scheduled::Watchdog(dispatch) => Some(dispatch),
+                    _ => None,
+                })
+                .collect();
+            let (cadence, pending) = self.bindings.watchdog_wake(&watchdogs);
             (
-                self.bindings.deadline(&submitted),
+                self.bindings
+                    .deadline(&submitted)
+                    .into_iter()
+                    .chain(pending.then_some(0))
+                    .min(),
+                cadence,
                 flights.len() == MAX_FLIGHTS,
             )
         };
@@ -198,6 +218,18 @@ impl Runtime {
                     next
                 }
             }
+        };
+        // Cadence control must keep advancing even when delivery is backpressured.
+        let deadline = match cadence {
+            Some(at) => {
+                let Some(earliest) = ic0::time().checked_add(1) else {
+                    self.fail();
+                    return Err(Error::Faulted);
+                };
+                let at = at.max(earliest);
+                if deadline == 0 { at } else { deadline.min(at) }
+            }
+            None => deadline,
         };
         let previous = ic0::global_timer_set(deadline);
         if previous != self.timer.replace(deadline) {
@@ -225,20 +257,26 @@ extern "C" fn timer() {
     if runtime.check().is_err() {
         return;
     }
+    runtime.bindings.advance_watchdogs(ic0::time());
+    // A cadence wake advances control state but must not bypass delivery backoff.
+    if ic0::time() < runtime.retry_at.get() {
+        let _ = runtime.arm();
+        return;
+    }
     executor::in_tracking_executor_context(|| {
         let mut submitted = 0;
         for _ in 0..crate::bindings::CAPACITY {
             if submitted == PER_TURN || runtime.flights.borrow().len() == MAX_FLIGHTS {
                 break;
             }
-            let Some(dispatch) = runtime.bindings.due(ic0::time()) else {
+            let Some(dispatch) = runtime.bindings.select(ic0::time(), true) else {
                 break;
             };
             if runtime
                 .flights
                 .borrow()
                 .iter()
-                .any(|flight| flight.dispatch.same(&dispatch))
+                .any(|flight| same(&flight.dispatch, &dispatch))
             {
                 continue;
             }
@@ -281,6 +319,13 @@ extern "C" fn timer() {
                             Some(at) => owner.retry_at.set(at),
                             None => owner.fail(),
                         }
+                    } else if let Scheduled::Watchdog(dispatch) = &flight.dispatch {
+                        // Synchronous work has no suspended provider-owned future.
+                        // A trap rolls its work message back; either reply or reject
+                        // definitively settles this flight, preserving its successor.
+                        if dispatch.settle().is_err() {
+                            owner.fail();
+                        }
                     } else if response.is_err() {
                         if let Some(accepted) = flight.accepted {
                             // Do not infer termination solely from a rejection. A live
@@ -288,7 +333,9 @@ extern "C" fn timer() {
                             if accepted.is_running().unwrap_or(true) {
                                 owner.fail();
                             }
-                        } else if owner.bindings.rejected(&flight.dispatch).is_err() {
+                        } else if let Scheduled::Once(dispatch) = &flight.dispatch
+                            && owner.bindings.rejected(dispatch).is_err()
+                        {
                             owner.fail();
                         }
                     }
@@ -374,6 +421,20 @@ extern "C" fn dispatch() {
         ic0::msg_reply();
         return;
     };
+    let selected = match selected {
+        Scheduled::Watchdog(dispatch) => {
+            executor::in_tracking_executor_context(|| {
+                if runtime.bindings.run_watchdog(&dispatch).is_err() {
+                    runtime.fail();
+                    ic0::trap(b"watchdog acceptance failed");
+                }
+            });
+            let _ = runtime.arm();
+            ic0::msg_reply();
+            return;
+        }
+        Scheduled::Once(dispatch) => dispatch,
+    };
     executor::in_tracking_executor_context(|| {
         let owner = Rc::clone(&runtime);
         let _task = executor::spawn_protected(async move {
@@ -411,4 +472,82 @@ extern "C" fn dispatch() {
             ic0::msg_reply();
         });
     });
+}
+
+fn same(a: &Scheduled, b: &Scheduled) -> bool {
+    match (a, b) {
+        (Scheduled::Once(a), Scheduled::Once(b)) => a.same(b),
+        (Scheduled::Watchdog(a), Scheduled::Watchdog(b)) => a.same(b),
+        _ => false,
+    }
+}
+
+/// Retained synchronous admission callback. Dropping the handle does not cancel it.
+pub struct Watchdog {
+    runtime: Weak<Runtime>,
+    handle: crate::bindings::watchdog::WatchdogHandle,
+}
+/// Bounded watchdog eligibility and outstanding-ticket observation.
+pub enum WatchdogStatus {
+    /// No future cadence; an accepted/settling ticket may remain outstanding.
+    Inactive {
+        /// Whether transport still owns a work ticket.
+        outstanding: bool,
+    },
+    /// Absolute next cadence deadline.
+    Armed {
+        /// Unix nanosecond deadline.
+        at: u64,
+        /// Whether transport still owns a work ticket.
+        outstanding: bool,
+    },
+    /// Terminal entry or provider fault.
+    Faulted,
+}
+/// Bind an inactive synchronous watchdog, with cadence in nanoseconds.
+/// Consumer-owned asynchronous work must enforce its own physical-request admission.
+/// # Errors
+/// Returns initialization, identity, capacity or provider errors.
+pub fn bind_watchdog<F>(
+    identity: [&str; 3],
+    cadence: NonZeroU64,
+    mut work: F,
+) -> Result<Watchdog, Error>
+where
+    F: FnMut() -> WatchdogResult + 'static,
+{
+    let runtime = runtime()?;
+    runtime.check()?;
+    let handle = runtime
+        .bindings
+        .bind_watchdog(identity, cadence, move || work().next.into())?;
+    Ok(Watchdog {
+        runtime: Rc::downgrade(&runtime),
+        handle,
+    })
+}
+impl Watchdog {
+    /// Update eligibility without invoking consumer work inline.
+    /// # Errors
+    /// Returns stale authority or terminal entry/provider fault.
+    pub fn set(&self, demand: WatchdogDemand) -> Result<(), Error> {
+        let runtime = self.runtime.upgrade().ok_or(Error::StaleAuthority)?;
+        runtime.check()?;
+        self.handle.set(demand.into(), ic0::time())?;
+        runtime.arm()
+    }
+    /// Observe this declaration without controlling consumer-owned async work.
+    /// # Errors
+    /// Returns stale authority if the runtime is gone.
+    pub fn status(&self) -> Result<WatchdogStatus, Error> {
+        let runtime = self.runtime.upgrade().ok_or(Error::StaleAuthority)?;
+        let (deadline, outstanding, faulted) = self.handle.status()?;
+        Ok(if runtime.faulted.get() || faulted {
+            WatchdogStatus::Faulted
+        } else if let Some(at) = deadline {
+            WatchdogStatus::Armed { at, outstanding }
+        } else {
+            WatchdogStatus::Inactive { outstanding }
+        })
+    }
 }

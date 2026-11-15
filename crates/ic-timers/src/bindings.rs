@@ -1,4 +1,4 @@
-//! Retained declarations and callback ownership, awaiting the IC transport.
+//! Shared retained declarations and callback ownership for Once and watchdogs.
 //!
 //! This private runtime is not a provider: setting demand does not arm a platform
 //! timer. Wire tokens and host lifecycle initialization belong to transport.
@@ -30,8 +30,26 @@ struct Identity([String; 3]);
 
 struct Entry {
     identity: Identity,
-    state: OnceState,
-    factory: Factory,
+    kind: Kind,
+}
+
+enum Kind {
+    Once {
+        state: OnceState,
+        factory: Factory,
+    },
+    Watchdog {
+        state: crate::watchdog::WatchdogState,
+        callback: watchdog::Callback,
+    },
+}
+impl Kind {
+    fn once(&mut self) -> Result<(&mut OnceState, &Factory), Error> {
+        match self {
+            Self::Once { state, factory } => Ok((state, factory)),
+            Self::Watchdog { .. } => Err(Error::StaleAuthority),
+        }
+    }
 }
 
 struct Table {
@@ -63,6 +81,12 @@ pub(super) struct Accepted {
     attempt: Attempt,
 }
 
+#[derive(Clone)]
+pub(super) enum Scheduled {
+    Once(Dispatch),
+    Watchdog(watchdog::Dispatch),
+}
+
 /// Recovery authority includes its declaration, not only an attempt counter.
 pub(super) struct RecoveryKey {
     table: Weak<RefCell<Table>>,
@@ -83,6 +107,16 @@ impl Bindings {
         F: FnMut() -> Fut + 'static,
         Fut: Future<Output = Demand> + 'static,
     {
+        self.insert(
+            identity,
+            Kind::Once {
+                state: OnceState::new(),
+                factory: Rc::new(RefCell::new(Box::new(move || Box::pin(work())))),
+            },
+        )
+    }
+
+    fn insert(&self, identity: [&str; 3], kind: Kind) -> Result<Handle, Error> {
         if identity
             .iter()
             .any(|part| part.is_empty() || part.len() > 64)
@@ -91,8 +125,7 @@ impl Bindings {
         }
         let identity = Identity(identity.map(str::to_owned));
         // The outer owner ensures rejected captures drop after the table borrow.
-        let mut factory: Option<Factory> =
-            Some(Rc::new(RefCell::new(Box::new(move || Box::pin(work())))));
+        let mut kind = Some(kind);
         let result = {
             let mut table = self.0.borrow_mut();
             if table.entries.iter().any(|entry| entry.identity == identity) {
@@ -103,8 +136,7 @@ impl Bindings {
                 let slot = table.entries.len();
                 table.entries.push(Entry {
                     identity,
-                    state: OnceState::new(),
-                    factory: factory.take().expect("factory retained until admission"),
+                    kind: kind.take().expect("callback retained until admission"),
                 });
                 Ok(Handle {
                     table: Rc::downgrade(&self.0),
@@ -112,24 +144,46 @@ impl Bindings {
                 })
             }
         };
-        drop(factory);
+        drop(kind);
         result
     }
 
     /// Return one due reservation, rotating across the bounded table. Transport
     /// must reserve flight capacity and suppress duplicate submission itself.
+    #[cfg(test)]
     pub(super) fn due(&self, now: u64) -> Option<Dispatch> {
+        match self.select(now, false) {
+            Some(Scheduled::Once(dispatch)) => Some(dispatch),
+            _ => None,
+        }
+    }
+
+    pub(super) fn select(&self, now: u64, include_watchdogs: bool) -> Option<Scheduled> {
         let mut table = self.0.borrow_mut();
         let count = table.entries.len();
         for _ in 0..count {
             let slot = table.cursor;
             table.cursor = (slot + 1) % count;
-            if let Ok(Some(ticket)) = table.entries[slot].state.due(now) {
-                return Some(Dispatch {
-                    table: Rc::downgrade(&self.0),
-                    slot,
-                    ticket,
-                });
+            match &mut table.entries[slot].kind {
+                Kind::Once { state, .. } => {
+                    if let Ok(Some(ticket)) = state.due(now) {
+                        return Some(Scheduled::Once(Dispatch {
+                            table: Rc::downgrade(&self.0),
+                            slot,
+                            ticket,
+                        }));
+                    }
+                }
+                Kind::Watchdog { state, .. } if include_watchdogs => {
+                    if let Some(ticket) = state.pending() {
+                        return Some(Scheduled::Watchdog(watchdog::Dispatch {
+                            table: Rc::downgrade(&self.0),
+                            slot,
+                            ticket,
+                        }));
+                    }
+                }
+                _ => {}
             }
         }
         None
@@ -141,17 +195,22 @@ impl Bindings {
             .entries
             .iter()
             .enumerate()
-            .filter_map(|(slot, entry)| match entry.state.state() {
-                State::Armed(at)
-                    if !submitted.iter().any(|dispatch| {
-                        dispatch.slot == slot
-                            && Weak::ptr_eq(&dispatch.table, &Rc::downgrade(&self.0))
-                            && entry.state.has_ticket(dispatch.ticket)
-                    }) =>
-                {
-                    Some(at)
+            .filter_map(|(slot, entry)| {
+                let Kind::Once { state, .. } = &entry.kind else {
+                    return None;
+                };
+                match state.state() {
+                    State::Armed(at)
+                        if !submitted.iter().any(|dispatch| {
+                            dispatch.slot == slot
+                                && Weak::ptr_eq(&dispatch.table, &Rc::downgrade(&self.0))
+                                && state.has_ticket(dispatch.ticket)
+                        }) =>
+                    {
+                        Some(at)
+                    }
+                    _ => None,
                 }
-                _ => None,
             })
             .min()
     }
@@ -168,12 +227,9 @@ impl Bindings {
             .entries
             .get_mut(dispatch.slot)
             .ok_or(Error::StaleAuthority)?;
-        if let Some(attempt) = entry
-            .state
-            .accept(dispatch.ticket)
-            .map_err(Error::Control)?
-        {
-            entry.state.abandon(attempt);
+        let (state, _) = entry.kind.once()?;
+        if let Some(attempt) = state.accept(dispatch.ticket).map_err(Error::Control)? {
+            state.abandon(attempt);
         }
         Ok(())
     }
@@ -193,11 +249,11 @@ impl Bindings {
                 .entries
                 .get_mut(dispatch.slot)
                 .ok_or(Error::StaleAuthority)?;
-            entry
-                .state
+            let (state, factory) = entry.kind.once()?;
+            state
                 .accept(dispatch.ticket)
                 .map_err(Error::Control)?
-                .map(|attempt| (attempt, Rc::clone(&entry.factory)))
+                .map(|attempt| (attempt, Rc::clone(factory)))
         };
         let Some((attempt, factory)) = selected else {
             return Ok(None);
@@ -220,7 +276,7 @@ impl Handle {
             .entries
             .get_mut(self.slot)
             .ok_or(Error::StaleAuthority)?;
-        Ok(f(&mut entry.state))
+        Ok(f(entry.kind.once()?.0))
     }
 
     pub(super) fn set(&self, demand: Demand) -> Result<(), Error> {
@@ -274,6 +330,8 @@ impl Accepted {
 
 #[cfg(test)]
 mod tests;
+
+pub(super) mod watchdog;
 
 impl Dispatch {
     #[cfg(target_arch = "wasm32")]

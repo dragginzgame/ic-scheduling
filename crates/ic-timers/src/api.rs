@@ -1,4 +1,4 @@
-//! Initial Once-only public contract. Watchdog support is not implemented yet.
+//! Retained Once and synchronous watchdog scheduling contracts.
 
 /// Absolute Unix nanosecond demand. Zero is eligible, not disabled.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -79,6 +79,52 @@ impl From<OnceDemand> for crate::engine::Demand {
         match value {
             OnceDemand::Inactive => Self::Inactive,
             OnceDemand::At(at) => Self::At(at),
+        }
+    }
+}
+
+/// Owner demand for a retained synchronous watchdog.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WatchdogDemand {
+    /// Invalidate future and queued unaccepted work.
+    Inactive,
+    /// Preserve the deadline, or start at now plus cadence when inactive.
+    KeepCadence,
+    /// Replace eligibility with an absolute Unix nanosecond deadline.
+    At(u64),
+}
+/// Synchronous callback decision, subordinate to newer owner commands.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WatchdogNext {
+    /// Stop future opportunities.
+    Stop,
+    /// Retain the successor already committed by timer control.
+    Continue,
+    /// Replace the successor with an absolute deadline.
+    At(u64),
+}
+/// Watchdog observation and scheduling decision; not an async execution lease.
+pub struct WatchdogResult {
+    /// Consumer outcome; metrics export remains unfinished.
+    pub observation: Observation,
+    /// Proposed successor.
+    pub next: WatchdogNext,
+}
+impl From<WatchdogDemand> for crate::watchdog::Demand {
+    fn from(value: WatchdogDemand) -> Self {
+        match value {
+            WatchdogDemand::Inactive => Self::Inactive,
+            WatchdogDemand::KeepCadence => Self::KeepCadence,
+            WatchdogDemand::At(at) => Self::At(at),
+        }
+    }
+}
+impl From<WatchdogNext> for crate::watchdog::Next {
+    fn from(value: WatchdogNext) -> Self {
+        match value {
+            WatchdogNext::Stop => Self::Stop,
+            WatchdogNext::Continue => Self::Continue,
+            WatchdogNext::At(at) => Self::At(at),
         }
     }
 }
