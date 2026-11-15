@@ -881,3 +881,40 @@ This closes the live disposition step only. Persisted running/uncertain records,
 durable recorded business outcomes and consumer/resource qualification remain
 unfinished. Running/uncertain checkpoint export still refuses; recovery does not
 claim exactly-once effects or prove the owner's business reconciliation.
+
+### State and checkpoint consolidation — pending 0.38.0, 2026-11-15
+
+Local working-tree qualification against published baseline f04d25d:
+
+- One State owns progress, recurrence/retry policy, fault status and restored
+  attempt identity. Physical execution and recovery authority remain in Timers.
+- Checkpoint schema 7 replaces the separate unresolved wrapper. Ordinary export
+  still refuses unsettled work; ordinary restore rejects unresolved data before
+  admitting a declaration. Explicit unresolved restoration reconstructs blocked.
+- The native restored-attempt regression retains attempt 2 through blocking and
+  reconciliation, permits only attempt 3 under a three-attempt budget, and then
+  exhausts the occurrence. Existing transition coverage is retained.
+- Workspace all-feature native tests: Jobs 42 and Timers 28 passed. Default and
+  calendar-only Jobs tests passed. Strict native/Wasm product Clippy, Wasm probe
+  Clippy, native/Wasm rustdoc and shared formatting checks passed.
+- Full `make check-once` passed using PocketIC 16 via ic-testkit, including actual
+  upgrade, initial/post-await traps, retry recovery, owner edits, catch-up,
+  completion-relative schedules, pressure and timer lifetime cases. PocketIC
+  required local server access outside the restricted network sandbox.
+
+Physical Rust line counts include all moved product files, adapters, comments
+and blank lines; test files are listed separately. All qualification Rust files
+are included. Generated target directories are excluded. This is a source-size
+measurement, not a Wasm-size or performance claim.
+
+| Scope | f04d25d | Working tree | Change |
+| --- | ---: | ---: | ---: |
+| Product excluding external tests.rs files | 4,346 | 4,181 | -165 |
+| Product external tests.rs files | 2,238 | 2,313 | +75 |
+| Qualification | 7,230 | 7,239 | +9 |
+| Total | 13,814 | 13,733 | -81 |
+
+Jobs targets 0.38.0 because the public checkpoint API and schema break.
+Timers targets 0.45.10: removing duplicate command enums changes no public API.
+Manifests remain at the published baseline until the grouped release workflow.
+These observations are local evidence, not new registry or deployment proof.

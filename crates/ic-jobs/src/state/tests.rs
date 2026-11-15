@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn reselected_occurrence_does_not_revive_old_delivery_authority() {
-    let mut progress = Progress::new(0);
+    let mut progress = State::new(0);
     let old = progress.select(60).unwrap();
     progress.pause().unwrap();
     assert_eq!(progress.select(60), Err(Error::Paused));
@@ -29,7 +29,7 @@ fn reselected_occurrence_does_not_revive_old_delivery_authority() {
 
 #[test]
 fn schedule_edit_preserves_running_identity_and_newer_pause() {
-    let mut progress = Progress::new(0);
+    let mut progress = State::new(0);
     let old = progress.select(100).unwrap();
     progress.accept(old, 110).unwrap();
     progress.edit(300).unwrap();
@@ -49,7 +49,7 @@ fn schedule_edit_preserves_running_identity_and_newer_pause() {
 
 #[test]
 fn queued_edit_invalidates_selection_without_marking_it_settled() {
-    let mut progress = Progress::new(0);
+    let mut progress = State::new(0);
     let old = progress.select(100).unwrap();
     progress.edit(10).unwrap();
     assert_eq!(progress.accept(old, 100), Err(Error::Stale));
@@ -61,7 +61,7 @@ fn queued_edit_invalidates_selection_without_marking_it_settled() {
 #[test]
 fn uncertainty_blocks_new_occurrences_across_owner_changes() {
     for accepted in [false, true] {
-        let mut progress = Progress::new(0);
+        let mut progress = State::new(0);
         let old = progress.select(100).unwrap();
         if accepted {
             progress.accept(old, 100).unwrap();
@@ -86,7 +86,7 @@ fn uncertainty_blocks_new_occurrences_across_owner_changes() {
 
 #[test]
 fn settled_progress_cannot_rewind_with_clock_or_schedule_edit() {
-    let mut progress = Progress::new(100);
+    let mut progress = State::new(100);
     assert_eq!(progress.select(99), Err(Error::BeforeCursor));
     assert_eq!(progress.select(100), Err(Error::BeforeCursor));
     let current = progress.select(200).unwrap();
@@ -100,13 +100,13 @@ fn settled_progress_cannot_rewind_with_clock_or_schedule_edit() {
 
 #[test]
 fn counters_fault_before_reuse_without_erasing_unresolved_work() {
-    let mut progress = Progress::new(0);
+    let mut progress = State::new(0);
     progress.sequence = u64::MAX;
     assert_eq!(progress.select(100), Err(Error::Exhausted));
     assert!(progress.faulted);
     assert_eq!(progress.resume(), Err(Error::Exhausted));
 
-    let mut progress = Progress::new(0);
+    let mut progress = State::new(0);
     let selected = progress.select(100).unwrap();
     progress.accept(selected, 100).unwrap();
     let evidence = progress.active;
@@ -119,11 +119,11 @@ fn counters_fault_before_reuse_without_erasing_unresolved_work() {
 
 #[test]
 fn checkpoint_preserves_revision_cursor_and_queued_occurrence() {
-    let mut progress = Progress::new(10);
+    let mut progress = State::new(10);
     progress.edit(20).unwrap();
     let selected = progress.select(100).unwrap();
     let checkpoint = progress.checkpoint().unwrap();
-    let mut restored = Progress::restore(&checkpoint);
+    let mut restored = State::restore(&checkpoint);
     assert_eq!(restored.checkpoint().unwrap(), checkpoint);
     let queued = restored.active.unwrap().selection;
     assert_eq!(queued.occurrence, selected.occurrence);
@@ -138,7 +138,7 @@ fn checkpoint_preserves_revision_cursor_and_queued_occurrence() {
     assert_eq!(paused.through(), Some(100));
     assert!(paused.paused());
     assert_eq!(paused.selected_at(), None);
-    let mut restored = Progress::restore(&paused);
+    let mut restored = State::restore(&paused);
     assert_eq!(restored.select(200), Err(Error::Paused));
     restored.resume().unwrap();
     assert_eq!(restored.select(100), Err(Error::BeforeCursor));
@@ -156,7 +156,7 @@ fn bounded_command_sequences_preserve_progress_and_uncertainty() {
     const DEPTH: u32 = 5;
     for trace in 0..ACTIONS.pow(DEPTH) {
         let mut commands = trace;
-        let mut progress = Progress::new(0);
+        let mut progress = State::new(0);
         let mut issued = Vec::new();
         for _ in 0..DEPTH {
             let action = commands % ACTIONS;
@@ -220,10 +220,7 @@ fn bounded_command_sequences_preserve_progress_and_uncertainty() {
                         None,
                     )
                     .unwrap();
-                    assert_eq!(
-                        Progress::restore(&decoded).checkpoint().unwrap(),
-                        checkpoint
-                    );
+                    assert_eq!(State::restore(&decoded).checkpoint().unwrap(), checkpoint);
                 }
             }
             // Invalidated selections remain invalid even when the occurrence time is reused.
@@ -245,7 +242,7 @@ fn bounded_command_sequences_preserve_progress_and_uncertainty() {
     }
 }
 
-fn snapshot(progress: &Progress) -> (u64, Option<u64>, ControlState, Option<Active>, u64, bool) {
+fn snapshot(progress: &State) -> (u64, Option<u64>, ControlState, Option<Active>, u64, bool) {
     (
         progress.revision,
         progress.through,
@@ -258,12 +255,12 @@ fn snapshot(progress: &Progress) -> (u64, Option<u64>, ControlState, Option<Acti
 
 #[test]
 fn zero_occurrence_round_trips_before_acceptance_and_retires_once() {
-    let mut progress = Progress::unstarted();
+    let mut progress = State::unstarted();
     assert_eq!(progress.through(), None);
     let first = progress.select(0).unwrap();
     let checkpoint = progress.checkpoint().unwrap();
     assert_eq!(checkpoint.selected_at(), Some(0));
-    let mut restored = Progress::restore(&checkpoint);
+    let mut restored = State::restore(&checkpoint);
     let selected = restored.active.unwrap().selection;
     restored.accept(selected, 100).unwrap();
     assert_eq!(restored.checkpoint(), Err(Error::Busy));
@@ -281,7 +278,7 @@ fn zero_occurrence_round_trips_before_acceptance_and_retires_once() {
 #[test]
 fn cancellation_is_terminal_and_refuses_unsettled_work_without_mutation() {
     for phase in 0..3 {
-        let mut progress = Progress::unstarted();
+        let mut progress = State::unstarted();
         let selected = progress.select(0).unwrap();
         if phase > 0 {
             progress.accept(selected, 0).unwrap();
@@ -306,7 +303,7 @@ fn cancellation_is_terminal_and_refuses_unsettled_work_without_mutation() {
             assert_eq!(checkpoint.control(), ControlState::Cancelled);
             assert_eq!(checkpoint.selected_at(), None);
             assert_eq!(checkpoint.through(), None);
-            let mut restored = Progress::restore(&checkpoint);
+            let mut restored = State::restore(&checkpoint);
             for result in [
                 restored.resume(),
                 restored.pause(),
@@ -321,7 +318,7 @@ fn cancellation_is_terminal_and_refuses_unsettled_work_without_mutation() {
             assert_eq!(restored.checkpoint().unwrap(), checkpoint);
         }
     }
-    let mut paused = Progress::new(10);
+    let mut paused = State::new(10);
     paused.pause().unwrap();
     paused.cancel().unwrap();
     assert_eq!(
@@ -332,7 +329,7 @@ fn cancellation_is_terminal_and_refuses_unsettled_work_without_mutation() {
 
 #[test]
 fn retries_preserve_occurrence_but_replace_delivery_authority() {
-    let mut progress = Progress::unstarted();
+    let mut progress = State::unstarted();
     let first = progress.select(0).unwrap();
     assert_eq!(progress.retry(first), Err(Error::Stale));
     progress.accept(first, 1).unwrap();
@@ -357,7 +354,7 @@ fn retries_preserve_occurrence_but_replace_delivery_authority() {
 
 #[test]
 fn old_revisions_and_exhausted_delivery_sequences_cannot_retry() {
-    let mut progress = Progress::unstarted();
+    let mut progress = State::unstarted();
     let selected = progress.select(0).unwrap();
     progress.accept(selected, 1).unwrap();
     progress.edit(2).unwrap();
@@ -372,7 +369,7 @@ fn old_revisions_and_exhausted_delivery_sequences_cannot_retry() {
 
 #[test]
 fn reconciled_retry_requires_exact_blocked_authority_and_stays_paused() {
-    let mut progress = Progress::unstarted();
+    let mut progress = State::unstarted();
     let selected = progress.select(0).unwrap();
     assert_eq!(progress.reconcile_retry(selected), Err(Error::Stale));
     progress.accept(selected, 10).unwrap();
@@ -400,9 +397,9 @@ fn reconciled_retry_requires_exact_blocked_authority_and_stays_paused() {
 
 #[test]
 fn unresolved_reconstruction_blocks_old_identity_across_owner_edits() {
-    use crate::unresolved::{Attempt, UnresolvedCheckpoint, UnresolvedPhase};
+    use crate::unresolved::{Attempt, UnresolvedPhase};
     for accepted in [false, true] {
-        let mut progress = Progress::unstarted();
+        let mut progress = State::unstarted();
         assert_eq!(progress.unresolved_progress(), Err(Error::Stale));
         let selection = progress.select(0).unwrap();
         if accepted {
@@ -410,14 +407,10 @@ fn unresolved_reconstruction_blocks_old_identity_across_owner_edits() {
         }
         progress.block(selection).unwrap();
         progress.edit(100).unwrap();
-        let record = UnresolvedCheckpoint::new(
-            1,
-            progress.unresolved_progress().unwrap(),
-            Attempt::new(1, 0, 2).unwrap(),
-            UnresolvedPhase::Uncertain,
-        )
-        .unwrap();
-        let mut restored = Progress::restore_unresolved(&record);
+        let record = (progress.unresolved_progress().unwrap())
+            .with_unresolved(Attempt::new(1, 0, 2).unwrap(), UnresolvedPhase::Uncertain)
+            .unwrap();
+        let mut restored = State::restore(&record);
         let blocked = restored.active.unwrap().selection;
         assert_eq!(blocked.occurrence, selection.occurrence);
         assert_eq!(restored.through(), Some(100));
@@ -430,4 +423,73 @@ fn unresolved_reconstruction_blocks_old_identity_across_owner_edits() {
         assert_eq!(restored.through(), Some(100));
         assert_eq!(restored.select(200).unwrap().occurrence.revision, 2);
     }
+}
+
+// Core transition fixtures use a simple definition; production reconstruction
+// always supplies the host's validated definition and policies.
+impl State {
+    fn restore(checkpoint: &Checkpoint) -> Self {
+        Self::from_checkpoint(
+            Schedule::once(0),
+            Policy::SkipLate {
+                lateness_ns: u64::MAX,
+            },
+            RetryPolicy::NONE,
+            checkpoint.clone(),
+        )
+    }
+    fn new(through: u64) -> Self {
+        Self::restore(
+            &Checkpoint::new(7, 1, Some(through), None, ControlState::Active, None, None).unwrap(),
+        )
+    }
+    fn unstarted() -> Self {
+        Self::restore(&Checkpoint::new(7, 1, None, None, ControlState::Active, None, None).unwrap())
+    }
+}
+
+#[test]
+fn planning_preserves_retry_budget_across_unresolved_restoration() {
+    let checkpoint = Checkpoint::new(7, 1, None, None, ControlState::Paused, None, None)
+        .unwrap()
+        .with_unresolved(
+            crate::Attempt::new(1, 10, 2).unwrap(),
+            crate::UnresolvedPhase::Running,
+        )
+        .unwrap();
+    let mut state = State::from_checkpoint(
+        Schedule::once(10),
+        Policy::SkipLate {
+            lateness_ns: u64::MAX,
+        },
+        RetryPolicy::new(3, 5, 10).unwrap(),
+        checkpoint,
+    );
+    state.resume().unwrap();
+    assert_eq!(state.plan(20), None);
+    assert_eq!(state.attempt(), 2);
+    let selection = state.selection().unwrap();
+    state.block(selection).unwrap();
+    assert_eq!(state.attempt(), 2);
+    state
+        .recover(selection, RecoveryDisposition::RetrySafe, 20)
+        .unwrap();
+    assert_eq!(state.plan(20), None);
+    assert_eq!(
+        state
+            .checkpoint()
+            .unwrap()
+            .retry()
+            .unwrap()
+            .failed_attempts(),
+        2
+    );
+    state.resume().unwrap();
+    assert_eq!(state.plan(20), Some(30));
+    let (selection, deliver, attempt) = state.accept_dispatch(30).unwrap();
+    assert!(deliver);
+    assert_eq!(attempt, 3);
+    state.finish(selection, 30, true).unwrap();
+    assert_eq!(state.plan(30), None);
+    assert!(state.checkpoint().unwrap().retry().is_none());
 }

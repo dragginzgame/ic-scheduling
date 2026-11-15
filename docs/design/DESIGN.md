@@ -1,4 +1,8 @@
-Status: proposed replacement architecture, 15 November 2026. Scope: Canic management, buffered Entropy, and a new calendar-aware Jobs scheduler; Relay remains excluded. This replaces the supplied consumer-driven baseline as the proposed implementation contract; it does not certify an implementation.
+Status: implemented replacement architecture, 15 November 2026. The first rewrite
+releases are Timers 0.45.9 and Jobs 0.37.9; pending work targets 0.45.10 and 0.38.0.
+Scope: Canic management, buffered Entropy and UTC Jobs scheduling; Relay is
+excluded. This document records ownership and design constraints; dated evidence
+records qualification, and consumer adoption remains separate.
 
 Scope update: the maintainer now requires legacy Timers/Jobs capabilities and
 defers additional proposals. [Release scope](release-scope.md) supersedes earlier
@@ -15,7 +19,7 @@ and production resource budgets are host-owned; the current local lifecycle
 suite passes (see [candidate evidence](../evidence/release-candidate.md)). Historical
 observations below do not establish completion.
 
-Build a small retained-timer service around the two observed consumer workflows, and a separate calendar-aware `ic-jobs` package above it. The [Jobs design](jobs.md) records the newly requested scope and proposed contract. Bind work once, update demand through a capability, and isolate business execution from timer control. Reuse requires proof that a small implementation fits this architecture. Existing modules, signatures and test organization have no presumption of survival.
+Build a small retained-timer service around the two observed consumer workflows, and a separate calendar-aware `ic-jobs` package above it. The [Jobs design](jobs.md) records the current scope and contract. Bind work once, update demand through a capability, and isolate business execution from timer control. Reuse requires proof that a small implementation fits this architecture. Existing modules, signatures and test organization have no presumption of survival.
 
 The practical debt target is **zero known unresolved correctness obligations at release**, with explicit ownership and measured complexity. Zero future technical debt cannot be guaranteed.
 
@@ -25,9 +29,9 @@ The supplied proposal establishes two Canic management workers and one Entropy r
 
 Focused public-source checks establish the following:
 
-- Scheduling at commit `0e5e09ed24e88d6d62a6d2dc923afbb53dc8619e` exposes multiple registration/reconciliation policies and inventory APIs. Its watchdog implementation has cancel, ensure, immediate, reconciliation and unregister variants. These are evidence of the old design surface, not requirements for the replacement. [Runtime source](https://github.com/dragginzgame/ic-scheduling/blob/0e5e09ed24e88d6d62a6d2dc923afbb53dc8619e/crates/ic-timers/src/runtime/mod.rs), [watchdog source](https://github.com/dragginzgame/ic-scheduling/blob/0e5e09ed24e88d6d62a6d2dc923afbb53dc8619e/crates/ic-timers/src/registry/watchdog/mod.rs).
+- Scheduling at commit `0e5e09ed24e88d6d62a6d2dc923afbb53dc8619e` exposes multiple registration/reconciliation policies and inventory APIs. Its watchdog implementation has cancel, ensure, immediate, reconciliation and unregister variants. These are evidence of the old design surface, not requirements for the replacement. [Runtime source](https://github.com/dragginzgame/ic-scheduling-legacy/blob/0e5e09ed24e88d6d62a6d2dc923afbb53dc8619e/crates/ic-timers/src/runtime/mod.rs), [watchdog source](https://github.com/dragginzgame/ic-scheduling-legacy/blob/0e5e09ed24e88d6d62a6d2dc923afbb53dc8619e/crates/ic-timers/src/registry/watchdog/mod.rs).
 
-- The published crate manifest identifies `ic-timers` 0.44.3, a Cargo `links` guard, Metrics, Platform Runtime and thiserror dependencies. The new dependency graph must be justified independently. [Manifest](https://github.com/dragginzgame/ic-scheduling/blob/0e5e09ed24e88d6d62a6d2dc923afbb53dc8619e/crates/ic-timers/Cargo.toml).
+- The published crate manifest identifies `ic-timers` 0.44.3, a Cargo `links` guard, Metrics, Platform Runtime and thiserror dependencies. The new dependency graph must be justified independently. [Manifest](https://github.com/dragginzgame/ic-scheduling-legacy/blob/0e5e09ed24e88d6d62a6d2dc923afbb53dc8619e/crates/ic-timers/Cargo.toml).
 
 - Canic derives timer demand from its management journal and upgrade state; its callback performs an async step and derives the successor from current business state. Preserve these decisions in Canic. [Canic engine](https://github.com/dragginzgame/canic/blob/b36f6a39a67f487def523c847423fdfdb8d60c50/crates/canic-management/src/engine/mod.rs).
 
@@ -46,7 +50,7 @@ This is a focused design review, not a complete audit of those repositories or a
 | Watchdog scheduler self-call followed by work self-call | Bounded global-timer control prearms successor and submits isolated work | One dispatch role and message boundary, subject to platform qualification |
 | Abandonment behavior left open | Once enters recovery-required state and rejects ordinary rearming | Implicit replay decisions and ambiguous precedence |
 | Watchdog behavior under backlog implicit | At most one outstanding work ticket per watchdog; missed ticks coalesce | Catch-up queues and ticket invalidation starvation |
-| Large snapshots as diagnostics | Small capability status only where needed for recovery | Public inventory and diagnostic data model |
+| Large snapshots as diagnostics | Capability status plus optional bounded inventory/failure observations | Mandatory diagnostic framework and memory histories |
 | LOC target used as success proxy | Structural obligations, resource bounds and consumer measurements decide acceptance | Incentive to hide code in consumers or weaken tests |
 
 The extra watchdog scheduler message may be restored only if a concrete installed failure demonstrates why the combined control step cannot meet its invariants. Record that evidence and revise the design before implementation continues.
@@ -75,63 +79,19 @@ The engine owns no business journal. The transport owns no callback registry or 
 
 Start with `api`, `engine`, `transport` and `metrics` modules. Keep unsafe platform bindings in one private transport submodule. Extract further modules only when they clarify an existing responsibility. Do not introduce a general reducer, effect language, plugin system, backend framework or scheduler policy trait.
 
-Use a bounded table and scan for due entries. Three observed declarations do not justify a heap with cancellation bookkeeping. Preserve a private limit of 64 declarations as a provisional admission ceiling, with a measurement gate before release; it is not a public capacity guarantee. Each entry has at most one current logical deadline and one work ticket. Transport flights have a separately fixed bound. A rotating scan cursor prevents low-index entries monopolizing dispatch.
+Use a bounded table and scan for due entries. Three observed declarations do not justify a heap with cancellation bookkeeping. The current private bounds are 64 declarations, eight transport flights and four submissions per control turn. Installed pressure tests qualify these limits locally; they are not production throughput guarantees. Each entry has at most one current logical deadline and one work ticket. Transport flights have a separately fixed bound. A rotating scan cursor prevents low-index entries monopolizing dispatch.
 
-# 4 Proposed public contract
+# 4 Public contract
 
-The following is an API specification, not compiled library code. Names may change before the consumer compile gate; semantics may not change silently.
+The canonical command/result types are in [api.rs](../../crates/ic-timers/src/api.rs);
+wasm32 binding and handle methods are in
+[transport.rs](../../crates/ic-timers/src/transport.rs). Both binding functions take
+an identity tuple and explicit Lifetime; watchdog binding also takes a positive
+cadence. Once supports Stop, At and completion-relative After results. Both handle
+types support explicit removal subject to settlement guards. Methods use the
+shared Error type. Callbacks have no Send requirement or public control context.
 
-```rust
-pub fn initialize() -> Result<(), InitError>;
-
-pub fn bind_once<F, Fut>(id: Identity, work: F) -> Result<Once, BindError>
-where
-    F: FnMut() -> Fut + 'static,
-    Fut: Future<Output = OnceResult> + 'static;
-
-pub fn bind_watchdog<F>(
-    id: Identity,
-    cadence: NonZeroU64,
-    work: F,
-) -> Result<Watchdog, BindError>
-where
-    F: FnMut() -> WatchdogResult + 'static;
-
-impl Once {
-    pub fn set(&self, demand: OnceDemand) -> Result<(), ControlError>;
-    pub fn status(&self) -> Result<OnceStatus, ControlError>;
-    pub fn recover(
-        &self,
-        abandoned: RecoveryToken,
-        demand: OnceDemand,
-    ) -> Result<(), ControlError>;
-}
-
-impl Watchdog {
-    pub fn set(&self, demand: WatchdogDemand) -> Result<(), ControlError>;
-    pub fn status(&self) -> Result<WatchdogStatus, ControlError>;
-}
-
-pub enum OnceDemand { Inactive, At(u64) }
-pub enum OnceNext { Stop, At(u64) }
-pub enum WatchdogDemand { Inactive, KeepCadence, At(u64) }
-pub enum WatchdogNext { Stop, Continue, At(u64) }
-
-pub struct OnceResult {
-    pub observation: Observation,
-    pub next: OnceNext,
-}
-pub struct WatchdogResult {
-    pub observation: Observation,
-    pub next: WatchdogNext,
-}
-
-pub enum Observation { NoWork, Success, ExpectedFailure }
-```
-
-No `Send` requirement. No public callback context, callback scheduling methods, timer IDs, unregister operation or configurable policy object.
-
-**Binding.** Initialization is idempotent for the current live runtime. Binding creates an inactive retained declaration and captures its callback once. Duplicate identity returns `DuplicateIdentity`; it does not return another capability or replace the callback. Consumers bind lazily into their existing optional slot, then call `set`. They must not rebind on every demand update. An unsuccessful bind leaves no entry. Release rejected or detached callback captures outside internal borrows.
+**Binding.** Initialization is idempotent for the current live runtime. Binding creates an inactive declaration with the selected lifetime and captures its callback once. Duplicate identity returns `DuplicateIdentity`; it does not return another capability or replace the callback. Consumers bind lazily into their existing optional slot, then call `set`. They must not rebind on every demand update. An unsuccessful bind leaves no entry. Release rejected or detached callback captures outside internal borrows.
 
 **Identity.** Retain the bounded `(owner, group, name)` tuple only as declaration uniqueness and metric attribution. Validate each nonempty UTF-8 component at 64 bytes maximum. Identity is not execution authority and is not accepted by control methods. No normalization or silently truncated labels.
 
@@ -178,12 +138,12 @@ A watchdog is a periodic opportunity for a synchronous admission check. It is no
 
 Keep its current deadline, owner command revision, ticket identity and ticket state separately. Use one outstanding ticket across pending dispatch, accepted synchronous work and response settlement. Advancing cadence does not invalidate that ticket.
 
-The initial private core represents the owner revision as a per-running-callback
+The watchdog core represents the owner revision as a per-running-callback
 `owner_changed` flag: every command immediately updates demand and sets the flag,
 including equal commands. One synchronous callback needs no unbounded revision
 counter to determine whether its result was superseded. See the
-[native state evidence](../evidence/watchdog-state.md); binding and IC transport
-integration remain unfinished.
+[state and installed provider evidence](../evidence/watchdog-state.md); binding
+and IC transport are implemented and locally qualified.
 
 At a due control turn:
 
@@ -217,7 +177,7 @@ No phase-locked catch-up semantics: missed cadence periods are skipped. If consu
 
 # 7 Message boundaries and transport
 
-The proposed normal path is:
+The normal path is:
 
 ```text
 owner demand
@@ -236,7 +196,7 @@ Transport records carry bounded tokens and lifecycle state, not closures. The en
 
 A failed or ambiguous response is not permission to replay. Consult committed ticket/attempt state. If execution may have been accepted, resolve its lifecycle first; Once requires recovery after confirmed abandonment.
 
-Set explicit private constants for declarations, flights, submissions per turn and delivery retry delay before the first installed probe. Select their numeric values using instruction measurements and pressure tests; do not pretend the supplied proposal proves them. Full capacity defers work fairly without growing memory. Delivery backoff is transport policy; consumer retries remain consumer policy.
+The provider uses explicit private constants for declarations, flights, submissions per turn and a one-second delivery retry delay. Installed measurements and pressure tests cover these values; production workload budgets remain host-owned. Full capacity defers work fairly without growing memory. Delivery backoff is transport policy; consumer retries remain consumer policy.
 
 Authenticate self-caller before decoding anything beyond the fixed bounded envelope or touching scheduler state. Reject malformed length, unknown role and stale authority. A private method name is not access control. Do not add Serde/Wire merely to encode a handful of fixed-width token fields.
 
@@ -252,7 +212,7 @@ Initialization installs volatile runtime state; the host retains lifecycle owner
 
 Snapshot restoration is a separate acceptance path. A heap snapshot may contain stale handles, tasks and transport flights. Reinitializing a counter inside that heap is not proof of a fresh incarnation. Support restore only through a qualified host procedure that reconstructs executor/provider state and rejects old messages before enabling new demand. If Canic's deployed workflow requires this, release is blocked until that procedure passes; otherwise declare snapshot restore unsupported for this release.
 
-Cargo `links` guards prevent an important class of duplicate provider linkage. Final Wasm inspection must also establish one global-timer export and the intended dispatch endpoint. Neither check prevents arbitrary direct global-timer writes by other code. Review the whole consumer dependency graph and test ownership interference. The old implementation's observed-prior-value check is a detection mechanism, not proof of exclusive ownership. [Ownership source](https://github.com/dragginzgame/ic-scheduling/blob/0e5e09ed24e88d6d62a6d2dc923afbb53dc8619e/crates/ic-timers/src/platform/ownership/mod.rs).
+Cargo `links` guards prevent an important class of duplicate provider linkage. Final Wasm inspection must also establish one global-timer export and the intended dispatch endpoint. Neither check prevents arbitrary direct global-timer writes by other code. Review the whole consumer dependency graph and test ownership interference. The old implementation's observed-prior-value check is a detection mechanism, not proof of exclusive ownership. [Ownership source](https://github.com/dragginzgame/ic-scheduling-legacy/blob/0e5e09ed24e88d6d62a6d2dc923afbb53dc8619e/crates/ic-timers/src/platform/ownership/mod.rs).
 
 Record only useful facts: accepted, completed, abandoned, expected consumer failure, deferred submission and terminal control fault. Keep consumer outcome separate from schedule disposition. NoWork does not mean provider failure; ExpectedFailure does not request retry.
 
@@ -266,7 +226,11 @@ for the event boundaries, overflow behavior and remaining measurement limits.
 
 # 9 Deletions and controlled reuse
 
-Within `ic-timers`, do not recreate job scheduling, retry queues, after-completion policy, immediate watchdog variants, remove-on-stop lifetimes, public callback contexts, unregister/cancel/ensure families, failure-streak helpers, inventory snapshots, paired memory histories or generic registry effects.
+Keep job scheduling and retry policy in Jobs. Timers supports completion-relative
+`OnceNext::After`, explicit lifetimes/removal, immediate watchdog demand through
+`At`, and optional bounded inventory/failure observations. These preserve accepted
+legacy capabilities without recreating separate registration families. Do not add
+public callback-control contexts, paired memory histories or generic registry effects.
 
 Do not copy the old repository scaffold, native test hierarchy, qualification cohorts, custom release-recovery framework or Jobs protocol fixtures. Create only the two required product packages and the minimal installed probe/driver packages required by the next acceptance gate. Jobs is a fresh design; the old Jobs implementation has no compatibility presumption.
 

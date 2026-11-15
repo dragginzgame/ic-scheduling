@@ -1,5 +1,16 @@
 # Candidate qualification: Timers 0.45.9 / Jobs 0.37.9
 
+## Subsequent release preparation: Timers 0.45.10 / Jobs 0.38.0
+
+Registry freshness reviewed on 2026-11-15 before source capture: the selected
+first-party suppliers remain the latest non-yanked stable releases: Runtime
+0.22.5, Metrics 0.30.8, Testkit 0.106.0 and Toko Tooling 0.44.4. No dependency
+refresh is required. Timers retains its public API; Jobs changes checkpoint
+storage to schema 7 and consolidates progress ownership. Both groups must pass
+the complete captured-source gate and archive checks before publication.
+
+The record below describes the previous release.
+
 Local observation, 2026-11-15, from the implementation changes following GitHub
 checkpoint `bc36b91`. This is source/installed-simulator evidence, not deployment
 or crates.io delivery. Historical open-gate prose in the individual evidence
@@ -84,7 +95,7 @@ matching the live sparse-index checksums and embedded source commits:
 | ic-jobs 0.37.9 | `e30de83e4ac7d0927d256fa20580773ff4a9c92c` | `dd8f588d286624e355ddb9954b6e801777cb7535bf1b8817f31ecc610dfc3a52` |
 
 GitHub tags are `timers-v0.45.9` and `jobs-v0.37.9`. Both were pushed atomically
-with their release commits. [Native CI](https://github.com/dragginzgame/ic-scheduling-new/actions/runs/43757640848)
+with their release commits. [Native CI](https://github.com/dragginzgame/ic-scheduling/actions/runs/43757640848)
 passed on Ubuntu 24.04 and macOS 15 ARM64, including setup, tests, archives and
 real metadata transactions; its single repository-history secret scan passed.
 The captured-source full gate passed separately for each release group, including

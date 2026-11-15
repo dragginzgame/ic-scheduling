@@ -91,14 +91,6 @@ impl From<crate::bindings::Error> for Error {
         }
     }
 }
-impl From<OnceDemand> for crate::engine::Demand {
-    fn from(value: OnceDemand) -> Self {
-        match value {
-            OnceDemand::Inactive => Self::Inactive,
-            OnceDemand::At(at) => Self::At(at),
-        }
-    }
-}
 
 /// Owner demand for a retained synchronous watchdog.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -126,22 +118,4 @@ pub struct WatchdogResult {
     pub observation: Observation,
     /// Proposed successor.
     pub next: WatchdogNext,
-}
-impl From<WatchdogDemand> for crate::watchdog::Demand {
-    fn from(value: WatchdogDemand) -> Self {
-        match value {
-            WatchdogDemand::Inactive => Self::Inactive,
-            WatchdogDemand::KeepCadence => Self::KeepCadence,
-            WatchdogDemand::At(at) => Self::At(at),
-        }
-    }
-}
-impl From<WatchdogNext> for crate::watchdog::Next {
-    fn from(value: WatchdogNext) -> Self {
-        match value {
-            WatchdogNext::Stop => Self::Stop,
-            WatchdogNext::Continue => Self::Continue,
-            WatchdogNext::At(at) => Self::At(at),
-        }
-    }
 }

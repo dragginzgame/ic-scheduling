@@ -370,7 +370,7 @@ pub(super) fn post_upgrade() -> bool {
 pub extern "C" fn invalid_restore() {
     ic_timers::initialize().unwrap();
     let checkpoint = ic_jobs::Checkpoint::new(
-        6,
+        7,
         1,
         Some(0),
         Some(1),
@@ -421,7 +421,7 @@ pub extern "C" fn invalid_restore() {
         ),
     ] {
         let checkpoint = ic_jobs::Checkpoint::new(
-            6,
+            7,
             1,
             Some(0),
             Some(pending[0]),

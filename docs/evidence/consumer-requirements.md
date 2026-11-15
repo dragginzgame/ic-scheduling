@@ -61,7 +61,7 @@ example and qualification workspace in the inspected local sources, after the
 Relay exclusion. Current Canic management owns its own bounded phase journal;
 it does not use Jobs. Entropy owns its own bounded refill model.
 
-The previous [Jobs shadow experiment](../../../ic-scheduling/docs/reports/experiments/jobs-shadow-2026-11-15.md)
+The previous [Jobs shadow experiment](../../../ic-scheduling-legacy/docs/reports/experiments/jobs-shadow-2026-11-15.md)
 retained the complete Jobs contract. It reached 618 or 624 lines versus 676,
 not the 30% target; the reducer version regressed the measured native workload.
 This is evidence against starting from an API-compatible Jobs recode. It does
@@ -81,12 +81,12 @@ Do not replace Canic's journals or Entropy's state with a generic job model.
 
 | ID | Evidence owner | Requirement |
 | --- | --- | --- |
-| S1 | [Provider FFI](../../../ic-scheduling/crates/ic-timers/src/platform/ffi.rs) | One global-timer export; self-only bounded dispatch endpoint; separate task messages; exact response/cleanup ownership |
-| S2 | [Provider backend](../../../ic-scheduling/crates/ic-timers/src/platform/backend.rs) and [ownership observation](../../../ic-scheduling/crates/ic-timers/src/platform/ownership/mod.rs) | Bounded pending/flight tables; pressure deferral; genuine competing-owner refusal while admitting a fired one-shot's zero reset |
-| S3 | [Runtime dispatch](../../../ic-scheduling/crates/ic-timers/src/runtime/dispatch.rs) | No registry borrow across user code or await; abandoned accepted work is not inferred successful; watchdog predecessor commits successor before work |
-| S4 | [Reconciliation](../../../ic-scheduling/crates/ic-timers/src/runtime/registration.rs) | Fresh failure leaves slot empty; existing identity/kind/cadence mismatch refuses; repeat reconcile keeps the original callback; release captures outside borrows |
-| S5 | [Current registry](../../../ic-scheduling/crates/ic-timers/src/registry/mod.rs) and [entry custody](../../../ic-scheduling/crates/ic-timers/src/registry/entry.rs) | Separate registration incarnation and dispatch generation; obsolete completions cannot control replacements; logical scheduling cannot claim an absent provider handle |
-| S6 | [Metrics recording](../../../ic-scheduling/crates/ic-timers/src/snapshot/metrics/mod.rs) | Instrumentation is observation, not authority; use canonical Metrics arithmetic rather than hand-written saturation/aggregation |
+| S1 | [Provider FFI](../../../ic-scheduling-legacy/crates/ic-timers/src/platform/ffi.rs) | One global-timer export; self-only bounded dispatch endpoint; separate task messages; exact response/cleanup ownership |
+| S2 | [Provider backend](../../../ic-scheduling-legacy/crates/ic-timers/src/platform/backend.rs) and [ownership observation](../../../ic-scheduling-legacy/crates/ic-timers/src/platform/ownership/mod.rs) | Bounded pending/flight tables; pressure deferral; genuine competing-owner refusal while admitting a fired one-shot's zero reset |
+| S3 | [Runtime dispatch](../../../ic-scheduling-legacy/crates/ic-timers/src/runtime/dispatch.rs) | No registry borrow across user code or await; abandoned accepted work is not inferred successful; watchdog predecessor commits successor before work |
+| S4 | [Reconciliation](../../../ic-scheduling-legacy/crates/ic-timers/src/runtime/registration.rs) | Fresh failure leaves slot empty; existing identity/kind/cadence mismatch refuses; repeat reconcile keeps the original callback; release captures outside borrows |
+| S5 | [Current registry](../../../ic-scheduling-legacy/crates/ic-timers/src/registry/mod.rs) and [entry custody](../../../ic-scheduling-legacy/crates/ic-timers/src/registry/entry.rs) | Separate registration incarnation and dispatch generation; obsolete completions cannot control replacements; logical scheduling cannot claim an absent provider handle |
+| S6 | [Metrics recording](../../../ic-scheduling-legacy/crates/ic-timers/src/snapshot/metrics/mod.rs) | Instrumentation is observation, not authority; use canonical Metrics arithmetic rather than hand-written saturation/aggregation |
 
 These remain necessary even when a consumer does not import a corresponding
 diagnostic type. Removing a rare failure test requires preserving its invariant

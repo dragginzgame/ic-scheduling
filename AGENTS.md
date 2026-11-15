@@ -10,9 +10,9 @@ The Rust workspace publishes ic-timers and ic-jobs from crates/.
 The first rewrite releases are Timers 0.45.9 and Jobs 0.37.9; qualification
 packages remain unpublished. Timers and Jobs have independent development versions and changelogs
 under releases/, mapped in ci/cargo-release-groups.json.
-The maintainer has now requested completion and crates.io delivery for both crates;
-follow the fixed completion checklist in docs/design/release-scope.md. Keep
-actual publication behind the qualified release and archive checks.
+Pending changes target Timers 0.45.10 and Jobs 0.38.0; schema 7 below describes
+that tree, not published Jobs 0.37.9. Keep actual publication behind the qualified
+release and archive checks in docs/design/release-scope.md.
 Jobs delegates five-field UTC recurrence to Saffron, plus a
 standalone Wasm calendar probe. Calendar support is off by default behind the
 `calendar` feature. Named zones and seconds cron are outside scope; do not
@@ -32,11 +32,12 @@ See docs/evidence/watchdog-state.md.
 Jobs has occurrence-progress tests and an opt-in wasm32 Once adapter with explicit
 SkipLate or bounded CatchUp policy. Host-owned checkpoints support armed
 and paused reconstruction; ordinary export refuses running or recovery-required work.
-Schema 6 preserves control state, pending retry budgets/deadlines, remaining catch-up batches and an optional settled cursor
+Schema 7 preserves control state, pending retry budgets/deadlines, remaining catch-up batches and an optional settled cursor
 across pause and upgrade. Explicit-deadline schedules admit their first deadline,
 including zero and overdue timestamps; cron starts after current time. Age is
 evaluated at batch selection; finishing skips excess and occurrences that arrived
-during the batch. Recovery discards the remaining batch and leaves the job paused.
+during the batch. Retire recovery discards the remaining batch; RetrySafe preserves it and the
+consumed attempt budget. Both leave the job paused.
 After-completion Jobs use the cursor as their settlement horizon, preserve their
 deadline across pause/restore and have no accumulated catch-up batch.
 Terminal cancellation rejects running/uncertain work and survives checkpoints;
@@ -44,7 +45,7 @@ it does not remove the retained timer declaration.
 Only explicit RetryableFailure outcomes or owner RetrySafe recovery permit bounded retries.
 Recovery requires an exact token and Retire/RetrySafe disposition; both leave the job paused.
 Explicit unresolved records now restore blocked with exact attempt identity; ordinary
-checkpoint export still refuses unresolved work. Schema 6 also retains the latest
+checkpoint export still refuses unresolved work. Schema 7 also retains the latest
 completion/reconciliation observation. Hosts own atomic storage and fresh-runtime
 reconstruction; heap snapshots are not supported. Jobs coalescing is deferred.
 See docs/evidence/jobs-progress.md.

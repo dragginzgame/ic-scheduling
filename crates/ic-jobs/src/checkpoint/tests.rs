@@ -12,7 +12,7 @@ fn definition_validation_covers_paused_batches_and_the_last_pending_occurrence()
     let pending: Vec<_> = (1..=64).map(|index| index * minute).collect();
     for paused in [false, true] {
         let checkpoint = Checkpoint::new(
-            6,
+            7,
             1,
             Some(0),
             (!paused).then_some(minute),
@@ -28,7 +28,7 @@ fn definition_validation_covers_paused_batches_and_the_last_pending_occurrence()
         let mut invalid_pending = pending.clone();
         invalid_pending[63] += 1;
         let invalid = Checkpoint::new(
-            6,
+            7,
             1,
             Some(0),
             (!paused).then_some(minute),
@@ -40,7 +40,7 @@ fn definition_validation_covers_paused_batches_and_the_last_pending_occurrence()
         assert!(!invalid.matches_definition(&schedule, full, crate::retry::RetryPolicy::NONE));
     }
     let single = Checkpoint::new(
-        6,
+        7,
         1,
         Some(0),
         Some(minute),
@@ -51,7 +51,7 @@ fn definition_validation_covers_paused_batches_and_the_last_pending_occurrence()
     .unwrap();
     assert!(single.matches_definition(&schedule, skip, crate::retry::RetryPolicy::NONE));
     let off_calendar = Checkpoint::new(
-        6,
+        7,
         1,
         Some(0),
         Some(minute + 1),
@@ -64,7 +64,7 @@ fn definition_validation_covers_paused_batches_and_the_last_pending_occurrence()
 }
 #[test]
 fn rejects_invalid_host_progress_without_repairing_it() {
-    for version in 0..6 {
+    for version in 0..7 {
         assert_eq!(
             Checkpoint::new(version, 1, Some(0), None, ControlState::Active, None, None),
             Err(CheckpointError::Version)
@@ -78,7 +78,7 @@ fn rejects_invalid_host_progress_without_repairing_it() {
     ] {
         assert_eq!(
             Checkpoint::new(
-                6,
+                7,
                 revision,
                 Some(through),
                 selected,
@@ -90,7 +90,7 @@ fn rejects_invalid_host_progress_without_repairing_it() {
         );
     }
     let checkpoint =
-        Checkpoint::new(6, 9, Some(100), Some(200), ControlState::Active, None, None).unwrap();
+        Checkpoint::new(7, 9, Some(100), Some(200), ControlState::Active, None, None).unwrap();
     assert_eq!(
         (
             checkpoint.version(),
@@ -99,9 +99,9 @@ fn rejects_invalid_host_progress_without_repairing_it() {
             checkpoint.selected_at(),
             checkpoint.paused()
         ),
-        (6, 9, Some(100), Some(200), false)
+        (7, 9, Some(100), Some(200), false)
     );
-    assert!(Checkpoint::new(6, 9, Some(u64::MAX), None, ControlState::Paused, None, None).is_ok());
+    assert!(Checkpoint::new(7, 9, Some(u64::MAX), None, ControlState::Paused, None, None).is_ok());
 }
 
 #[test]
@@ -126,7 +126,7 @@ fn remaining_batch_must_match_progress_and_selection() {
     ] {
         assert_eq!(
             Checkpoint::new(
-                6,
+                7,
                 1,
                 Some(through),
                 selected,
@@ -138,7 +138,7 @@ fn remaining_batch_must_match_progress_and_selection() {
         );
     }
     let armed = Checkpoint::new(
-        6,
+        7,
         1,
         Some(10),
         Some(20),
@@ -149,7 +149,7 @@ fn remaining_batch_must_match_progress_and_selection() {
     .unwrap();
     assert_eq!(armed.catch_up(), Some(&batch));
     let paused = Checkpoint::new(
-        6,
+        7,
         1,
         Some(10),
         None,
@@ -169,7 +169,7 @@ fn unstarted_checkpoint_and_zero_batch_are_distinct_from_settled_zero() {
     let policy = crate::Policy::CatchUp(crate::CatchUpLimit::new(0, 3).unwrap());
     for paused in [false, true] {
         let checkpoint = Checkpoint::new(
-            6,
+            7,
             1,
             None,
             (!paused).then_some(0),
@@ -181,7 +181,7 @@ fn unstarted_checkpoint_and_zero_batch_are_distinct_from_settled_zero() {
         assert!(checkpoint.matches_definition(&schedule, policy, crate::retry::RetryPolicy::NONE));
         assert!(
             Checkpoint::new(
-                6,
+                7,
                 1,
                 Some(0),
                 (!paused).then_some(0),
@@ -202,7 +202,7 @@ fn one_shot_restore_requires_the_exact_deadline() {
     let policy = crate::Policy::SkipLate {
         lateness_ns: u64::MAX,
     };
-    let initial = Checkpoint::new(6, 1, None, Some(0), ControlState::Active, None, None).unwrap();
+    let initial = Checkpoint::new(7, 1, None, Some(0), ControlState::Active, None, None).unwrap();
     assert!(initial.matches_definition(&schedule, policy, crate::retry::RetryPolicy::NONE));
     assert!(!initial.matches_definition(
         &crate::Schedule::once(1),
@@ -211,7 +211,7 @@ fn one_shot_restore_requires_the_exact_deadline() {
     ));
     let batch = CatchUpProgress::new(&[0, 1], 1).unwrap();
     let invalid =
-        Checkpoint::new(6, 1, None, Some(0), ControlState::Active, Some(batch), None).unwrap();
+        Checkpoint::new(7, 1, None, Some(0), ControlState::Active, Some(batch), None).unwrap();
     assert!(!invalid.matches_definition(
         &schedule,
         crate::Policy::CatchUp(crate::CatchUpLimit::new(u64::MAX, 2).unwrap()),
@@ -237,7 +237,7 @@ fn completion_deadline_must_match_the_persisted_horizon() {
             (Some(u64::MAX - 9), None, false, true),
         ] {
             let checkpoint =
-                Checkpoint::new(6, 1, through, selected, control(paused), None, None).unwrap();
+                Checkpoint::new(7, 1, through, selected, control(paused), None, None).unwrap();
             assert_eq!(
                 checkpoint.matches_definition(&schedule, policy, crate::retry::RetryPolicy::NONE),
                 valid
@@ -245,7 +245,7 @@ fn completion_deadline_must_match_the_persisted_horizon() {
         }
         let batch = CatchUpProgress::new(&[33], 33).unwrap();
         let checkpoint = Checkpoint::new(
-            6,
+            7,
             1,
             Some(23),
             Some(33),
@@ -273,17 +273,17 @@ fn control(paused: bool) -> ControlState {
 fn cancelled_records_cannot_retain_selected_or_batch_work() {
     for through in [None, Some(0), Some(u64::MAX)] {
         let checkpoint =
-            Checkpoint::new(6, 1, through, None, ControlState::Cancelled, None, None).unwrap();
+            Checkpoint::new(7, 1, through, None, ControlState::Cancelled, None, None).unwrap();
         assert_eq!(checkpoint.control(), ControlState::Cancelled);
         assert!(!checkpoint.paused());
     }
     assert_eq!(
-        Checkpoint::new(6, 1, None, Some(0), ControlState::Cancelled, None, None),
+        Checkpoint::new(7, 1, None, Some(0), ControlState::Cancelled, None, None),
         Err(CheckpointError::Progress)
     );
     let batch = CatchUpProgress::new(&[0], 0).unwrap();
     assert_eq!(
-        Checkpoint::new(6, 1, None, None, ControlState::Cancelled, Some(batch), None),
+        Checkpoint::new(7, 1, None, None, ControlState::Cancelled, Some(batch), None),
         Err(CheckpointError::Progress)
     );
     assert_eq!(
@@ -324,7 +324,7 @@ fn pending_retry_data_preserves_identity_and_consumed_budget() {
         (None, None, ControlState::Active, false),
         (None, None, ControlState::Cancelled, false),
     ] {
-        let result = Checkpoint::new(6, 1, through, selected, control, None, Some(retry.clone()));
+        let result = Checkpoint::new(7, 1, through, selected, control, None, Some(retry.clone()));
         assert_eq!(result.is_ok(), valid);
         if let Ok(checkpoint) = result {
             assert_eq!(checkpoint.retry(), Some(&retry));
@@ -333,7 +333,7 @@ fn pending_retry_data_preserves_identity_and_consumed_budget() {
     let batch = CatchUpProgress::new(&[20], 30).unwrap();
     assert!(
         Checkpoint::new(
-            6,
+            7,
             1,
             None,
             None,
@@ -358,7 +358,7 @@ fn restore_checks_retry_budget_deadline_and_schedule_even_while_paused() {
     let budget = RetryPolicy::new(3, 10, 20).unwrap();
     for paused in [false, true] {
         let checkpoint = Checkpoint::new(
-            6,
+            7,
             1,
             None,
             (!paused).then_some(10),

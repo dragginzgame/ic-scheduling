@@ -4,18 +4,7 @@
 //! another message. This core cannot establish that platform commit boundary.
 use std::num::NonZeroU64;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum Demand {
-    Inactive,
-    KeepCadence,
-    At(u64),
-}
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum Next {
-    Stop,
-    Continue,
-    At(u64),
-}
+pub(super) use crate::{WatchdogDemand as Demand, WatchdogNext as Next};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Ticket(u64);
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

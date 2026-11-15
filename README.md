@@ -15,9 +15,12 @@ redesign. The [release scope](docs/design/release-scope.md) preserves legacy
 Timers/Jobs capabilities while deferring additional proposals. The old architecture,
 demo application and release framework are not carried forward.
 
-Status: published rewrite. Jobs has Saffron-backed five-field UTC cron
-occurrence preview and anchored fixed-rate intervals. Schedule support is opt-in via the
-`calendar` feature. Its separate opt-in `execution` feature provides a wasm32
+Status: the first rewrite is published; this working tree contains the next
+unreleased changes, targeting Timers 0.45.10 and Jobs 0.38.0. The API descriptions
+below follow this tree. In particular, schema 7 is not in published Jobs 0.37.9.
+Jobs supports Saffron-backed five-field UTC cron, one-shot deadlines, anchored
+fixed-rate intervals and completion-relative recurrence. Schedule support is opt-in via the
+`calendar` feature. Its separate opt-in `execution` feature provides wasm32
 skip-late and bounded catch-up execution on Once with host-owned settled/queued
 checkpoints and explicit blocked reconstruction of unresolved attempts; Jobs coalescing
 is deferred.
@@ -37,7 +40,7 @@ Published on 2026-11-15: [Timers 0.45.9](https://crates.io/crates/ic-timers/0.45
 and [Jobs 0.37.9](https://crates.io/crates/ic-jobs/0.37.9). These replace the
 0.44 / 0.36 APIs with a breaking redesign. Both registry artifacts and GitHub
 release tags are verified; Linux/macOS CI and the local installed-canister suite
-pass. See the [delivery evidence](docs/evidence/release-candidate.md) and
+passed for those releases. Pending changes have separate local qualification. See the [delivery evidence](docs/evidence/release-candidate.md) and
 [grouped changelogs](CHANGELOG.md).
 Existing Scheduling, Canic and Entropy
 are unchanged. Recorded local evidence does not establish deployment or production resource budgets.
@@ -87,7 +90,7 @@ Toko release, change its exact Cargo pin, update its lock selection, then run
 `make toko-tooling-preview` and `make toko-tooling-update`.
 
 [Qualification](qualification/README.md) has its own manifest and lockfile and
-contains the calendar Wasm probe and installed executor probe. Dependency and formatting commands include
+contains calendar, executor, timer/Jobs, metrics and isolated Entropy probes. Dependency and formatting commands include
 both workspaces. Standard Toko release/publication entrypoints are installed; see
 [release operations](docs/operations/releases.md). No Git hook is installed.
 
@@ -99,6 +102,10 @@ uncertain Once work and running/settling watchdog tickets. Transient declaration
 are removed after a committed stop and definitive settlement; newer owner demand
 wins. Old handles and queued deliveries cannot control replacement declarations.
 Callbacks and their captures are released outside registry borrows.
+
+The provider admits at most 64 declarations shared by Once, watchdogs and Jobs,
+with eight outstanding transport flights and four submissions per control turn.
+Pressure defers delivery; deadlines are eligibility times, not punctuality guarantees.
 
 With `metrics`, `inventory()` returns sorted bounded declaration snapshots,
 including eligibility, watchdog custody and normal-result/failure observations.
@@ -131,8 +138,10 @@ See the [UTC Wasm measurements](docs/evidence/calendar-saffron.md).
 `Schedule::fixed_rate(first_at_ns, every_ns)` uses a positive `NonZeroU64`
 interval and preserves its original anchor. Binding selects the original first
 deadline, including zero and overdue deadlines; the explicit lateness/catch-up
-policy controls delivery. Cron binding continues to select after current time.
-Checkpoint schema 6 distinguishes no settled work from a settled zero timestamp
+policy controls delivery. Bounded catch-up freezes an oldest-first batch and
+discards excess backlog; it does not promise to replay every missed occurrence.
+Cron binding continues to select after current time.
+In the pending Jobs 0.38.0 API, checkpoint schema 7 distinguishes no settled work from a settled zero timestamp
 and preserves Active, Paused or Cancelled control state plus pending retry budgets.
 
 `Schedule::once(at_ns)` selects one deadline under the same delivery policies,
@@ -156,7 +165,12 @@ blocked for explicit recovery. `recover` requires `RecoveryDisposition::Retire`
 or `RetrySafe`; the latter asserts that repeating effects is safe and retains
 the attempt budget. Both leave the job paused. `unresolved_checkpoint` and `restore_unresolved`
 preserve running/uncertain attempt identity across fresh-runtime reconstruction;
-both restore blocked. Hosts own atomic encoding and the upgrade boundary.
+restoration is always blocked. `checkpoint()` and `unresolved_checkpoint()` both
+return `Checkpoint`; unresolved data is
+attached with `with_unresolved` and read with `unresolved`. Ordinary `restore`
+rejects unresolved data, while `restore_unresolved` requires it. Schema 6 and the
+old `UnresolvedCheckpoint` wrapper require explicit host migration. Hosts own
+atomic encoding and the upgrade boundary.
 Checkpoints retain the latest returned outcome or recovery disposition, keyed
 by `Attempt`; older outcome history belongs to the host.
 

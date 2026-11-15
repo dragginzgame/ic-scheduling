@@ -6,9 +6,10 @@ Fixed-rate intervals are available through `Schedule::fixed_rate`; they share
 the existing off-by-default feature boundary and execution policies. Calendar
 calculation remains exclusively Saffron's responsibility.
 
-Status: Saffron-backed UTC preview, 2026-11-15. The maintainer explicitly selected
+Status: implemented UTC scheduler, 2026-11-15. The first rewrite was published
+as 0.37.9; this tree targets 0.38.0 with the unified schema-7 checkpoint API. The maintainer explicitly selected
 Saffron and UTC, superseding the earlier named-zone and seconds-dialect scope.
-An opt-in wasm32 execution preview now binds one retained Once per job. It uses
+The opt-in wasm32 executor binds one retained Once per job. It uses
 explicit SkipLate or bounded CatchUp policy; host-owned checkpoints support
 settled/queued reconstruction, including remaining catch-up work. Coalescing
 is deferred. No custom calendar
@@ -24,7 +25,7 @@ Saffron owns parsing, Gregorian arithmetic and next-occurrence calculation.
 All calendar code and dependencies are behind off-by-default `calendar`.
 The separate off-by-default `execution` feature enables `calendar` and adds
 target-gated Timers/Platform Runtime dependencies on wasm32. Default builds have
-no normal dependency edges. The execution preview is IC-specific; native builds
+no normal dependency edges. Execution is IC-specific; native builds
 retain the pure calendar and occurrence-state tests.
 Timers has no dependency on Jobs. Cargo features are additive: a consumer that
 enables `ic-jobs/calendar` includes it in that build.
@@ -40,8 +41,8 @@ within an exclusive lower and inclusive upper bound. The domain is 0 through
 u64::MAX Unix nanoseconds; conversion does not narrow to signed-i64 nanoseconds.
 A valid impossible rule returns None, as does a window without an occurrence.
 Parsing errors remain distinct. Searches read no clock and perform no effects.
-The horizon filters results, not engine work; measure IC instruction cost before
-execution integration. Do not implement a second parser, calendar algorithm or
+The horizon filters results, not engine work; installed calendar measurements cover representative rules, not a universal
+search-cost bound. Do not implement a second parser, calendar algorithm or
 resumable search engine. See [Saffron API](https://docs.rs/saffron/0.1.0/saffron/)
 and [local evidence](../evidence/calendar-saffron.md).
 
@@ -155,7 +156,7 @@ require enumerating every missed instant in one message.
 The pinned supplier has forward search and membership APIs, with no reverse or
 latest-before operation. Coalescing therefore needs a separately reviewed bounded
 approach or supplier support; no custom calendar search is authorized by its
-presence in this proposed scope. See the [supplier API observation](../evidence/calendar-saffron.md#later-supplier-api-review--2026-11-15).
+presence in this scope. See the [supplier API observation](../evidence/calendar-saffron.md#later-supplier-api-review--2026-11-15).
 
 The initial execution contract is one accepted future per job. Other jobs may
 run independently within measured global limits. While a job runs, additional
@@ -193,7 +194,7 @@ budget and retry deadline; resume does not reset either. Schedule edits discard
 pending retries but preserve any accepted old attempt's identity until settlement.
 An old revision cannot request retries or advance the new definition's cursor.
 
-Checkpoint schema 6 persists pending retry-safe work through RetryProgress:
+Checkpoint schema 7 persists pending retry-safe work through RetryProgress:
 scheduled time, consumed-attempt count, last failure/reconciliation time and retry deadline.
 Restore checks the schedule, remaining budget and exact policy-derived deadline
 before admitting a timer. Hosts must atomically retain the matching retry policy.
@@ -214,11 +215,12 @@ No exactly-once remote effect guarantee is claimed.
 
 ## Persistence and composition gate
 
-The 0.37.3 preview supports host-owned checkpoints for settled or queued work.
+Ordinary host-owned checkpoints support settled or queued work.
 It preserves revision, settled cursor, selected occurrence and pause state, and
-validates a selected occurrence against the supplied Saffron schedule on restore.
+validates selected occurrences against the supplied schedule and policies on restore.
 The host owns encoding, atomic storage and association with the stable job key,
-schedule and lateness policy. Running and recovery-required jobs refuse export;
+schedule and delivery/retry policies. Running and recovery-required jobs refuse
+ordinary export;
 installed tests cover armed/paused reconstruction and refusal after both trap
 types. Three-day stopped-canister upgrades exercise overdue selection under
 generous and zero lateness tolerances: execute the selected occurrence once or
@@ -230,7 +232,7 @@ before it executes, and future work resumes with the current revision. This
 qualifies that restored-state condition, not a replica clock rollback or heap
 snapshot. See the future-cursor observation in [execution evidence](../evidence/jobs-progress.md).
 
-Checkpoint schema 6 retains the bounded remaining-batch record and represents
+Checkpoint schema 7 retains the bounded remaining-batch record and represents
 the settled cursor as `Option<u64>`. None means nothing settled; Some(0) means
 timestamp zero has settled. Decoding validates strictly increasing timestamps
 after any settled cursor, the fixed
@@ -239,8 +241,8 @@ timestamp against the schedule and rejects batches incompatible with the policy/
 before timer admission. The host must retain the exact policy and definition
 association. `ControlState` records Active, Paused or Cancelled. Cancelled records
 cannot contain selected work, a remaining batch or a pending retry; they restore inactive without
-evaluating recurrence. Schemas 1–5 from earlier unpublished previews are rejected;
-no deployed-data migration is claimed.
+evaluating recurrence. Only schema 7 is accepted in this tree. Earlier schemas, including published
+0.37.9 schema 6, require explicit host migration; no automatic migration is provided.
 
 Timer handles and closures are volatile. Persist versioned job definitions and
 occurrence progress through an explicit host contract; rebind callbacks using
@@ -249,28 +251,25 @@ Include schedule revisions, the settled/selected progress cursor, and unresolved
 accepted occurrences in the persistence design. A restored
 in-flight occurrence requires reconciliation, not automatic replay.
 
-Before implementation is considered viable, prove the commit boundary between
-recording occurrence acceptance and invoking business work, including a factory
-trap. Define how installed recovery evidence maps back to the persisted occurrence
-and how host upgrade preparation records still-live attempts. Stable state by
-itself does not make an arbitrary heap snapshot safe; snapshot restore remains
-subject to the timer design's separate qualification gate.
+Installed qualification covers the commit boundary between acceptance and
+business work, including factory traps, persisted attempt identity and still-live
+attempt export at upgrade preparation. Stable state does not make an arbitrary
+heap snapshot safe; heap snapshot restoration remains unsupported.
 
-Start by evaluating one retained Once capability per job. Do not finalize this
-mapping until a slice proves revision precedence, occurrence context, persistence
-and recovery without a second transport or bypassing timer custody. Account for
-Jobs in the shared timer declaration limit; the provisional 64-entry timer bound
-is not an advertised Jobs capacity. If this model fails, document the concrete
-requirement and revise the composition before introducing a dispatcher framework.
+Each job uses one retained Once capability, sharing Timers' 64-declaration limit
+with direct timer clients. Installed tests cover revision precedence, occurrence
+context, persistence, recovery and 64-job pressure without a second transport.
+The table limit is an admission bound, not a throughput guarantee.
 
-Qualify supplier search costs before execution integration. Keep parse errors
+Installed supplier-search measurements cover representative rules. Keep parse errors
 distinct from no occurrence in a window; neither may become an immediate timer
 retry loop. Saffron search returns an optional occurrence, not a search-error type. No bespoke search budgeting algorithm is planned.
-Define limits for jobs, expression size, preview count, search work and catch-up
-before installed pressure tests. Calculation and preview must not borrow timer
+Expressions are capped at 256 bytes and catch-up batches at 64 occurrences.
+Saffron search has no resumable work budget; a result horizon does not bound its
+internal work. Calculation and preview must not borrow timer
 state across consumer code.
 
-## Implementation sequence and acceptance
+## Implemented sequence and continuing acceptance gates
 
 1. Freeze the cron dialect, date range and policies with executable examples.
    Implement and test pure next-occurrence calculation and preview first.
@@ -311,9 +310,13 @@ store its definition, stable job key, policies and record. An earlier export mus
 not be reused after execution changes. Ordinary `checkpoint` still refuses
 unresolved work, preserving conservative hosts' upgrade guards.
 
-UnresolvedCheckpoint schema 1 wraps progress schema 6 and an Attempt
-(revision, scheduled time and one-based number), plus the export phase. Its inner
-progress is paused with no independently queued selection/retry. It preserves
+Checkpoint schema 7 carries optional unresolved Attempt data
+(revision, scheduled time and one-based number) and the export phase, attached
+with `with_unresolved` and read with `unresolved`. Unresolved progress is paused
+with no independently queued selection/retry. Ordinary `restore` rejects this
+data; `restore_unresolved` requires it. The separate UnresolvedCheckpoint type
+and its nested version are removed. Schema 6 is rejected: hosts migrating old
+records must decode and validate them explicitly using schema 7 constructors. It preserves
 any committed catch-up batch, latest outcome and newer owner revision/cursor.
 Old accepted identity can therefore survive an owner edit without validating it
 against the replacement schedule. Same-revision records must match their schedule,
@@ -328,7 +331,7 @@ reconciliation uses the same live recovery API; changed revisions cannot retry.
 Remote effects remain the owner's reconciliation responsibility. This does not
 support heap snapshots or live cloning.
 
-Checkpoint schema 6 includes an optional latest RecordedOutcome. Decode it with
+Checkpoint schema 7 includes an optional latest RecordedOutcome. Decode it with
 its validated constructor and attach it through `with_last_outcome`; preserve it
 when encoding either ordinary or unresolved progress. Returned business outcomes
 are distinct from Retired and RetryAuthorized owner dispositions. Observation

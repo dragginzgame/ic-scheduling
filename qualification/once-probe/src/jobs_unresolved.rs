@@ -2,7 +2,7 @@
 use super::{Call, Cell, RefCell, WaitPolicy, ic0, self_id};
 use ic_jobs::{
     Attempt, CatchUpProgress, Checkpoint, Context, ControlState, Job, Outcome, Policy,
-    RecoveryDisposition, RetryPolicy, Schedule, Status, UnresolvedCheckpoint, UnresolvedPhase,
+    RecoveryDisposition, RetryPolicy, Schedule, Status, UnresolvedPhase,
 };
 use std::num::NonZeroU64;
 const SECOND: u64 = 1_000_000_000;
@@ -135,7 +135,7 @@ pub extern "C" fn state() {
             _ => panic!("unexpected unresolved fixture state"),
         };
         let progress = if let Ok(record) = job.unresolved_checkpoint() {
-            record.progress().clone()
+            record
         } else {
             job.checkpoint().unwrap()
         };
@@ -229,18 +229,17 @@ pub(super) fn pre_upgrade() -> bool {
             return false;
         };
         let record = job.unresolved_checkpoint().unwrap();
-        let progress = record.progress();
-        let attempt = record.attempt();
+        let progress = &record;
+        let attempt = record.unresolved().unwrap().0;
         let pending = progress
             .catch_up()
             .map_or(&[][..], CatchUpProgress::pending);
         assert!(pending.len() <= 2);
-        let mut bytes = b"UNRESOL2".to_vec();
+        let mut bytes = b"UNRESOL3".to_vec();
         for value in [
             u64::from(MODE.with(Cell::get)),
             RUNS.with(Cell::get),
             EDITED.with(Cell::get),
-            u64::from(record.version()),
             u64::from(progress.version()),
             progress.revision(),
             u64::from(progress.through().is_some()),
@@ -248,7 +247,7 @@ pub(super) fn pre_upgrade() -> bool {
             attempt.revision(),
             attempt.scheduled_at(),
             u64::from(attempt.number()),
-            u64::from(record.phase() == UnresolvedPhase::Uncertain),
+            u64::from(record.unresolved().unwrap().1 == UnresolvedPhase::Uncertain),
             progress.catch_up().map_or(0, CatchUpProgress::through),
             pending.len() as u64,
             pending.first().copied().unwrap_or(0),
@@ -265,48 +264,58 @@ pub(super) fn pre_upgrade() -> bool {
     })
 }
 pub(super) fn post_upgrade() -> bool {
-    let mut bytes = [0; 176];
+    let mut bytes = [0; 168];
     ic0::stable64_read(&mut bytes, 0);
-    if &bytes[..8] != b"UNRESOL2" {
+    if &bytes[..8] != b"UNRESOL3" {
         return false;
     }
-    let v: [u64; 16] = std::array::from_fn(|i| {
+    let v: [u64; 15] = std::array::from_fn(|i| {
         u64::from_le_bytes(bytes[8 + i * 8..16 + i * 8].try_into().unwrap())
     });
-    assert!(v[0] <= 6 && v[6] <= 1 && v[11] <= 1 && v[13] <= 2);
+    assert!(v[0] <= 6 && v[5] <= 1 && v[10] <= 1 && v[12] <= 2);
     MODE.with(|value| value.set(u8::try_from(v[0]).unwrap()));
     RUNS.with(|value| value.set(v[1]));
     EDITED.with(|value| value.set(v[2]));
     UPGRADED.with(|value| value.set(true));
-    EXPORTED_PHASE.with(|value| value.set(v[11]));
-    let batch = if v[13] == 0 {
+    EXPORTED_PHASE.with(|value| value.set(v[10]));
+    let batch = if v[12] == 0 {
         None
     } else {
-        Some(CatchUpProgress::new(&v[14..14 + usize::try_from(v[13]).unwrap()], v[12]).unwrap())
+        Some(CatchUpProgress::new(&v[13..13 + usize::try_from(v[12]).unwrap()], v[11]).unwrap())
     };
     let progress = Checkpoint::new(
-        u8::try_from(v[4]).unwrap(),
-        v[5],
-        (v[6] == 1).then_some(v[7]),
+        u8::try_from(v[3]).unwrap(),
+        v[4],
+        (v[5] == 1).then_some(v[6]),
         None,
         ControlState::Paused,
         batch,
         None,
     )
     .unwrap();
-    let progress = super::outcomes::restore(progress, &bytes[136..]);
-    let record = UnresolvedCheckpoint::new(
-        u8::try_from(v[3]).unwrap(),
-        progress,
-        Attempt::new(v[8], v[9], u32::try_from(v[10]).unwrap()).unwrap(),
-        if v[11] == 0 {
-            UnresolvedPhase::Running
-        } else {
-            UnresolvedPhase::Uncertain
-        },
-    )
-    .unwrap();
+    let progress = super::outcomes::restore(progress, &bytes[128..]);
+    let record = progress
+        .with_unresolved(
+            Attempt::new(v[7], v[8], u32::try_from(v[9]).unwrap()).unwrap(),
+            if v[10] == 0 {
+                UnresolvedPhase::Running
+            } else {
+                UnresolvedPhase::Uncertain
+            },
+        )
+        .unwrap();
     ic_timers::initialize().unwrap();
+    assert!(matches!(
+        ic_jobs::restore(
+            ["unresolved", "jobs", "work"],
+            schedule(),
+            policy(),
+            retries(),
+            record.clone(),
+            work,
+        ),
+        Err(ic_jobs::Error::InvalidCheckpoint)
+    ));
     let job = ic_jobs::restore_unresolved(
         ["unresolved", "jobs", "work"],
         schedule(),

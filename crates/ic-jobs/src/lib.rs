@@ -26,26 +26,27 @@ pub use catch_up::{CatchUpLimit, CatchUpLimitError, CatchUpPlan, Policy};
     all(not(test), not(all(feature = "execution", target_arch = "wasm32"))),
     expect(dead_code, reason = "this build excludes the wasm32 execution adapter")
 )]
-mod progress;
+#[cfg(feature = "execution")]
+mod state;
 
-#[cfg(any(feature = "execution", test))]
+#[cfg(feature = "execution")]
 mod checkpoint;
 #[cfg(feature = "execution")]
 pub use checkpoint::{CatchUpProgress, Checkpoint, CheckpointError};
 #[cfg(feature = "execution")]
-pub use progress::ControlState;
+pub use state::{ControlState, RecoveryDisposition};
 
-#[cfg(any(feature = "execution", test))]
+#[cfg(feature = "execution")]
 mod retry;
 #[cfg(feature = "execution")]
 pub use retry::{RetryPolicy, RetryPolicyError, RetryProgress};
 
-#[cfg(any(feature = "execution", test))]
+#[cfg(feature = "execution")]
 mod unresolved;
 #[cfg(feature = "execution")]
-pub use unresolved::{Attempt, UnresolvedCheckpoint, UnresolvedPhase};
+pub use unresolved::{Attempt, UnresolvedPhase};
 
-#[cfg(any(feature = "execution", test))]
+#[cfg(feature = "execution")]
 mod outcome;
 #[cfg(feature = "execution")]
 pub use outcome::{Outcome, RecordedOutcome, RecordedResult};
@@ -53,6 +54,4 @@ pub use outcome::{Outcome, RecordedOutcome, RecordedResult};
 #[cfg(all(feature = "execution", target_arch = "wasm32"))]
 mod execution;
 #[cfg(all(feature = "execution", target_arch = "wasm32"))]
-pub use execution::{
-    Context, Error, Job, Recovery, RecoveryDisposition, Status, bind, restore, restore_unresolved,
-};
+pub use execution::{Context, Error, Job, Recovery, Status, bind, restore, restore_unresolved};

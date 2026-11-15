@@ -1,5 +1,14 @@
 # Timers changelog
 
+## [0.45.10] - Unreleased
+
+### 🛠️ Development
+
+- Place modules with child files under their own `mod.rs`, preserving public paths.
+
+- Use public timer commands directly in the engines, removing duplicate enums
+  and conversions without changing the public API.
+
 ## [0.45.9] - 2026-11-15
 
 ### ✨ Added

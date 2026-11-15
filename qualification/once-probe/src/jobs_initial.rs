@@ -74,7 +74,7 @@ pub extern "C" fn setup() {
             policy,
             ic_jobs::RetryPolicy::NONE,
             Checkpoint::new(
-                6,
+                7,
                 1,
                 None,
                 Some(0),

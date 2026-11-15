@@ -1,5 +1,5 @@
 //! Validated progress data; hosts own encoding, storage and matching job definitions.
-use crate::progress::ControlState;
+use crate::{Attempt, UnresolvedPhase, state::ControlState};
 
 /// Invalid host-restored progress. No timer declaration has been admitted yet.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -16,11 +16,12 @@ impl std::fmt::Display for CheckpointError {
 }
 impl std::error::Error for CheckpointError {}
 
-/// Progress of a job with no accepted or uncertain work. This is data, not a
+/// Reconstructable job progress, optionally carrying an unresolved attempt. This is data, not a
 /// recovery token. The host must persist the stable job key, schedule and execution
 /// policy alongside it, atomically, and validate their association on restore.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Checkpoint {
+    pub(crate) unresolved: Option<(Attempt, UnresolvedPhase)>,
     pub(crate) revision: u64,
     pub(crate) through: Option<u64>,
     pub(crate) selected_at: Option<u64>,
@@ -76,6 +77,23 @@ impl Checkpoint {
         policy: crate::Policy,
         retry_policy: crate::retry::RetryPolicy,
     ) -> bool {
+        if let Some((attempt, _)) = self.unresolved {
+            if attempt.number > retry_policy.max_attempts() {
+                return false;
+            }
+            if attempt.revision == self.revision {
+                let matches = match schedule.after_settlement(self.through) {
+                    Some(next) => next == Some(attempt.scheduled_at),
+                    None => {
+                        schedule.next_from(attempt.scheduled_at, attempt.scheduled_at)
+                            == Some(attempt.scheduled_at)
+                    }
+                };
+                if !matches {
+                    return false;
+                }
+            }
+        }
         if let Some(retry) = &self.retry
             && retry_policy.next_retry(retry.failed_attempts, retry.failed_at)
                 != Some(retry.retry_at)
@@ -121,7 +139,7 @@ impl Checkpoint {
     /// # Errors
     /// Rejects unsupported schemas, revision zero, selected work while paused,
     /// a selected occurrence at/before settled progress, or a batch inconsistent
-    /// with the cursor/selection. Schema 6 includes pending retry identity and an optional latest outcome,
+    /// with the cursor/selection. Schema 7 includes pending retry identity and an optional latest outcome,
     /// alongside consumed attempts and deadline. Cancellation cannot retain pending work.
     pub fn new(
         version: u8,
@@ -132,7 +150,7 @@ impl Checkpoint {
         catch_up: Option<CatchUpProgress>,
         retry: Option<crate::retry::RetryProgress>,
     ) -> Result<Self, CheckpointError> {
-        if version != 6 {
+        if version != 7 {
             return Err(CheckpointError::Version);
         }
         if revision == 0
@@ -159,6 +177,7 @@ impl Checkpoint {
             return Err(CheckpointError::Progress);
         }
         Ok(Self {
+            unresolved: None,
             revision,
             through,
             selected_at,
@@ -168,10 +187,41 @@ impl Checkpoint {
             last_outcome: None,
         })
     }
+    /// Attach unresolved correlation data to paused progress. This record can
+    /// only reconstruct blocked work in a fresh runtime; it is not replay authority.
+    /// # Errors
+    /// Rejects queued/retry work or inconsistent revision, cursor and batch data.
+    pub fn with_unresolved(
+        mut self,
+        attempt: Attempt,
+        phase: UnresolvedPhase,
+    ) -> Result<Self, CheckpointError> {
+        if self.control != ControlState::Paused
+            || self.selected_at.is_some()
+            || self.retry.is_some()
+            || attempt.revision > self.revision
+            || (attempt.revision == self.revision
+                && self.through.is_some_and(|end| attempt.scheduled_at <= end))
+            || self.catch_up.as_ref().is_some_and(|batch| {
+                attempt.revision != self.revision || batch.pending[0] != attempt.scheduled_at
+            })
+        {
+            return Err(CheckpointError::Progress);
+        }
+        self.unresolved = Some((attempt, phase));
+        Ok(self)
+    }
+    /// Unresolved attempt and its export-time observation, if any. Both phases
+    /// reconstruct blocked. None identifies ordinary settled/queued progress.
+    #[must_use]
+    pub const fn unresolved(&self) -> Option<(Attempt, UnresolvedPhase)> {
+        self.unresolved
+    }
+
     /// Progress schema version for the host's encoded record.
     #[must_use]
     pub const fn version(&self) -> u8 {
-        6
+        7
     }
     /// Preserved schedule revision.
     #[must_use]

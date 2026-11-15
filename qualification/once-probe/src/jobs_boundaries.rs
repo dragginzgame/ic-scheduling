@@ -52,7 +52,7 @@ pub extern "C" fn setup() {
         },
         ic_jobs::RetryPolicy::NONE,
         Checkpoint::new(
-            6,
+            7,
             u64::MAX,
             Some(ic0::time()),
             None,
@@ -80,7 +80,7 @@ pub extern "C" fn setup() {
         },
         ic_jobs::RetryPolicy::NONE,
         Checkpoint::new(
-            6,
+            7,
             1,
             Some(u64::MAX),
             None,
@@ -228,7 +228,7 @@ pub extern "C" fn ahead_setup() {
             policy,
             ic_jobs::RetryPolicy::NONE,
             Checkpoint::new(
-                6,
+                7,
                 7,
                 Some(through),
                 None,

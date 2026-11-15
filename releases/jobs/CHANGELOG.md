@@ -1,8 +1,23 @@
 # Jobs changelog
 
-## [0.37.10] - Unreleased
+## [0.38.0] - Unreleased
+
+### 💥 Changed
+
+- Replace UnresolvedCheckpoint with schema 7 Checkpoint carrying optional
+  unresolved attempt data. Ordinary restoration rejects unresolved records;
+  explicit unresolved restoration still blocks until owner reconciliation.
+  Schema 6 requires explicit host migration.
+- Consolidate progress and execution policy into one state owner, including
+  fault status and restored attempt identity. Retain retry budgets and lifecycle
+  guards; policy transitions can now be tested natively.
 
 ### 🛠️ Development
+
+- Refresh current documentation for pending versus published APIs, schema migration,
+  bounded catch-up and provider capacity; retain dated qualification history.
+
+- Place modules with child files under their own `mod.rs`, preserving public paths.
 
 - Keep standalone registry archive verification outside the product Cargo
   workspace so the pre-upload Wasm check can resolve its published dependencies.

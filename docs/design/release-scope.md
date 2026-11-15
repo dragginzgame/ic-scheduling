@@ -10,14 +10,13 @@ Already accepted UTC cron, bounded catch-up and optional features remain in scop
 
 Completed on 2026-11-15: Timers 0.45.9 and Jobs 0.37.9 are published.
 See [qualification and delivery](../evidence/release-candidate.md). The ordered
-checklist below records the accepted completion scope.
+checklist below records the completed first-release scope. Pending simplification
+work targets Timers 0.45.10 and Jobs 0.38.0; schema 7 descriptions below refer to
+that pending tree, not the published Jobs 0.37.9 artifact.
 
 Maintainer direction, 2026-11-15: finish this rewrite soon and publish both crates
 to crates.io. This replaces the GitHub-only delivery target, without waiving the
-required legacy capabilities or failure guarantees. Keep publication disabled
-while implementation is incomplete; do not add optional features to this release.
-
-Finish the remaining work in this order:
+required legacy capabilities or failure guarantees. The completed sequence was:
 
 1. **Jobs durable recovery:** persist exact accepted/uncertain attempt identity
    and recorded outcomes; reconstruct unresolved work blocked, with explicit
@@ -53,11 +52,9 @@ compiles for Wasm. Cargo 1.100 temporary-registry verification has a recorded
 limitation; registry-only Jobs verification passed against published Timers.
 Release adapters, both deliveries and registry readback are now verified.
 
-Do not block this release on legacy performance comparisons, optional dependency
-refreshes, new calendar features, or migrations in consumer repositories being
-rewritten. Preserve required resource/failure checks; defer optional improvements
-instead of weakening those checks. No completion date is claimed until the
-remaining implementation and candidate qualification have concrete results.
+Legacy performance comparisons, optional dependency refreshes, new calendar
+features and migrations in consumer repositories were excluded from the first
+release gate. Required resource/failure checks remain part of subsequent releases.
 
 ## Capability boundary
 
@@ -70,13 +67,13 @@ Evidence is the clean local legacy Scheduling checkout at
 | Retained Once and pre-armed watchdog execution | Implemented; preserve failure/ownership guarantees |
 | Five-field UTC cron | Accepted new requirement; implemented through Saffron |
 | Latest-due coalescing for Jobs | Not in legacy Jobs; defer. Watchdog tick coalescing remains implemented |
-| Fixed-rate elapsed intervals | Legacy requirement; implementation started in 0.37.6 |
+| Fixed-rate elapsed intervals | Implemented through `Schedule::fixed_rate` |
 | One-shot Jobs | `Schedule::once` implemented in 0.37.7 using shared admission, delivery policy and recovery |
 | Jobs recurrence after completion | `Schedule::after_completion` added in 0.37.8; shared cursor preserves completion-relative deadlines |
 | Bounded retries/backoff with stable effect identity | 0.37.9 integrates explicit retry-safe outcomes and pending retry checkpoints; unresolved records now reconstruct blocked with exact attempt identity |
 | Persisted Running/Uncertain records and explicit disposition | Explicit unresolved export/restore and Retire/RetrySafe dispositions implemented; installed running/trapped upgrades pass |
 | Pause/resume, reschedule and pending cancellation | Implemented; 0.37.8 adds terminal cancellation with checkpoint reconstruction and unsettled-work refusal |
-| Durable attempt correlation and recorded outcomes | Attempt identifies revision/time/number; schema 6 retains the latest normal result or recovery disposition |
+| Durable attempt correlation and recorded outcomes | Attempt identifies revision/time/number; schema 7 retains the latest normal result or recovery disposition |
 | Completion-relative timer recurrence | `OnceNext::After` added in 0.45.7 through the existing Once provider; no separate registration family |
 | Legacy transient timers and explicit removal | Implemented with checked incarnations, unsettled-work refusal and installed capture-lifetime checks |
 | Legacy inventory/failure diagnostics | Bounded sorted inventory and declaration failure observations implemented behind metrics, without control authority |
@@ -92,10 +89,10 @@ through pause and reconstruction using the settled cursor. Legacy catch-up
 could retain an entire backlog; the new bounded/discard-excess policy is an accepted
 redesign, not an identical behavioral replacement.
 
-Schema 6 records Active, Paused or Cancelled control state. `Job::cancel` discards
+Schema 7 records Active, Paused or Cancelled control state. `Job::cancel` discards
 unaccepted selection, pending retries and remaining catch-up work; it refuses running or uncertain
 work. Cancellation survives reconstruction and cannot be resumed or edited.
-The underlying timer declaration and captures remain retained; removal is a
+The underlying timer declaration and captures remain retained; removal is
 available through Timers; Jobs deliberately retains its declaration.
 
 Persisted unresolved work must restore blocked, retain exact occurrence/attempt

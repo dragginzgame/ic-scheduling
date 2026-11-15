@@ -179,7 +179,7 @@ impl Once {
     pub fn set(&self, demand: OnceDemand) -> Result<(), Error> {
         let runtime = self.runtime()?;
         runtime.check()?;
-        self.handle.set(demand.into())?;
+        self.handle.set(demand)?;
         runtime.arm()
     }
     /// Observe this declaration without affecting eligibility.
@@ -206,7 +206,7 @@ impl Once {
     pub fn recover(&self, token: RecoveryToken, demand: OnceDemand) -> Result<(), Error> {
         let runtime = self.runtime()?;
         runtime.check()?;
-        let result = self.handle.recover(&token.0, demand.into());
+        let result = self.handle.recover(&token.0, demand);
         drop(token);
         result?;
         runtime.arm()
@@ -583,7 +583,7 @@ where
             let result = work();
             #[cfg(feature = "metrics")]
             metrics.record(Event::Returned(result.observation));
-            (result.next.into(), result.observation)
+            (result.next, result.observation)
         })?;
     Ok(Watchdog {
         runtime: Rc::downgrade(&runtime),
@@ -608,7 +608,7 @@ impl Watchdog {
     pub fn set(&self, demand: WatchdogDemand) -> Result<(), Error> {
         let runtime = self.runtime.upgrade().ok_or(Error::StaleAuthority)?;
         runtime.check()?;
-        self.handle.set(demand.into(), ic0::time())?;
+        self.handle.set(demand, ic0::time())?;
         runtime.arm()
     }
     /// Observe this declaration without controlling consumer-owned async work.

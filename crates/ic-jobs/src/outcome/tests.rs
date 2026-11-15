@@ -20,11 +20,11 @@ fn result_observation_is_validated_and_retained_without_replay_authority() {
             (attempt, result, 20)
         );
         let checkpoint = crate::checkpoint::Checkpoint::new(
-            6,
+            7,
             2,
             Some(100),
             None,
-            crate::progress::ControlState::Paused,
+            crate::state::ControlState::Paused,
             None,
             None,
         )

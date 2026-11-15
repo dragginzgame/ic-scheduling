@@ -78,7 +78,7 @@ pub extern "C" fn setup() {
             schedule(),
             policy(),
             ic_jobs::RetryPolicy::NONE,
-            Checkpoint::new(6, 1, None, None, ControlState::Paused, Some(pending), None).unwrap(),
+            Checkpoint::new(7, 1, None, None, ControlState::Paused, Some(pending), None).unwrap(),
             work,
         )
     } else {
@@ -270,7 +270,7 @@ pub(super) fn post_upgrade() -> bool {
         assert_eq!(values[3], 0);
     }
     let checkpoint = Checkpoint::new(
-        6,
+        7,
         1,
         (values[6] == 1).then_some(values[3]),
         (control == ControlState::Active).then_some(values[4]),

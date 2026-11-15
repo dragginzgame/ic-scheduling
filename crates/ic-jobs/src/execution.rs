@@ -1,7 +1,7 @@
 //! Calendar Jobs adapter with explicit missed-run policy. One retained Once owns execution and recovery.
 use crate::{
-    Outcome, Policy, Schedule,
-    progress::{Progress, Selection},
+    Outcome, Policy, RecoveryDisposition, Schedule,
+    state::{Selection, State},
 };
 use ic_platform_runtime::ic0;
 use ic_timers::{Once, OnceDemand, OnceNext, OnceResult, OnceStatus};
@@ -23,17 +23,6 @@ pub struct Context {
     pub scheduled_at: u64,
     /// Actual callback start, in Unix nanoseconds.
     pub started_at: u64,
-}
-/// Owner disposition after reconciling the effects of an uncertain attempt.
-/// Neither choice resumes the job; call [`Job::resume`] separately.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum RecoveryDisposition {
-    /// Retire this occurrence, discard its retry/batch and skip through now.
-    Retire,
-    /// The owner has established that repeating this occurrence's effects is
-    /// safe. Preserve its identity and consumed budget, with backoff from now.
-    /// Refuse if the definition changed, budget is exhausted or deadline overflows.
-    RetrySafe,
 }
 /// Admission or control failure.
 #[derive(Debug, Eq, PartialEq)]
@@ -113,8 +102,6 @@ pub enum Status {
     /// Terminal job or provider fault.
     Faulted,
 }
-mod state;
-use state::State;
 /// Retained job control. Dropping it does not cancel the timer declaration.
 /// Hosts can persist settled/queued progress using [`Job::checkpoint`] and [`restore`].
 pub struct Job {
@@ -150,24 +137,18 @@ where
     F: FnMut(Context) -> Fut + 'static,
     Fut: Future<Output = Outcome> + 'static,
 {
-    let progress = match schedule.first_at() {
-        Some(first) => {
-            let mut progress = Progress::unstarted();
-            progress.select(first).map_err(|_| Error::Faulted)?;
-            progress
-        }
-        None => Progress::new(ic0::time()),
-    };
-    let checkpoint = progress.checkpoint().map_err(|_| Error::Faulted)?;
-    bind_checkpoint(
-        identity,
-        schedule,
-        policy,
-        retry_policy,
-        checkpoint,
+    let first = schedule.first_at();
+    let checkpoint = crate::Checkpoint::new(
+        7,
+        1,
+        first.is_none().then(ic0::time),
+        first,
+        crate::ControlState::Active,
         None,
-        work,
+        None,
     )
+    .map_err(|_| Error::Faulted)?;
+    bind_checkpoint(identity, schedule, policy, retry_policy, checkpoint, work)
 }
 
 /// Rebind fresh callbacks from host-owned progress in a fresh runtime.
@@ -189,18 +170,12 @@ where
     F: FnMut(Context) -> Fut + 'static,
     Fut: Future<Output = Outcome> + 'static,
 {
-    if !checkpoint.matches_definition(&schedule, policy, retry_policy) {
+    if checkpoint.unresolved().is_some()
+        || !checkpoint.matches_definition(&schedule, policy, retry_policy)
+    {
         return Err(Error::InvalidCheckpoint);
     }
-    bind_checkpoint(
-        identity,
-        schedule,
-        policy,
-        retry_policy,
-        checkpoint,
-        None,
-        work,
-    )
+    bind_checkpoint(identity, schedule, policy, retry_policy, checkpoint, work)
 }
 
 /// Reconstruct an unresolved job in a fresh runtime with no surviving old callbacks.
@@ -216,25 +191,18 @@ pub fn restore_unresolved<F, Fut>(
     schedule: Schedule,
     policy: Policy,
     retry_policy: crate::RetryPolicy,
-    record: crate::UnresolvedCheckpoint,
+    record: crate::Checkpoint,
     work: F,
 ) -> Result<Job, Error>
 where
     F: FnMut(Context) -> Fut + 'static,
     Fut: Future<Output = Outcome> + 'static,
 {
-    if !record.matches_definition(&schedule, policy, retry_policy) {
+    if record.unresolved().is_none() || !record.matches_definition(&schedule, policy, retry_policy)
+    {
         return Err(Error::InvalidCheckpoint);
     }
-    bind_checkpoint(
-        identity,
-        schedule,
-        policy,
-        retry_policy,
-        record.progress.clone(),
-        Some(record),
-        work,
-    )
+    bind_checkpoint(identity, schedule, policy, retry_policy, record, work)
 }
 
 fn bind_checkpoint<F, Fut>(
@@ -243,33 +211,24 @@ fn bind_checkpoint<F, Fut>(
     policy: Policy,
     retry_policy: crate::RetryPolicy,
     checkpoint: crate::Checkpoint,
-    unresolved: Option<crate::UnresolvedCheckpoint>,
     mut work: F,
 ) -> Result<Job, Error>
 where
     F: FnMut(Context) -> Fut + 'static,
     Fut: Future<Output = Outcome> + 'static,
 {
-    let state = Rc::new(RefCell::new(State {
+    let state = Rc::new(RefCell::new(State::from_checkpoint(
         schedule,
         policy,
-        progress: unresolved.as_ref().map_or_else(
-            || Progress::restore(&checkpoint),
-            Progress::restore_unresolved,
-        ),
-        batch: checkpoint.catch_up,
         retry_policy,
-        retry: checkpoint.retry,
-        last_outcome: checkpoint.last_outcome,
-        restored_attempt: unresolved.map(|record| record.attempt),
-        faulted: false,
-    }));
+        checkpoint,
+    )));
     let captured = Rc::clone(&state);
     let timer = ic_timers::bind_once(identity, ic_timers::Lifetime::Retained, move || {
         let now = ic0::time();
         let selected = {
             let mut state = captured.borrow_mut();
-            match state.accept(now) {
+            match state.accept_dispatch(now) {
                 Ok(selected) => Some(selected),
                 Err(_) => {
                     state.faulted = true;
@@ -326,8 +285,8 @@ where
                 state.faulted = true;
             }
             let next = match state.plan(ic0::time()) {
-                OnceDemand::Inactive => OnceNext::Stop,
-                OnceDemand::At(at) => OnceNext::At(at),
+                None => OnceNext::Stop,
+                Some(at) => OnceNext::At(at),
             };
             OnceResult {
                 observation: match outcome {
@@ -343,7 +302,8 @@ where
     })?;
     let job = Job { state, timer };
     let demand = job.state.borrow_mut().plan(ic0::time());
-    job.timer.set(demand)?;
+    job.timer
+        .set(demand.map_or(OnceDemand::Inactive, OnceDemand::At))?;
     Ok(job)
 }
 fn stopped() -> OnceResult {
@@ -361,7 +321,7 @@ impl Job {
     /// # Errors
     /// Returns Unsettled unless work is Running/RecoveryRequired; returns provider
     /// or terminal errors on invalid runtime state.
-    pub fn unresolved_checkpoint(&self) -> Result<crate::UnresolvedCheckpoint, Error> {
+    pub fn unresolved_checkpoint(&self) -> Result<crate::Checkpoint, Error> {
         let (revision, scheduled_at, attempt, phase) = match self.status()? {
             Status::Running {
                 revision,
@@ -388,15 +348,12 @@ impl Job {
             _ => return Err(Error::Unsettled),
         };
         let state = self.state.borrow();
-        let mut progress = state
-            .progress
-            .unresolved_progress()
-            .map_err(|_| Error::Faulted)?;
-        progress.catch_up = state.batch.clone();
-        progress.last_outcome = state.last_outcome;
+        let progress = state.unresolved_progress().map_err(|_| Error::Faulted)?;
         let attempt =
             crate::Attempt::new(revision, scheduled_at, attempt).map_err(|_| Error::Faulted)?;
-        crate::UnresolvedCheckpoint::new(1, progress, attempt, phase).map_err(|_| Error::Faulted)
+        progress
+            .with_unresolved(attempt, phase)
+            .map_err(|_| Error::Faulted)
     }
     /// Export reconstructable progress without persisting timer capabilities.
     /// Call synchronously from the host upgrade-admission boundary and store it
@@ -411,12 +368,7 @@ impl Job {
             Status::Faulted => return Err(Error::Faulted),
             _ => {}
         }
-        let state = self.state.borrow();
-        let mut checkpoint = state.progress.checkpoint().map_err(|_| Error::Faulted)?;
-        checkpoint.catch_up = state.batch.clone();
-        checkpoint.retry = state.retry.clone();
-        checkpoint.last_outcome = state.last_outcome;
-        Ok(checkpoint)
+        self.state.borrow().checkpoint().map_err(|_| Error::Faulted)
     }
 
     /// Observe status and associate timer recovery with the selected occurrence.
@@ -428,16 +380,16 @@ impl Job {
         if state.faulted || matches!(timer, OnceStatus::Faulted) {
             return Ok(Status::Faulted);
         }
-        if let Some(attempt) = state.restored_attempt {
+        if state.restored() {
             if !matches!(timer, OnceStatus::Inactive) {
                 state.faulted = true;
                 return Err(Error::Faulted);
             }
-            let selection = state.progress.selection().ok_or(Error::Faulted)?;
+            let selection = state.selection().ok_or(Error::Faulted)?;
             return Ok(Status::RecoveryRequired {
-                attempt: attempt.number,
-                revision: attempt.revision,
-                scheduled_at: attempt.scheduled_at,
+                attempt: state.attempt(),
+                revision: selection.occurrence.revision,
+                scheduled_at: selection.occurrence.scheduled_at,
                 recovery: Recovery {
                     state: Rc::downgrade(&self.state),
                     selection,
@@ -446,25 +398,22 @@ impl Job {
             });
         }
         if matches!(timer, OnceStatus::Inactive) {
-            return Ok(if state.progress.cancelled() {
+            return Ok(if state.cancelled() {
                 Status::Cancelled
-            } else if state.progress.paused() {
+            } else if state.paused() {
                 Status::Paused
             } else {
                 Status::Idle
             });
         }
-        let Some(selection) = state.progress.selection() else {
+        let Some(selection) = state.selection() else {
             state.faulted = true;
             return Err(Error::Faulted);
         };
         let occurrence = selection.occurrence;
         Ok(match timer {
             OnceStatus::RecoveryRequired(token) => {
-                state
-                    .progress
-                    .block(selection)
-                    .map_err(|_| Error::Faulted)?;
+                state.block(selection).map_err(|_| Error::Faulted)?;
                 Status::RecoveryRequired {
                     attempt: state.attempt(),
                     revision: occurrence.revision,
@@ -492,7 +441,7 @@ impl Job {
     }
     fn control(
         &self,
-        change: impl FnOnce(&mut State, u64) -> Result<(), crate::progress::Error>,
+        change: impl FnOnce(&mut State, u64) -> Result<(), crate::state::Error>,
     ) -> Result<(), Error> {
         let status = self.status()?;
         if matches!(status, Status::Cancelled) {
@@ -518,7 +467,8 @@ impl Job {
             }
         };
         if let Some(demand) = demand {
-            self.timer.set(demand)?;
+            self.timer
+                .set(demand.map_or(OnceDemand::Inactive, OnceDemand::At))?;
         }
         Ok(())
     }
@@ -526,7 +476,7 @@ impl Job {
     /// # Errors
     /// Returns timer or terminal progress errors.
     pub fn pause(&self) -> Result<(), Error> {
-        self.control(|state, _| state.progress.pause())
+        self.control(|state, _| state.pause())
     }
     /// Terminally cancel pending or paused work and discard its remaining batch.
     /// Does not remove the retained timer declaration. Repeated cancellation is
@@ -545,7 +495,7 @@ impl Job {
         }
         self.timer.set(OnceDemand::Inactive)?;
         let mut state = self.state.borrow_mut();
-        state.progress.cancel().map_err(|_| Error::Faulted)?;
+        state.cancel().map_err(|_| Error::Faulted)?;
         state.batch = None;
         state.retry = None;
         Ok(())
@@ -556,18 +506,18 @@ impl Job {
     /// # Errors
     /// Returns timer or terminal progress errors.
     pub fn resume(&self) -> Result<(), Error> {
-        self.control(|state, _| state.progress.resume())
+        self.control(|state, _| state.resume())
     }
     /// Replace the schedule for future occurrences; preserve accepted identity/pause.
     /// # Errors
     /// Returns timer or terminal revision/control errors.
     pub fn edit(&self, schedule: Schedule) -> Result<(), Error> {
         self.control(move |state, now| {
-            state.progress.edit(now)?;
+            state.edit(now)?;
             state.schedule = schedule;
             state.batch = None;
             // An accepted or uncertain old revision still owns its attempt identity.
-            if state.progress.selection().is_none() {
+            if state.selection().is_none() {
                 state.retry = None;
             }
             Ok(())
@@ -592,7 +542,13 @@ impl Job {
             if state.faulted {
                 return Err(Error::Faulted);
             }
-            state.recover(recovery.selection, disposition, ic0::time())?;
+            state
+                .recover(recovery.selection, disposition, ic0::time())
+                .map_err(|error| match error {
+                    crate::state::Error::Stale => Error::StaleRecovery,
+                    crate::state::Error::RetryUnavailable => Error::RetryUnavailable,
+                    _ => Error::Faulted,
+                })?;
         }
         if let Some(token) = recovery.timer
             && let Err(error) = self.timer.recover(token, OnceDemand::Inactive)

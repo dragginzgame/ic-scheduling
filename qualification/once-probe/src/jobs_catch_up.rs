@@ -253,7 +253,7 @@ pub(super) fn post_upgrade() -> bool {
     assert!(count <= 32);
     LOG.with(|log| *log.borrow_mut() = (0..count).map(|_| read(&bytes, &mut offset)).collect());
     let checkpoint = Checkpoint::new(
-        6,
+        7,
         revision,
         Some(through),
         (bytes[11] != 0).then_some(selected),

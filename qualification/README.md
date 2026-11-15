@@ -30,7 +30,7 @@ reentrant destruction of rejected captures and release of settled async attempts
 
 [Entropy integration](entropy-integration/README.md) stages a pinned, read-only
 consumer checkout, applies a small timer migration and runs its existing native,
-Wasm and installed checks against unpublished local Timers. It does not adopt
+Wasm and installed checks against local Timers. It does not adopt
 the migration in Entropy or duplicate its maintained test suite.
 
 `executor-probe` and `executor-driver` check Platform Runtime's protected-task
@@ -77,7 +77,7 @@ initial/post-await trap barriers. The aggregate `make check-once` includes it.
 Using `--jobs-initial` instead selects fixed-rate initial-deadline checks plus
 the affected Jobs checkpoint lifecycle, downtime and catch-up upgrade cases.
 It covers zero, overdue and future admission, both delivery policies, unstarted
-reconstruction and the schema 6 host fixtures. Their existing cron-only storage
+reconstruction and the schema 7 host fixtures. Their existing cron-only storage
 formats explicitly require a present cursor; the new zero fixture tests None.
 
 `--lifetimes` checks retained/removable declarations, transient settlement,
@@ -88,7 +88,8 @@ normal-result counters, failure-streak resets and inert repeated reads.
 `--jobs-unresolved` explicitly persists running/factory-trapped/post-await-trapped
 attempts across actual upgrades. Repeated reconstruction remains blocked; owner
 edits, consumed retry budgets, catch-up custody and latest recorded outcomes survive.
-This opt-in host fixture is separate from ordinary checkpoint fixtures that refuse
+It also verifies that ordinary restore rejects an unresolved Checkpoint before
+admitting a timer declaration. This opt-in host fixture is separate from ordinary checkpoint fixtures that refuse
 unresolved upgrades. Its encoding is fixture-owned, not a general serializer.
 
 `--jobs-retry` checks capped budgets, stable occurrence identity, success and

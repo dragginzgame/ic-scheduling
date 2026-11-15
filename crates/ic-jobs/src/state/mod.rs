@@ -1,9 +1,24 @@
-//! Private occurrence progress; owns neither recurrence calculation nor execution.
+//! One owner for job progress, selection policy and reconstruction. Timers owns execution custody.
 //!
 //! The timer adapter must authenticate a job before forwarding a selection and
 //! prove termination before blocking it. These tokens are local, not persisted
 //! capabilities or permission to replay business effects.
 
+use crate::{
+    CatchUpProgress, Checkpoint, Policy, RecordedOutcome, RetryPolicy, RetryProgress, Schedule,
+};
+
+/// Owner disposition after reconciling the effects of an uncertain attempt.
+/// Neither choice resumes the job; call `Job::resume` separately.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RecoveryDisposition {
+    /// Retire this occurrence, discard its retry/batch and skip through now.
+    Retire,
+    /// The owner has established that repeating this occurrence's effects is
+    /// safe. Preserve its identity and consumed budget, with backoff from now.
+    /// Refuse if the definition changed, budget is exhausted or deadline overflows.
+    RetrySafe,
+}
 /// Owner-controlled eligibility, persisted separately from execution custody.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ControlState {
@@ -35,6 +50,7 @@ enum Phase {
     Queued,
     Accepted { started_at: u64 },
     Blocked,
+    Restored(u32),
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct Active {
@@ -51,20 +67,26 @@ pub(super) enum Error {
     NotDue,
     Stale,
     Exhausted,
+    RetryUnavailable,
 }
 
 /// One job's revision and exclusive progress cursor. The host's stable job key
 /// must accompany Occurrence when constructing durable business identities.
-pub(super) struct Progress {
+pub(super) struct State {
     revision: u64,
     through: Option<u64>,
     control: ControlState,
     active: Option<Active>,
     sequence: u64,
-    faulted: bool,
+    pub(super) faulted: bool,
+    pub(super) schedule: Schedule,
+    pub(super) policy: Policy,
+    pub(super) retry_policy: RetryPolicy,
+    pub(super) batch: Option<CatchUpProgress>,
+    pub(super) retry: Option<RetryProgress>,
+    pub(super) last_outcome: Option<RecordedOutcome>,
 }
-impl Progress {
-    #[cfg(any(feature = "execution", test))]
+impl State {
     pub(super) fn unresolved_progress(&self) -> Result<crate::checkpoint::Checkpoint, Error> {
         self.check()?;
         // The adapter supplies provider Running/RecoveryRequired evidence. A
@@ -73,33 +95,17 @@ impl Progress {
             return Err(Error::Stale);
         }
         Ok(crate::checkpoint::Checkpoint {
+            unresolved: None,
             revision: self.revision,
             through: self.through,
             selected_at: None,
             control: ControlState::Paused,
-            catch_up: None,
+            catch_up: self.batch.clone(),
             retry: None,
-            last_outcome: None,
+            last_outcome: self.last_outcome,
         })
     }
 
-    #[cfg(any(feature = "execution", test))]
-    pub(super) fn restore_unresolved(record: &crate::unresolved::UnresolvedCheckpoint) -> Self {
-        let mut progress = Self::restore(&record.progress);
-        progress.sequence = 1;
-        progress.active = Some(Active {
-            selection: Selection {
-                occurrence: Occurrence {
-                    revision: record.attempt.revision,
-                    scheduled_at: record.attempt.scheduled_at,
-                },
-                sequence: 1,
-            },
-            phase: Phase::Blocked,
-        });
-        progress
-    }
-    #[cfg(any(feature = "execution", test))]
     pub(super) fn checkpoint(&self) -> Result<crate::checkpoint::Checkpoint, Error> {
         if self.faulted {
             return Err(Error::Exhausted);
@@ -111,69 +117,72 @@ impl Progress {
                 phase: Phase::Queued,
             }) => Some(selection.occurrence.scheduled_at),
             Some(Active {
-                phase: Phase::Blocked,
+                phase: Phase::Blocked | Phase::Restored(_),
                 ..
             }) => return Err(Error::RecoveryRequired),
             Some(_) => return Err(Error::Busy),
         };
         Ok(crate::checkpoint::Checkpoint {
+            unresolved: None,
             revision: self.revision,
             through: self.through,
             selected_at,
             control: self.control,
-            catch_up: None,
-            retry: None,
-            last_outcome: None,
+            catch_up: self.batch.clone(),
+            retry: self.retry.clone(),
+            last_outcome: self.last_outcome,
         })
     }
 
-    #[cfg(any(feature = "execution", test))]
-    pub(super) fn restore(checkpoint: &crate::checkpoint::Checkpoint) -> Self {
+    pub(super) fn from_checkpoint(
+        schedule: Schedule,
+        policy: Policy,
+        retry_policy: RetryPolicy,
+        checkpoint: Checkpoint,
+    ) -> Self {
+        let occurrence = checkpoint
+            .unresolved
+            .map(|(attempt, _)| Occurrence {
+                revision: attempt.revision,
+                scheduled_at: attempt.scheduled_at,
+            })
+            .or_else(|| {
+                checkpoint.selected_at.map(|scheduled_at| Occurrence {
+                    revision: checkpoint.revision,
+                    scheduled_at,
+                })
+            });
         Self {
             revision: checkpoint.revision,
             through: checkpoint.through,
             control: checkpoint.control,
-            active: checkpoint.selected_at.map(|scheduled_at| Active {
+            active: occurrence.map(|occurrence| Active {
                 selection: Selection {
-                    occurrence: Occurrence {
-                        revision: checkpoint.revision,
-                        scheduled_at,
-                    },
+                    occurrence,
                     sequence: 1,
                 },
-                phase: Phase::Queued,
+                phase: checkpoint.unresolved.map_or(Phase::Queued, |(attempt, _)| {
+                    Phase::Restored(attempt.number)
+                }),
             }),
-            sequence: u64::from(checkpoint.selected_at.is_some()),
+            sequence: u64::from(occurrence.is_some()),
             faulted: false,
-        }
-    }
-    pub(super) const fn new(through: u64) -> Self {
-        Self {
-            revision: 1,
-            through: Some(through),
-            control: ControlState::Active,
-            active: None,
-            sequence: 0,
-            faulted: false,
-        }
-    }
-    #[cfg(any(test, all(feature = "execution", target_arch = "wasm32")))]
-    pub(super) fn unstarted() -> Self {
-        Self {
-            through: None,
-            ..Self::new(0)
+            schedule,
+            policy,
+            retry_policy,
+            batch: checkpoint.catch_up,
+            retry: checkpoint.retry,
+            last_outcome: checkpoint.last_outcome,
         }
     }
     pub(super) const fn through(&self) -> Option<u64> {
         self.through
     }
 
-    #[cfg(all(feature = "execution", target_arch = "wasm32"))]
     pub(super) const fn revision(&self) -> u64 {
         self.revision
     }
 
-    #[cfg(all(feature = "execution", target_arch = "wasm32"))]
     pub(super) fn skip_through(&mut self, through: u64) -> Result<(), Error> {
         self.check()?;
         if self.active.is_some() {
@@ -183,17 +192,14 @@ impl Progress {
         Ok(())
     }
 
-    #[cfg(all(feature = "execution", target_arch = "wasm32"))]
     pub(super) fn selection(&self) -> Option<Selection> {
         self.active.map(|active| active.selection)
     }
 
-    #[cfg(all(feature = "execution", target_arch = "wasm32"))]
     pub(super) const fn paused(&self) -> bool {
         matches!(self.control, ControlState::Paused)
     }
 
-    #[cfg(all(feature = "execution", target_arch = "wasm32"))]
     pub(super) const fn cancelled(&self) -> bool {
         matches!(self.control, ControlState::Cancelled)
     }
@@ -203,11 +209,13 @@ impl Progress {
     pub(super) fn select(&mut self, scheduled_at: u64) -> Result<Selection, Error> {
         self.check()?;
         if let Some(active) = self.active {
-            return Err(if active.phase == Phase::Blocked {
-                Error::RecoveryRequired
-            } else {
-                Error::Busy
-            });
+            return Err(
+                if matches!(active.phase, Phase::Blocked | Phase::Restored(_)) {
+                    Error::RecoveryRequired
+                } else {
+                    Error::Busy
+                },
+            );
         }
         if self.control == ControlState::Paused {
             return Err(Error::Paused);
@@ -295,10 +303,12 @@ impl Progress {
         {
             return Err(Error::Stale);
         }
-        self.active = Some(Active {
-            selection,
-            phase: Phase::Blocked,
-        });
+        if !self.restored() {
+            self.active = Some(Active {
+                selection,
+                phase: Phase::Blocked,
+            });
+        }
         Ok(())
     }
 
@@ -306,11 +316,7 @@ impl Progress {
     /// The adapter must also reconcile the exact current Timers recovery token.
     pub(super) fn reconcile(&mut self, selection: Selection) -> Result<(), Error> {
         self.check()?;
-        if self.active
-            != Some(Active {
-                selection,
-                phase: Phase::Blocked,
-            })
+        if !matches!(self.active, Some(Active { selection: current, phase: Phase::Blocked | Phase::Restored(_) }) if current == selection)
         {
             return Err(Error::Stale);
         }
@@ -323,11 +329,7 @@ impl Progress {
     pub(super) fn reconcile_retry(&mut self, selection: Selection) -> Result<(), Error> {
         self.check()?;
         if selection.occurrence.revision != self.revision
-            || self.active
-                != Some(Active {
-                    selection,
-                    phase: Phase::Blocked,
-                })
+            || !matches!(self.active, Some(Active { selection: current, phase: Phase::Blocked | Phase::Restored(_) }) if current == selection)
         {
             return Err(Error::Stale);
         }
@@ -367,7 +369,7 @@ impl Progress {
         if let Some(active) = self.active {
             match active.phase {
                 Phase::Accepted { .. } => return Err(Error::Busy),
-                Phase::Blocked => return Err(Error::RecoveryRequired),
+                Phase::Blocked | Phase::Restored(_) => return Err(Error::RecoveryRequired),
                 Phase::Queued => {}
             }
         }
@@ -382,6 +384,15 @@ impl Progress {
         {
             self.active = None;
         }
+    }
+    pub(super) fn restored(&self) -> bool {
+        matches!(
+            self.active,
+            Some(Active {
+                phase: Phase::Restored(_),
+                ..
+            })
+        )
     }
     fn retire(&mut self, selection: Selection) {
         if selection.occurrence.revision == self.revision {
@@ -404,6 +415,8 @@ impl Progress {
         Err(Error::Exhausted)
     }
 }
+
+mod planning;
 
 #[cfg(test)]
 mod tests;

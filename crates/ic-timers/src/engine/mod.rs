@@ -3,12 +3,7 @@
 //! Each value belongs to one retained declaration. The future table/transport
 //! must authenticate declaration authority before delivering any token here.
 
-/// Owner demand or a callback's proposed successor.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum Demand {
-    Inactive,
-    At(u64),
-}
+pub(super) use crate::OnceDemand as Demand;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Ticket(u64);
