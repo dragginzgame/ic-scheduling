@@ -20,8 +20,9 @@ occurrence preview. Calendar support is opt-in via the
 is not implemented. Timers has a tested private [Once state core](docs/evidence/once-state.md);
 retained bindings are private and tested, while public initialization and IC
 transport remain unimplemented. Development targets are
-Timers `0.45.0` and Jobs `0.37.0`, the next breaking minors after crates.io
-`0.44.3` and `0.36.3` respectively (registry checked 2026-11-15).
+Timers `0.45.1` and Jobs `0.37.1`, following the initial development checkpoint
+(`0.45.0` / `0.37.0`). These remain unpublished; the last observed crates.io
+versions were `0.44.3` / `0.36.3` (registry checked 2026-11-15).
 Track changes in the [grouped changelogs](CHANGELOG.md). Development delivery is
 GitHub-only for now; both crates retain `publish = false` until the rewrite is
 complete and crates.io publication is explicitly requested.

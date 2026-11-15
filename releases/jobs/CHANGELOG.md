@@ -1,6 +1,12 @@
 # Jobs changelog
 
-## [0.37.0] - Unreleased
+## [0.37.1] - Unreleased
+
+Next development iteration. No changes recorded yet; crates.io publication remains disabled.
+
+## [0.37.0] - Development checkpoint
+
+Recorded in local checkpoint commit 776a076. Not a crates.io release.
 
 Development target for the breaking redesign after published `ic-jobs 0.36.3`
 (crates.io index checked 2026-11-15). Scheduling execution remains unimplemented;

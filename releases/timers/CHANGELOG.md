@@ -1,6 +1,12 @@
 # Timers changelog
 
-## [0.45.0] - Unreleased
+## [0.45.1] - Unreleased
+
+Next development iteration. No changes recorded yet; crates.io publication remains disabled.
+
+## [0.45.0] - Development checkpoint
+
+Recorded in local checkpoint commit 776a076. Not a crates.io release.
 
 Development target for the breaking rewrite after published `ic-timers 0.44.3`
 (crates.io index checked 2026-11-15). The private Once state core is implemented;
