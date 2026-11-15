@@ -152,26 +152,11 @@ where
     F: FnMut(Context) -> Fut + 'static,
     Fut: Future<Output = Outcome> + 'static,
 {
-    if let Some(at) = checkpoint.selected_at()
-        && schedule.next_after(at - 1, at) != Some(at)
-    {
+    if !checkpoint.matches_definition(&schedule, policy) {
         return Err(Error::InvalidCheckpoint);
     }
     let progress = Progress::restore(&checkpoint);
     let batch = checkpoint.catch_up;
-    if let Some(batch) = &batch {
-        let Policy::CatchUp(limit) = policy else {
-            return Err(Error::InvalidCheckpoint);
-        };
-        if batch.pending.len() > usize::from(limit.max_count)
-            || batch
-                .pending
-                .iter()
-                .any(|&at| schedule.next_after(at - 1, at) != Some(at))
-        {
-            return Err(Error::InvalidCheckpoint);
-        }
-    }
     bind_progress(identity, schedule, policy, progress, batch, work)
 }
 

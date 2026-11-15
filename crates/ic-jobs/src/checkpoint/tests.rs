@@ -1,4 +1,47 @@
 use super::*;
+
+#[cfg(feature = "execution")]
+#[test]
+fn definition_validation_covers_paused_batches_and_the_last_pending_occurrence() {
+    use crate::{CatchUpLimit, Policy, Schedule};
+    let minute = 60_000_000_000;
+    let schedule = Schedule::parse("* * * * *").unwrap();
+    let skip = Policy::SkipLate { lateness_ns: 0 };
+    let full = Policy::CatchUp(CatchUpLimit::new(0, 64).unwrap());
+    let short = Policy::CatchUp(CatchUpLimit::new(u64::MAX, 63).unwrap());
+    let pending: Vec<_> = (1..=64).map(|index| index * minute).collect();
+    for paused in [false, true] {
+        let checkpoint = Checkpoint::new(
+            2,
+            1,
+            0,
+            (!paused).then_some(minute),
+            paused,
+            Some(CatchUpProgress::new(&pending, 65 * minute).unwrap()),
+        )
+        .unwrap();
+        // A frozen batch remains valid even with zero age tolerance on restoration.
+        assert!(checkpoint.matches_definition(&schedule, full));
+        assert!(!checkpoint.matches_definition(&schedule, short));
+        assert!(!checkpoint.matches_definition(&schedule, skip));
+        let mut invalid_pending = pending.clone();
+        invalid_pending[63] += 1;
+        let invalid = Checkpoint::new(
+            2,
+            1,
+            0,
+            (!paused).then_some(minute),
+            paused,
+            Some(CatchUpProgress::new(&invalid_pending, 65 * minute).unwrap()),
+        )
+        .unwrap();
+        assert!(!invalid.matches_definition(&schedule, full));
+    }
+    let single = Checkpoint::new(2, 1, 0, Some(minute), false, None).unwrap();
+    assert!(single.matches_definition(&schedule, skip));
+    let off_calendar = Checkpoint::new(2, 1, 0, Some(minute + 1), false, None).unwrap();
+    assert!(!off_calendar.matches_definition(&schedule, skip));
+}
 #[test]
 fn rejects_invalid_host_progress_without_repairing_it() {
     assert_eq!(

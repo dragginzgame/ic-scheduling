@@ -204,30 +204,10 @@ impl Runtime {
         self.check()?;
         let (eligible, cadence, full) = {
             let flights = self.flights.borrow();
-            let submitted: Vec<_> = flights
-                .iter()
-                .filter_map(|flight| match &flight.dispatch {
-                    Scheduled::Once(dispatch) => Some(dispatch),
-                    _ => None,
-                })
-                .collect();
-            let watchdogs: Vec<_> = flights
-                .iter()
-                .filter_map(|flight| match &flight.dispatch {
-                    Scheduled::Watchdog(dispatch) => Some(dispatch),
-                    _ => None,
-                })
-                .collect();
-            let (cadence, pending) = self.bindings.watchdog_wake(&watchdogs);
-            (
-                self.bindings
-                    .deadline(&submitted)
-                    .into_iter()
-                    .chain(pending.then_some(0))
-                    .min(),
-                cadence,
-                flights.len() == MAX_FLIGHTS,
-            )
+            let (eligible, cadence) = self
+                .bindings
+                .wake(&flights.iter().map(|flight| &flight.dispatch));
+            (eligible, cadence, flights.len() == MAX_FLIGHTS)
         };
         let deadline = match eligible {
             None => 0,

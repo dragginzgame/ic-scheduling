@@ -40,7 +40,7 @@ checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
 name = "ic-jobs"
-version = "0.37.4"
+version = "0.37.5"
 dependencies = [
  "chrono",
  "ic-platform-runtime",
@@ -91,7 +91,7 @@ dependencies = [
 
 [[package]]
 name = "ic-timers"
-version = "0.45.4"
+version = "0.45.5"
 dependencies = [
  "ic-metrics",
  "ic-platform-runtime",
@@ -245,9 +245,9 @@ dependencies = [
 
 [[package]]
 name = "toko-tooling"
-version = "0.44.3"
+version = "0.44.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a9bc7b6827044baac8134cada7ee6bc31f86c70beec9608d1d39d911eba15e1"
+checksum = "b52bb793b386309b8c4a9e88f32711bb5d1fd11a47bf337c11c63ca2aa22fc97"
 
 [[package]]
 name = "unicode-ident"

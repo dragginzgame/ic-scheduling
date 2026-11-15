@@ -37,5 +37,9 @@ a different source revision: review the consumer changes and patch before repinn
 Actual adoption also needs an approved dependency source and reviewed lock changes;
 version 0.45.4 is not published to crates.io. There is no compatibility facade.
 
+The patch retains the initial `^0.45.4` requirement. The local override resolves
+compatible later development versions from this checkout; the linked evidence
+records the exact version originally qualified, not every subsequent build.
+
 See [recorded evidence](../../docs/evidence/entropy-integration.md) for results,
 hashes and the remaining lifecycle limits.

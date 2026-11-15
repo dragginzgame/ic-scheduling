@@ -166,13 +166,28 @@ fn submitted_ticket_does_not_hide_new_due_work_or_a_replacement() {
     first.set(Demand::At(0)).unwrap();
     second.set(Demand::At(10)).unwrap();
     let submitted = runtime.due(0).unwrap();
-    assert_eq!(runtime.deadline(&[&submitted]), Some(10));
+    assert_eq!(
+        runtime
+            .wake(&std::iter::once(&Scheduled::Once(submitted.clone())))
+            .0,
+        Some(10)
+    );
     first.set(Demand::Inactive).unwrap();
     first.set(Demand::At(0)).unwrap();
-    assert_eq!(runtime.deadline(&[&submitted]), Some(0));
+    assert_eq!(
+        runtime
+            .wake(&std::iter::once(&Scheduled::Once(submitted)))
+            .0,
+        Some(0)
+    );
     let replacement = runtime.due(0).unwrap();
     second.set(Demand::Inactive).unwrap();
-    assert_eq!(runtime.deadline(&[&replacement]), None);
+    assert_eq!(
+        runtime
+            .wake(&std::iter::once(&Scheduled::Once(replacement)))
+            .0,
+        None
+    );
     // A ticket from another runtime cannot mask this runtime's deadline.
     let other = Bindings::new();
     other
@@ -180,5 +195,10 @@ fn submitted_ticket_does_not_hide_new_due_work_or_a_replacement() {
         .unwrap()
         .set(Demand::At(0))
         .unwrap();
-    assert_eq!(runtime.deadline(&[&other.due(0).unwrap()]), Some(0));
+    assert_eq!(
+        runtime
+            .wake(&std::iter::once(&Scheduled::Once(other.due(0).unwrap())))
+            .0,
+        Some(0)
+    );
 }

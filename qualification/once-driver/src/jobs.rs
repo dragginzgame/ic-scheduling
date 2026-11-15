@@ -21,7 +21,7 @@ async fn minute(pic: &PocketIc) {
     }
 }
 pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
-    for mode in 0..=5 {
+    for mode in 0..=6 {
         let id = pic.create_canister().await;
         pic.add_cycles(id, 100_000_000_000_000).await;
         pic.install_canister(id, wasm.to_vec(), vec![], None).await;
@@ -73,7 +73,7 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
                 assert_eq!(context[3], 2, "new schedule controls its successor");
                 assert_eq!(context[4] % 120_000_000_000, 0);
             }
-            4 => {
+            4 | 6 => {
                 assert_eq!(observed, [0, 1, 1]);
                 minute(pic).await;
                 assert_eq!(state(pic, id, sender).await.0, observed);
@@ -87,13 +87,13 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
             }
             _ => unreachable!(),
         }
-        if matches!(mode, 0 | 2 | 3 | 4) {
+        if matches!(mode, 0 | 2 | 3 | 4 | 6) {
             assert_eq!(context[1], selected[4]);
             assert!(context[2] >= context[1]);
         }
     }
     println!(
-        "jobs: occurrence context, skip-late, edit/pause precedence, initial/post-await recovery pass"
+        "jobs: occurrence context, skip-late, edit/pause precedence, recovery isolation and reentrant future destruction pass"
     );
 }
 

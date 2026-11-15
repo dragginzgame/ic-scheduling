@@ -147,3 +147,110 @@ fn checkpoint_preserves_revision_cursor_and_queued_occurrence() {
         selected.occurrence.revision
     );
 }
+
+// Explore short command interleavings without adding a property-test dependency.
+// Assertions express safety invariants, not a second transition implementation.
+#[test]
+fn bounded_command_sequences_preserve_progress_and_uncertainty() {
+    const ACTIONS: u32 = 11;
+    const DEPTH: u32 = 5;
+    for trace in 0..ACTIONS.pow(DEPTH) {
+        let mut commands = trace;
+        let mut progress = Progress::new(0);
+        let mut issued = Vec::new();
+        for _ in 0..DEPTH {
+            let action = commands % ACTIONS;
+            commands /= ACTIONS;
+            let before = snapshot(&progress);
+            let current = progress.active.map(|active| active.selection);
+            let result = match action {
+                0 | 1 => progress.select(u64::from(action + 1)).map(|selection| {
+                    assert!(selection.occurrence.scheduled_at > before.1);
+                    issued.push(selection);
+                }),
+                2 => current.map_or(Err(Error::Stale), |selection| {
+                    progress.accept(selection, 0).map(|_| ())
+                }),
+                3 => current.map_or(Err(Error::Stale), |selection| {
+                    progress.accept(selection, 3).map(|context| {
+                        assert!(context.started_at >= context.occurrence.scheduled_at);
+                    })
+                }),
+                4 => current.map_or(Err(Error::Stale), |selection| progress.complete(selection)),
+                5 => current.map_or(Err(Error::Stale), |selection| progress.block(selection)),
+                6 => current.map_or(Err(Error::Stale), |selection| progress.reconcile(selection)),
+                7 => progress.pause(),
+                8 => progress.resume(),
+                9 => progress.edit(0),
+                10 => progress.edit(3),
+                _ => unreachable!(),
+            };
+            assert!(progress.through() >= before.1);
+            if result.is_err() {
+                assert_eq!(
+                    snapshot(&progress),
+                    before,
+                    "trace {trace}: failed command {action} mutated progress"
+                );
+            }
+            if let Some(active) = before.3
+                && matches!(active.phase, Phase::Accepted { .. } | Phase::Blocked)
+                && !matches!(action, 4 | 6)
+            {
+                assert_eq!(
+                    progress.active.map(|active| active.selection),
+                    Some(active.selection),
+                    "command {action} erased unresolved identity"
+                );
+            }
+            match progress.active.map(|active| active.phase) {
+                Some(Phase::Accepted { .. }) => assert_eq!(progress.checkpoint(), Err(Error::Busy)),
+                Some(Phase::Blocked) => {
+                    assert_eq!(progress.checkpoint(), Err(Error::RecoveryRequired))
+                }
+                _ => {
+                    let checkpoint = progress.checkpoint().unwrap();
+                    let decoded = crate::checkpoint::Checkpoint::new(
+                        checkpoint.version(),
+                        checkpoint.revision(),
+                        checkpoint.through(),
+                        checkpoint.selected_at(),
+                        checkpoint.paused(),
+                        None,
+                    )
+                    .unwrap();
+                    assert_eq!(
+                        Progress::restore(&decoded).checkpoint().unwrap(),
+                        checkpoint
+                    );
+                }
+            }
+            // Invalidated selections remain invalid even when the occurrence time is reused.
+            for &stale in &issued {
+                if progress
+                    .active
+                    .is_some_and(|active| active.selection == stale)
+                {
+                    continue;
+                }
+                let settled = snapshot(&progress);
+                assert_eq!(progress.accept(stale, 3), Err(Error::Stale));
+                assert_eq!(progress.complete(stale), Err(Error::Stale));
+                assert_eq!(progress.block(stale), Err(Error::Stale));
+                assert_eq!(progress.reconcile(stale), Err(Error::Stale));
+                assert_eq!(snapshot(&progress), settled);
+            }
+        }
+    }
+}
+
+fn snapshot(progress: &Progress) -> (u64, u64, bool, Option<Active>, u64, bool) {
+    (
+        progress.revision,
+        progress.through,
+        progress.paused,
+        progress.active,
+        progress.sequence,
+        progress.faulted,
+    )
+}

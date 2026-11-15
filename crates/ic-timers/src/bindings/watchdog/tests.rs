@@ -97,7 +97,7 @@ fn mixed_selection_and_wakes_keep_cadence_separate_from_delivery() {
         .unwrap();
     watchdog.set(Demand::At(0), 0).unwrap();
     bindings.advance_watchdogs(0);
-    assert_eq!(bindings.watchdog_wake(&[]), (Some(10), true));
+    assert_eq!(bindings.wake(&std::iter::empty()), (Some(0), Some(10)));
     assert!(matches!(
         bindings.select(0, true),
         Some(super::super::Scheduled::Once(_))
@@ -105,9 +105,18 @@ fn mixed_selection_and_wakes_keep_cadence_separate_from_delivery() {
     let Some(super::super::Scheduled::Watchdog(dispatch)) = bindings.select(0, true) else {
         panic!("rotating mixed selection");
     };
-    assert_eq!(bindings.watchdog_wake(&[&dispatch]), (Some(10), false));
+    once.set(engine::Demand::Inactive).unwrap();
+    assert_eq!(bindings.wake(&std::iter::empty()), (Some(0), Some(10)));
+    let submitted = super::super::Scheduled::Watchdog(dispatch.clone());
+    assert_eq!(
+        bindings.wake(&std::iter::once(&submitted)),
+        (None, Some(10))
+    );
     bindings.advance_watchdogs(100);
-    assert_eq!(bindings.watchdog_wake(&[&dispatch]), (Some(110), false));
+    assert_eq!(
+        bindings.wake(&std::iter::once(&submitted)),
+        (None, Some(110))
+    );
     assert!(bindings.run_watchdog(&dispatch).unwrap());
     assert!(dispatch.settle().unwrap());
 }

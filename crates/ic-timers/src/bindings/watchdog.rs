@@ -131,26 +131,6 @@ impl Dispatch {
 #[cfg(test)]
 mod tests;
 
-impl Bindings {
-    pub(crate) fn watchdog_wake(&self, submitted: &[&Dispatch]) -> (Option<u64>, bool) {
-        let table = self.0.borrow();
-        let mut cadence = None;
-        let mut pending = false;
-        for (slot, entry) in table.entries.iter().enumerate() {
-            if let Kind::Watchdog { state, .. } = &entry.kind {
-                cadence = cadence.into_iter().chain(state.deadline()).min();
-                if let Some(ticket) = state.pending() {
-                    pending |= !submitted.iter().any(|item| {
-                        item.slot == slot
-                            && item.ticket == ticket
-                            && Weak::ptr_eq(&item.table, &Rc::downgrade(&self.0))
-                    });
-                }
-            }
-        }
-        (cadence, pending)
-    }
-}
 impl Dispatch {
     #[cfg(target_arch = "wasm32")]
     pub(crate) fn same(&self, other: &Self) -> bool {

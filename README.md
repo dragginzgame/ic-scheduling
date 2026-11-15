@@ -28,7 +28,7 @@ trap-survival and owner-precedence checks. Timers' opt-in `metrics` feature expo
 aggregate counters using ic-metrics arithmetic, with host-owned export. Remaining
 resource, consumer and lifecycle qualification gates are open.
 Development targets are
-Timers `0.45.4` and Jobs `0.37.4`, following the initial development checkpoint
+Timers `0.45.5` and Jobs `0.37.5`, following the initial development checkpoint
 (`0.45.0` / `0.37.0`). These remain unpublished; the last observed crates.io
 versions were `0.44.3` / `0.36.3` (registry checked 2026-11-15).
 Track changes in the [grouped changelogs](CHANGELOG.md). Development delivery is
@@ -41,7 +41,7 @@ implementation and consumer qualification gates pass.
 ## Development
 
 Rust is pinned to 1.100.0 with Clippy, rustfmt and the `wasm32-unknown-unknown`
-target. Toko Tooling is pinned to 0.44.3 in Cargo and installed under
+target. Toko Tooling is pinned to 0.44.4 in Cargo and installed under
 `vendor/toko-tooling/`, with its checksum receipt at `.toko-tooling.snapshot`.
 Read [the engineering baseline](TOKO-TOOLING.md) and [local instructions](AGENTS.md).
 

@@ -116,4 +116,51 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     println!(
         "jobs pressure: shared 64-declaration limit, eight held flights, queued pause, isolated recovery and healthy progress pass"
     );
+    bulk(pic, wasm, sender).await;
+}
+
+async fn bulk(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
+    let id = pic.create_canister().await;
+    pic.add_cycles(id, 100_000_000_000_000).await;
+    pic.install_canister(id, wasm.to_vec(), vec![], None).await;
+    let initial = pic
+        .update_call(id, sender, "jobs_bulk_setup", vec![])
+        .await
+        .unwrap();
+    assert_eq!(initial.len(), 64 * 8);
+    let first = u64::from_le_bytes(initial[..8].try_into().unwrap());
+    for bytes in initial.as_chunks::<8>().0 {
+        assert_eq!(u64::from_le_bytes(*bytes), first);
+    }
+    // Leave at least one excess occurrence beyond every job's three-item quota.
+    pic.advance_time(Duration::from_secs(301)).await;
+    for _ in 0..400 {
+        pic.tick().await;
+    }
+    let settled = pic
+        .query_call(id, sender, "jobs_pressure_state", vec![])
+        .await
+        .unwrap();
+    assert_eq!(settled.len(), 64 * 19);
+    for row in settled.as_chunks::<19>().0 {
+        assert_eq!(&row[..3], &[2, 3, 3]);
+        let last = u64::from_le_bytes(row[3..11].try_into().unwrap());
+        assert_eq!(last, first + 120_000_000_000);
+        let started = u64::from_le_bytes(row[11..19].try_into().unwrap());
+        assert!(started >= last);
+    }
+    for _ in 0..80 {
+        pic.tick().await;
+    }
+    assert_eq!(
+        pic.query_call(id, sender, "jobs_pressure_state", vec![])
+            .await
+            .unwrap(),
+        settled
+    );
+    // Avoid future invocations of this deliberately single-batch assertion fixture.
+    pic.stop_canister(id, None).await.unwrap();
+    println!(
+        "jobs bulk: 64 catch-up jobs complete 192 ordered nonoverlapping awaits, discard excess and stop replenishing quotas"
+    );
 }

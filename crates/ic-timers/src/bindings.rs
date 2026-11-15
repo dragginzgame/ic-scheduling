@@ -25,11 +25,8 @@ pub(super) enum Error {
     Control(ControlError),
 }
 
-#[derive(Eq, PartialEq)]
-struct Identity([String; 3]);
-
 struct Entry {
-    identity: Identity,
+    identity: [String; 3],
     kind: Kind,
 }
 
@@ -123,29 +120,24 @@ impl Bindings {
         {
             return Err(Error::InvalidIdentity);
         }
-        let identity = Identity(identity.map(str::to_owned));
-        // The outer owner ensures rejected captures drop after the table borrow.
-        let mut kind = Some(kind);
-        let result = {
-            let mut table = self.0.borrow_mut();
-            if table.entries.iter().any(|entry| entry.identity == identity) {
-                Err(Error::DuplicateIdentity)
-            } else if table.entries.len() == CAPACITY {
-                Err(Error::Capacity)
-            } else {
-                let slot = table.entries.len();
-                table.entries.push(Entry {
-                    identity,
-                    kind: kind.take().expect("callback retained until admission"),
-                });
-                Ok(Handle {
-                    table: Rc::downgrade(&self.0),
-                    slot,
-                })
-            }
-        };
-        drop(kind);
-        result
+        // Function parameters drop after local guards: rejected captures are
+        // released only after the table borrow, including on early returns.
+        let mut table = self.0.borrow_mut();
+        if table.entries.iter().any(|entry| entry.identity == identity) {
+            return Err(Error::DuplicateIdentity);
+        }
+        if table.entries.len() == CAPACITY {
+            return Err(Error::Capacity);
+        }
+        let slot = table.entries.len();
+        table.entries.push(Entry {
+            identity: identity.map(str::to_owned),
+            kind,
+        });
+        Ok(Handle {
+            table: Rc::downgrade(&self.0),
+            slot,
+        })
     }
 
     /// Return one due reservation, rotating across the bounded table. Transport
@@ -189,30 +181,48 @@ impl Bindings {
         None
     }
 
-    pub(super) fn deadline(&self, submitted: &[&Dispatch]) -> Option<u64> {
-        self.0
-            .borrow()
-            .entries
-            .iter()
-            .enumerate()
-            .filter_map(|(slot, entry)| {
-                let Kind::Once { state, .. } = &entry.kind else {
-                    return None;
-                };
-                match state.state() {
+    /// Select delivery and cadence wakes in one pass without copying flight records.
+    pub(super) fn wake<'a>(
+        &self,
+        submitted: &(impl Iterator<Item = &'a Scheduled> + Clone),
+    ) -> (Option<u64>, Option<u64>) {
+        let table = self.0.borrow();
+        let owner = Rc::downgrade(&self.0);
+        let mut eligible = None;
+        let mut cadence = None;
+        for (slot, entry) in table.entries.iter().enumerate() {
+            let at = match &entry.kind {
+                Kind::Once { state, .. } => match state.state() {
                     State::Armed(at)
-                        if !submitted.iter().any(|dispatch| {
-                            dispatch.slot == slot
-                                && Weak::ptr_eq(&dispatch.table, &Rc::downgrade(&self.0))
-                                && state.has_ticket(dispatch.ticket)
+                        if !submitted.clone().any(|item| {
+                            matches!(item, Scheduled::Once(dispatch)
+                            if dispatch.slot == slot && Weak::ptr_eq(&dispatch.table, &owner)
+                                && state.has_ticket(dispatch.ticket))
                         }) =>
                     {
                         Some(at)
                     }
                     _ => None,
+                },
+                Kind::Watchdog { state, .. } => {
+                    cadence = cadence.into_iter().chain(state.deadline()).min();
+                    state
+                        .pending()
+                        .filter(|ticket| {
+                            !submitted.clone().any(|item| {
+                                matches!(item, Scheduled::Watchdog(dispatch)
+                            if dispatch.slot == slot && dispatch.ticket == *ticket
+                                && Weak::ptr_eq(&dispatch.table, &owner))
+                            })
+                        })
+                        .map(|_| 0)
                 }
-            })
-            .min()
+            };
+            if let Some(at) = at {
+                eligible = Some(eligible.map_or(at, |current: u64| current.min(at)));
+            }
+        }
+        (eligible, cadence)
     }
 
     /// Initial-message rejection rolled acceptance back; reserve its attempt

@@ -4,8 +4,8 @@ use ic_jobs::{Job, Outcome, Schedule, Status};
 
 thread_local! {
     static JOBS: RefCell<Vec<Job>> = const { RefCell::new(Vec::new()) };
-    static COUNTS: RefCell<([u8; 12], [u8; 12])> = const { RefCell::new(([0; 12], [0; 12])) };
-    static CONTEXTS: RefCell<[(u64, u64); 12]> = const { RefCell::new([(0, 0); 12]) };
+    static COUNTS: RefCell<([u8; 64], [u8; 64])> = const { RefCell::new(([0; 64], [0; 64])) };
+    static CONTEXTS: RefCell<[(u64, u64); 64]> = const { RefCell::new([(0, 0); 64]) };
 }
 
 /// Fill the shared table with twelve Jobs and 52 inactive Once declarations.
@@ -92,7 +92,7 @@ pub extern "C" fn control() {
     ic0::msg_reply();
 }
 
-/// Twelve records: phase/start/finish followed by scheduled/start timestamps.
+/// One record per job: phase/start/finish followed by scheduled/start timestamps.
 /// # Panics
 /// Traps on failed status projection.
 #[expect(unsafe_code, reason = "qualification owns this endpoint")]
@@ -119,5 +119,54 @@ pub extern "C" fn state() {
             });
         }
     });
+    ic0::msg_reply();
+}
+
+/// Fill all shared declarations with three-occurrence catch-up jobs.
+/// # Panics
+/// Traps on admission failure, overlapping attempts or duplicate/out-of-order work.
+#[expect(unsafe_code, reason = "qualification owns this endpoint")]
+#[unsafe(export_name = "canister_update jobs_bulk_setup")]
+pub extern "C" fn bulk_setup() {
+    ic_timers::initialize().unwrap();
+    for index in 0..64 {
+        let job = ic_jobs::bind(
+            ["jobs", "bulk", &index.to_string()],
+            Schedule::parse("* * * * *").unwrap(),
+            ic_jobs::Policy::CatchUp(ic_jobs::CatchUpLimit::new(u64::MAX, 3).unwrap()),
+            move |context| async move {
+                COUNTS.with_borrow_mut(|counts| {
+                    assert_eq!(counts.0[index], counts.1[index], "overlapping job attempts");
+                    assert!(counts.0[index] < 3, "catch-up quota replenished");
+                    counts.0[index] += 1;
+                });
+                CONTEXTS.with_borrow_mut(|values| {
+                    assert!(context.scheduled_at > values[index].0);
+                    values[index] = (context.scheduled_at, context.started_at);
+                });
+                Call::new(super::self_id(), "echo", WaitPolicy::Unbounded)
+                    .execute()
+                    .await
+                    .unwrap();
+                COUNTS.with_borrow_mut(|counts| counts.1[index] += 1);
+                Outcome::Success
+            },
+        )
+        .unwrap();
+        let Status::Armed { scheduled_at, .. } = job.status().unwrap() else {
+            ic0::trap(b"expected initial occurrence");
+        };
+        ic0::msg_reply_data_append(&scheduled_at.to_le_bytes());
+        JOBS.with_borrow_mut(|jobs| jobs.push(job));
+    }
+    assert!(matches!(
+        ic_jobs::bind(
+            ["jobs", "bulk", "overflow"],
+            Schedule::parse("* * * * *").unwrap(),
+            ic_jobs::Policy::CatchUp(ic_jobs::CatchUpLimit::new(u64::MAX, 3).unwrap()),
+            |_| async { Outcome::Success },
+        ),
+        Err(ic_jobs::Error::Timer(ic_timers::Error::Capacity))
+    ));
     ic0::msg_reply();
 }

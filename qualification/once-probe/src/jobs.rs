@@ -1,6 +1,11 @@
 //! Actual Jobs-to-Once execution and host-owned checkpoint reconstruction.
 use super::{Call, Cell, RefCell, WaitPolicy, ic0, self_id};
 use ic_jobs::{Context, Job, Outcome, Schedule, Status};
+use std::{
+    future::Future,
+    pin::Pin,
+    task::{Context as TaskContext, Poll},
+};
 thread_local! {
     static JOB: RefCell<Option<Job>> = const { RefCell::new(None) };
     static MODE: Cell<u8> = const { Cell::new(0) };
@@ -110,6 +115,7 @@ pub extern "C" fn control() {
                 job.resume().unwrap();
             }
             1 => {
+                reject_foreign_recovery(job);
                 let Status::RecoveryRequired { recovery, .. } = job.status().unwrap() else {
                     ic0::trap(b"expected recovery");
                 };
@@ -135,6 +141,50 @@ pub extern "C" fn control() {
         }
     });
     ic0::msg_reply();
+}
+
+// A token obtained from one uncertain job cannot change another job's progress.
+// Exercise both policies and both armed/paused target states before real recovery.
+fn reject_foreign_recovery(source: &Job) {
+    for (index, policy) in [
+        ic_jobs::Policy::SkipLate {
+            lateness_ns: u64::MAX,
+        },
+        ic_jobs::Policy::CatchUp(ic_jobs::CatchUpLimit::new(u64::MAX, 3).unwrap()),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let target = ic_jobs::bind(
+            ["jobs", "foreign-recovery", &index.to_string()],
+            Schedule::parse("* * * * *").unwrap(),
+            policy,
+            |_| async { ic0::trap(b"foreign recovery target must remain paused") },
+        )
+        .unwrap();
+        for paused in [false, true] {
+            if paused {
+                target.pause().unwrap();
+            }
+            let before = target.checkpoint().unwrap();
+            let Status::RecoveryRequired {
+                revision,
+                scheduled_at,
+                recovery,
+            } = source.status().unwrap()
+            else {
+                ic0::trap(b"source must remain uncertain");
+            };
+            assert_eq!(target.recover(recovery), Err(ic_jobs::Error::StaleRecovery));
+            assert_eq!(target.checkpoint().unwrap(), before);
+            assert!(
+                matches!(source.status().unwrap(), Status::RecoveryRequired {
+                revision: current_revision, scheduled_at: current_at, ..
+            } if current_revision == revision && current_at == scheduled_at)
+            );
+            assert_eq!(source.checkpoint(), Err(ic_jobs::Error::Unsettled));
+        }
+    }
 }
 
 /// Measure supplier parse/search separately for ordinary, sparse and impossible rules.
@@ -171,7 +221,7 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
         ic0::trap(b"job factory trap");
     }
     CONTEXT.with(|value| value.set([context.revision, context.scheduled_at, context.started_at]));
-    async {
+    let future = async {
         STARTS.with(|value| value.set(value.get() + 1));
         let reply = Call::new(self_id(), "jobs_echo", WaitPolicy::Unbounded)
             .execute()
@@ -182,6 +232,36 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
         }
         FINISHES.with(|value| value.set(value.get() + 1));
         Outcome::Success
+    };
+    ReentrantDrop {
+        inner: Box::pin(future),
+        enabled: MODE.with(Cell::get) == 6,
+    }
+}
+
+// Exercise destruction of the returned future itself, rather than only a local
+// guard inside its async body. The adapter must hold no job-state borrow here.
+struct ReentrantDrop<F> {
+    inner: Pin<Box<F>>,
+    enabled: bool,
+}
+impl<F: Future> Future for ReentrantDrop<F> {
+    type Output = F::Output;
+    fn poll(mut self: Pin<&mut Self>, context: &mut TaskContext<'_>) -> Poll<Self::Output> {
+        self.inner.as_mut().poll(context)
+    }
+}
+impl<F> Drop for ReentrantDrop<F> {
+    fn drop(&mut self) {
+        if self.enabled {
+            JOB.with_borrow(|slot| {
+                let job = slot.as_ref().unwrap();
+                assert!(matches!(job.status().unwrap(), Status::Running { .. }));
+                assert_eq!(job.checkpoint(), Err(ic_jobs::Error::Unsettled));
+                job.edit(Schedule::parse("* * * * *").unwrap()).unwrap();
+                job.pause().unwrap();
+            });
+        }
     }
 }
 

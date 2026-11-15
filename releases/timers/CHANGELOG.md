@@ -1,5 +1,38 @@
 # Timers changelog
 
+## [0.45.5] - Development checkpoint
+
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### ⚡ Performance
+
+- Select Once and watchdog wakes in one table pass over existing flight records,
+  removing two temporary vectors and 22 net product lines. Installed control
+  measurements improve at 3 and 64 declarations; binding costs increase slightly.
+  Record both outcomes and artifact sizes in the control-cost evidence.
+
+### ♻️ Refactored
+
+- Simplify declaration admission with borrowed identity checks and ordinary
+  parameter/local drop ordering. Remove the private identity wrapper and callback
+  Option/take bookkeeping; rejected identities no longer allocate owned strings.
+  Preserve reentrant callback destruction outside the table borrow. Successful
+  binding costs rise slightly in the measured fixture; document the trade-off.
+
+### 🛠️ Development
+
+- Adopt Toko Tooling 0.44.4 in both workspace locks and the official snapshot.
+  Verify all eight package directories match Cargo names; executable tools and
+  product suppliers are unchanged.
+
+### 🧪 Testing
+
+- Extend full-table capture qualification to rejected watchdog bindings and
+  verify dropping all public handles preserves captures, identities and occupied
+  declaration slots. Armed Once/watchdog work still executes and settles after
+  every handle is dropped, with no recurrence after Stop. No provider
+  implementation change was required.
+
 ## [0.45.4] - Development checkpoint
 
 GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.

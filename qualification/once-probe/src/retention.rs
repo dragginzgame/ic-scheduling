@@ -153,6 +153,19 @@ pub extern "C" fn churn() {
                     async { result() }
                 });
             assert!(matches!(binding, Err(error) if error == expected));
+            let capture = Capture::new(true);
+            let binding = ic_timers::bind_watchdog(
+                identity.each_ref().map(String::as_str),
+                NonZeroU64::new(1_000_000_000).unwrap(),
+                move || {
+                    capture.touch();
+                    WatchdogResult {
+                        observation: Observation::NoWork,
+                        next: WatchdogNext::Stop,
+                    }
+                },
+            );
+            assert!(matches!(binding, Err(error) if error == expected));
         }
     }
     state();
@@ -173,6 +186,50 @@ pub extern "C" fn run() {
         }
     });
     ic0::msg_reply();
+}
+
+/// Drop inactive handles (0), or arm all declarations one second ahead first (1).
+/// # Panics
+/// Traps if dropping handles frees capacity or permits identity replacement.
+#[expect(unsafe_code, reason = "qualification owns this endpoint")]
+#[unsafe(export_name = "canister_update retention_drop_handles")]
+pub extern "C" fn drop_handles() {
+    assert_eq!(ic0::msg_arg_data_size(), 1);
+    let mut mode = [0];
+    ic0::msg_arg_data_copy(&mut mode, 0);
+    assert!(mode[0] <= 1);
+    // Drop outside the fixture borrow too, so a regression can run capture Drop.
+    let handles = HANDLES.with_borrow_mut(std::mem::take);
+    if mode[0] == 1 {
+        let at = ic0::time().checked_add(1_000_000_000).unwrap();
+        for handle in &handles.0 {
+            handle.set(OnceDemand::At(at)).unwrap();
+        }
+        for handle in &handles.1 {
+            handle.set(WatchdogDemand::At(at)).unwrap();
+        }
+    }
+    drop(handles);
+    for (identity, expected) in [
+        (
+            ["o".repeat(64), "g".repeat(64), format!("{:064}", 0)],
+            ic_timers::Error::DuplicateIdentity,
+        ),
+        (
+            ["o".repeat(64), "g".repeat(64), format!("{:064}", 1)],
+            ic_timers::Error::DuplicateIdentity,
+        ),
+        (
+            ["new".into(), "new".into(), "new".into()],
+            ic_timers::Error::Capacity,
+        ),
+    ] {
+        assert!(matches!(
+            ic_timers::bind_once(identity.each_ref().map(String::as_str), || async { result() }),
+            Err(error) if error == expected
+        ));
+    }
+    state();
 }
 
 /// Five custody counters and coarse linear-memory pages (not live allocated bytes).

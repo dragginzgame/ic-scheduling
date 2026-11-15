@@ -409,3 +409,151 @@ and prepared server 16.0.0. Timers 0.45.4 and Jobs 0.37.4 remain unpublished.
 | Combined once_probe.wasm | `6a11757bcf7a9efa6eb3bfd565e52353ff3cabc5485c4f4cb6ab529dae26e4bb` |
 | Product Cargo.lock | `97c31b1ddf7a5d6e9f5c706a9929d8f7cc0e2b3eda09ac43dd6d16300a7df136` |
 | Qualification Cargo.lock | `fc8dad436e922662a72f814bb82dffd7794b53c1cf367e0d275b8f3df03db91f` |
+
+### Recovery authority across jobs — 0.37.5, 2026-11-15
+
+The installed initial-trap and post-await-trap scenarios now exercise recovery
+tokens against unrelated jobs before reconciling the original attempt. Each
+scenario creates a SkipLate target and a CatchUp target, and tries foreign
+recovery while each target is armed and then paused: eight wrong-job attempts
+across the two trap scenarios.
+
+Every attempt returns `StaleRecovery`. The target's complete checkpoint remains
+equal to its pre-attempt checkpoint, while the source remains RecoveryRequired
+with the same revision and occurrence. Source checkpoint export still refuses
+with Unsettled. Merely passing a recovery token to another job cannot retire the
+uncertain occurrence or modify another job's cursor, selection or pause state.
+
+The existing scenario then obtains fresh authority from the source, reconciles
+it successfully, rejects a duplicate stale token, and resumes only a newly
+selected future occurrence. The unrelated targets remain paused; their callbacks
+trap if accidentally invoked. This preserves the original no-replay assertions
+and adds a distinct job-identity boundary check. It does not provide durable
+recovery tokens or qualify restoring unresolved work.
+
+The full installed suite, strict probe/driver Clippy, formatting and diff checks
+pass. No product code or dependency changes were needed. The fixture adds 45
+physical Rust lines and one updated driver result label. Reproduce with
+`make check-once POCKET_IC_BIN=/absolute/path/to/pocket-ic`; its Jobs result now
+includes `recovery isolation`.
+
+Environment remains Rust 1.100.0, Runtime 0.22.5, Testkit 0.106.0, PocketIC client
+16.1.0 and server 16.0.0. Timers 0.45.5 and Jobs 0.37.5 remain unpublished.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Combined once_probe.wasm | `9ce333c7676c4837cebe78745da4814b452a32f4c74f5b44f75163ad3f51d766` |
+| Product Cargo.lock | `86d7018768a193a877ddd5fc5aca206acc60ea9eaaf33e3a73853f78d49b4b53` |
+| Qualification Cargo.lock | `bf05e74b9c910abf8563625db02c0e6c68192e8f69dd547e68165cbe2ab18def` |
+
+### Bounded native progress exploration — 0.37.5
+
+The crate-local progress tests now enumerate all 161,051 length-five sequences
+over eleven commands: select either of two timestamps, accept before/after due,
+complete, block, reconcile, pause, resume, and edit with either a past or advanced
+cursor. Each sequence starts from fresh progress; 805,255 command steps execute.
+Issued selections are retained by the test to exercise stale authority after
+pause, edit, completion or reconciliation invalidates them.
+
+The assertions require a nondecreasing settled cursor, no state mutation on
+failed commands, and preservation of accepted/blocked identity across unrelated
+owner commands. Accepted or blocked work refuses checkpoint export; other states
+round-trip through public checkpoint validation and private reconstruction.
+Invalidated selections cannot accept, complete, block or reconcile current work.
+
+This is bounded exploration of the private occurrence state, not a proof over
+arbitrary sequence lengths, counter exhaustion, calendars, catch-up batches or
+IC execution. Existing targeted boundary and installed tests retain those proof
+responsibilities. The test uses ordinary Rust enumeration with no random seed,
+property-test supplier, alternate transition model or product changes.
+
+Rust 1.100.0: all 17 all-feature Jobs tests and all 10 default-feature-disabled
+tests pass. Each suite completes in approximately 0.1 seconds locally. Strict
+all-feature Clippy, formatting and diff checks pass. The change adds 107 physical
+test lines beside `progress.rs`; it does not change the Wasm artifact or locks.
+Reproduce with `cargo test -p ic-jobs --all-features --locked --offline` and
+`cargo test -p ic-jobs --no-default-features --locked --offline`.
+
+### Completed-future destructor reentry — 0.37.5
+
+The installed Jobs fixture now returns a small future wrapper whose destructor
+reenters its own job after the inner future completes a real self-call await.
+This exercises destruction of the returned future itself, not only a local
+guard dropped inside the async body. The destructor observes Running, confirms
+checkpoint export still returns Unsettled, edits the schedule and pauses the job.
+
+The callback completes once, without a state-borrow trap. Normal settlement
+preserves the newer pause, and advancing through another minute does not invoke
+another occurrence. The wrapper is qualification-only; no product change or
+new dependency was required. This case covers normal completed-future destruction,
+not a destructor that traps or arbitrary cleanup during unresolved work.
+
+The complete installed suite, strict probe/driver Clippy, formatting and diff
+checks pass. Reproduce with the existing `make check-once` command; the Jobs
+result includes `reentrant future destruction`. The 0.37.5 toolchain and lock
+identities above remain unchanged. Combined probe Wasm SHA-256:
+`1ae603d930574d76750336f77ef357cae7c0886b03f38b137f92c1db2ff9a8f2`.
+
+### Full-table catch-up execution — 0.37.5
+
+An additional workload uses all 64 shared declaration slots for actual Jobs,
+rather than combining twelve Jobs with inactive Once fillers. Each job uses an
+every-minute schedule and CatchUp with unlimited age and a three-occurrence
+limit. A 65th Job is refused with timer Capacity before execution.
+
+The driver advances time by 301 seconds before delivery, leaving more overdue
+occurrences than each job's quota. All 64 jobs then complete three ordered
+occurrences with real self-call awaits: 192 starts and 192 completions. Each
+callback asserts that its job's previous start already completed before another
+start is admitted. Timestamps must increase; each job ends on its original first
+selected timestamp plus two minutes. Every job returns to Armed state after
+settlement. Eighty additional rounds leave all counts and recorded timestamps
+unchanged: excess overdue work does not replenish the selected batch.
+
+The driver stops this canister after that single-batch observation because the
+fixture deliberately rejects more than three lifetime callbacks. That fixture
+limit is not a product lifetime limit. Existing tests separately exercise future
+recurrence, pause, traps, upgrades and eight held physical calls.
+
+This establishes completion under this full-table catch-up workload, not a
+production throughput, memory or fairness bound. It does not combine every
+maximum, such as 64 occurrences in each of 64 jobs or indefinitely held effects.
+No product change was required. The fixture reuses the existing pressure module
+and adds 96 net physical Rust lines across probe and driver.
+
+The complete installed suite, strict probe/driver Clippy, formatting and diff
+checks pass. Reproduce using `make check-once` with the prepared server; look for
+`jobs bulk:`. Versions, compiler, suppliers and locks remain as recorded for
+0.37.5 above. Combined probe Wasm SHA-256:
+`1950d4cdf8509f753d1d2ae5fb7ffb917e90cb8a93fd448ae43c89da824deb03`.
+
+### Checkpoint validation ownership — 0.37.5
+
+Definition-dependent validation now lives beside the checkpoint data instead of
+inside the Wasm adapter's restore function. The private validator reads only the
+checkpoint, Saffron schedule and policy. The adapter maps refusal to the same
+InvalidCheckpoint error before allocating a timer declaration. Public APIs and
+restore semantics are unchanged; no parallel validator or calendar logic was added.
+
+Native coverage now admits full 64-occurrence batches in both queued and paused
+forms, rejects a 63-count policy and SkipLate for those batches, and rejects an
+off-calendar timestamp in the final pending position. A zero-age policy still
+accepts the valid frozen batch: age was decided when the batch was selected and
+must not be re-applied during restore. Selected occurrences without a batch are
+also checked against the supplied schedule.
+
+All 18 all-feature Jobs tests and 10 default-disabled tests pass, alongside
+strict native and Wasm Clippy, formatting and the installed regression suite.
+The existing installed invalid-restore checks still prove rejection leaves the
+identity available for valid timer binding. This refactor adds six net product
+lines and 43 test lines; its benefit is local ownership and native testability,
+not a claimed LOC reduction.
+
+Compiler/runtime/testkit selections remain unchanged. Toko Tooling is now 0.44.4
+in both locks; its adoption changed policy documentation, not executable tooling.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Combined once_probe.wasm | `c19dc66d73e942f068b76dbc163c2d4aec33c5f9a093df51cc38908850d8047b` |
+| Product Cargo.lock | `e08355a6cfd2a9ee3f06c6fb1dbf581a6831357d92f9476aabe5a15e838d06b6` |
+| Qualification Cargo.lock | `14ac0c780f15e1e15f03fa691f63504119369a8d3dceb903a89360fc94f2ce7d` |

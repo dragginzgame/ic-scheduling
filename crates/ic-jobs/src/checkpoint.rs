@@ -65,6 +65,27 @@ impl CatchUpProgress {
     }
 }
 impl Checkpoint {
+    /// Validate the definition-dependent part before the adapter admits a timer.
+    /// Batch age was frozen at selection; do not reapply it during restoration.
+    #[cfg(all(feature = "execution", any(test, target_arch = "wasm32")))]
+    pub(crate) fn matches_definition(
+        &self,
+        schedule: &crate::Schedule,
+        policy: crate::Policy,
+    ) -> bool {
+        let matches = |at| schedule.next_after(at - 1, at) == Some(at);
+        if self.selected_at.is_some_and(|at| !matches(at)) {
+            return false;
+        }
+        self.catch_up.as_ref().is_none_or(|batch| {
+            let crate::Policy::CatchUp(limit) = policy else {
+                return false;
+            };
+            batch.pending.len() <= usize::from(limit.max_count)
+                && batch.pending.iter().all(|&at| matches(at))
+        })
+    }
+
     /// Validate decoded progress before any timer binding is created.
     /// # Errors
     /// Rejects unsupported schemas, revision zero, selected work while paused,

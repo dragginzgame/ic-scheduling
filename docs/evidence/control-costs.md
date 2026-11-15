@@ -133,3 +133,97 @@ Combined probe Wasm SHA-256:
 Complete control-message dispatch and post-consumer settlement costs still need
 an attributable measurement boundary. This increment deliberately leaves those
 gates open rather than reporting consumer-prefix observations as total costs.
+
+## Single-pass wake selection — 0.45.5
+
+Rearming previously collected separate Once/watchdog flight-reference vectors
+and scanned the table separately for delivery deadlines and watchdog cadence.
+It now passes a borrowed, cloneable iterator over the existing flight records
+to one wake-selection pass. Cloning this iterator copies traversal state, not
+flight records. No temporary vectors are allocated. Submitted-ticket identity,
+runtime identity, replacement handling and independent watchdog cadence remain
+part of the selection checks; the flight bound and dispatch budget are unchanged.
+
+This removes 22 net physical product lines across bindings, watchdog bindings and
+transport. No code was moved into consumers or a new helper package. Existing
+native tests were adapted to the combined result, preserving stale/replacement
+and mixed-cadence assertions. All 21 Timers tests, strict native/Wasm Clippy,
+formatting and the complete installed suite pass, including held-flight pressure,
+foreign timer detection, trap recovery and 64-job catch-up.
+
+The existing control fixture ran unchanged before and after the product edit,
+with three fresh canisters per workload and identical compiler, locks and build
+profile. All three samples agreed for each value below. Brackets include counter
+and fixture overhead; no baseline subtraction is applied.
+
+| Operation | 3 entries before → after | 64 entries before → after |
+| --- | ---: | ---: |
+| Once arm | 1,955 → 1,760 | 4,574 → 3,773 |
+| Once replace | 1,967 → 1,772 | 4,586 → 3,785 |
+| Once repeat equal | 1,952 → 1,757 | 4,571 → 3,770 |
+| Once inactive | 1,405 → 1,219 | 4,455 → 3,232 |
+| Watchdog start | 2,472 → 2,245 | 5,522 → 4,258 |
+| Watchdog keep cadence | 2,465 → 2,238 | 5,515 → 4,251 |
+| Watchdog replace | 2,456 → 2,231 | 5,506 → 4,244 |
+| Watchdog inactive | 1,911 → 1,688 | 4,961 → 3,701 |
+| Bind first Once | 1,896 → 1,963 | 1,896 → 1,963 |
+| Bind watchdog | 1,834 → 1,920 | 1,834 → 1,920 |
+| Bind final declaration | 1,951 → 2,038 | 24,145 → 24,354 |
+
+Binding cost increased despite no change to admission code. These are whole-build
+observations; do not attribute every change to the removed allocations. The
+measured control workload has no outstanding flights, so it establishes the scan
+improvement rather than quantifying allocation savings under flight pressure.
+Combined probe size fell from 444,713 to 442,555 bytes (2,158 bytes); this is not
+a minimal-library Wasm measurement. Module memory stayed at 18 pages in these
+control cases. No legacy performance comparison or production budget is claimed.
+
+Reproduce with `make check-once POCKET_IC_BIN=/absolute/path/to/pocket-ic`, retaining
+the `control_cost` rows. Environment: Rust 1.100.0, Runtime 0.22.5, Testkit 0.106.0,
+PocketIC client 16.1.0/server 16.0.0; Toko Tooling 0.44.4. The compared product and
+qualification lock hashes are `e08355a6cfd2a9ee3f06c6fb1dbf581a6831357d92f9476aabe5a15e838d06b6`
+and `14ac0c780f15e1e15f03fa691f63504119369a8d3dceb903a89360fc94f2ce7d`.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Before combined probe | `c19dc66d73e942f068b76dbc163c2d4aec33c5f9a093df51cc38908850d8047b` |
+| After combined probe | `32fd23d5030b9036b3527be0bfbd9a9d3d95111effad6ca8024f01a910fc4c21` |
+
+## Simpler declaration admission — 0.45.5
+
+Admission now compares borrowed identity components against the retained strings
+and allocates owned identity strings only after duplicate/capacity checks pass.
+The private identity wrapper and Option/take bookkeeping around callback custody
+are removed. The callback-kind function parameter outlives the local table-borrow
+guard, so early returns release rejected user captures after releasing that borrow.
+No custom cleanup guard or additional ownership abstraction is introduced.
+
+This removes another eight net physical product lines. Existing native and
+installed cases verify error precedence, retained original callbacks, capacity
+refusal and safe reentrant destruction. In particular, all 960 rejected captures
+in the mixed Once/watchdog retention fixture are destroyed safely. All 21 native
+Timers tests, strict Clippy, formatting and the complete installed suite pass.
+
+The unchanged control fixture gives the following successful-bind observations;
+all three samples agree. This does not measure rejected-bind instruction cost.
+
+| Operation | Before | After |
+| --- | ---: | ---: |
+| First Once binding | 1,963 | 2,142 |
+| Watchdog binding | 1,920 | 2,095 |
+| Third declaration | 2,038 | 2,212 |
+| 64th declaration | 24,354 | 24,406 |
+
+Successful binding costs increased. The gain is simpler ownership and avoidance
+of three identity-string allocations on duplicate/capacity rejection, not a
+general speedup. Once control measurements are unchanged from the preceding
+single-pass result. Watchdog start/keep/replace decrease by 13 instructions;
+do not attribute small whole-build changes to a specific primitive without
+isolated evidence. Raw combined probe size falls from 442,555 to 442,186 bytes
+(369 bytes). Compiler, supplier selections, lock hashes and reproduction commands
+are unchanged from the preceding comparison.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Before combined probe | `32fd23d5030b9036b3527be0bfbd9a9d3d95111effad6ca8024f01a910fc4c21` |
+| After combined probe | `a448ddceecf04dc19961761211fd08038249d231e98648b98a7c6eb2ce02c5df` |

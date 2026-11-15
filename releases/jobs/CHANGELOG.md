@@ -1,5 +1,35 @@
 # Jobs changelog
 
+## [0.37.5] - Development checkpoint
+
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### 🛠️ Development
+
+- Adopt the shared Toko Tooling 0.44.4 baseline and verify package-directory
+  naming across product and qualification workspaces.
+
+### 🧪 Testing
+
+- Fill all 64 shared declarations with catch-up jobs and qualify 192 ordered,
+  nonoverlapping async occurrences after delayed delivery, with excess skipped
+  and no batch-quota replenishment.
+- Exercise completed-future destructor reentry: status/checkpoint reads and
+  schedule edit/pause remain safe, and settlement preserves the newer pause.
+- Exercise 161,051 bounded command sequences directly against occurrence progress:
+  cursor monotonicity, unchanged state on failed commands, preserved uncertainty,
+  stale-token rejection and settled checkpoint round-trips. No new dependency.
+- Check wrong-job recovery-token rejection after initial and post-await traps,
+  against armed and paused targets under both policies. Rejection preserves the
+  target checkpoint and source uncertainty; correct recovery still succeeds.
+
+### ♻️ Refactored
+
+- Move definition-dependent checkpoint validation beside the checkpoint data,
+  keeping timer admission in the Wasm adapter. Native tests now cover paused
+  batches, count limits and invalid occurrences at the full 64-item boundary;
+  restore errors and frozen-age behavior are unchanged.
+
 ## [0.37.4] - Development checkpoint
 
 GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
