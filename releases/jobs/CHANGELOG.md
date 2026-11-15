@@ -1,8 +1,23 @@
 # Jobs changelog
 
-## [0.37.2] - Unreleased
+## [0.37.2] - Development checkpoint
 
-Next development iteration; crates.io publication remains disabled.
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### ✨ Added
+
+- Add opt-in wasm32 `execution` on one retained Once per job, with explicit
+  lateness tolerance, skip-late recurrence, occurrence context, owner controls and
+  exact timer recovery mapping. Persistence and other missed-run policies remain open.
+
+- Add private occurrence progress with schedule revisions, separate selection
+  authority, scheduled/actual start context, pause/edit precedence and explicit
+  reconciliation after uncertainty.
+
+### 🧪 Testing
+
+- Cover stale selection after cancellation, no overlap, old-revision completion,
+  uncertainty across pause/edit/resume, monotonic settled progress and exhaustion.
 
 ## [0.37.1] - Development checkpoint
 

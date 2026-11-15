@@ -16,7 +16,9 @@ framework are not carried forward.
 
 Status: early implementation. Jobs has Saffron-backed five-field UTC cron
 occurrence preview. Calendar support is opt-in via the
-`calendar` feature. Jobs execution is not implemented. Timers has an initial
+`calendar` feature. Its separate opt-in `execution` feature provides a wasm32
+skip-late preview on Once; persistence, catch-up and coalescing remain unfinished.
+Timers has an initial
 [wasm32 Once provider](docs/evidence/once-provider.md), with installed checks for
 completion, trap recovery, owner precedence, held-flight pressure, low-cycle
 submission deferral and armed-deadline upgrade reconstruction. The initial

@@ -2,7 +2,10 @@
 
 Status: Saffron-backed UTC preview, 2026-11-15. The maintainer explicitly selected
 Saffron and UTC, superseding the earlier named-zone and seconds-dialect scope.
-Timer execution remains unimplemented. No custom calendar engine is retained.
+An opt-in wasm32 execution preview now binds one retained Once per job. It uses
+explicit lateness tolerance and skips older occurrences; it does not yet persist
+state or implement the other proposed missed-run policies. No custom calendar
+engine is retained. See [progress and execution evidence](../evidence/jobs-progress.md).
 
 ## Current implementation
 
@@ -12,6 +15,10 @@ IANA database, JavaScript time integration, Jiff or Croner dependency remains.
 Saffron owns parsing, Gregorian arithmetic and next-occurrence calculation.
 
 All calendar code and dependencies are behind off-by-default `calendar`.
+The separate off-by-default `execution` feature enables `calendar` and adds
+target-gated Timers/Platform Runtime dependencies on wasm32. Default builds have
+no normal dependency edges. The execution preview is IC-specific; native builds
+retain the pure calendar and occurrence-state tests.
 Timers has no dependency on Jobs. Cargo features are additive: a consumer that
 enables `ic-jobs/calendar` includes it in that build.
 
@@ -69,6 +76,13 @@ that move backward must not replay settled work; forward jumps use missed-run
 rules. UTC removes local clock changes, not the need for execution progress.
 
 ## Late execution, overlap and failure
+
+The initial execution preview implements only explicit skip-late behavior:
+`bind` takes a lateness tolerance in nanoseconds. A selected occurrence delivered
+within tolerance invokes the consumer; an older one records NoWork and skips it.
+After settlement, the next supplier search is strictly after both current time
+and settled progress. No loop enumerates missed occurrences. The broader policy
+contract below remains future work; no coalescing default is exposed yet.
 
 A schedule specifies intended eligibility, not a guarantee of execution at an
 exact wall-clock instant. IC message delivery and resource pressure can delay it.

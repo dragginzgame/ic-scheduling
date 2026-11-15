@@ -1,8 +1,28 @@
 # Timers changelog
 
-## [0.45.2] - Unreleased
+## [0.45.2] - Development checkpoint
 
-Next development iteration; crates.io publication remains disabled.
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### 🧪 Testing
+
+- Sample dispatch/resume message prefixes at 1, 8 and 64 declarations. Add
+  independent cold/warm executor baselines, isolating a large runtime-entry
+  component without claiming complete callback or settlement costs.
+
+- Measure synchronous owner operations at three and 64 declarations in installed
+  Wasm, with three fresh-canister samples per case and explicit counter overhead.
+  Record the observed costs without claiming async lifetime or full-flight costs.
+
+- Verify a short watchdog cadence cannot bypass low-cycle delivery backoff after
+  funding is restored; cadence advances before one eventual callback completion.
+
+- Hold all eight shared flights while watchdog cadence advances; releasing one
+  flight admits one coalesced callback without replaying missed opportunities.
+
+- Exercise consumer-owned async admission from synchronous watchdogs: eleven
+  admission callbacks leave exactly one held physical request, while watchdog
+  transport settles independently. Releasing the request completes it once.
 
 ## [0.45.1] - Development checkpoint
 

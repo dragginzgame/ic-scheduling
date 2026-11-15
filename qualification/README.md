@@ -49,11 +49,25 @@ Lint its host driver separately with `-p once-driver --all-targets`.
 
 The same installed fixture/driver now exercises watchdogs through the shared
 product provider: prearmed successor survival across work traps, Continue cadence,
-and reentrant owner precedence. Run with `make check-once`; the historical target
+reentrant owner precedence, consumer-owned request admission and full-flight
+watchdog coalescing. Run with `make check-once`; the historical target
 name is retained. See [watchdog evidence](../docs/evidence/watchdog-state.md).
 
+The probe also enables Jobs `execution` and tests its actual Once composition:
+occurrence/start context, skip-late behavior, edits and pause across an await,
+initial/post-await traps, blocked replay and stale recovery. Installed Saffron
+cases include sparse and impossible rules. See [Jobs evidence](../docs/evidence/jobs-progress.md).
+
+The driver also reports instruction samples for synchronous owner control at
+three and 64 declarations. Each operation is bracketed within one update message;
+three fresh canisters per case expose repeatability. See
+[control cost evidence](../docs/evidence/control-costs.md) for values and limits.
+Dispatch workloads add per-message prefixes at consumer factory, first poll and
+post-await resumption, plus empty-endpoint and cold/warm executor baselines. They
+do not measure the complete provider settlement path.
+
 The Once pressure scenario uses Testkit’s `held-reply-fixtures` and its
-nonblocking client. It keeps simulated time fixed while HTTP barriers are held,
+nonblocking client. It avoids explicit time jumps while HTTP barriers are held,
 releases exact requests explicitly, then awaits instance cleanup. This feature
 is selected only by the Once host driver, not product or probe Wasm.
 
@@ -61,3 +75,6 @@ The refusal fixture burns cycles in its own test canister below the quoted
 self-call cost. It observes the timer value without changing it, proving retry
 control ran, then verifies repeated deferral and completion after funding. It
 does not add a product fault-injection feature or test queue-full refusal.
+Its short-cadence watchdog variant verifies that cadence advances during the
+delivery retry delay, including after funding is restored, without early callback
+acceptance. The 10-nanosecond cadence is a simulator stress setting only.

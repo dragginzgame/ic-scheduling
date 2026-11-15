@@ -803,6 +803,8 @@ name = "ic-jobs"
 version = "0.37.2"
 dependencies = [
  "chrono",
+ "ic-platform-runtime",
+ "ic-timers",
  "saffron",
 ]
 
@@ -1318,6 +1320,7 @@ dependencies = [
 name = "once-probe"
 version = "0.0.0"
 dependencies = [
+ "ic-jobs",
  "ic-platform-runtime",
  "ic-timers",
  "toko-tooling",

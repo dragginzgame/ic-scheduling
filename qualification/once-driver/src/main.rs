@@ -86,8 +86,15 @@ async fn run() {
     pressure::check(&pic, &wasm, external).await;
     lifecycle::check(&pic, &wasm, external).await;
     refusal::check(&pic, &wasm, external).await;
+    refusal::watchdog(&pic, &wasm, external).await;
     held_upgrade::check(&pic, &wasm, external).await;
     watchdog::check(&pic, &wasm, external).await;
+    watchdog::admission(&pic, &wasm, external).await;
+    watchdog::pressure(&pic, &wasm, external).await;
+    costs::check(&pic, &wasm, external).await;
+    dispatch_costs::check(&pic, &wasm, external).await;
+    jobs::calendar(&pic, &wasm, external).await;
+    jobs::check(&pic, &wasm, external).await;
     pic.drop().await;
     println!("Once installed lifecycle, authentication and pressure checks passed");
 }
@@ -101,3 +108,9 @@ mod refusal;
 mod held_upgrade;
 
 mod watchdog;
+
+mod costs;
+
+mod dispatch_costs;
+
+mod jobs;

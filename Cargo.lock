@@ -43,6 +43,8 @@ name = "ic-jobs"
 version = "0.37.2"
 dependencies = [
  "chrono",
+ "ic-platform-runtime",
+ "ic-timers",
  "saffron",
  "toko-tooling",
 ]

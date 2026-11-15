@@ -19,6 +19,7 @@ category = "tests"
 crate-type = ["cdylib"]
 
 [dependencies]
+ic-jobs = { workspace = true, features = ["execution"] }
 ic-platform-runtime.workspace = true
 ic-timers.workspace = true
 

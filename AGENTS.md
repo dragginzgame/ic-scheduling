@@ -20,9 +20,13 @@ deadline across upgrade. Watchdogs, metrics, instruction measurements and remain
 failure/lifecycle gates remain
 unfinished. See qualification/README.md and docs/evidence/once-provider.md.
 Watchdog core, shared-table binding and IC transport are connected. Installed
-checks cover prearmed successor survival and owner precedence; delayed-flight
-pressure and consumer physical-request admission remain open.
+checks cover prearmed successor survival, owner precedence, full-flight delay and
+synthetic consumer physical-request admission. Consumer migration and measured
+resource bounds remain open.
 See docs/evidence/watchdog-state.md.
+Jobs has occurrence-progress tests and an opt-in wasm32 Once adapter with explicit
+lateness tolerance and skip-late behavior. Host persistence, catch-up and coalescing
+remain unfinished. See docs/evidence/jobs-progress.md.
 
 The root Cargo.toml owns product dependencies. Qualification owns its own
 catalog and lockfile; dependencies point from qualification to products only.

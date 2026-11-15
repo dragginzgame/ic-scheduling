@@ -120,3 +120,92 @@ Still required: installed delayed-flight watchdog pressure, short-cadence refusa
 stress, Entropy-style physical-request admission, instruction/resource measurements,
 metrics and actual consumer migration. These observations establish an initial
 watchdog slice, not release readiness or a general cleanup/lifecycle guarantee.
+
+## Consumer-owned request admission — 0.45.2, 2026-11-15
+
+A new installed fixture follows Entropy's ownership shape: a synchronous watchdog
+checks a consumer-owned busy flag and launches a consumer-owned protected future
+only when idle. Testkit holds that future's real target reply. Ten explicit At(0)
+commands provide further admission opportunities without advancing simulated time
+while the HTTP barrier is held. Eleven callbacks commit, but the independent
+request counters stay at one start, zero finishes and busy=true. The watchdog
+outstanding-ticket flag is false after each settled transport turn.
+
+Releasing the exact held request produces one finish and clears busy. A final
+Stop callback leaves the watchdog inactive. This establishes that watchdog
+settlement does not own or retire the consumer's physical request. It is a
+synthetic ownership fixture, not an Entropy migration; failure/backoff/cancellation
+of that consumer future and delayed watchdog-flight pressure remain open.
+
+The full installed Once/watchdog suite passes on Timers 0.45.2. Probe and driver
+Clippy pass with warnings denied. Both packages remain unpublished; Jobs is now
+0.37.2 with no new execution implementation. Supplier versions are unchanged.
+Tested Wasm SHA-256:
+e119def6e3745c3f5ddf812bd9b944838aa857a9e0348c891eddca26a3080b19.
+Product lock SHA-256:
+f9b3f3971c2ebdd62f828840b413aa0efed8bda16c56cbf38676d13dfd649583.
+Qualification lock SHA-256:
+ebacffa4f6993789cc4f2010964d7466d6595fccf59447998d0400da40bdfef3.
+
+## Full-flight watchdog delay — 0.45.2, 2026-11-15
+
+The installed fixture now occupies all eight provider flights with Once callbacks
+awaiting Testkit-held replies, then arms a watchdog in the same canister. The
+watchdog uses a 10-nanosecond cadence solely to cross multiple periods through
+PocketIC's ordinary round-time progression. The driver does not call advance_time
+while replies are held; ordinary ticks still advance simulated time slightly.
+This is not a recommended cadence or an instruction-efficiency measurement.
+
+While capacity remains full, the public deadline advances through multiple periods,
+the outstanding-ticket flag stays true and the callback count stays zero. Changing
+only consumer callback behavior to Stop does not replace pending eligibility.
+Releasing exactly one of the eight replies allows one watchdog callback to execute
+and settle. The watchdog becomes inactive with one committed callback, while seven
+physical requests remain held. Releasing the remaining requests settles all eight
+Once blockers without another watchdog callback.
+
+Together with native token-identity tests, this establishes coalescing under the
+shared flight bound and eventual delivery after capacity becomes available. It
+does not establish fairness under every mixed workload or a production latency
+bound. Arbitrarily delayed work is not required to observe a future successor
+at execution time; the control message's committed successor is the invariant.
+The short-cadence fixture therefore avoids the timely-delivery-only assertion
+used by the earlier basic scenarios.
+
+The full installed Once/watchdog suite and probe/driver Clippy pass. Formatting
+and diff checks pass. Product code, dependency locks and compiler/supplier versions
+are unchanged from the preceding 0.45.2 observation. The new combined probe hash
+is 75c89ead3cf1d0d3a42f744770ad51149deb4da11972707516dd32ff97a27d42.
+Remaining work includes short-cadence refusal stress, measured
+resource limits, consumer failure/reconciliation integration, metrics and Jobs
+execution.
+
+## Short-cadence delivery refusal — 0.45.2, 2026-11-15
+
+The existing low-cycle fixture now also binds a watchdog with a 10-nanosecond
+cadence. It burns liquid cycles below half the quoted dispatch cost, then observes
+cadence advancement with one outstanding ticket and no callback acceptance. After
+100 milliseconds of simulated time, the driver restores funding and runs another
+100 rounds. The deadline advances again but remains before the first one-second
+retry floor; the outstanding flag stays true and callback starts stay zero.
+
+Advancing beyond the retry floor then produces exactly one callback, which returns
+Stop. Final status is inactive with no outstanding ticket. This is direct installed
+coverage of the transport guard that allows cadence control while suppressing
+premature submission; it would fail if a short cadence wake bypassed that guard.
+No product changes or fault-injection hooks were needed for this scenario.
+
+Unlike the held-reply pressure scenarios, this fixture has no held physical request,
+so its explicit time jumps do not age an in-flight HTTP barrier. The short cadence
+is test-only. The case does not measure control instruction cost, prove queue-full
+refusal behavior, or establish a recommended minimum cadence.
+
+The full make check-once suite passes with this case enabled. Probe and host driver
+Clippy pass with warnings denied; formatting and diff checks pass. Compiler,
+supplier selections and lock identities are unchanged from the preceding 0.45.2
+observations. Tested combined probe Wasm SHA-256:
+e4f045d2e809f3cd3899fb6863995bbf47abf7b3b171ca02812d142479cd9161.
+
+Resource measurements, metrics, actual consumer migrations and Jobs execution
+remain unfinished. These local simulator observations do not close remaining
+consumer lifecycle/reconciliation or general failure-custody obligations.

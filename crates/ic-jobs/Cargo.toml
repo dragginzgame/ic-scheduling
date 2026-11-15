@@ -15,10 +15,15 @@ ignored = ["toko-tooling"]
 [features]
 default = []
 calendar = ["dep:saffron", "dep:chrono"]
+execution = ["calendar", "dep:ic-timers", "dep:ic-platform-runtime"]
 
 [dependencies]
 chrono = { workspace = true, optional = true }
 saffron = { workspace = true, optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ic-platform-runtime = { workspace = true, optional = true }
+ic-timers = { workspace = true, optional = true }
 
 [lints]
 workspace = true
