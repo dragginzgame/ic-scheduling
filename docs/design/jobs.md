@@ -3,8 +3,9 @@
 Status: Saffron-backed UTC preview, 2026-11-15. The maintainer explicitly selected
 Saffron and UTC, superseding the earlier named-zone and seconds-dialect scope.
 An opt-in wasm32 execution preview now binds one retained Once per job. It uses
-explicit lateness tolerance and skips older occurrences; it does not yet persist
-state or implement the other proposed missed-run policies. No custom calendar
+explicit SkipLate or bounded CatchUp policy; host-owned checkpoints support
+settled/queued reconstruction, including remaining catch-up work. Coalescing
+remains unimplemented. No custom calendar
 engine is retained. See [progress and execution evidence](../evidence/jobs-progress.md).
 
 ## Current implementation
@@ -77,24 +78,53 @@ rules. UTC removes local clock changes, not the need for execution progress.
 
 ## Late execution, overlap and failure
 
-The initial execution preview implements only explicit skip-late behavior:
-`bind` takes a lateness tolerance in nanoseconds. A selected occurrence delivered
-within tolerance invokes the consumer; an older one records NoWork and skips it.
-After settlement, the next supplier search is strictly after both current time
-and settled progress. No loop enumerates missed occurrences. The broader policy
-contract below remains future work; no coalescing default is exposed yet.
+`Schedule::catch_up(after, now, CatchUpLimit)` previews oldest-first bounded
+catch-up. Limits require a count from 1 through 64 and an explicit maximum age.
+The age boundary is inclusive and the settled cursor exclusive. The plan exposes
+selected timestamps, whether the count limit omitted further age-eligible work,
+and a retirement endpoint that never rewinds the cursor. Older and excess work
+would be skipped only after selected work settles or is explicitly reconciled.
+Calculation performs at most count + 1 Saffron searches and stores at most count
+timestamps; it does not enumerate the age-excluded interval. This bounds calls
+to the supplier, not each supplier search's instruction cost.
+
+`bind` and `restore` now take an explicit `Policy`. `SkipLate { lateness_ns }`
+invokes a selected occurrence within tolerance, otherwise records NoWork and
+skips it. It then searches strictly after current time and settled progress.
+
+`CatchUp(limit)` freezes an oldest-first batch from the same preview calculation.
+An already selected occurrence outside the age limit is skipped before planning
+eligible remaining work. At most the selected count invokes consumer work in a
+batch, one occurrence at a time through Once. The age limit is evaluated when
+the batch is selected; selected work can age further during pressure or pause.
+Pause cancels delivery eligibility but retains the remaining batch. Resume and
+host restore continue that exact selection without resetting the count or age
+window. Completion retires the fixed window and skips through the then-current
+time, so excess and occurrences arriving during the batch cannot replenish it.
+The next occurrence is strictly in the future. An edit discards the old pending
+batch while preserving already accepted occurrence identity. Recovery explicitly
+retires the uncertain occurrence, discards remaining batch work, skips through
+current time and leaves the job paused; resume selects future work.
+
+Batch selection never replaces the committed occurrence immediately before a
+consumer factory call. An initial-message trap therefore retains the same
+uncertain identity even when new batch state rolls back. The preview is neither
+a recovery token nor authority to replay business effects.
 
 A schedule specifies intended eligibility, not a guarantee of execution at an
 exact wall-clock instant. IC message delivery and resource pressure can delay it.
 Report scheduled time and actual start separately.
 
-Define a lateness tolerance: an occurrence delivered within it runs normally;
-older occurrences follow the configured missed-run policy. Proposed default is
-coalescing to the latest due occurrence. Also support skipping missed occurrences
-and bounded catch-up in occurrence order. Catch-up requires explicit limits on
+Coalescing to the latest due occurrence remains a proposed additional policy;
+there is no implicit policy default. Catch-up requires explicit limits on
 age and count and a documented disposition for excess occurrences. Neither a
 long outage nor a minute-level schedule may allocate an unbounded backlog or
 require enumerating every missed instant in one message.
+
+The pinned supplier has forward search and membership APIs, with no reverse or
+latest-before operation. Coalescing therefore needs a separately reviewed bounded
+approach or supplier support; no custom calendar search is authorized by its
+presence in this proposed scope. See the [supplier API observation](../evidence/calendar-saffron.md#later-supplier-api-review--2026-11-15).
 
 The initial execution contract is one accepted future per job. Other jobs may
 run independently within measured global limits. While a job runs, additional
@@ -115,6 +145,25 @@ calendar policy cannot bypass Timers' recovery barrier. No exactly-once remote
 effect guarantee is claimed.
 
 ## Persistence and composition gate
+
+The 0.37.3 preview supports host-owned checkpoints for settled or queued work.
+It preserves revision, settled cursor, selected occurrence and pause state, and
+validates a selected occurrence against the supplied Saffron schedule on restore.
+The host owns encoding, atomic storage and association with the stable job key,
+schedule and lateness policy. Running and recovery-required jobs refuse export;
+installed tests cover armed/paused reconstruction and refusal after both trap
+types. Three-day stopped-canister upgrades exercise overdue selection under
+generous and zero lateness tolerances: execute the selected occurrence once or
+skip it, then select a future occurrence without a catch-up burst. Restoring
+unresolved work remains an open gate.
+
+Checkpoint schema 2 adds a bounded remaining-batch record. Decoding validates
+strictly increasing, nonzero timestamps after the settled cursor, the fixed
+endpoint and agreement with selected/paused state. Restore checks every remaining
+timestamp against Saffron and rejects batches incompatible with the policy/count
+before timer admission. The host must retain the exact policy and definition
+association. Schema 1 from the earlier unpublished checkpoint preview is rejected;
+no deployed-data migration is claimed.
 
 Timer handles and closures are volatile. Persist versioned job definitions and
 occurrence progress through an explicit host contract; rebind callbacks using

@@ -218,7 +218,7 @@ impl Bindings {
     /// Initial-message rejection rolled acceptance back; reserve its attempt
     /// without invoking user code, then block replay. Superseded tickets do nothing.
     #[cfg(target_arch = "wasm32")]
-    pub(super) fn rejected(&self, dispatch: &Dispatch) -> Result<(), Error> {
+    pub(super) fn rejected(&self, dispatch: &Dispatch) -> Result<bool, Error> {
         if !Weak::ptr_eq(&dispatch.table, &Rc::downgrade(&self.0)) {
             return Err(Error::StaleAuthority);
         }
@@ -229,9 +229,9 @@ impl Bindings {
             .ok_or(Error::StaleAuthority)?;
         let (state, _) = entry.kind.once()?;
         if let Some(attempt) = state.accept(dispatch.ticket).map_err(Error::Control)? {
-            state.abandon(attempt);
+            return Ok(state.abandon(attempt));
         }
-        Ok(())
+        Ok(false)
     }
 
     /// Authenticate local authority and enter Running before invoking the factory.

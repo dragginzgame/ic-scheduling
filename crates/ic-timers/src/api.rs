@@ -28,7 +28,7 @@ pub enum Observation {
 }
 /// A settled callback outcome and proposed successor.
 pub struct OnceResult {
-    /// Consumer outcome. Metrics integration is not yet implemented.
+    /// Consumer outcome; recorded when the opt-in metrics feature is enabled.
     pub observation: Observation,
     /// Proposed next eligibility.
     pub next: OnceNext,
@@ -105,7 +105,7 @@ pub enum WatchdogNext {
 }
 /// Watchdog observation and scheduling decision; not an async execution lease.
 pub struct WatchdogResult {
-    /// Consumer outcome; metrics export remains unfinished.
+    /// Consumer outcome; recorded when the opt-in metrics feature is enabled.
     pub observation: Observation,
     /// Proposed successor.
     pub next: WatchdogNext,

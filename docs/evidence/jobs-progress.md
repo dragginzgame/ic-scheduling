@@ -143,3 +143,232 @@ Product lock SHA-256:
 ec9ee2b1cb05c18e7d99fc331b171ed032e4a90005a1cf825a4560f1846c6698.
 Qualification lock SHA-256:
 a513228f62a5062ca2dbe22236bbf1eb9e2c4d0c729e782b876892976531b7b0.
+
+## 0.37.3 host checkpoint reconstruction — 2026-11-15
+
+The opt-in execution API now exposes schema-1 `Checkpoint` data and `restore`.
+Progress includes schedule revision, exclusive settled cursor, selected but
+unaccepted occurrence and pause state. Decoding rejects unsupported versions,
+revision zero, selected work while paused and selection at/before the cursor.
+Restore checks a selected timestamp against the supplied Saffron schedule before
+admitting a timer declaration. Hosts own encoding, atomic storage and association
+with the stable job key, schedule and lateness policy; the library cannot verify
+that association from progress alone.
+
+Export consults the actual timer state and rejects running or recovery-required
+work, including an initial factory trap whose Jobs acceptance rolled back.
+Reconstruction creates fresh local capabilities and selection authority. No
+timer or recovery tokens are serialized. This does not support unresolved-work
+restoration, heap snapshots or durable exactly-once effects.
+
+Local installed checks pass for:
+
+- Armed reconstruction preserving the selected occurrence and edited revision,
+  followed by one successful execution with the original occurrence context.
+- Paused reconstruction remaining paused across another minute, followed by
+  explicit resume and execution under the preserved revision.
+- Checkpoint refusal while the async callback is running.
+- Actual upgrade refusal after initial and post-await traps, preserving blocked
+  progress and the existing explicit recovery path.
+- A selected timestamp inconsistent with the schedule rejected before binding;
+  the same declaration identity can then be admitted by Timers.
+
+All 12 native Jobs and 20 Timers tests pass. Jobs native all-feature/default-free
+and Wasm Clippy, probe/driver Clippy, Wasm Rustdoc, formatting and the full installed
+Once/watchdog/Jobs suite pass. Long-downtime reconstruction, unresolved-work
+persistence, additional missed-run policies and multi-job pressure remain open.
+No crates.io publication or deployed-consumer qualification is claimed.
+
+Reproduce with `make check-once POCKET_IC_BIN=/absolute/path/to/pocket-ic` using
+the tool and supplier versions recorded above. The tested combined probe, before
+subsequent documentation-only edits, has SHA-256:
+d6b3ba80233bfe4a86d64cabfb7ab3cf3ae66cc5fdda67c4695b4cf5553d4107.
+Product lock SHA-256:
+4a87b4bb7b5fb8423a6aa5f5b736464e6c9c6dc08acf32477dd4b1d9034a1422.
+Qualification lock SHA-256:
+e09d42bf2d9e432811ee65bb7e09fe448e7e92efa52cf3bd287dd0cc46763d25.
+
+### Downtime continuation — 2026-11-15
+
+The host fixture now stores its lateness-policy choice alongside the checkpoint
+in its own versioned stable record. This is fixture-owned encoding, not a product
+serialization format or a migration claim for an older fixture record.
+
+Two installed scenarios stop an armed canister, advance simulated time by three
+days, upgrade while stopped and restart it. With maximum lateness tolerance,
+exactly one callback executes with the original selected revision/time and a
+post-downtime actual start. With zero tolerance, no consumer callback executes.
+Both select a deadline strictly after simulator time and within the next minute;
+additional rounds produce no catch-up burst. These are checks of the initial
+skip-late policy, not implementation of bounded catch-up or coalescing.
+
+The full installed suite, probe/driver Clippy, Wasm Jobs Rustdoc and formatting
+pass. Product scheduling logic did not need a change; its revision-context API
+comment now reflects preservation through a matching checkpoint. Unresolved-work
+restoration and broader lifecycle/clock-discontinuity qualification remain open.
+
+Tools, supplier versions and lock hashes are unchanged from the checkpoint
+section above. Combined installed probe Wasm SHA-256:
+d60cca417a5ac144ec03f04232bd3108ce19996a02a46030e6f1df89383ac79c.
+
+### Multi-job pressure continuation — 2026-11-15
+
+A dedicated qualification fixture admits twelve every-minute Jobs plus 52
+inactive Once declarations into the same table. A further Jobs bind returns
+`Timer(Capacity)`, establishing shared admission rather than an independent Jobs
+allowance. These private limits remain provisional, not advertised capacity.
+
+Eight job callbacks issue real calls held by Testkit's held-reply fixture. All
+eight remain Running with exactly one start and no completion; the other four
+jobs remain unaccepted. The host pauses one of those queued jobs. Additional
+rounds leave all held starts unchanged and the paused job unstarted. Requests
+are released in reverse order, independent of dispatch order.
+
+One released callback traps after its await and enters recovery-required state.
+The other seven complete, and the three eligible queued jobs then complete with
+their original scheduled timestamp. The paused job stays unstarted. After its
+explicit resume and another minute, all eleven healthy jobs execute their next
+eligible occurrence, while the uncertain job retains its original context and
+one-start/zero-finish counts. No explicit time advance occurs while held HTTP
+barriers remain open.
+
+The full installed suite, probe/driver Clippy, formatting and diff checks pass.
+No product scheduling change was needed. This establishes this bounded pressure
+scenario and failure isolation; it does not measure maximum throughput, retained
+memory or latency bounds, or cover every mixed Jobs/Once/watchdog workload.
+
+Tools, suppliers and locks are unchanged. Reproduce with the existing
+`make check-once POCKET_IC_BIN=/absolute/path/to/pocket-ic` command.
+Combined installed probe Wasm SHA-256:
+270f07adfc6a15802ef951c1a5161f5b04ba1faf055258e4666f129a8f7b5085.
+
+### Idle, outcome and exhaustion continuation — 2026-11-15
+
+An installed five-job fixture adds the following boundary evidence:
+
+- `NoWork` and `ExpectedFailure` each settle one occurrence without immediate
+  retry. Both execute later calendar occurrences, with increasing scheduled
+  timestamps, over three successive minute advances.
+- A valid impossible February-31 schedule stays Idle without invoking work.
+  Editing it to every minute admits revision 2 and executes once. Editing back
+  to the impossible rule creates revision 3, clears selected work and stays idle
+  through another minute. Its checkpoint has no selected occurrence.
+- Restoring revision `u64::MAX` can arm work, but editing then returns Faulted.
+  Status stays terminal, resume/checkpoint refuse, and subsequent timer delivery
+  does not invoke consumer work. The fixture uses observable successful callbacks
+  to detect accidental invocation rather than a trap that could roll back evidence.
+- Restoring a settled cursor of `u64::MAX` yields Idle. Pause/resume preserves
+  that cursor without overflow or callback invocation.
+
+The full installed suite, probe/driver Clippy, formatting and diff checks pass.
+This adds platform evidence for existing behavior; no product scheduling changes
+were required. It does not qualify all supplier search costs or clock changes.
+Toolchain, suppliers, lock hashes and reproduction command remain as recorded
+above. Combined installed probe Wasm SHA-256:
+f808653754d1723294f75b6f55bf270fa06a5bea6e05254130b4ce73547ccfd7.
+
+### Bounded catch-up preview — 2026-11-15
+
+The calendar feature adds a pure oldest-first planning API with explicit age
+and count bounds (1–64). At most count timestamps are retained and count + 1
+Saffron searches are performed, including the excess-work probe. The exclusive
+settled cursor and inclusive age boundary jointly determine the search start;
+the plan never enumerates the older excluded interval or rewinds its retirement
+endpoint. Zero age admits only an occurrence exactly at the supplied time.
+
+All 15 native Jobs tests pass, including full-u64 windows, age/count boundaries,
+impossible rules and invalid limits. Installed planning checks report:
+
+| Window | Selected | Excess | Planning instructions |
+| --- | ---: | --- | ---: |
+| Every minute, epoch through u64::MAX, count 64 | 64 | Yes | 324,193 |
+| Every minute, 600-second endpoint, 300-second age, count 3 | 3 | Yes | 5,770 |
+| February 31, epoch through u64::MAX | 0 | No | 808 |
+
+These brackets include plan allocation and supplier searches, exclude parsing,
+and are raw ordered samples, not a comprehensive worst-case supplier budget.
+Full installed regressions, native default-free/all-feature and probe/driver
+Clippy, Rustdoc and formatting pass. The default normal dependency graph remains
+empty. No new supplier dependency was added.
+
+This is preview only. Execution still uses skip-late behavior. Catch-up execution
+must preserve quota and retirement progress across owner changes and upgrades
+before consuming plans; no replay authority or unresolved-work persistence is
+provided by this API. This is an explicit remaining implementation step.
+
+Toolchain, supplier and lock identities remain unchanged. Combined tested probe
+Wasm SHA-256, before subsequent documentation-only edits:
+fdebdf6e31ebd0aa9e6d25bbcbe353656d5a34642565665f8bb1853ceb6b44ea.
+
+### Catch-up execution and persisted remaining work — 2026-11-15
+
+The adapter now takes explicit `Policy::SkipLate` or `Policy::CatchUp`. Catch-up
+uses the previously qualified supplier planner, retaining at most 64 selected
+timestamps and a fixed window endpoint. One Once capability executes those
+occurrences serially. Age applies at batch selection, not again after each await
+or pause. Final settlement skips excess and occurrences that arrived during the
+batch, then arms a strictly future occurrence; it does not replenish the count.
+An over-age previously selected occurrence may first settle as NoWork before the
+eligible batch starts, without invoking consumer work for that old occurrence.
+
+Pause preserves remaining selection. Schedule edits discard pending old-revision
+batch work while preserving accepted identity. Explicit effect reconciliation
+discards the remaining batch, skips through current time and leaves the job
+paused. Initial-message batch construction does not replace the committed
+occurrence, so factory rollback retains the correct uncertain identity.
+
+Checkpoint schema 2 carries remaining timestamps and the fixed batch endpoint.
+Native decoding validates bounds, order and consistency with the cursor and
+queued/paused state. Restore checks every timestamp against Saffron and verifies
+policy/count compatibility before admission. Installed negative cases prove
+wrong-calendar, wrong-policy and excessive-count records leave declaration
+identities available. The earlier unpublished schema 1 is explicitly rejected;
+this is not a deployed-data migration. Hosts still own exact policy/definition
+association, encoding and atomic storage.
+
+Eight installed scenarios pass after ten-minute delivery delays:
+
+- Three oldest occurrences run under count 3; count 1 runs just one.
+- A two-minute age limit skips older work and executes the two eligible occurrences.
+- Pause during the first occurrence retains the remaining two across actual
+  upgrade and another ten minutes. Resume finishes exactly the original batch.
+- The same pause/upgrade exercise with finite age retains its original remaining
+  selection even after it ages beyond that limit; the quota is not reset.
+- An edit during the first await discards the remaining old batch and selects
+  future work under the new two-minute rule.
+- Initial-factory and post-await traps retain the original occurrence, refuse
+  upgrade, resist ordinary resume and require explicit reconciliation. Recovery
+  discards the backlog; only the next future occurrence subsequently runs.
+
+All 16 Jobs and 20 Timers native tests pass, as does the full installed regression
+suite, product native/default-free/Wasm Clippy, probe/driver Clippy, Wasm Rustdoc
+and formatting. No new supplier dependency was introduced. Coalescing,
+unresolved-work restoration and broader resource/clock qualification remain open.
+Tools, supplier versions and lock hashes are unchanged from the earlier sections.
+The tested combined probe before subsequent getter/documentation-only edits has
+Wasm SHA-256:
+d9a1853b716ee28a165633a7d4a9652efa8b31454ee196a33ce46b6195778285.
+
+### Full batch limit and later-occurrence traps — 2026-11-15
+
+Installed catch-up coverage now includes a two-hour delivery delay at the maximum
+admitted count of 64. All 64 timestamps execute in order, exactly once locally,
+then the next selected timestamp lies strictly in the future. Additional rounds
+do not replenish the batch. A fixture-owned active-call assertion covers every
+await and fails if another occurrence starts before settlement or explicit
+reconciliation. This is a single-job bound check, not a throughput measurement
+or a durable exactly-once guarantee.
+
+Two more scenarios trap on the second occurrence, respectively in its factory
+and after its await. The first occurrence remains completed; recovery identifies
+the second timestamp. Upgrade and ordinary resume remain blocked, and explicit
+reconciliation drops the remainder without repeating the first or uncertain
+occurrence. Only a newly selected future occurrence runs afterward.
+
+The final full installed suite, probe/driver Clippy, formatting and diff checks
+pass. The initial overlap assertion incorrectly counted reconciled abandoned
+starts as active; the corrected fixture tracks active execution separately from
+historical starts and completions. No product change was required by these cases.
+Toolchain, supplier and lock identities remain unchanged. Combined probe Wasm
+SHA-256:
+493f5abeb692468e569cc74cbd1b79a7e1707746c3a4a86d47b36c27fa25bca7.

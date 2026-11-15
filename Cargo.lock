@@ -50,6 +50,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-metrics"
+version = "0.30.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5cd1e020757542a942d6191457a68512bf8a21bdb443370d92743da67557b71"
+
+[[package]]
 name = "ic-platform-runtime"
 version = "0.22.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -87,6 +93,7 @@ dependencies = [
 name = "ic-timers"
 version = "0.45.3"
 dependencies = [
+ "ic-metrics",
  "ic-platform-runtime",
  "toko-tooling",
 ]

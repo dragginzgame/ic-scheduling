@@ -16,17 +16,23 @@ provider with retained binding, authenticated isolated dispatch and explicit
 recovery. Installed local tests cover basic completion, initial/post-await traps
 and owner precedence, held-flight pressure, foreign timer detection, consumer
 cleanup traps, low-cycle submission deferral and host reconstruction of an armed
-deadline across upgrade. Watchdogs, metrics, instruction measurements and remaining
-failure/lifecycle gates remain
-unfinished. See qualification/README.md and docs/evidence/once-provider.md.
+deadline across upgrade. Metrics are opt-in and inert, using ic-metrics arithmetic;
+recording must never invoke callbacks or change eligibility. Remaining consumer,
+resource and lifecycle gates are unfinished. See qualification/README.md and
+docs/evidence/once-provider.md.
 Watchdog core, shared-table binding and IC transport are connected. Installed
 checks cover prearmed successor survival, owner precedence, full-flight delay and
 synthetic consumer physical-request admission. Consumer migration and measured
 resource bounds remain open.
 See docs/evidence/watchdog-state.md.
 Jobs has occurrence-progress tests and an opt-in wasm32 Once adapter with explicit
-lateness tolerance and skip-late behavior. Host persistence, catch-up and coalescing
-remain unfinished. See docs/evidence/jobs-progress.md.
+SkipLate or bounded CatchUp policy. Host-owned checkpoints support armed
+and paused reconstruction; running or recovery-required work refuses export.
+Schema 2 preserves remaining catch-up batches across pause and upgrade. Age is
+evaluated at batch selection; finishing skips excess and occurrences that arrived
+during the batch. Recovery discards the remaining batch and leaves the job paused.
+Unresolved-work persistence and coalescing remain unfinished.
+See docs/evidence/jobs-progress.md.
 
 The root Cargo.toml owns product dependencies. Qualification owns its own
 catalog and lockfile; dependencies point from qualification to products only.

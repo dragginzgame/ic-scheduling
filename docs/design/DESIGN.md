@@ -240,6 +240,12 @@ Record only useful facts: accepted, completed, abandoned, expected consumer fail
 
 Counters must have documented overflow behavior, such as saturation plus an overflow flag. Metrics must not trap or alter eligibility. Do not attribute an entire interleaved async lifetime's instruction counter delta to one callback: measure attributable execution segments, or omit that aggregate until the executor exposes a valid measurement boundary.
 
+Implementation update: 0.45.3 provides opt-in aggregate counters using
+ic-metrics 0.30.8 scalar arithmetic. Recording is inert and export remains host-owned.
+Counters reset on normal upgrade, not repeated initialization. Provider-fault
+counting excludes isolated entry exhaustion. See [metrics qualification](../evidence/metrics.md)
+for the event boundaries, overflow behavior and remaining measurement limits.
+
 # 9 Deletions and controlled reuse
 
 Within `ic-timers`, do not recreate job scheduling, retry queues, after-completion policy, immediate watchdog variants, remove-on-stop lifetimes, public callback contexts, unregister/cancel/ensure families, failure-streak helpers, inventory snapshots, paired memory histories or generic registry effects.

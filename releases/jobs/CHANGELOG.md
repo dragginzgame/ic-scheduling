@@ -1,8 +1,42 @@
 # Jobs changelog
 
-## [0.37.3] - Unreleased
+## [0.37.3] - Development checkpoint
 
-Next development iteration; crates.io publication remains disabled.
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### ✨ Added
+
+- Add bounded oldest-first catch-up previews with explicit age and 1–64 count
+  limits, excess reporting and a non-rewinding retirement endpoint. Recurrence
+  remains delegated to Saffron.
+- Add explicit `Policy::SkipLate` and `Policy::CatchUp` to bind/restore. Catch-up
+  batches retain age/count decisions across pause and schema-2 checkpoint restore;
+  completion skips excess/new arrivals, edits discard pending old batches, and
+  recovery discards remaining catch-up work without replay.
+- Add validated host-owned checkpoints and restore for settled/queued Jobs
+  progress, preserving revision, cursor, selected occurrence and pause state.
+  Running or uncertain work refuses export; schedule mismatch rejects restore
+  before timer admission. Hosts own storage and matching job definitions.
+
+### 🧪 Testing
+
+- Cover catch-up age/count/cursor boundaries, impossible rules and full unsigned
+  timestamp windows in native tests and installed Wasm planning measurements.
+- Exercise catch-up execution, finite-age paused upgrades, count preservation,
+  schedule edits and initial/post-await recovery; reject invalid restored batches
+  before timer admission. Earlier unpublished schema-1 checkpoints are rejected.
+- Exercise the full 64-occurrence execution limit after two hours of downtime,
+  and factory/post-await traps on a later occurrence after prior work has settled.
+- Cover checkpoint validation and progress round trips, installed armed/paused
+  upgrades, export refusal during execution and upgrade refusal after initial
+  and post-await traps.
+- Exercise three-day stopped-canister upgrades with generous and zero lateness
+  tolerance, preserving the selected occurrence and host-owned policy while
+  avoiding catch-up bursts.
+- Qualify twelve Jobs under shared-table and eight-flight pressure, queued pause,
+  reverse reply settlement and post-await recovery isolated from healthy jobs.
+- Qualify ordinary-outcome recurrence, impossible schedule edits and restored
+  revision/timestamp exhaustion without accidental consumer invocation.
 
 ## [0.37.2] - Development checkpoint
 

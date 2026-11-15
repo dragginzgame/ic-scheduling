@@ -4,6 +4,7 @@ use crate::{
     api::{Error, OnceDemand, OnceNext, OnceResult, WatchdogDemand, WatchdogResult},
     bindings::{Accepted, Bindings, Handle, RecoveryKey, Scheduled},
     engine::{Demand, State},
+    metrics::Event,
 };
 use ic_platform_runtime::{
     Principal,
@@ -35,6 +36,8 @@ struct Runtime {
     faulted: Cell<bool>,
     timer: Cell<u64>,
     retry_at: Cell<u64>,
+    #[cfg(feature = "metrics")]
+    metrics: Rc<crate::metrics::Recorder>,
 }
 thread_local! { static RUNTIME: RefCell<Option<Rc<Runtime>>> = const { RefCell::new(None) }; }
 
@@ -79,6 +82,8 @@ pub fn initialize() -> Result<(), Error> {
                 faulted: Cell::new(false),
                 timer: Cell::new(0),
                 retry_at: Cell::new(0),
+                #[cfg(feature = "metrics")]
+                metrics: Rc::new(crate::metrics::Recorder::new()),
             })
         });
         runtime.check()
@@ -88,6 +93,14 @@ fn runtime() -> Result<Rc<Runtime>, Error> {
     RUNTIME
         .with(|slot| slot.borrow().clone())
         .ok_or(Error::Uninitialized)
+}
+/// Read aggregate counters without changing demand. Available even after a
+/// provider fault. Host code owns encoding/export; no exporter is invoked here.
+/// # Errors
+/// Returns Uninitialized before provider initialization.
+#[cfg(feature = "metrics")]
+pub fn metrics() -> Result<crate::Metrics, Error> {
+    Ok(runtime()?.metrics.snapshot())
 }
 /// Bind one inactive callback with nonempty owner/group/name components (64 bytes each).
 ///
@@ -100,10 +113,18 @@ where
 {
     let runtime = runtime()?;
     runtime.check()?;
+    #[cfg(feature = "metrics")]
+    let metrics = Rc::clone(&runtime.metrics);
     let handle = runtime.bindings.bind(identity, move || {
+        #[cfg(feature = "metrics")]
+        metrics.record(Event::Accepted);
         let future = work();
+        #[cfg(feature = "metrics")]
+        let metrics = Rc::clone(&metrics);
         async move {
             let result = future.await;
+            #[cfg(feature = "metrics")]
+            metrics.record(Event::Returned(result.observation));
             match result.next {
                 OnceNext::Stop => Demand::Inactive,
                 OnceNext::At(at) => Demand::At(at),
@@ -159,6 +180,12 @@ impl Once {
     }
 }
 impl Runtime {
+    fn record(&self, event: Event) {
+        #[cfg(feature = "metrics")]
+        self.metrics.record(event);
+        #[cfg(not(feature = "metrics"))]
+        let _ = event;
+    }
     fn check(&self) -> Result<(), Error> {
         if self.faulted.get() {
             Err(Error::Faulted)
@@ -167,7 +194,9 @@ impl Runtime {
         }
     }
     fn fail(&self) {
-        self.faulted.set(true);
+        if !self.faulted.replace(true) {
+            self.record(Event::ProviderFault);
+        }
         ic0::global_timer_set(0);
         self.timer.set(0);
     }
@@ -315,6 +344,7 @@ extern "C" fn timer() {
                         Err(CallFailed::CallPerformFailed(_)
                             | CallFailed::InsufficientLiquidCycleBalance(_))
                     ) {
+                        owner.record(Event::Deferred);
                         match ic0::time().checked_add(RETRY_NS) {
                             Some(at) => owner.retry_at.set(at),
                             None => owner.fail(),
@@ -323,8 +353,13 @@ extern "C" fn timer() {
                         // Synchronous work has no suspended provider-owned future.
                         // A trap rolls its work message back; either reply or reject
                         // definitively settles this flight, preserving its successor.
-                        if dispatch.settle().is_err() {
-                            owner.fail();
+                        match dispatch.settle() {
+                            Ok(true) if response.is_err() => {
+                                owner.record(Event::Accepted);
+                                owner.record(Event::Abandoned);
+                            }
+                            Err(_) => owner.fail(),
+                            _ => {}
                         }
                     } else if response.is_err() {
                         if let Some(accepted) = flight.accepted {
@@ -333,10 +368,15 @@ extern "C" fn timer() {
                             if accepted.is_running().unwrap_or(true) {
                                 owner.fail();
                             }
-                        } else if let Scheduled::Once(dispatch) = &flight.dispatch
-                            && owner.bindings.rejected(dispatch).is_err()
-                        {
-                            owner.fail();
+                        } else if let Scheduled::Once(dispatch) = &flight.dispatch {
+                            match owner.bindings.rejected(dispatch) {
+                                Ok(true) => {
+                                    owner.record(Event::Accepted);
+                                    owner.record(Event::Abandoned);
+                                }
+                                Err(_) => owner.fail(),
+                                _ => {}
+                            }
                         }
                     }
                 }
@@ -370,8 +410,10 @@ impl Drop for WorkGuard {
     fn drop(&mut self) {
         if !self.finished {
             if executor::is_recovering_from_trap() {
-                if self.accepted.abandon().is_err() {
-                    self.runtime.fail();
+                match self.accepted.abandon() {
+                    Ok(true) => self.runtime.record(Event::Abandoned),
+                    Err(_) => self.runtime.fail(),
+                    _ => {}
                 }
             } else {
                 self.runtime.fail(); // Unqualified cancellation does not authorize replay.
@@ -518,9 +560,16 @@ where
 {
     let runtime = runtime()?;
     runtime.check()?;
-    let handle = runtime
-        .bindings
-        .bind_watchdog(identity, cadence, move || work().next.into())?;
+    #[cfg(feature = "metrics")]
+    let metrics = Rc::clone(&runtime.metrics);
+    let handle = runtime.bindings.bind_watchdog(identity, cadence, move || {
+        #[cfg(feature = "metrics")]
+        metrics.record(Event::Accepted);
+        let result = work();
+        #[cfg(feature = "metrics")]
+        metrics.record(Event::Returned(result.observation));
+        result.next.into()
+    })?;
     Ok(Watchdog {
         runtime: Rc::downgrade(&runtime),
         handle,

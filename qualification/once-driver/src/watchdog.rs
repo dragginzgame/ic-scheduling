@@ -33,6 +33,14 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
         }
         let first = state(pic, id, sender).await;
         assert_eq!(first.2, 0, "transport must settle the synchronous ticket");
+        assert_eq!(
+            super::metrics::read(pic, id, sender).await,
+            if mode == 1 {
+                [1, 0, 1, 0, 0, 0]
+            } else {
+                [1, 1, 0, 0, 0, 0]
+            }
+        );
         if mode == 2 {
             assert_eq!(first, (0, 1, 0));
             pic.advance_time(Duration::from_secs(2)).await;
@@ -62,6 +70,14 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
                 pic.tick().await;
             }
             assert_eq!(state(pic, id, sender).await, (0, second.1 + 1, 0));
+            assert_eq!(
+                super::metrics::read(pic, id, sender).await,
+                if mode == 1 {
+                    [3, 1, 2, 0, 0, 0]
+                } else {
+                    [3, 3, 0, 0, 0, 0]
+                }
+            );
         }
     }
     println!("watchdog: committed successor survives traps, cadence continues, owner commands win");

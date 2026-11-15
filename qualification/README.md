@@ -56,7 +56,33 @@ name is retained. See [watchdog evidence](../docs/evidence/watchdog-state.md).
 The probe also enables Jobs `execution` and tests its actual Once composition:
 occurrence/start context, skip-late behavior, edits and pause across an await,
 initial/post-await traps, blocked replay and stale recovery. Installed Saffron
-cases include sparse and impossible rules. See [Jobs evidence](../docs/evidence/jobs-progress.md).
+cases include sparse and impossible rules. Host-owned Jobs checkpoint tests cover
+armed/paused reconstruction with preserved revisions, export refusal while running,
+upgrade refusal after both trap types and invalid restore before timer admission.
+Stopped-canister upgrades after three simulated days verify that restored
+lateness policy either runs the selected overdue occurrence once or skips it;
+both paths select a future deadline without replaying the missed interval.
+The Jobs pressure fixture fills the shared table with twelve Jobs and 52 inactive
+Once declarations, holds eight real calls, cancels queued eligibility and traps
+one released callback. Healthy jobs continue while the uncertain job stays
+blocked, including across the next calendar occurrence. No time jumps are made
+while held HTTP barriers remain open.
+Jobs boundary checks cover ordinary NoWork/ExpectedFailure recurrence, editing
+impossible schedules into and out of eligibility, terminal revision exhaustion
+and an idle exhausted timestamp range restored from host progress.
+The same fixture measures bounded catch-up previews for full-range, age-limited
+and impossible windows. A separate catch-up execution fixture checks age/count
+limits, paused upgrades without replenishing the batch, finite-age selections
+preserved after further downtime, schedule edits and both trap/recovery paths.
+It also executes the full 64-occurrence limit and checks traps on a later batch
+occurrence without replaying already completed work or refilling the quota.
+
+The combined probe enables Timers `metrics`. Aggregate assertions cover ordinary
+returns, Once/watchdog traps, conservative initial rejection accounting, genuine
+submission refusals versus cadence wakes, terminal provider faults and upgrade
+reset. Metrics queries use host-owned encoding; the product adds no exporter.
+See [metrics evidence](../docs/evidence/metrics.md).
+See [Jobs evidence](../docs/evidence/jobs-progress.md).
 
 The driver also reports instruction samples for synchronous owner control at
 three and 64 declarations. Each operation is bracketed within one update message;

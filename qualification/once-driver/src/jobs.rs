@@ -41,6 +41,15 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
             1 | 2 => {
                 assert_eq!(observed, [4, u8::from(mode == 2), 0]);
                 assert_eq!(&context[3..], &selected[3..]);
+                let rejection = pic
+                    .upgrade_canister(id, wasm.to_vec(), vec![], None)
+                    .await
+                    .unwrap_err();
+                assert_eq!(
+                    rejection.error_code,
+                    ic_testkit::pocket_ic::ErrorCode::CanisterCalledTrap
+                );
+                assert_eq!(state(pic, id, sender).await, (observed, context));
                 pic.update_call(id, sender, "jobs_control", vec![0])
                     .await
                     .unwrap();
@@ -115,4 +124,107 @@ pub(super) async fn calendar(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
             values[0], values[1], values[2]
         );
     }
+}
+
+pub(super) async fn lifecycle(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
+    let id = pic.create_canister().await;
+    pic.add_cycles(id, 100_000_000_000_000).await;
+    pic.install_canister(id, wasm.to_vec(), vec![], None).await;
+    pic.update_call(id, sender, "jobs_invalid_restore", vec![])
+        .await
+        .unwrap();
+    pic.update_call(id, sender, "jobs_setup", vec![0])
+        .await
+        .unwrap();
+    pic.update_call(id, sender, "jobs_control", vec![2])
+        .await
+        .unwrap();
+    let before = state(pic, id, sender).await;
+    assert_eq!(before.1[3], 2);
+    pic.upgrade_canister(id, wasm.to_vec(), vec![], None)
+        .await
+        .unwrap();
+    assert_eq!(
+        state(pic, id, sender).await,
+        before,
+        "preserve selected occurrence and revision"
+    );
+    minute(pic).await;
+    let completed = state(pic, id, sender).await;
+    assert_eq!(completed.0, [2, 1, 1]);
+    assert_eq!(&completed.1[..2], &[2, before.1[4]]);
+    pic.update_call(id, sender, "jobs_control", vec![3])
+        .await
+        .unwrap();
+    pic.upgrade_canister(id, wasm.to_vec(), vec![], None)
+        .await
+        .unwrap();
+    assert_eq!(state(pic, id, sender).await.0, [0, 0, 0]);
+    assert_eq!(
+        super::metrics::read(pic, id, sender).await,
+        [0; 6],
+        "normal upgrade resets volatile diagnostics"
+    );
+    minute(pic).await;
+    assert_eq!(state(pic, id, sender).await.0, [0, 0, 0]);
+    pic.update_call(id, sender, "jobs_control", vec![0])
+        .await
+        .unwrap();
+    let resumed = state(pic, id, sender).await;
+    assert_eq!(resumed.1[3], 2);
+    assert!(
+        resumed.1[4] > completed.1[1],
+        "settled occurrence must not replay"
+    );
+    minute(pic).await;
+    assert_eq!(state(pic, id, sender).await.0, [2, 1, 1]);
+    println!(
+        "jobs lifecycle: armed/paused progress reconstructs, revisions survive, unresolved upgrades refuse"
+    );
+}
+
+pub(super) async fn downtime(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
+    for mode in [0, 5] {
+        let id = pic.create_canister().await;
+        pic.add_cycles(id, 100_000_000_000_000).await;
+        pic.install_canister(id, wasm.to_vec(), vec![], None).await;
+        pic.update_call(id, sender, "jobs_setup", vec![mode])
+            .await
+            .unwrap();
+        let before = state(pic, id, sender).await;
+        assert_eq!(before.0, [2, 0, 0]);
+        pic.stop_canister(id, None).await.unwrap();
+        pic.advance_time(Duration::from_secs(3 * 24 * 60 * 60))
+            .await;
+        pic.upgrade_canister(id, wasm.to_vec(), vec![], None)
+            .await
+            .unwrap();
+        pic.start_canister(id, None).await.unwrap();
+        for _ in 0..40 {
+            pic.tick().await;
+        }
+        let after = state(pic, id, sender).await;
+        assert_eq!(after.0, if mode == 0 { [2, 1, 1] } else { [2, 0, 0] });
+        assert_eq!(after.1[3], before.1[3]);
+        let now = pic.get_time().await.as_nanos_since_unix_epoch();
+        assert!(
+            after.1[4] > now,
+            "successor is in the future after downtime"
+        );
+        assert!(after.1[4] - now <= 60_000_000_000);
+        if mode == 0 {
+            assert_eq!(&after.1[..2], &[before.1[3], before.1[4]]);
+            assert!(after.1[2] > before.1[4] + 2 * 24 * 60 * 60 * 1_000_000_000);
+            assert!(after.1[4] > after.1[2]);
+        } else {
+            assert_eq!(&after.1[..3], &[0; 3]);
+        }
+        for _ in 0..40 {
+            pic.tick().await;
+        }
+        assert_eq!(state(pic, id, sender).await, after, "no catch-up burst");
+    }
+    println!(
+        "jobs downtime: overdue selection executes once or skips under restored lateness policy"
+    );
 }

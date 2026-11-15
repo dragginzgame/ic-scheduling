@@ -1,6 +1,6 @@
-//! Initial skip-late Jobs adapter. One retained Once owns execution and recovery.
+//! Calendar Jobs adapter with explicit missed-run policy. One retained Once owns execution and recovery.
 use crate::{
-    Schedule,
+    Policy, Schedule,
     progress::{Progress, Selection},
 };
 use ic_platform_runtime::ic0;
@@ -15,7 +15,7 @@ use std::{
 /// Calendar identity and actual start; combine revision/time with the host's job key.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Context {
-    /// Schedule revision local to this binding; not durable across reconstruction.
+    /// Schedule revision, preserved when the host restores a matching checkpoint.
     pub revision: u64,
     /// Intended UTC occurrence, in Unix nanoseconds.
     pub scheduled_at: u64,
@@ -38,6 +38,10 @@ pub enum Error {
     Timer(ic_timers::Error),
     /// Recovery belongs to a different job or obsolete occurrence.
     StaleRecovery,
+    /// Accepted or uncertain work must be settled before checkpointing.
+    Unsettled,
+    /// Selected checkpoint occurrence does not match the supplied schedule.
+    InvalidCheckpoint,
     /// Terminal progress/adapter fault; no new work is eligible.
     Faulted,
 }
@@ -90,35 +94,10 @@ pub enum Status {
     /// Terminal job or provider fault.
     Faulted,
 }
-struct State {
-    schedule: Schedule,
-    lateness_ns: u64,
-    progress: Progress,
-    faulted: bool,
-}
-impl State {
-    fn plan(&mut self, now: u64) -> OnceDemand {
-        if self.faulted || self.progress.paused() {
-            return OnceDemand::Inactive;
-        }
-        if let Some(selection) = self.progress.selection() {
-            return OnceDemand::At(selection.occurrence.scheduled_at);
-        }
-        let after = now.max(self.progress.through());
-        let Some(at) = self.schedule.next_after(after, u64::MAX) else {
-            return OnceDemand::Inactive;
-        };
-        match self.progress.select(at) {
-            Ok(_) => OnceDemand::At(at),
-            Err(_) => {
-                self.faulted = true;
-                OnceDemand::Inactive
-            }
-        }
-    }
-}
+mod state;
+use state::State;
 /// Retained job control. Dropping it does not cancel the timer declaration.
-/// Host persistence/reconstruction is not yet supported by this preview API.
+/// Hosts can persist settled/queued progress using [`Job::checkpoint`] and [`restore`].
 pub struct Job {
     state: Rc<RefCell<State>>,
     timer: Once,
@@ -127,17 +106,81 @@ type Work = Pin<Box<dyn Future<Output = OnceResult>>>;
 
 /// Bind a UTC job and select its first future occurrence.
 ///
-/// Delivery more than `lateness_ns` after the intended time skips consumer work.
-/// After completion or a skip, Saffron selects strictly after current time and
-/// settled progress. This initial policy has no catch-up, coalescing or retry.
-/// Calendar search costs and persistence remain release qualification gates.
+/// SkipLate applies a delivery tolerance and then selects future work. CatchUp
+/// freezes an age/count-bounded oldest-first batch when work becomes due; pause
+/// and reconstruction retain its remaining occurrences. Batch completion skips
+/// excess and newly arrived occurrences before selecting future work.
+/// Neither policy automatically retries an uncertain occurrence.
+/// Full calendar search budgets and unresolved-work persistence remain release gates.
 /// Timers must already be initialized. Each job consumes one timer declaration.
 /// # Errors
 /// Returns timer admission/control errors or terminal progress failure.
 pub fn bind<F, Fut>(
     identity: [&str; 3],
     schedule: Schedule,
-    lateness_ns: u64,
+    policy: Policy,
+    work: F,
+) -> Result<Job, Error>
+where
+    F: FnMut(Context) -> Fut + 'static,
+    Fut: Future<Output = Outcome> + 'static,
+{
+    bind_progress(
+        identity,
+        schedule,
+        policy,
+        Progress::new(ic0::time()),
+        None,
+        work,
+    )
+}
+
+/// Rebind fresh callbacks from host-owned progress in a fresh runtime.
+/// The host must supply the matching stable job identity, schedule and execution
+/// policy. This is not a heap-snapshot or unresolved-work restoration procedure.
+/// # Errors
+/// Rejects selected/batch occurrences inconsistent with the schedule or policy before admission;
+/// otherwise returns timer/control errors.
+pub fn restore<F, Fut>(
+    identity: [&str; 3],
+    schedule: Schedule,
+    policy: Policy,
+    checkpoint: crate::Checkpoint,
+    work: F,
+) -> Result<Job, Error>
+where
+    F: FnMut(Context) -> Fut + 'static,
+    Fut: Future<Output = Outcome> + 'static,
+{
+    if let Some(at) = checkpoint.selected_at()
+        && schedule.next_after(at - 1, at) != Some(at)
+    {
+        return Err(Error::InvalidCheckpoint);
+    }
+    let progress = Progress::restore(&checkpoint);
+    let batch = checkpoint.catch_up;
+    if let Some(batch) = &batch {
+        let Policy::CatchUp(limit) = policy else {
+            return Err(Error::InvalidCheckpoint);
+        };
+        if batch.pending.len() > usize::from(limit.max_count)
+            || batch
+                .pending
+                .iter()
+                .any(|&at| schedule.next_after(at - 1, at) != Some(at))
+        {
+            return Err(Error::InvalidCheckpoint);
+        }
+    }
+    bind_progress(identity, schedule, policy, progress, batch, work)
+}
+
+fn bind_progress<F, Fut>(
+    identity: [&str; 3],
+    schedule: Schedule,
+    policy: Policy,
+    progress: Progress,
+    batch: Option<crate::CatchUpProgress>,
     mut work: F,
 ) -> Result<Job, Error>
 where
@@ -146,8 +189,9 @@ where
 {
     let state = Rc::new(RefCell::new(State {
         schedule,
-        lateness_ns,
-        progress: Progress::new(ic0::time()),
+        policy,
+        progress,
+        batch,
         faulted: false,
     }));
     let captured = Rc::clone(&state);
@@ -162,12 +206,18 @@ where
                 state.faulted = true;
                 return Box::pin(async { stopped() });
             };
+            let deliver = match state.prepare(now) {
+                Ok(deliver) => deliver,
+                Err(_) => {
+                    state.faulted = true;
+                    return Box::pin(async { stopped() });
+                }
+            };
             if state.progress.accept(selection, now).is_err() {
                 state.faulted = true;
                 return Box::pin(async { stopped() });
             }
-            let late = now - selection.occurrence.scheduled_at > state.lateness_ns;
-            (selection, late)
+            (selection, !deliver)
         };
         let (selection, late) = selected;
         let context = Context {
@@ -184,7 +234,9 @@ where
                 None => Outcome::NoWork,
             };
             let mut state = state.borrow_mut();
-            if state.progress.complete(selection).is_err() {
+            if state.progress.complete(selection).is_err()
+                || state.finish_batch(selection, ic0::time()).is_err()
+            {
                 state.faulted = true;
             }
             let next = match state.plan(ic0::time()) {
@@ -213,6 +265,25 @@ fn stopped() -> OnceResult {
     }
 }
 impl Job {
+    /// Export reconstructable progress without persisting timer capabilities.
+    /// Call synchronously from the host upgrade-admission boundary and store it
+    /// atomically with the matching job definition. Running/uncertain work refuses.
+    /// # Errors
+    /// Returns Unsettled for accepted/recovery work, or timer/terminal errors.
+    pub fn checkpoint(&self) -> Result<crate::Checkpoint, Error> {
+        match self.status()? {
+            Status::Running { .. } | Status::RecoveryRequired { .. } => {
+                return Err(Error::Unsettled);
+            }
+            Status::Faulted => return Err(Error::Faulted),
+            _ => {}
+        }
+        let state = self.state.borrow();
+        let mut checkpoint = state.progress.checkpoint().map_err(|_| Error::Faulted)?;
+        checkpoint.catch_up = state.batch.clone();
+        Ok(checkpoint)
+    }
+
     /// Observe status and associate timer recovery with the selected occurrence.
     /// # Errors
     /// Returns a timer status error or terminal mapping fault.
@@ -296,7 +367,8 @@ impl Job {
     pub fn pause(&self) -> Result<(), Error> {
         self.control(|state, _| state.progress.pause())
     }
-    /// Resume future calendar selection without bypassing unresolved work.
+    /// Resume according to policy without bypassing unresolved work. A paused
+    /// catch-up batch retains its original selection and remaining count.
     /// # Errors
     /// Returns timer or terminal progress errors.
     pub fn resume(&self) -> Result<(), Error> {
@@ -309,10 +381,12 @@ impl Job {
         self.control(move |state, now| {
             state.progress.edit(now)?;
             state.schedule = schedule;
+            state.batch = None;
             Ok(())
         })
     }
-    /// After effect reconciliation, retire the uncertain occurrence and remain paused.
+    /// After effect reconciliation, retire the uncertain occurrence, discard any
+    /// remaining catch-up batch and skip through current time; remain paused.
     /// Resume explicitly to select a new future occurrence; no replay is performed.
     /// # Errors
     /// Rejects wrong-job/obsolete recovery or timer/control faults.
@@ -329,6 +403,11 @@ impl Job {
                 .progress
                 .reconcile(recovery.selection)
                 .map_err(|_| Error::StaleRecovery)?;
+            state.batch = None;
+            state
+                .progress
+                .skip_through(ic0::time())
+                .map_err(|_| Error::Faulted)?;
             state.progress.pause().map_err(|_| Error::Faulted)?;
         }
         if let Err(error) = self.timer.recover(recovery.timer, OnceDemand::Inactive) {

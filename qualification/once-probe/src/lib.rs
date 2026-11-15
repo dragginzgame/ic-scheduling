@@ -134,6 +134,8 @@ pub extern "C" fn state() {
 
 mod pressure;
 
+mod metrics;
+
 struct CleanupTrap(bool);
 impl Drop for CleanupTrap {
     fn drop(&mut self) {
@@ -154,3 +156,9 @@ mod costs;
 mod dispatch_costs;
 
 mod jobs;
+
+mod jobs_pressure;
+
+mod jobs_boundaries;
+
+mod jobs_catch_up;

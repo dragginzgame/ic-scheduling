@@ -1,4 +1,4 @@
-//! Actual Jobs-to-Once execution; host persistence remains outside this fixture.
+//! Actual Jobs-to-Once execution and host-owned checkpoint reconstruction.
 use super::{Call, Cell, RefCell, WaitPolicy, ic0, self_id};
 use ic_jobs::{Context, Job, Outcome, Schedule, Status};
 thread_local! {
@@ -26,27 +26,10 @@ pub extern "C" fn setup() {
     let job = ic_jobs::bind(
         ["jobs", "probe", "work"],
         Schedule::parse("* * * * *").unwrap(),
-        if mode == 5 { 0 } else { u64::MAX },
-        |context: Context| {
-            if MODE.with(Cell::get) == 1 {
-                ic0::trap(b"job factory trap");
-            }
-            CONTEXT.with(|value| {
-                value.set([context.revision, context.scheduled_at, context.started_at])
-            });
-            async {
-                STARTS.with(|value| value.set(value.get() + 1));
-                let reply = Call::new(self_id(), "jobs_echo", WaitPolicy::Unbounded)
-                    .execute()
-                    .await;
-                assert!(reply.is_ok());
-                if MODE.with(Cell::get) == 2 {
-                    ic0::trap(b"job post-await trap");
-                }
-                FINISHES.with(|value| value.set(value.get() + 1));
-                Outcome::Success
-            }
+        ic_jobs::Policy::SkipLate {
+            lateness_ns: if mode == 5 { 0 } else { u64::MAX },
         },
+        work,
     )
     .unwrap();
     JOB.with(|slot| *slot.borrow_mut() = Some(job));
@@ -62,6 +45,7 @@ pub extern "C" fn echo() {
         let slot = slot.borrow();
         let job = slot.as_ref().unwrap();
         assert!(matches!(job.status().unwrap(), Status::Running { .. }));
+        assert_eq!(job.checkpoint(), Err(ic_jobs::Error::Unsettled));
         match MODE.with(Cell::get) {
             3 => {
                 job.pause().unwrap();
@@ -141,6 +125,12 @@ pub extern "C" fn control() {
                 MODE.with(|value| value.set(0));
                 job.resume().unwrap();
             }
+            2 => {
+                job.edit(Schedule::parse("* * * * *").unwrap()).unwrap();
+            }
+            3 => {
+                job.pause().unwrap();
+            }
             _ => ic0::trap(b"invalid action"),
         }
     });
@@ -172,6 +162,162 @@ pub extern "C" fn calendar_costs() {
         ] {
             ic0::msg_reply_data_append(&value.to_le_bytes());
         }
+    }
+    ic0::msg_reply();
+}
+
+fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
+    if MODE.with(Cell::get) == 1 {
+        ic0::trap(b"job factory trap");
+    }
+    CONTEXT.with(|value| value.set([context.revision, context.scheduled_at, context.started_at]));
+    async {
+        STARTS.with(|value| value.set(value.get() + 1));
+        let reply = Call::new(self_id(), "jobs_echo", WaitPolicy::Unbounded)
+            .execute()
+            .await;
+        assert!(reply.is_ok());
+        if MODE.with(Cell::get) == 2 {
+            ic0::trap(b"job post-await trap");
+        }
+        FINISHES.with(|value| value.set(value.get() + 1));
+        Outcome::Success
+    }
+}
+
+pub(super) fn pre_upgrade() -> bool {
+    JOB.with(|slot| {
+        let slot = slot.borrow();
+        let Some(job) = slot.as_ref() else {
+            return false;
+        };
+        let checkpoint = job.checkpoint().expect("host refuses unresolved job");
+        // This fixed host schema owns the every-minute rule; mode records lateness.
+        let mode = MODE.with(Cell::get);
+        assert!(matches!(mode, 0 | 5), "unsupported fixture definition");
+        let mut bytes = [0; 35];
+        bytes[..8].copy_from_slice(b"JOBDATA3");
+        bytes[8] = checkpoint.version();
+        bytes[9..17].copy_from_slice(&checkpoint.revision().to_le_bytes());
+        bytes[17..25].copy_from_slice(&checkpoint.through().to_le_bytes());
+        bytes[25..33].copy_from_slice(&checkpoint.selected_at().unwrap_or(0).to_le_bytes());
+        bytes[33] =
+            u8::from(checkpoint.selected_at().is_some()) | (u8::from(checkpoint.paused()) << 1);
+        bytes[34] = mode;
+        if ic0::stable64_size() == 0 {
+            assert_eq!(ic0::stable64_grow(1), 0);
+        }
+        ic0::stable64_write(&bytes, 0);
+        true
+    })
+}
+pub(super) fn post_upgrade() -> bool {
+    let mut bytes = [0; 35];
+    ic0::stable64_read(&mut bytes, 0);
+    if &bytes[..8] != b"JOBDATA3" {
+        return false;
+    }
+    assert!(bytes[33] <= 3);
+    assert!(matches!(bytes[34], 0 | 5));
+    MODE.with(|value| value.set(bytes[34]));
+    let selected = u64::from_le_bytes(bytes[25..33].try_into().unwrap());
+    if bytes[33] & 1 == 0 {
+        assert_eq!(selected, 0);
+    }
+    let checkpoint = ic_jobs::Checkpoint::new(
+        bytes[8],
+        u64::from_le_bytes(bytes[9..17].try_into().unwrap()),
+        u64::from_le_bytes(bytes[17..25].try_into().unwrap()),
+        (bytes[33] & 1 != 0).then_some(selected),
+        bytes[33] & 2 != 0,
+        None,
+    )
+    .unwrap();
+    ic_timers::initialize().unwrap();
+    let job = ic_jobs::restore(
+        ["jobs", "probe", "work"],
+        Schedule::parse("* * * * *").unwrap(),
+        ic_jobs::Policy::SkipLate {
+            lateness_ns: if bytes[34] == 5 { 0 } else { u64::MAX },
+        },
+        checkpoint,
+        work,
+    )
+    .unwrap();
+    JOB.with(|slot| *slot.borrow_mut() = Some(job));
+    true
+}
+
+/// A structurally valid but non-calendar occurrence must fail before admission.
+/// # Panics
+/// Traps if invalid restoration consumes an identity or succeeds.
+#[expect(unsafe_code, reason = "qualification owns this endpoint")]
+#[unsafe(export_name = "canister_update jobs_invalid_restore")]
+pub extern "C" fn invalid_restore() {
+    ic_timers::initialize().unwrap();
+    let checkpoint = ic_jobs::Checkpoint::new(2, 1, 0, Some(1), false, None).unwrap();
+    assert!(matches!(
+        ic_jobs::restore(
+            ["invalid", "job", "restore"],
+            Schedule::parse("* * * * *").unwrap(),
+            ic_jobs::Policy::SkipLate { lateness_ns: 0 },
+            checkpoint,
+            work
+        ),
+        Err(ic_jobs::Error::InvalidCheckpoint)
+    ));
+    let _handle = ic_timers::bind_once(["invalid", "job", "restore"], || async {
+        super::OnceResult {
+            observation: super::Observation::NoWork,
+            next: super::OnceNext::Stop,
+        }
+    })
+    .unwrap();
+    for (name, pending, policy) in [
+        (
+            "calendar",
+            [60_000_000_000, 61_000_000_000],
+            ic_jobs::Policy::CatchUp(ic_jobs::CatchUpLimit::new(u64::MAX, 3).unwrap()),
+        ),
+        (
+            "policy",
+            [60_000_000_000, 120_000_000_000],
+            ic_jobs::Policy::SkipLate {
+                lateness_ns: u64::MAX,
+            },
+        ),
+        (
+            "count",
+            [60_000_000_000, 120_000_000_000],
+            ic_jobs::Policy::CatchUp(ic_jobs::CatchUpLimit::new(u64::MAX, 1).unwrap()),
+        ),
+    ] {
+        let checkpoint = ic_jobs::Checkpoint::new(
+            2,
+            1,
+            0,
+            Some(pending[0]),
+            false,
+            Some(ic_jobs::CatchUpProgress::new(&pending, 180_000_000_000).unwrap()),
+        )
+        .unwrap();
+        assert!(matches!(
+            ic_jobs::restore(
+                ["invalid", "batch", name],
+                Schedule::parse("* * * * *").unwrap(),
+                policy,
+                checkpoint,
+                work
+            ),
+            Err(ic_jobs::Error::InvalidCheckpoint)
+        ));
+        let _handle = ic_timers::bind_once(["invalid", "batch", name], || async {
+            super::OnceResult {
+                observation: super::Observation::NoWork,
+                next: super::OnceNext::Stop,
+            }
+        })
+        .unwrap();
     }
     ic0::msg_reply();
 }

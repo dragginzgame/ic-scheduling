@@ -21,7 +21,7 @@ crate-type = ["cdylib"]
 [dependencies]
 ic-jobs = { workspace = true, features = ["execution"] }
 ic-platform-runtime.workspace = true
-ic-timers.workspace = true
+ic-timers = { workspace = true, features = ["metrics"] }
 
 [lints]
 workspace = true

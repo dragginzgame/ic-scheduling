@@ -116,3 +116,34 @@ fn counters_fault_before_reuse_without_erasing_unresolved_work() {
     assert_eq!(progress.through(), 0);
     assert_eq!(progress.complete(selected), Err(Error::Exhausted));
 }
+
+#[test]
+fn checkpoint_preserves_revision_cursor_and_queued_occurrence() {
+    let mut progress = Progress::new(10);
+    progress.edit(20).unwrap();
+    let selected = progress.select(100).unwrap();
+    let checkpoint = progress.checkpoint().unwrap();
+    let mut restored = Progress::restore(&checkpoint);
+    assert_eq!(restored.checkpoint().unwrap(), checkpoint);
+    let queued = restored.active.unwrap().selection;
+    assert_eq!(queued.occurrence, selected.occurrence);
+    restored.accept(queued, 110).unwrap();
+    assert_eq!(restored.checkpoint(), Err(Error::Busy));
+    restored.block(queued).unwrap();
+    assert_eq!(restored.checkpoint(), Err(Error::RecoveryRequired));
+    restored.pause().unwrap();
+    assert_eq!(restored.checkpoint(), Err(Error::RecoveryRequired));
+    restored.reconcile(queued).unwrap();
+    let paused = restored.checkpoint().unwrap();
+    assert_eq!(paused.through(), 100);
+    assert!(paused.paused());
+    assert_eq!(paused.selected_at(), None);
+    let mut restored = Progress::restore(&paused);
+    assert_eq!(restored.select(200), Err(Error::Paused));
+    restored.resume().unwrap();
+    assert_eq!(restored.select(100), Err(Error::BeforeCursor));
+    assert_eq!(
+        restored.select(200).unwrap().occurrence.revision,
+        selected.occurrence.revision
+    );
+}

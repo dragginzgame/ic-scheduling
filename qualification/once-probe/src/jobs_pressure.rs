@@ -1,0 +1,123 @@
+//! Shared admission and independent Jobs failure custody under held-flight pressure.
+use super::{Call, Principal, RefCell, WaitPolicy, ic0};
+use ic_jobs::{Job, Outcome, Schedule, Status};
+
+thread_local! {
+    static JOBS: RefCell<Vec<Job>> = const { RefCell::new(Vec::new()) };
+    static COUNTS: RefCell<([u8; 12], [u8; 12])> = const { RefCell::new(([0; 12], [0; 12])) };
+    static CONTEXTS: RefCell<[(u64, u64); 12]> = const { RefCell::new([(0, 0); 12]) };
+}
+
+/// Fill the shared table with twelve Jobs and 52 inactive Once declarations.
+/// # Panics
+/// Traps on malformed target input or unexpected admission results.
+#[expect(unsafe_code, reason = "qualification owns this endpoint")]
+#[unsafe(export_name = "canister_update jobs_pressure_setup")]
+pub extern "C" fn setup() {
+    let len = ic0::msg_arg_data_size();
+    assert!(len > 0 && len <= 29);
+    let mut bytes = [0; 29];
+    ic0::msg_arg_data_copy(&mut bytes[..len], 0);
+    let target = Principal::from_slice(&bytes[..len]);
+    ic_timers::initialize().unwrap();
+    for index in 0..12 {
+        let job = ic_jobs::bind(
+            ["jobs", "pressure", &index.to_string()],
+            Schedule::parse("* * * * *").unwrap(),
+            ic_jobs::Policy::SkipLate {
+                lateness_ns: u64::MAX,
+            },
+            move |context| async move {
+                CONTEXTS.with(|values| {
+                    values.borrow_mut()[index] = (context.scheduled_at, context.started_at);
+                });
+                let first = COUNTS.with(|counts| {
+                    let mut counts = counts.borrow_mut();
+                    counts.0[index] += 1;
+                    counts.0[index] == 1
+                });
+                if index < 8 && first {
+                    let reply = Call::new(target, "hold", WaitPolicy::Unbounded)
+                        .execute()
+                        .await;
+                    assert!(reply.is_ok());
+                    if index == 0 {
+                        ic0::trap(b"one pressured job abandons after await");
+                    }
+                }
+                COUNTS.with(|counts| counts.borrow_mut().1[index] += 1);
+                Outcome::Success
+            },
+        )
+        .unwrap();
+        JOBS.with(|jobs| jobs.borrow_mut().push(job));
+    }
+    for index in 0..52 {
+        let _once = ic_timers::bind_once(["jobs", "filler", &index.to_string()], || async {
+            super::OnceResult {
+                observation: super::Observation::NoWork,
+                next: super::OnceNext::Stop,
+            }
+        })
+        .unwrap();
+    }
+    assert!(matches!(
+        ic_jobs::bind(
+            ["jobs", "pressure", "overflow"],
+            Schedule::parse("* * * * *").unwrap(),
+            ic_jobs::Policy::SkipLate {
+                lateness_ns: u64::MAX
+            },
+            |_| async { Outcome::Success },
+        ),
+        Err(ic_jobs::Error::Timer(ic_timers::Error::Capacity))
+    ));
+    ic0::msg_reply();
+}
+
+/// Pause or resume the ninth job, which initially waits outside eight held flights.
+/// # Panics
+/// Traps on malformed input or failed job control.
+#[expect(unsafe_code, reason = "qualification owns this endpoint")]
+#[unsafe(export_name = "canister_update jobs_pressure_control")]
+pub extern "C" fn control() {
+    assert_eq!(ic0::msg_arg_data_size(), 1);
+    let mut action = [0];
+    ic0::msg_arg_data_copy(&mut action, 0);
+    JOBS.with(|jobs| match action[0] {
+        0 => jobs.borrow()[8].pause().unwrap(),
+        1 => jobs.borrow()[8].resume().unwrap(),
+        _ => ic0::trap(b"invalid pressure action"),
+    });
+    ic0::msg_reply();
+}
+
+/// Twelve records: phase/start/finish followed by scheduled/start timestamps.
+/// # Panics
+/// Traps on failed status projection.
+#[expect(unsafe_code, reason = "qualification owns this endpoint")]
+#[unsafe(export_name = "canister_query jobs_pressure_state")]
+pub extern "C" fn state() {
+    JOBS.with(|jobs| {
+        for (index, job) in jobs.borrow().iter().enumerate() {
+            let phase = match job.status().unwrap() {
+                Status::Paused => 0,
+                Status::Idle => 1,
+                Status::Armed { .. } => 2,
+                Status::Running { .. } => 3,
+                Status::RecoveryRequired { .. } => 4,
+                Status::Faulted => 5,
+            };
+            COUNTS.with(|counts| {
+                let counts = counts.borrow();
+                ic0::msg_reply_data_append(&[phase, counts.0[index], counts.1[index]]);
+            });
+            CONTEXTS.with(|values| {
+                let (scheduled, started) = values.borrow()[index];
+                ic0::msg_reply_data_append(&scheduled.to_le_bytes());
+                ic0::msg_reply_data_append(&started.to_le_bytes());
+            });
+        }
+    });
+    ic0::msg_reply();
+}

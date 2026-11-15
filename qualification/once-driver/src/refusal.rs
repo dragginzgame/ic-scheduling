@@ -36,6 +36,10 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
         .unwrap();
     assert_eq!(repeated.len(), 10);
     assert_eq!(&repeated[8..], &[1, 0]);
+    let metrics = super::metrics::read(pic, id, sender).await;
+    assert_eq!(&metrics[..4], &[0; 4]);
+    assert!(metrics[4] >= 2);
+    assert_eq!(metrics[5], 0);
     let later = u64::from_le_bytes(repeated[..8].try_into().unwrap());
     assert!(
         later >= retry + 1_000_000_000,
@@ -63,6 +67,10 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     assert_eq!(completed.len(), 10);
     assert_eq!(&completed[..8], &[0; 8]);
     assert_eq!(&completed[8..], &[0, 1]);
+    assert_eq!(
+        super::metrics::read(pic, id, sender).await,
+        [1, 1, 0, 0, metrics[4], 0]
+    );
     let cost = u128::from_le_bytes(setup[8..].try_into().unwrap());
     println!(
         "refusal: quoted cost {cost} cycles; repeated deferral without acceptance, then one funded completion"
@@ -98,6 +106,10 @@ pub(super) async fn watchdog(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     let first = watchdog_state(pic, id, sender).await;
     assert!(first.0 > initial);
     assert_eq!((first.1, first.2), (1, 0));
+    assert_eq!(
+        super::metrics::read(pic, id, sender).await,
+        [0, 0, 0, 0, 1, 0]
+    );
     pic.advance_time(Duration::from_millis(100)).await;
     for _ in 0..30 {
         pic.tick().await;
@@ -123,11 +135,20 @@ pub(super) async fn watchdog(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
         (1, 0),
         "funding and cadence wakes must not bypass delivery backoff"
     );
+    assert_eq!(
+        super::metrics::read(pic, id, sender).await,
+        [0, 0, 0, 0, 1, 0],
+        "cadence wakes are not new refused submissions"
+    );
     pic.advance_time(Duration::from_secs(2)).await;
     for _ in 0..30 {
         pic.tick().await;
     }
     assert_eq!(watchdog_state(pic, id, sender).await, (0, 0, 1));
+    let metrics = super::metrics::read(pic, id, sender).await;
+    assert_eq!(&metrics[..4], &[1, 1, 0, 0]);
+    assert_eq!(metrics[4], 1);
+    assert_eq!(metrics[5], 0);
     println!(
         "watchdog refusal: short cadence advances without early delivery, then one funded completion"
     );

@@ -1,8 +1,21 @@
 # Timers changelog
 
-## [0.45.3] - Unreleased
+## [0.45.3] - Development checkpoint
 
-Next development iteration; crates.io publication remains disabled.
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### ✨ Added
+
+- Add opt-in aggregate metrics backed by ic-metrics 0.30.8 counters: committed
+  logical acceptance, normal return, abandonment, expected failure, refused
+  submission and terminal provider fault. Overflow saturates with a sticky flag;
+  recording has no scheduling authority or exporter callbacks.
+
+### 🧪 Testing
+
+- Check initial/post-await Once traps, watchdog rejection, low-cycle deferral,
+  ordinary outcomes, reentrant reads, initialization preservation and upgrade
+  reset. Native coverage verifies overflow remains diagnostic.
 
 ## [0.45.2] - Development checkpoint
 

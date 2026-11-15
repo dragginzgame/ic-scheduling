@@ -76,3 +76,22 @@ No custom resumable engine is planned. Named zones, local-time/DST policies and
 seconds-enabled cron are outside scope. Timer execution, persistence, upgrades,
 missed-run handling and failure custody remain unimplemented/unqualified.
 These are local observations, not remote or installed IC proof.
+
+## Later supplier API review — 2026-11-15
+
+Execution, checkpoint and catch-up qualification added after this initial calendar
+observation is recorded in [Jobs progress evidence](jobs-progress.md). The scope
+statement above describes the earlier calendar-only slice.
+
+The pinned 0.1.0 source exposes `next_from`, `next_after`, forward `iter_from` and
+`iter_after`, plus membership testing through `contains`. `CronTimesIter`
+implements `Iterator` and `FusedIterator`, with no reverse iteration or direct
+latest-occurrence-before operation. Therefore latest-due coalescing cannot be
+delegated as a single supported supplier operation. Forward enumeration could
+grow with downtime; no custom backward/calendar search was introduced to fill
+this gap. Coalescing remains a separate open design item rather than silently
+being approximated by the oldest-first bounded catch-up policy.
+
+This is a local observation of the pinned Cargo registry source, not a claim
+about other supplier versions. Inspected `saffron-0.1.0/src/lib.rs` SHA-256:
+9c869ccfb3e29dcd02b69fb2c2c0a87fea97244ce65d21fe78cd40fb9d66f8c1.

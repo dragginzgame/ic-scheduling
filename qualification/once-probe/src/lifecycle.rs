@@ -51,13 +51,19 @@ pub extern "C" fn init() {
     bind(ic0::time().checked_add(10_000_000_000).unwrap());
 }
 
-/// This host fixture admits upgrades only while its one declaration is Armed.
+/// This host fixture persists a Jobs checkpoint or an Armed Once declaration.
 /// It deliberately does not claim to reconcile accepted work across upgrades.
 /// # Panics
-/// Refuses upgrades without a future armed declaration or if stable writes fail.
+/// Refuses unresolved Jobs work, non-Armed Once state or failed stable writes.
 #[expect(unsafe_code, reason = "qualification owns this lifecycle hook")]
 #[unsafe(export_name = "canister_pre_upgrade")]
 pub extern "C" fn pre_upgrade() {
+    if super::jobs_catch_up::pre_upgrade() {
+        return;
+    }
+    if super::jobs::pre_upgrade() {
+        return;
+    }
     let deadline = HANDLE.with(
         |slot| match slot.borrow().as_ref().unwrap().status().unwrap() {
             OnceStatus::Armed(at) => at,
@@ -79,6 +85,12 @@ pub extern "C" fn pre_upgrade() {
 #[expect(unsafe_code, reason = "qualification owns this lifecycle hook")]
 #[unsafe(export_name = "canister_post_upgrade")]
 pub extern "C" fn post_upgrade() {
+    if super::jobs_catch_up::post_upgrade() {
+        return;
+    }
+    if super::jobs::post_upgrade() {
+        return;
+    }
     let mut bytes = [0; 16];
     ic0::stable64_read(&mut bytes, 0);
     assert_eq!(&bytes[..8], b"ONCEDEMO");

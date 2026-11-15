@@ -41,10 +41,27 @@ async fn run() {
         let state = pic.query_call(id, external, "state", vec![]).await.unwrap();
         println!("mode={mode} state={state:?}");
         assert_eq!(state, expected);
+        let metrics_expected = match mode {
+            0 | 3 => [1, 1, 0, 0, 0, 0],
+            1 | 2 => [1, 0, 1, 0, 0, 0],
+            4 => [2, 2, 0, 0, 0, 0],
+            5 => [1, 0, 0, 0, 0, 1],
+            _ => unreachable!(),
+        };
+        assert_eq!(
+            metrics::read(&pic, id, external).await,
+            metrics_expected,
+            "Once metrics mode {mode}"
+        );
         assert!(
             pic.update_call(id, external, "__ic_scheduling_once", vec![0; 16])
                 .await
                 .is_err()
+        );
+        assert_eq!(
+            metrics::read(&pic, id, external).await,
+            metrics_expected,
+            "external rejection is not acceptance"
         );
         if mode == 5 {
             // arm initializes first; a terminal provider fault rejects there.
@@ -84,6 +101,7 @@ async fn run() {
         }
     }
     pressure::check(&pic, &wasm, external).await;
+    metrics::check(&pic, &wasm, external).await;
     lifecycle::check(&pic, &wasm, external).await;
     refusal::check(&pic, &wasm, external).await;
     refusal::watchdog(&pic, &wasm, external).await;
@@ -95,11 +113,18 @@ async fn run() {
     dispatch_costs::check(&pic, &wasm, external).await;
     jobs::calendar(&pic, &wasm, external).await;
     jobs::check(&pic, &wasm, external).await;
+    jobs::lifecycle(&pic, &wasm, external).await;
+    jobs::downtime(&pic, &wasm, external).await;
+    jobs_pressure::check(&pic, &wasm, external).await;
+    jobs_boundaries::check(&pic, &wasm, external).await;
+    jobs_catch_up::check(&pic, &wasm, external).await;
     pic.drop().await;
     println!("Once installed lifecycle, authentication and pressure checks passed");
 }
 
 mod pressure;
+
+mod metrics;
 
 mod lifecycle;
 
@@ -114,3 +139,9 @@ mod costs;
 mod dispatch_costs;
 
 mod jobs;
+
+mod jobs_pressure;
+
+mod jobs_boundaries;
+
+mod jobs_catch_up;

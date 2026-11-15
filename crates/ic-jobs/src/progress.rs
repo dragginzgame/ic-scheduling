@@ -52,6 +52,50 @@ pub(super) struct Progress {
     faulted: bool,
 }
 impl Progress {
+    #[cfg(any(feature = "execution", test))]
+    pub(super) fn checkpoint(&self) -> Result<crate::checkpoint::Checkpoint, Error> {
+        self.check()?;
+        let selected_at = match self.active {
+            None => None,
+            Some(Active {
+                selection,
+                phase: Phase::Queued,
+            }) => Some(selection.occurrence.scheduled_at),
+            Some(Active {
+                phase: Phase::Blocked,
+                ..
+            }) => return Err(Error::RecoveryRequired),
+            Some(_) => return Err(Error::Busy),
+        };
+        Ok(crate::checkpoint::Checkpoint {
+            revision: self.revision,
+            through: self.through,
+            selected_at,
+            paused: self.paused,
+            catch_up: None,
+        })
+    }
+
+    #[cfg(any(feature = "execution", test))]
+    pub(super) fn restore(checkpoint: &crate::checkpoint::Checkpoint) -> Self {
+        Self {
+            revision: checkpoint.revision,
+            through: checkpoint.through,
+            paused: checkpoint.paused,
+            active: checkpoint.selected_at.map(|scheduled_at| Active {
+                selection: Selection {
+                    occurrence: Occurrence {
+                        revision: checkpoint.revision,
+                        scheduled_at,
+                    },
+                    sequence: 1,
+                },
+                phase: Phase::Queued,
+            }),
+            sequence: u64::from(checkpoint.selected_at.is_some()),
+            faulted: false,
+        }
+    }
     pub(super) const fn new(through: u64) -> Self {
         Self {
             revision: 1,
@@ -64,6 +108,16 @@ impl Progress {
     }
     pub(super) const fn through(&self) -> u64 {
         self.through
+    }
+
+    #[cfg(all(feature = "execution", target_arch = "wasm32"))]
+    pub(super) fn skip_through(&mut self, through: u64) -> Result<(), Error> {
+        self.check()?;
+        if self.active.is_some() {
+            return Err(Error::Busy);
+        }
+        self.through = self.through.max(through);
+        Ok(())
     }
 
     #[cfg(all(feature = "execution", target_arch = "wasm32"))]
