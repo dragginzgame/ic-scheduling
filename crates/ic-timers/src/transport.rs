@@ -128,6 +128,9 @@ where
             match result.next {
                 OnceNext::Stop => Demand::Inactive,
                 OnceNext::At(at) => Demand::At(at),
+                OnceNext::After(delay) => ic0::time()
+                    .checked_add(delay.get())
+                    .map_or(Demand::Inactive, Demand::At),
             }
         }
     })?;

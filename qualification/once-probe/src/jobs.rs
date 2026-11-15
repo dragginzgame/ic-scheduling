@@ -276,10 +276,15 @@ pub(super) fn pre_upgrade() -> bool {
         let mode = MODE.with(Cell::get);
         assert!(matches!(mode, 0 | 5), "unsupported fixture definition");
         let mut bytes = [0; 35];
-        bytes[..8].copy_from_slice(b"JOBDATA3");
+        bytes[..8].copy_from_slice(b"JOBDATA4");
         bytes[8] = checkpoint.version();
         bytes[9..17].copy_from_slice(&checkpoint.revision().to_le_bytes());
-        bytes[17..25].copy_from_slice(&checkpoint.through().to_le_bytes());
+        bytes[17..25].copy_from_slice(
+            &checkpoint
+                .through()
+                .expect("cron fixture has settled cursor")
+                .to_le_bytes(),
+        );
         bytes[25..33].copy_from_slice(&checkpoint.selected_at().unwrap_or(0).to_le_bytes());
         bytes[33] =
             u8::from(checkpoint.selected_at().is_some()) | (u8::from(checkpoint.paused()) << 1);
@@ -294,7 +299,7 @@ pub(super) fn pre_upgrade() -> bool {
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 35];
     ic0::stable64_read(&mut bytes, 0);
-    if &bytes[..8] != b"JOBDATA3" {
+    if &bytes[..8] != b"JOBDATA4" {
         return false;
     }
     assert!(bytes[33] <= 3);
@@ -307,7 +312,7 @@ pub(super) fn post_upgrade() -> bool {
     let checkpoint = ic_jobs::Checkpoint::new(
         bytes[8],
         u64::from_le_bytes(bytes[9..17].try_into().unwrap()),
-        u64::from_le_bytes(bytes[17..25].try_into().unwrap()),
+        Some(u64::from_le_bytes(bytes[17..25].try_into().unwrap())),
         (bytes[33] & 1 != 0).then_some(selected),
         bytes[33] & 2 != 0,
         None,
@@ -335,7 +340,7 @@ pub(super) fn post_upgrade() -> bool {
 #[unsafe(export_name = "canister_update jobs_invalid_restore")]
 pub extern "C" fn invalid_restore() {
     ic_timers::initialize().unwrap();
-    let checkpoint = ic_jobs::Checkpoint::new(2, 1, 0, Some(1), false, None).unwrap();
+    let checkpoint = ic_jobs::Checkpoint::new(3, 1, Some(0), Some(1), false, None).unwrap();
     assert!(matches!(
         ic_jobs::restore(
             ["invalid", "job", "restore"],
@@ -373,9 +378,9 @@ pub extern "C" fn invalid_restore() {
         ),
     ] {
         let checkpoint = ic_jobs::Checkpoint::new(
-            2,
+            3,
             1,
-            0,
+            Some(0),
             Some(pending[0]),
             false,
             Some(ic_jobs::CatchUpProgress::new(&pending, 180_000_000_000).unwrap()),

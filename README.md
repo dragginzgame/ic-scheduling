@@ -29,8 +29,11 @@ submission deferral and armed-deadline upgrade reconstruction. The initial
 trap-survival and owner-precedence checks. Timers' opt-in `metrics` feature exposes
 aggregate counters using ic-metrics arithmetic, with host-owned export. Remaining
 resource, consumer and lifecycle qualification gates are open.
+Once callbacks can return `OnceNext::After(positive_delay)` to recur relative to
+completion, including awaits. Overflow stops recurrence; newer owner commands
+take precedence and traps still require explicit recovery.
 Development targets are
-Timers `0.45.6` and Jobs `0.37.6`, following the initial development checkpoint
+Timers `0.45.7` and Jobs `0.37.7`, following the initial development checkpoint
 (`0.45.0` / `0.37.0`). These remain unpublished; the last observed crates.io
 versions were `0.44.3` / `0.36.3` (registry checked 2026-11-15).
 Track changes in the [grouped changelogs](CHANGELOG.md). Development delivery is
@@ -112,9 +115,14 @@ five fields and minute precision; time zones and a seconds field are not support
 See the [UTC Wasm measurements](docs/evidence/calendar-saffron.md).
 
 `Schedule::fixed_rate(first_at_ns, every_ns)` uses a positive `NonZeroU64`
-interval and preserves its original anchor. Binding currently selects strictly
-after current time; initial overdue admission and timestamp-zero execution
-remain part of the unfinished legacy schedule contract.
+interval and preserves its original anchor. Binding selects the original first
+deadline, including zero and overdue deadlines; the explicit lateness/catch-up
+policy controls delivery. Cron binding continues to select after current time.
+Checkpoint schema 3 distinguishes no settled work from a settled zero timestamp.
+
+`Schedule::once(at_ns)` selects one deadline under the same delivery policies,
+including zero and overdue deadlines. After settlement or lateness skipping it
+becomes idle; an uncertain attempt still requires explicit recovery.
 
 The executor prerequisite probe runs with
 `make check-executor POCKET_IC_BIN=/absolute/path/to/pocket-ic` using a prepared

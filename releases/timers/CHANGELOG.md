@@ -1,5 +1,15 @@
 # Timers changelog
 
+## [0.45.7] - Development checkpoint
+
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### ✨ Added
+
+- Add `OnceNext::After` for completion-relative recurrence through the existing
+  retained Once provider. Require a positive delay; stop on timestamp overflow.
+  Preserve newer owner commands and explicit recovery after abandonment.
+
 ## [0.45.6] - Development checkpoint
 
 GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.

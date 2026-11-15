@@ -15,6 +15,10 @@ pub enum OnceNext {
     Stop,
     /// Schedule another occurrence at this absolute timestamp.
     At(u64),
+    /// Schedule after this many nanoseconds from callback completion, including
+    /// any awaits. Overflow stops recurrence. Newer owner commands still win;
+    /// traps require explicit recovery and never start a recurrence automatically.
+    After(std::num::NonZeroU64),
 }
 /// Consumer outcome; never authority to retry uncertain work.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

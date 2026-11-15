@@ -19,6 +19,11 @@ async fn run() {
     })
     .unwrap();
     let enabled = paired.then(|| std::fs::read(args.next().expect("enabled probe path")).unwrap());
+    let focused = args.next();
+    assert!(focused.as_deref().is_none_or(|arg| matches!(
+        arg,
+        "--after-completion" | "--jobs-initial" | "--jobs-one-shot"
+    )));
     let server = std::env::var_os("POCKET_IC_BIN").expect("prepared PocketIC 16.0.0 server");
     let pic = PocketIcBuilder::new()
         .with_server_binary(server.into())
@@ -31,6 +36,20 @@ async fn run() {
         return;
     }
     let external = pic.create_canister().await;
+    if focused.is_some() {
+        if focused.as_deref() == Some("--jobs-one-shot") {
+            jobs_initial::check(&pic, &wasm, external, true).await;
+        } else if focused.as_deref() == Some("--jobs-initial") {
+            jobs_initial::check(&pic, &wasm, external, false).await;
+            jobs::lifecycle(&pic, &wasm, external).await;
+            jobs::downtime(&pic, &wasm, external).await;
+            jobs_catch_up::check(&pic, &wasm, external).await;
+        } else {
+            after_completion::check(&pic, &wasm, external).await;
+        }
+        pic.drop().await;
+        return;
+    }
     for (mode, expected) in [
         (0, vec![0, 1, 1]),
         (1, vec![3, 0, 0]),
@@ -115,6 +134,7 @@ async fn run() {
         }
     }
     pressure::check(&pic, &wasm, external).await;
+    after_completion::check(&pic, &wasm, external).await;
     metrics::check(&pic, &wasm, external).await;
     lifecycle::check(&pic, &wasm, external).await;
     refusal::check(&pic, &wasm, external).await;
@@ -132,12 +152,15 @@ async fn run() {
     jobs::downtime(&pic, &wasm, external).await;
     jobs_pressure::check(&pic, &wasm, external).await;
     jobs_boundaries::check(&pic, &wasm, external).await;
+    jobs_initial::check(&pic, &wasm, external, false).await;
+    jobs_initial::check(&pic, &wasm, external, true).await;
     jobs_boundaries::ahead(&pic, &wasm, external).await;
     jobs_catch_up::check(&pic, &wasm, external).await;
     pic.drop().await;
     println!("Once installed lifecycle, authentication and pressure checks passed");
 }
 
+mod after_completion;
 mod pressure;
 
 mod metrics;
@@ -162,5 +185,6 @@ mod jobs;
 mod jobs_pressure;
 
 mod jobs_boundaries;
+mod jobs_initial;
 
 mod jobs_catch_up;

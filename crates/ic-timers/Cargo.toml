@@ -1,7 +1,7 @@
 [package]
 name = "ic-timers"
 links = "ic-timers-global-timer"
-version = "0.45.6"
+version = "0.45.7"
 edition.workspace = true
 rust-version.workspace = true
 license-file.workspace = true

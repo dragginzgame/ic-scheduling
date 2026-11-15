@@ -49,7 +49,7 @@ pub extern "C" fn setup() {
         ic_jobs::Policy::SkipLate {
             lateness_ns: u64::MAX,
         },
-        Checkpoint::new(2, u64::MAX, ic0::time(), None, false, None).unwrap(),
+        Checkpoint::new(3, u64::MAX, Some(ic0::time()), None, false, None).unwrap(),
         |_| async {
             COUNTS.with(|counts| counts.borrow_mut()[3] += 1);
             Outcome::Success
@@ -67,7 +67,7 @@ pub extern "C" fn setup() {
         ic_jobs::Policy::SkipLate {
             lateness_ns: u64::MAX,
         },
-        Checkpoint::new(2, 1, u64::MAX, None, false, None).unwrap(),
+        Checkpoint::new(3, 1, Some(u64::MAX), None, false, None).unwrap(),
         |_| async {
             COUNTS.with(|counts| counts.borrow_mut()[4] += 1);
             Outcome::Success
@@ -77,7 +77,7 @@ pub extern "C" fn setup() {
     end.pause().unwrap();
     end.resume().unwrap();
     assert!(matches!(end.status().unwrap(), Status::Idle));
-    assert_eq!(end.checkpoint().unwrap().through(), u64::MAX);
+    assert_eq!(end.checkpoint().unwrap().through(), Some(u64::MAX));
     JOBS.with(|jobs| jobs.borrow_mut().extend([exhausted, end]));
     ic0::msg_reply();
 }
@@ -204,7 +204,7 @@ pub extern "C" fn ahead_setup() {
             ["jobs", "ahead", &index.to_string()],
             minute(),
             policy,
-            Checkpoint::new(2, 7, through, None, false, None).unwrap(),
+            Checkpoint::new(3, 7, Some(through), None, false, None).unwrap(),
             move |context| async move {
                 AHEAD_RUNS.with_borrow_mut(|runs| {
                     runs[index][0] += 1;
@@ -229,7 +229,7 @@ pub extern "C" fn ahead_control() {
     AHEAD.with_borrow(|jobs| {
         for job in jobs {
             let before = job.checkpoint().unwrap();
-            assert!(ic0::time() < before.through());
+            assert!(Some(ic0::time()) < before.through());
             job.pause().unwrap();
             job.edit(minute()).unwrap();
             let paused = job.checkpoint().unwrap();
@@ -257,7 +257,9 @@ pub extern "C" fn ahead_state() {
             assert!(matches!(job.status().unwrap(), Status::Armed { .. }));
             let checkpoint = job.checkpoint().unwrap();
             for value in [
-                checkpoint.through(),
+                checkpoint
+                    .through()
+                    .expect("cron fixture has settled cursor"),
                 checkpoint.selected_at().unwrap(),
                 checkpoint.revision(),
             ] {

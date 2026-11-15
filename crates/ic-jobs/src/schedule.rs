@@ -33,7 +33,7 @@ impl Error for ScheduleError {
     }
 }
 
-/// A five-field UTC cron recurrence or anchored elapsed-time interval.
+/// A one-shot deadline, five-field UTC cron recurrence or anchored elapsed interval.
 ///
 /// Saffron owns parsing, calendar arithmetic and next-occurrence search. No time
 /// zones, DST policies, seconds dialect or custom calendar engine are provided.
@@ -43,16 +43,27 @@ pub struct Schedule {
 }
 #[derive(Clone, Debug)]
 enum Rule {
+    Once(u64),
     Cron(Cron),
     FixedRate { first: u64, every: NonZeroU64 },
 }
 
 impl Schedule {
+    /// Run once at the supplied Unix nanosecond timestamp, including zero.
+    /// Binding admits overdue deadlines; the explicit delivery policy controls
+    /// whether work runs. Settlement exhausts this schedule without an implicit retry.
+    #[must_use]
+    pub const fn once(at_ns: u64) -> Self {
+        Self {
+            rule: Rule::Once(at_ns),
+        }
+    }
+
     /// Recur at `first_at_ns + n * every_ns` for nonnegative integer n.
     /// This is elapsed-time arithmetic, not a cron field or local calendar rule.
     /// Overflow ends the recurrence; no timestamp wraps. Like cron previews,
-    /// `next_after` excludes its lower bound. Binding selects after current time;
-    /// host-restored progress and CatchUp control overdue execution.
+    /// `next_after` excludes its lower bound. Binding selects the first timestamp,
+    /// including zero or an overdue deadline; the explicit policy controls delivery.
     #[must_use]
     pub const fn fixed_rate(first_at_ns: u64, every_ns: NonZeroU64) -> Self {
         Self {
@@ -87,34 +98,54 @@ impl Schedule {
     /// This synchronous preview has no resumable budget and reads no clock.
     #[must_use]
     pub fn next_after(&self, after_ns: u64, through_ns: u64) -> Option<u64> {
-        if after_ns >= through_ns {
+        self.next_from(after_ns.checked_add(1)?, through_ns)
+    }
+
+    #[cfg(all(feature = "execution", target_arch = "wasm32"))]
+    pub(crate) fn first_at(&self) -> Option<u64> {
+        match self.rule {
+            Rule::Once(at) => Some(at),
+            Rule::FixedRate { first, .. } => Some(first),
+            Rule::Cron(_) => None,
+        }
+    }
+
+    /// Inclusive search used by admission, catch-up and checkpoint validation.
+    pub(crate) fn next_from(&self, from_ns: u64, through_ns: u64) -> Option<u64> {
+        if from_ns > through_ns {
             return None;
         }
         let cron = match &self.rule {
+            Rule::Once(at) => return (from_ns <= *at && *at <= through_ns).then_some(*at),
             Rule::Cron(cron) => cron,
             Rule::FixedRate { first, every } => {
-                let at = if after_ns < *first {
+                let at = if from_ns <= *first {
                     *first
                 } else {
-                    let steps = ((after_ns - first) / every.get()).checked_add(1)?;
+                    let steps = (from_ns - first).div_ceil(every.get());
                     first.checked_add(steps.checked_mul(every.get())?)?
                 };
                 return (at <= through_ns).then_some(at);
             }
         };
         // All u64 Unix nanoseconds fit Chrono's seconds range. Saffron's
-        // exclusive search truncates the input minute before advancing it.
+        // searches truncate to minutes. Only use inclusive search at an exact
+        // minute boundary; otherwise advance through the supplier's exclusive API.
         let start = DateTime::<Utc>::from_timestamp(
-            (after_ns / 1_000_000_000) as i64,
-            (after_ns % 1_000_000_000) as u32,
+            (from_ns / 1_000_000_000) as i64,
+            (from_ns % 1_000_000_000) as u32,
         )?;
-        let next = cron.next_after(start)?;
+        let next = if from_ns.is_multiple_of(60_000_000_000) {
+            cron.next_from(start)
+        } else {
+            cron.next_after(start)
+        }?;
         // Avoid Chrono's signed-i64 nanosecond limit: timers use unsigned u64.
         let ns = i128::from(next.timestamp()) * 1_000_000_000
             + i128::from(next.timestamp_subsec_nanos());
         u64::try_from(ns)
             .ok()
-            .filter(|&ns| ns > after_ns && ns <= through_ns)
+            .filter(|&ns| ns >= from_ns && ns <= through_ns)
     }
 }
 

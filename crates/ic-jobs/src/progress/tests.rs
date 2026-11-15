@@ -23,7 +23,7 @@ fn reselected_occurrence_does_not_revive_old_delivery_authority() {
     assert_eq!(progress.accept(fresh, 70), Err(Error::Stale));
     assert_eq!(progress.select(120), Err(Error::Busy));
     progress.complete(fresh).unwrap();
-    assert_eq!(progress.through(), 60);
+    assert_eq!(progress.through(), Some(60));
     assert_eq!(progress.complete(fresh), Err(Error::Stale));
 }
 
@@ -36,7 +36,7 @@ fn schedule_edit_preserves_running_identity_and_newer_pause() {
     progress.pause().unwrap();
     assert_eq!(progress.select(400), Err(Error::Busy));
     progress.complete(old).unwrap();
-    assert_eq!(progress.through(), 300);
+    assert_eq!(progress.through(), Some(300));
     assert_eq!(progress.select(400), Err(Error::Paused));
     progress.resume().unwrap();
     let fresh = progress.select(400).unwrap();
@@ -44,7 +44,7 @@ fn schedule_edit_preserves_running_identity_and_newer_pause() {
     assert_eq!(progress.block(old), Err(Error::Stale));
     progress.accept(fresh, 400).unwrap();
     progress.complete(fresh).unwrap();
-    assert_eq!(progress.through(), 400);
+    assert_eq!(progress.through(), Some(400));
 }
 
 #[test]
@@ -55,7 +55,7 @@ fn queued_edit_invalidates_selection_without_marking_it_settled() {
     assert_eq!(progress.accept(old, 100), Err(Error::Stale));
     let fresh = progress.select(100).unwrap();
     assert_ne!(fresh.occurrence, old.occurrence);
-    assert_eq!(progress.through(), 10);
+    assert_eq!(progress.through(), Some(10));
 }
 
 #[test]
@@ -73,13 +73,13 @@ fn uncertainty_blocks_new_occurrences_across_owner_changes() {
         assert_eq!(progress.select(400), Err(Error::RecoveryRequired));
         assert_eq!(progress.complete(old), Err(Error::Stale));
         progress.reconcile(old).unwrap();
-        assert_eq!(progress.through(), 300);
+        assert_eq!(progress.through(), Some(300));
         let fresh = progress.select(400).unwrap();
         progress.block(fresh).unwrap();
         assert_eq!(progress.reconcile(old), Err(Error::Stale));
         assert_eq!(progress.select(500), Err(Error::RecoveryRequired));
         progress.reconcile(fresh).unwrap();
-        assert_eq!(progress.through(), 400);
+        assert_eq!(progress.through(), Some(400));
         assert_eq!(progress.select(400), Err(Error::BeforeCursor));
     }
 }
@@ -93,7 +93,7 @@ fn settled_progress_cannot_rewind_with_clock_or_schedule_edit() {
     progress.accept(current, 250).unwrap();
     progress.complete(current).unwrap();
     progress.edit(50).unwrap();
-    assert_eq!(progress.through(), 200);
+    assert_eq!(progress.through(), Some(200));
     assert_eq!(progress.select(200), Err(Error::BeforeCursor));
     assert!(progress.select(201).is_ok());
 }
@@ -113,7 +113,7 @@ fn counters_fault_before_reuse_without_erasing_unresolved_work() {
     progress.revision = u64::MAX;
     assert_eq!(progress.edit(200), Err(Error::Exhausted));
     assert_eq!(progress.active, evidence);
-    assert_eq!(progress.through(), 0);
+    assert_eq!(progress.through(), Some(0));
     assert_eq!(progress.complete(selected), Err(Error::Exhausted));
 }
 
@@ -135,7 +135,7 @@ fn checkpoint_preserves_revision_cursor_and_queued_occurrence() {
     assert_eq!(restored.checkpoint(), Err(Error::RecoveryRequired));
     restored.reconcile(queued).unwrap();
     let paused = restored.checkpoint().unwrap();
-    assert_eq!(paused.through(), 100);
+    assert_eq!(paused.through(), Some(100));
     assert!(paused.paused());
     assert_eq!(paused.selected_at(), None);
     let mut restored = Progress::restore(&paused);
@@ -165,7 +165,7 @@ fn bounded_command_sequences_preserve_progress_and_uncertainty() {
             let current = progress.active.map(|active| active.selection);
             let result = match action {
                 0 | 1 => progress.select(u64::from(action + 1)).map(|selection| {
-                    assert!(selection.occurrence.scheduled_at > before.1);
+                    assert!(Some(selection.occurrence.scheduled_at) > before.1);
                     issued.push(selection);
                 }),
                 2 => current.map_or(Err(Error::Stale), |selection| {
@@ -244,7 +244,7 @@ fn bounded_command_sequences_preserve_progress_and_uncertainty() {
     }
 }
 
-fn snapshot(progress: &Progress) -> (u64, u64, bool, Option<Active>, u64, bool) {
+fn snapshot(progress: &Progress) -> (u64, Option<u64>, bool, Option<Active>, u64, bool) {
     (
         progress.revision,
         progress.through,
@@ -253,4 +253,26 @@ fn snapshot(progress: &Progress) -> (u64, u64, bool, Option<Active>, u64, bool) 
         progress.sequence,
         progress.faulted,
     )
+}
+
+#[test]
+fn zero_occurrence_round_trips_before_acceptance_and_retires_once() {
+    let mut progress = Progress::unstarted();
+    assert_eq!(progress.through(), None);
+    let first = progress.select(0).unwrap();
+    let checkpoint = progress.checkpoint().unwrap();
+    assert_eq!(checkpoint.selected_at(), Some(0));
+    let mut restored = Progress::restore(&checkpoint);
+    let selected = restored.active.unwrap().selection;
+    restored.accept(selected, 100).unwrap();
+    assert_eq!(restored.checkpoint(), Err(Error::Busy));
+    restored.block(selected).unwrap();
+    assert_eq!(restored.checkpoint(), Err(Error::RecoveryRequired));
+    restored.reconcile(selected).unwrap();
+    assert_eq!(restored.through(), Some(0));
+    assert_eq!(restored.select(0), Err(Error::BeforeCursor));
+    progress.accept(first, 0).unwrap();
+    progress.complete(first).unwrap();
+    assert_eq!(progress.through(), Some(0));
+    assert_eq!(progress.select(0), Err(Error::BeforeCursor));
 }

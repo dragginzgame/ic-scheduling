@@ -45,7 +45,7 @@ pub(super) enum Error {
 /// must accompany Occurrence when constructing durable business identities.
 pub(super) struct Progress {
     revision: u64,
-    through: u64,
+    through: Option<u64>,
     paused: bool,
     active: Option<Active>,
     sequence: u64,
@@ -99,14 +99,21 @@ impl Progress {
     pub(super) const fn new(through: u64) -> Self {
         Self {
             revision: 1,
-            through,
+            through: Some(through),
             paused: false,
             active: None,
             sequence: 0,
             faulted: false,
         }
     }
-    pub(super) const fn through(&self) -> u64 {
+    #[cfg(any(test, all(feature = "execution", target_arch = "wasm32")))]
+    pub(super) fn unstarted() -> Self {
+        Self {
+            through: None,
+            ..Self::new(0)
+        }
+    }
+    pub(super) const fn through(&self) -> Option<u64> {
         self.through
     }
 
@@ -116,7 +123,7 @@ impl Progress {
         if self.active.is_some() {
             return Err(Error::Busy);
         }
-        self.through = self.through.max(through);
+        self.through = self.through.max(Some(through));
         Ok(())
     }
 
@@ -144,7 +151,7 @@ impl Progress {
         if self.paused {
             return Err(Error::Paused);
         }
-        if scheduled_at <= self.through {
+        if self.through.is_some_and(|through| scheduled_at <= through) {
             return Err(Error::BeforeCursor);
         }
         let Some(sequence) = self.sequence.checked_add(1) else {
@@ -253,7 +260,7 @@ impl Progress {
             return self.exhaust();
         };
         self.revision = revision;
-        self.through = self.through.max(through);
+        self.through = self.through.max(Some(through));
         self.cancel_queued();
         Ok(())
     }
@@ -267,7 +274,7 @@ impl Progress {
     }
     fn retire(&mut self, selection: Selection) {
         if selection.occurrence.revision == self.revision {
-            self.through = self.through.max(selection.occurrence.scheduled_at);
+            self.through = self.through.max(Some(selection.occurrence.scheduled_at));
         }
         self.active = None;
     }

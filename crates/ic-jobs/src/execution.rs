@@ -102,7 +102,8 @@ pub struct Job {
     timer: Once,
 }
 
-/// Bind a UTC job and select its first future occurrence.
+/// Bind a job. Cron starts after now; one-shot/fixed-rate select their original first
+/// deadline, including zero or overdue deadlines, subject to the chosen policy.
 ///
 /// SkipLate applies a delivery tolerance and then selects future work. CatchUp
 /// freezes an age/count-bounded oldest-first batch when work becomes due; pause
@@ -123,14 +124,15 @@ where
     F: FnMut(Context) -> Fut + 'static,
     Fut: Future<Output = Outcome> + 'static,
 {
-    bind_progress(
-        identity,
-        schedule,
-        policy,
-        Progress::new(ic0::time()),
-        None,
-        work,
-    )
+    let progress = match schedule.first_at() {
+        Some(first) => {
+            let mut progress = Progress::unstarted();
+            progress.select(first).map_err(|_| Error::Faulted)?;
+            progress
+        }
+        None => Progress::new(ic0::time()),
+    };
+    bind_progress(identity, schedule, policy, progress, None, work)
 }
 
 /// Rebind fresh callbacks from host-owned progress in a fresh runtime.

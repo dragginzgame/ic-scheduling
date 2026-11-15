@@ -617,3 +617,67 @@ the 0.37.6 observation above. Combined probe SHA-256:
 `cc20b1fdecd42701c9fa1219a4ca08156192f087e0f6d7d6a73628f7c0437b17`.
 The fixture now exercises an additional schedule mode, so this artifact is not
 a like-for-like binary-size comparison with earlier probes.
+
+### Original fixed-rate deadline admission — 0.37.7
+
+Fresh fixed-rate binding now selects the definition's original first deadline,
+including epoch zero and overdue instants. Cron still begins strictly after now.
+Both use the existing Once execution/recovery path and explicit delivery policy.
+The progress cursor is now optional: None means no occurrence has settled;
+Some(0) prevents replay after timestamp zero settles. There is no zero sentinel.
+
+Checkpoint schema 3 preserves this distinction and permits zero as the first
+selected/batch occurrence. Earlier preview schemas are rejected. Native decoding
+and definition validation still reject inconsistent cursors, selections and
+batches. Hosts own encoding and definition association; unresolved work still
+refuses checkpoint export. The existing cron-only upgrade fixtures require a
+present cursor and use updated host format identifiers, rather than silently
+flattening None to zero.
+
+Inclusive recurrence lookup is shared by catch-up and checkpoint validation.
+Saffron still performs all calendar search; its inclusive API is used only at
+an exact minute boundary because both supplier APIs truncate their input minute.
+Fractional lower bounds use its exclusive search. Fixed-rate arithmetic remains
+checked, including the final representable unsigned occurrence.
+
+All 23 all-feature native Jobs tests pass, including zero admission/settlement,
+blocked recovery, checkpoint round-trips, zero batches, fractional cron bounds
+and unsigned endpoints. Strict native Jobs and Wasm probe/host driver Clippy pass,
+as do Rustdoc and formatting. The focused installed `--jobs-initial` run passes:
+zero/overdue/future first deadlines, bounded catch-up, skip-late, reconstruction
+of unstarted selected-zero progress, existing armed/paused upgrades, downtime
+policies, full 64-count batches and first/later trap recovery. Unstarted zero
+reconstruction is exercised directly; actual upgrade fixtures remain cron-based.
+
+This adds required behavior rather than claiming a size or performance reduction.
+Reproduction uses the focused command in [qualification](../../qualification/README.md).
+Compiler, suppliers and locks match the current 0.45.7/0.37.7 iteration. Local
+combined probe SHA-256:
+`7827872d077475fc08222fc729b6f4a19dbf6940381fbfaa7cb590547414c54c`.
+
+### One-shot Jobs — 0.37.7
+
+`Schedule::once(at_ns)` adds a single deadline to the existing schedule owner.
+It shares first-deadline admission with fixed-rate schedules, including zero
+and overdue instants. The existing delivery policy determines whether late work
+runs; settlement or skipping exhausts the schedule. No execution state machine,
+transport, dependency or checkpoint schema was added for this schedule form.
+Public `next_after` retains its exclusive lower bound, including at zero.
+
+All 25 native Jobs tests pass. New native cases cover zero/unsigned endpoints,
+one-occurrence catch-up exhaustion, age exclusion and exact-deadline checkpoint
+validation. Strict native Jobs and Wasm probe/host driver Clippy, Rustdoc and
+formatting pass. The installed `--jobs-one-shot` selection reuses the initial
+deadline fixture for both delivery policies, zero/overdue/future admission and
+unstarted reconstruction. It verifies idle status after completion or skipping
+and no recurrence after another simulated hour. Factory and post-await traps
+retain uncertainty and refuse checkpoints; pause/resume does not clear recovery.
+Explicit recovery then resume leaves the exhausted one-shot idle, with no new
+callback after a further hour.
+
+This is local installed evidence, not a guarantee of exactly-once external
+effects. Jobs retry policy, after-completion recurrence and durable unresolved
+records remain unfinished. Reproduce via the focused command described in
+[qualification](../../qualification/README.md); compiler, suppliers and locks
+are unchanged. Combined probe SHA-256:
+`c50cb59677c6e0eccfbb6b696fb1adff6136c396f2b6621b1d6a295c4868e86e`.

@@ -96,22 +96,39 @@ impl Schedule {
     /// cost remains separate from this bound. No clock is read and no job is changed.
     #[must_use]
     pub fn catch_up(&self, after: u64, now: u64, limit: CatchUpLimit) -> CatchUpPlan {
+        self.catch_up_from(Some(after), now, limit)
+    }
+
+    pub(crate) fn catch_up_from(
+        &self,
+        after: Option<u64>,
+        now: u64,
+        limit: CatchUpLimit,
+    ) -> CatchUpPlan {
         let mut plan = CatchUpPlan {
             occurrences: Vec::new(),
-            through: after.max(now),
+            through: after.unwrap_or(0).max(now),
             excess: false,
         };
-        // Saffron's API takes an exclusive lower bound. Preserve an occurrence
-        // on the inclusive age boundary without calendar arithmetic of our own.
-        let mut cursor = after.max(now.saturating_sub(limit.max_age_ns).saturating_sub(1));
+        let mut cursor = match after {
+            Some(after) => match after.checked_add(1) {
+                Some(from) => from,
+                None => return plan,
+            },
+            None => 0,
+        }
+        .max(now.saturating_sub(limit.max_age_ns));
         for _ in 0..limit.max_count {
-            let Some(next) = self.next_after(cursor, now) else {
+            let Some(next) = self.next_from(cursor, now) else {
                 return plan;
             };
             plan.occurrences.push(next);
-            cursor = next;
+            let Some(from) = next.checked_add(1) else {
+                return plan;
+            };
+            cursor = from;
         }
-        plan.excess = self.next_after(cursor, now).is_some();
+        plan.excess = self.next_from(cursor, now).is_some();
         plan
     }
 }

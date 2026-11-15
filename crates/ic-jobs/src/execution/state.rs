@@ -17,7 +17,9 @@ impl State {
         if self.batch.is_some() {
             return Ok(());
         }
-        let plan = self.schedule.catch_up(self.progress.through(), now, limit);
+        let plan = self
+            .schedule
+            .catch_up_from(self.progress.through(), now, limit);
         if plan.occurrences().is_empty() {
             self.progress
                 .skip_through(plan.through())
@@ -48,7 +50,7 @@ impl State {
             .map(|batch| batch.pending[0])
             .or_else(|| {
                 self.schedule
-                    .next_after(now.max(self.progress.through()), u64::MAX)
+                    .next_after(now.max(self.progress.through().unwrap_or(0)), u64::MAX)
             });
         let Some(at) = at else {
             return OnceDemand::Inactive;
@@ -87,7 +89,7 @@ impl State {
                 }
                 // Preserve the committed selected identity even if the consumer's
                 // initial message traps and rolls this batch construction back.
-                let plan = self.schedule.catch_up(at - 1, now, limit);
+                let plan = self.schedule.catch_up_from(at.checked_sub(1), now, limit);
                 if plan.occurrences().first() != Some(&at) {
                     return Err(Error::Faulted);
                 }

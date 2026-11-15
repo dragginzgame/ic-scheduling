@@ -118,3 +118,65 @@ fn fixed_rate_reuses_bounded_catch_up_without_reanchoring() {
     assert!(plan.has_excess());
     assert_eq!(plan.through(), 107);
 }
+
+#[test]
+fn inclusive_zero_and_unsigned_end_catch_up() {
+    let schedule = Schedule::fixed_rate(0, NonZeroU64::new(10).unwrap());
+    let plan = schedule.catch_up_from(None, 30, crate::CatchUpLimit::new(30, 3).unwrap());
+    assert_eq!(plan.occurrences(), &[0, 10, 20]);
+    assert!(plan.has_excess());
+    assert_eq!(
+        schedule
+            .catch_up(0, 30, crate::CatchUpLimit::new(30, 3).unwrap())
+            .occurrences(),
+        &[10, 20, 30]
+    );
+    assert_eq!(schedule.next_from(0, 0), Some(0));
+    let cron = Schedule::parse("* * * * *").unwrap();
+    assert_eq!(cron.next_from(0, 0), Some(0));
+    assert_eq!(cron.next_from(1, 60_000_000_000), Some(60_000_000_000));
+    let end = Schedule::fixed_rate(u64::MAX, NonZeroU64::new(1).unwrap());
+    let plan = end.catch_up(
+        u64::MAX - 1,
+        u64::MAX,
+        crate::CatchUpLimit::new(0, 3).unwrap(),
+    );
+    assert_eq!(plan.occurrences(), &[u64::MAX]);
+    assert!(!plan.has_excess());
+}
+
+#[test]
+fn one_shot_windows_and_catch_up_exhaust_after_one_occurrence() {
+    for at in [0, 1, 17, u64::MAX] {
+        let schedule = Schedule::once(at);
+        assert_eq!(schedule.next_from(at, at), Some(at));
+        assert_eq!(schedule.next_after(at, u64::MAX), None);
+        if at > 0 {
+            assert_eq!(schedule.next_after(at - 1, at), Some(at));
+            assert_eq!(schedule.next_from(0, at - 1), None);
+        }
+        let plan = schedule.catch_up_from(
+            None,
+            u64::MAX,
+            crate::CatchUpLimit::new(u64::MAX, 64).unwrap(),
+        );
+        assert_eq!(plan.occurrences(), &[at]);
+        assert!(!plan.has_excess());
+        assert!(
+            schedule
+                .catch_up(
+                    at,
+                    u64::MAX,
+                    crate::CatchUpLimit::new(u64::MAX, 64).unwrap()
+                )
+                .occurrences()
+                .is_empty()
+        );
+    }
+    assert!(
+        Schedule::once(10)
+            .catch_up_from(None, 20, crate::CatchUpLimit::new(9, 1).unwrap())
+            .occurrences()
+            .is_empty()
+    );
+}

@@ -106,3 +106,34 @@ performance improvement is claimed. Compiler, suppliers and locks remain those
 of the current 0.45.6 iteration. Reproduce with the native Timers tests and
 `make check-once`; combined probe SHA-256:
 `3a77b74cbf56bcde4e57fe5415e25d0cba7d8b8cde587490e1dcf399155b04e9`.
+
+## Completion-relative recurrence — 0.45.7
+
+`OnceNext::After(NonZeroU64)` restores the legacy completion-relative recurrence
+capability through retained Once. The adapter reads IC time after the consumer
+future returns and adds the positive delay with checked arithmetic. Overflow
+produces inactive demand. Existing settlement owns newer-command precedence;
+initial and post-await traps still block for explicit recovery. There is no
+new registration family, state machine, dependency or implicit retry policy.
+Initial eligibility remains an explicit `OnceDemand` supplied by the owner.
+
+The focused installed `--after-completion` case passes. It observes Running
+during a sequence of actual self-calls, advances time by 20 seconds, and checks
+that the armed deadline equals recorded completion plus ten seconds. Nine seconds
+later it has not rerun; after the deadline it runs once more and stops. Separate
+cases prove owner stop overrides After, unsigned overflow stops, and initial and
+post-await traps remain blocked after further time advances. Strict product,
+probe and driver Clippy pass. This is local PocketIC evidence, not deployment or
+full legacy timer parity; transient removal and diagnostics remain outstanding.
+
+The change adds seven product lines; the fixture and driver are additional
+qualification code, not a product reduction. No performance claim is made.
+Reproduction commands are in [qualification](../../qualification/README.md).
+Rust 1.100.0, Runtime 0.22.5, Testkit 0.106.0 and the prepared PocketIC 16.0.0
+server are unchanged. Only local product versions changed in the locks.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Combined probe | `6ddc1689391c37e0d493b29b0c2c8eced138d7e4a8536322565998fa9e78deaf` |
+| Product lock | `dcf7370ec7815f0a37d36fa4b94dbda8232806fe746298eb2c50a7f8f95ac9e0` |
+| Qualification lock | `edab8441b7adf7dfb3eb6ef3375e02385aae65f4b9125cba5d93c51d8bb81add` |

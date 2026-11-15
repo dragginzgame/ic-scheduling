@@ -173,7 +173,7 @@ pub(super) fn pre_upgrade() -> bool {
         let pending = checkpoint
             .catch_up()
             .map_or(&[][..], CatchUpProgress::pending);
-        let mut bytes = b"CATCHUP1".to_vec();
+        let mut bytes = b"CATCHUP2".to_vec();
         bytes.extend([
             mode,
             u8::from(checkpoint.paused()),
@@ -183,7 +183,9 @@ pub(super) fn pre_upgrade() -> bool {
         ]);
         for value in [
             checkpoint.revision(),
-            checkpoint.through(),
+            checkpoint
+                .through()
+                .expect("cron fixture has settled cursor"),
             checkpoint.selected_at().unwrap_or(0),
             checkpoint.catch_up().map_or(0, CatchUpProgress::through),
         ] {
@@ -211,7 +213,7 @@ pub(super) fn pre_upgrade() -> bool {
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 1024];
     ic0::stable64_read(&mut bytes, 0);
-    if &bytes[..8] != b"CATCHUP1" {
+    if &bytes[..8] != b"CATCHUP2" {
         return false;
     }
     assert!(matches!(bytes[8], 0 | 2 | 7) && bytes[9] <= 1 && bytes[11] <= 1 && bytes[12] <= 64);
@@ -239,9 +241,9 @@ pub(super) fn post_upgrade() -> bool {
     assert!(count <= 32);
     LOG.with(|log| *log.borrow_mut() = (0..count).map(|_| read(&bytes, &mut offset)).collect());
     let checkpoint = Checkpoint::new(
-        2,
+        3,
         revision,
-        through,
+        Some(through),
         (bytes[11] != 0).then_some(selected),
         bytes[9] != 0,
         batch,

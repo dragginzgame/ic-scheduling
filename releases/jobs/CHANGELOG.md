@@ -1,5 +1,27 @@
 # Jobs changelog
 
+## [0.37.7] - Development checkpoint
+
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### ✨ Added
+
+- Add `Schedule::once` for a single deadline, including zero and overdue instants.
+  Reuse delivery policy, checkpoints and recovery; settlement or lateness skipping
+  exhausts the schedule without an automatic retry.
+
+### 🐛 Fixed
+
+- Admit fixed-rate jobs at their original first deadline, including overdue and
+  zero timestamps. Reuse explicit skip-late/catch-up policies and preserve the
+  distinction between unstarted progress and a settled zero occurrence.
+
+### 💥 Changed
+
+- Checkpoint schema 3 uses an optional settled cursor and admits zero in selected
+  and pending batch timestamps. Reject earlier preview schemas; update the host
+  upgrade fixtures and validate every restored occurrence against its schedule.
+
 ## [0.37.6] - Development checkpoint
 
 GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.

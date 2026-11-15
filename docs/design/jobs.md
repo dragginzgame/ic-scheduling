@@ -74,8 +74,12 @@ syntax is the contract, not compatibility with every cron implementation.
 
 Anchored elapsed intervals now use `Schedule::fixed_rate(first_at_ns, every_ns)`.
 The positive interval is a `NonZeroU64`; checked integer arithmetic preserves
-the original anchor without calendar interpretation. One-time UTC instants and
-after-completion intervals remain required legacy scheduler forms to implement.
+the original anchor without calendar interpretation. Binding selects the original
+first deadline, even when zero or overdue, then applies the explicit policy.
+Cron binding selects after current time. `Schedule::once(at_ns)` admits one UTC
+instant, including zero and overdue instants, under the same delivery policy.
+It becomes idle after settlement or policy-based skipping; uncertainty still
+requires explicit recovery. After-completion intervals remain to implement in Jobs.
 They must not introduce a second cron engine. `*/N` steps within a field,
 not an arbitrary elapsed interval. Typed calendar builders are not required.
 
@@ -172,12 +176,14 @@ before it executes, and future work resumes with the current revision. This
 qualifies that restored-state condition, not a replica clock rollback or heap
 snapshot. See the future-cursor observation in [execution evidence](../evidence/jobs-progress.md).
 
-Checkpoint schema 2 adds a bounded remaining-batch record. Decoding validates
-strictly increasing, nonzero timestamps after the settled cursor, the fixed
+Checkpoint schema 3 retains the bounded remaining-batch record and represents
+the settled cursor as `Option<u64>`. None means nothing settled; Some(0) means
+timestamp zero has settled. Decoding validates strictly increasing timestamps
+after any settled cursor, the fixed
 endpoint and agreement with selected/paused state. Restore checks every remaining
-timestamp against Saffron and rejects batches incompatible with the policy/count
+timestamp against the schedule and rejects batches incompatible with the policy/count
 before timer admission. The host must retain the exact policy and definition
-association. Schema 1 from the earlier unpublished checkpoint preview is rejected;
+association. Schemas 1 and 2 from earlier unpublished checkpoint previews are rejected;
 no deployed-data migration is claimed.
 
 Timer handles and closures are volatile. Persist versioned job definitions and

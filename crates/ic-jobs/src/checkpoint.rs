@@ -21,7 +21,7 @@ impl std::error::Error for CheckpointError {}
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Checkpoint {
     pub(crate) revision: u64,
-    pub(crate) through: u64,
+    pub(crate) through: Option<u64>,
     pub(crate) selected_at: Option<u64>,
     pub(crate) paused: bool,
     pub(crate) catch_up: Option<CatchUpProgress>,
@@ -37,12 +37,11 @@ pub struct CatchUpProgress {
 impl CatchUpProgress {
     /// Validate decoded remaining work before allocating a bounded copy.
     /// # Errors
-    /// Rejects empty/over-64 batches, zero or non-increasing timestamps, and
+    /// Rejects empty/over-64 batches, non-increasing timestamps, and
     /// occurrences beyond the fixed batch endpoint.
     pub fn new(pending: &[u64], through: u64) -> Result<Self, CheckpointError> {
         if pending.is_empty()
             || pending.len() > 64
-            || pending[0] == 0
             || pending.windows(2).any(|pair| pair[0] >= pair[1])
             || pending.last().is_some_and(|&at| at > through)
         {
@@ -73,7 +72,7 @@ impl Checkpoint {
         schedule: &crate::Schedule,
         policy: crate::Policy,
     ) -> bool {
-        let matches = |at| schedule.next_after(at - 1, at) == Some(at);
+        let matches = |at| schedule.next_from(at, at) == Some(at);
         if self.selected_at.is_some_and(|at| !matches(at)) {
             return false;
         }
@@ -90,23 +89,27 @@ impl Checkpoint {
     /// # Errors
     /// Rejects unsupported schemas, revision zero, selected work while paused,
     /// a selected occurrence at/before settled progress, or a batch inconsistent
-    /// with the cursor/selection. Schema 2 includes remaining catch-up work.
+    /// with the cursor/selection. Schema 3 distinguishes no settled work (`None`)
+    /// from settled timestamp zero (`Some(0)`). Older preview schemas are rejected.
     pub fn new(
         version: u8,
         revision: u64,
-        through: u64,
+        through: Option<u64>,
         selected_at: Option<u64>,
         paused: bool,
         catch_up: Option<CatchUpProgress>,
     ) -> Result<Self, CheckpointError> {
-        if version != 2 {
+        if version != 3 {
             return Err(CheckpointError::Version);
         }
-        if revision == 0 || selected_at.is_some_and(|at| paused || at <= through) {
+        if revision == 0
+            || selected_at.is_some_and(|at| paused || through.is_some_and(|end| at <= end))
+        {
             return Err(CheckpointError::Progress);
         }
         if let Some(batch) = &catch_up
-            && (batch.pending[0] <= through || (!paused && selected_at != Some(batch.pending[0])))
+            && (through.is_some_and(|end| batch.pending[0] <= end)
+                || (!paused && selected_at != Some(batch.pending[0])))
         {
             return Err(CheckpointError::Progress);
         }
@@ -121,16 +124,16 @@ impl Checkpoint {
     /// Progress schema version for the host's encoded record.
     #[must_use]
     pub const fn version(&self) -> u8 {
-        2
+        3
     }
     /// Preserved schedule revision.
     #[must_use]
     pub const fn revision(&self) -> u64 {
         self.revision
     }
-    /// Exclusive settled cursor in Unix nanoseconds.
+    /// Exclusive settled cursor in Unix nanoseconds; None means nothing settled.
     #[must_use]
-    pub const fn through(&self) -> u64 {
+    pub const fn through(&self) -> Option<u64> {
         self.through
     }
     /// Selected but unaccepted occurrence, if any.

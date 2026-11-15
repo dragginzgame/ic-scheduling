@@ -56,6 +56,35 @@ The Once fixture is wasm32-only. Lint it with
 `cargo clippy --manifest-path qualification/Cargo.toml -p once-probe --target wasm32-unknown-unknown --locked --offline -- -D warnings`.
 Lint its host driver separately with `-p once-driver --all-targets`.
 
+For focused completion-relative recurrence checks, build the fixture and select
+the driver's case from the repository root:
+
+```sh
+cargo build --manifest-path qualification/Cargo.toml -p once-probe \
+  --target-dir qualification/target --release --target wasm32-unknown-unknown \
+  --locked --offline
+POCKET_IC_BIN=/absolute/path/to/pocket-ic cargo run \
+  --manifest-path qualification/Cargo.toml -p once-driver \
+  --target-dir qualification/target --locked --offline -- \
+  qualification/target/wasm32-unknown-unknown/release/once_probe.wasm \
+  --after-completion
+```
+
+This selection advances time during a callback's sequence of real self-calls,
+then checks completion-relative deadlines, owner override, overflow, Stop and
+initial/post-await trap barriers. The aggregate `make check-once` includes it.
+
+Using `--jobs-initial` instead selects fixed-rate initial-deadline checks plus
+the affected Jobs checkpoint lifecycle, downtime and catch-up upgrade cases.
+It covers zero, overdue and future admission, both delivery policies, unstarted
+reconstruction and the schema 3 host fixtures. Their existing cron-only storage
+formats explicitly require a present cursor; the new zero fixture tests None.
+
+`--jobs-one-shot` runs the same admission fixture with one-shot schedules and
+adds initial/post-await trap recovery. It checks idle exhaustion, including
+after lateness skipping and explicit recovery, with later time advances proving
+there is no recurrence.
+
 The same installed fixture/driver now exercises watchdogs through the shared
 product provider: prearmed successor survival across work traps, Continue cadence,
 reentrant owner precedence, consumer-owned request admission and full-flight
