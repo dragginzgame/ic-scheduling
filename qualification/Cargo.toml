@@ -3,6 +3,7 @@ members = [
     "calendar-probe",
     "executor-driver",
     "executor-probe",
+    "metrics-probe",
     "once-driver",
     "once-probe",
 ]

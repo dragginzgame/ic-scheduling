@@ -24,6 +24,15 @@ The raw probe ABI and its zero sentinel are qualification-only.
 
 Shared `make deps-list`, `make deps-update` and formatting include both workspaces.
 
+The installed suite also checks [full-table capture retention](../docs/evidence/capture-retention.md):
+maximum-length identities, retained payloads through repeated demand changes,
+reentrant destruction of rejected captures and release of settled async attempts.
+
+[Entropy integration](entropy-integration/README.md) stages a pinned, read-only
+consumer checkout, applies a small timer migration and runs its existing native,
+Wasm and installed checks against unpublished local Timers. It does not adopt
+the migration in Entropy or duplicate its maintained test suite.
+
 `executor-probe` and `executor-driver` check Platform Runtime's protected-task
 completion and initial/post-await trap behavior in a locally installed PocketIC
 canister. Run `make check-executor POCKET_IC_BIN=/absolute/path/to/pocket-ic`
@@ -82,6 +91,14 @@ returns, Once/watchdog traps, conservative initial rejection accounting, genuine
 submission refusals versus cadence wakes, terminal provider faults and upgrade
 reset. Metrics queries use host-owned encoding; the product adds no exporter.
 See [metrics evidence](../docs/evidence/metrics.md).
+
+Run `make check-metrics POCKET_IC_BIN=/absolute/path/to/pocket-ic` for a separate
+small `metrics-probe` built twice with metrics disabled/enabled. The existing
+driver's `--metrics-cost` mode compares raw Wasm sizes and setup/factory/resume/
+watchdog instruction brackets across three fresh canisters per build, while
+asserting identical callback counts. See the [paired feature-cost evidence](../docs/evidence/metrics-cost.md)
+for values and attribution limits. Lint this probe with an explicit wasm32 target,
+both without default features and with `--features metrics`.
 See [Jobs evidence](../docs/evidence/jobs-progress.md).
 
 The driver also reports instruction samples for synchronous owner control at

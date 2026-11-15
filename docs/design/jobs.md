@@ -157,6 +157,12 @@ generous and zero lateness tolerances: execute the selected occurrence once or
 skip it, then select a future occurrence without a catch-up burst. Restoring
 unresolved work remains an open gate.
 
+Installed qualification also restores settled progress ahead of current time
+under both policies. Pause/edit/resume preserves the cursor; no occurrence at or
+before it executes, and future work resumes with the current revision. This
+qualifies that restored-state condition, not a replica clock rollback or heap
+snapshot. See the future-cursor observation in [execution evidence](../evidence/jobs-progress.md).
+
 Checkpoint schema 2 adds a bounded remaining-batch record. Decoding validates
 strictly increasing, nonzero timestamps after the settled cursor, the fixed
 endpoint and agreement with selected/paused state. Restore checks every remaining

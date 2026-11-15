@@ -98,3 +98,79 @@ async fn plans(pic: &PocketIc, id: CanisterId, sender: CanisterId) {
         );
     }
 }
+
+fn ahead_rows(bytes: &[u8]) -> [[u64; 6]; 2] {
+    assert_eq!(bytes.len(), 96);
+    std::array::from_fn(|row| {
+        std::array::from_fn(|column| {
+            let offset = row * 48 + column * 8;
+            u64::from_le_bytes(bytes[offset..offset + 8].try_into().unwrap())
+        })
+    })
+}
+
+pub(super) async fn ahead(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
+    let minute = 60_000_000_000;
+    let id = pic.create_canister().await;
+    pic.add_cycles(id, 100_000_000_000_000).await;
+    pic.install_canister(id, wasm.to_vec(), vec![], None).await;
+    let initial = ahead_rows(
+        &pic.update_call(id, sender, "jobs_ahead_setup", vec![])
+            .await
+            .unwrap(),
+    );
+    let cursor = initial[0][0];
+    let selected = cursor + minute;
+    assert_eq!(initial, [[cursor, selected, 7, 0, 0, 0]; 2]);
+    for revision in [8, 9] {
+        let rows = ahead_rows(
+            &pic.update_call(id, sender, "jobs_ahead_control", vec![])
+                .await
+                .unwrap(),
+        );
+        assert_eq!(rows, [[cursor, selected, revision, 0, 0, 0]; 2]);
+    }
+    // Cross nine ordinary cron boundaries without replaying anything through the cursor.
+    for step in 0..=10 {
+        let target = cursor - (10 - step) * minute + 1_000_000_000;
+        let now = pic.get_time().await.as_nanos_since_unix_epoch();
+        if target > now {
+            pic.advance_time(Duration::from_nanos(target - now)).await;
+        }
+        for _ in 0..20 {
+            pic.tick().await;
+        }
+        let rows = ahead_rows(
+            &pic.query_call(id, sender, "jobs_ahead_state", vec![])
+                .await
+                .unwrap(),
+        );
+        assert_eq!(rows, [[cursor, selected, 9, 0, 0, 0]; 2]);
+    }
+    for occurrence in 0..2 {
+        let scheduled = selected + occurrence * minute;
+        let target = scheduled + 1_000_000_000;
+        let now = pic.get_time().await.as_nanos_since_unix_epoch();
+        pic.advance_time(Duration::from_nanos(target.checked_sub(now).unwrap()))
+            .await;
+        for _ in 0..40 {
+            pic.tick().await;
+        }
+        let rows = ahead_rows(
+            &pic.query_call(id, sender, "jobs_ahead_state", vec![])
+                .await
+                .unwrap(),
+        );
+        for row in rows {
+            // Catch-up retires through its batch endpoint; SkipLate settles the occurrence.
+            assert!(row[0] >= scheduled && row[0] < scheduled + minute);
+            assert_eq!(
+                &row[1..],
+                &[scheduled + minute, 9, occurrence + 1, scheduled, 9]
+            );
+        }
+    }
+    println!(
+        "jobs ahead cursor: both policies preserve future progress through pause/edit/resume, skip settled boundaries and resume once per new occurrence"
+    );
+}

@@ -1,8 +1,20 @@
 # Timers changelog
 
-## [0.45.4] - Unreleased
+## [0.45.4] - Development checkpoint
 
-Next development iteration; crates.io publication remains disabled.
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### 🧪 Testing
+
+- Qualify capture retention at the full mixed 64-declaration limit with maximum
+  identity lengths, 30,720 control commands, reentrant rejected-capture destruction
+  and three complete async/synchronous execution batches; record memory observations.
+- Qualify a pinned Entropy migration in an isolated copy: native buffered and
+  fresh-only checks, Wasm compilation and its existing installed refill/lifecycle
+  journey. Retain a reviewable adapter patch; actual consumer adoption remains open.
+- Add paired metrics-disabled/enabled Wasm qualification with identical work and
+  exports, three fresh canisters per build, verified outcomes and measured setup
+  and per-message instruction prefixes. Record fixture-inclusive binary costs.
 
 ## [0.45.3] - Development checkpoint
 

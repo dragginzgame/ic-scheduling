@@ -1,8 +1,14 @@
 # Jobs changelog
 
-## [0.37.4] - Unreleased
+## [0.37.4] - Development checkpoint
 
-Next development iteration; crates.io publication remains disabled.
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### 🧪 Testing
+
+- Qualify restoring a settled cursor ahead of current time under SkipLate and
+  CatchUp. Pause/edit/resume preserves progress, settled calendar boundaries do
+  not replay, and new occurrences resume with the updated revision.
 
 ## [0.37.3] - Development checkpoint
 

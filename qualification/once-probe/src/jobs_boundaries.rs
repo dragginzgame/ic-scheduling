@@ -176,3 +176,99 @@ pub extern "C" fn catch_up_plans() {
     }
     ic0::msg_reply();
 }
+
+thread_local! {
+    static AHEAD: RefCell<Vec<Job>> = const { RefCell::new(Vec::new()) };
+    static AHEAD_RUNS: RefCell<[[u64; 3]; 2]> = const { RefCell::new([[0; 3]; 2]) };
+}
+
+/// Restore settled progress ten minutes ahead of current time under both policies.
+/// # Panics
+/// Traps on restore failure or unexpected progress.
+#[expect(unsafe_code, reason = "qualification owns this endpoint")]
+#[unsafe(export_name = "canister_update jobs_ahead_setup")]
+pub extern "C" fn ahead_setup() {
+    ic_timers::initialize().unwrap();
+    let minute_ns = 60_000_000_000;
+    let through = (ic0::time() / minute_ns + 10) * minute_ns;
+    for (index, policy) in [
+        ic_jobs::Policy::SkipLate {
+            lateness_ns: u64::MAX,
+        },
+        ic_jobs::Policy::CatchUp(ic_jobs::CatchUpLimit::new(u64::MAX, 3).unwrap()),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let job = ic_jobs::restore(
+            ["jobs", "ahead", &index.to_string()],
+            minute(),
+            policy,
+            Checkpoint::new(2, 7, through, None, false, None).unwrap(),
+            move |context| async move {
+                AHEAD_RUNS.with_borrow_mut(|runs| {
+                    runs[index][0] += 1;
+                    runs[index][1] = context.scheduled_at;
+                    runs[index][2] = context.revision;
+                });
+                Outcome::Success
+            },
+        )
+        .unwrap();
+        AHEAD.with_borrow_mut(|jobs| jobs.push(job));
+    }
+    ahead_state();
+}
+
+/// Edit while paused before the restored cursor, then resume without rewinding it.
+/// # Panics
+/// Traps on control failure or cursor/selection regression.
+#[expect(unsafe_code, reason = "qualification owns this endpoint")]
+#[unsafe(export_name = "canister_update jobs_ahead_control")]
+pub extern "C" fn ahead_control() {
+    AHEAD.with_borrow(|jobs| {
+        for job in jobs {
+            let before = job.checkpoint().unwrap();
+            assert!(ic0::time() < before.through());
+            job.pause().unwrap();
+            job.edit(minute()).unwrap();
+            let paused = job.checkpoint().unwrap();
+            assert!(paused.paused());
+            assert_eq!(paused.through(), before.through());
+            assert_eq!(paused.selected_at(), None);
+            job.resume().unwrap();
+            let after = job.checkpoint().unwrap();
+            assert_eq!(after.through(), before.through());
+            assert_eq!(after.selected_at(), before.selected_at());
+            assert_eq!(after.revision(), before.revision() + 1);
+        }
+    });
+    ahead_state();
+}
+
+/// Two rows of cursor, selection, revision, run count, last occurrence and revision.
+/// # Panics
+/// Traps if progress is unsettled or no future occurrence is armed.
+#[expect(unsafe_code, reason = "qualification owns this endpoint")]
+#[unsafe(export_name = "canister_query jobs_ahead_state")]
+pub extern "C" fn ahead_state() {
+    AHEAD.with_borrow(|jobs| {
+        for (index, job) in jobs.iter().enumerate() {
+            assert!(matches!(job.status().unwrap(), Status::Armed { .. }));
+            let checkpoint = job.checkpoint().unwrap();
+            for value in [
+                checkpoint.through(),
+                checkpoint.selected_at().unwrap(),
+                checkpoint.revision(),
+            ] {
+                ic0::msg_reply_data_append(&value.to_le_bytes());
+            }
+            AHEAD_RUNS.with_borrow(|runs| {
+                for value in runs[index] {
+                    ic0::msg_reply_data_append(&value.to_le_bytes());
+                }
+            });
+        }
+    });
+    ic0::msg_reply();
+}

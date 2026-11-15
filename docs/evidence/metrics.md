@@ -80,3 +80,7 @@ Product lock SHA-256:
 9689d02b6c50a44a959133c791d7acad3bbff1414c5c7b124a26b0ffb9442aff.
 Qualification lock SHA-256:
 e8ba0945dbaddeb38757ed0a043b54475e1d3dfc349e06e9754e08122a231e7a.
+
+The 0.45.4 continuation measures paired feature-off/on costs separately in
+[metrics cost evidence](metrics-cost.md); the original identities above remain
+the 0.45.3 accounting observation.

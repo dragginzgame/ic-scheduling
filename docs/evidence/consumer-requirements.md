@@ -14,6 +14,12 @@ proof of a current Jobs consumer.
 
 ## Direct consumers
 
+Maintainer clarification: Entropy is a stable integration target; Canic and other
+repositories are being rewritten. Preserve the named requirements, but review
+Canic's eventual API before migration. The [isolated Entropy migration](entropy-integration.md)
+now compiles and passes its existing installed journey against the new provider;
+the Entropy repository itself has not been changed.
+
 | ID | Owner and source | Observed requirement | Authority that stays outside Scheduling |
 | --- | --- | --- | --- |
 | C1 | [Canic management engine](../../../canic/crates/canic-management/src/engine/mod.rs), `open`, `schedule`, `next` (around lines 103, 265, 251) | Two independently retained async one-shot registrations; absolute deadline or inactive; callback returns stop/next timestamp; reuse registration on repeated reconcile | Two-child durable journals, approvals, readiness, cycle reserves, management calls, result classification and upgrades |

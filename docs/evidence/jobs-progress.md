@@ -372,3 +372,40 @@ historical starts and completions. No product change was required by these cases
 Toolchain, supplier and lock identities remain unchanged. Combined probe Wasm
 SHA-256:
 493f5abeb692468e569cc74cbd1b79a7e1707746c3a4a86d47b36c27fa25bca7.
+
+### Restored cursor ahead of current time — 0.37.4, 2026-11-15
+
+An installed fixture restores two minute-scheduled jobs with a settled cursor ten
+minute boundaries ahead of the observed clock. One uses SkipLate with unlimited
+lateness, the other CatchUp with unlimited age and a three-occurrence limit. Both
+begin at revision 7 with no selected occurrence in the supplied checkpoint.
+The adapter selects exactly the first minute after the cursor for both policies.
+
+Two pause/edit/resume sequences happen while the clock remains behind the cursor.
+Each preserves the settled cursor and next timestamp, removes selection while
+paused, and increments the revision. Eleven sampled clock positions, ending one
+second after the cursor, retain zero callback executions. The next two minute
+occurrences then execute once each, in order, at revision 9; the next selection
+advances one minute each time. CatchUp may retire through its planning endpoint,
+whereas SkipLate settles the occurrence; neither rewinds progress.
+
+This directly qualifies a host-restored future cursor under actual IC timer
+delivery. It models the state relationship produced by a backward clock
+discontinuity but does not move PocketIC's clock backward, qualify replica clock
+behavior, restore unresolved effects or establish heap-snapshot safety. Existing
+stopped-canister and delayed-delivery cases own the forward-jump evidence.
+
+Run `make check-once POCKET_IC_BIN=/absolute/path/to/pocket-ic`; look for the
+`jobs ahead cursor:` result. The complete installed suite and strict probe/driver
+Clippy pass. No product changes or dependency updates were needed. This fixture
+adds 172 physical Rust lines across the existing boundary probe and driver;
+include them in qualification measurements.
+
+Environment: Rust 1.100.0, Runtime 0.22.5, Testkit 0.106.0, PocketIC client 16.1.0
+and prepared server 16.0.0. Timers 0.45.4 and Jobs 0.37.4 remain unpublished.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Combined once_probe.wasm | `6a11757bcf7a9efa6eb3bfd565e52353ff3cabc5485c4f4cb6ab529dae26e4bb` |
+| Product Cargo.lock | `97c31b1ddf7a5d6e9f5c706a9929d8f7cc0e2b3eda09ac43dd6d16300a7df136` |
+| Qualification Cargo.lock | `fc8dad436e922662a72f814bb82dffd7794b53c1cf367e0d275b8f3df03db91f` |

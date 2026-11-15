@@ -1,6 +1,13 @@
 Status: proposed replacement architecture, 15 November 2026. Scope: Canic management, buffered Entropy, and a new calendar-aware Jobs scheduler; Relay remains excluded. This replaces the supplied consumer-driven baseline as the proposed implementation contract; it does not certify an implementation.
 
-Implementation note: the [initial Once provider](../evidence/once-provider.md) now connects retained state to actual global-timer/self-call execution. Installed local tests cover completion, initial/post-await recovery, owner precedence, held-flight pressure, consumer cleanup traps and armed-deadline upgrade reconstruction. Watchdog, metrics, measured resource bounds and remaining lifecycle/failure-custody gates are open.
+Implementation note: Once, watchdogs and opt-in metrics are implemented and have
+installed local qualification. See [Once evidence](../evidence/once-provider.md),
+[watchdog evidence](../evidence/watchdog-state.md), [metrics](../evidence/metrics.md),
+[control costs](../evidence/control-costs.md) and
+[capture retention](../evidence/capture-retention.md). An isolated Entropy migration
+passes its existing installed journey. Actual consumer adoption, Canic integration,
+production resource budgets and remaining lifecycle gates are open; historical
+observations below do not establish completion.
 
 Build a small retained-timer service around the two observed consumer workflows, and a separate calendar-aware `ic-jobs` package above it. The [Jobs design](jobs.md) records the newly requested scope and proposed contract. Bind work once, update demand through a capability, and isolate business execution from timer control. Reuse requires proof that a small implementation fits this architecture. Existing modules, signatures and test organization have no presumption of survival.
 
@@ -40,7 +47,12 @@ The extra watchdog scheduler message may be restored only if a concrete installe
 
 # 3 Product and ownership boundaries
 
-Publish `ic-timers` and `ic-jobs` only after their respective qualification gates. Keep the initial workspace unpublished. Jobs execution will depend on Timers; the current calendar-only preview does not yet need that dependency. Timers must not depend on Jobs or calendar logic. The module and API design below describes `ic-timers`; the [Jobs design](jobs.md) adds its separate obligations. Private timer modules are implementation boundaries, not separate packages.
+Publish `ic-timers` and `ic-jobs` only after their respective qualification gates.
+Keep the workspace unpublished. Jobs' optional execution feature depends on
+Timers; its calendar-only feature does not. Timers must not depend on Jobs or
+calendar logic. The module and API design below describes `ic-timers`; the
+[Jobs design](jobs.md) adds its separate obligations. Private timer modules are
+implementation boundaries, not separate packages.
 
 | Owner | Exclusive responsibility |
 | - | - |

@@ -9,13 +9,27 @@ fn main() {
         .block_on(run());
 }
 async fn run() {
-    let wasm = std::fs::read(std::env::args().nth(1).expect("probe wasm path")).unwrap();
+    let mut args = std::env::args().skip(1);
+    let first = args.next().expect("probe wasm path or --metrics-cost");
+    let paired = first == "--metrics-cost";
+    let wasm = std::fs::read(if paired {
+        args.next().expect("disabled probe path")
+    } else {
+        first
+    })
+    .unwrap();
+    let enabled = paired.then(|| std::fs::read(args.next().expect("enabled probe path")).unwrap());
     let server = std::env::var_os("POCKET_IC_BIN").expect("prepared PocketIC 16.0.0 server");
     let pic = PocketIcBuilder::new()
         .with_server_binary(server.into())
         .with_application_subnet()
         .build_async()
         .await;
+    if let Some(enabled) = enabled {
+        metrics_cost::check(&pic, &wasm, &enabled).await;
+        pic.drop().await;
+        return;
+    }
     let external = pic.create_canister().await;
     for (mode, expected) in [
         (0, vec![0, 1, 1]),
@@ -110,6 +124,7 @@ async fn run() {
     watchdog::admission(&pic, &wasm, external).await;
     watchdog::pressure(&pic, &wasm, external).await;
     costs::check(&pic, &wasm, external).await;
+    retention::check(&pic, &wasm, external).await;
     dispatch_costs::check(&pic, &wasm, external).await;
     jobs::calendar(&pic, &wasm, external).await;
     jobs::check(&pic, &wasm, external).await;
@@ -117,6 +132,7 @@ async fn run() {
     jobs::downtime(&pic, &wasm, external).await;
     jobs_pressure::check(&pic, &wasm, external).await;
     jobs_boundaries::check(&pic, &wasm, external).await;
+    jobs_boundaries::ahead(&pic, &wasm, external).await;
     jobs_catch_up::check(&pic, &wasm, external).await;
     pic.drop().await;
     println!("Once installed lifecycle, authentication and pressure checks passed");
@@ -125,6 +141,8 @@ async fn run() {
 mod pressure;
 
 mod metrics;
+
+mod metrics_cost;
 
 mod lifecycle;
 
@@ -135,6 +153,7 @@ mod held_upgrade;
 mod watchdog;
 
 mod costs;
+mod retention;
 
 mod dispatch_costs;
 

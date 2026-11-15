@@ -1,5 +1,10 @@
 # Installed owner-control costs — 0.45.2, 2026-11-15
 
+Later evidence: [capture retention](capture-retention.md) exercises a full mixed
+table with payloads and maximum-length identities; [metrics cost](metrics-cost.md)
+compares feature-disabled/enabled artifacts. These supplement the observations
+below without turning them into general resource guarantees.
+
 The existing installed probe now measures actual synchronous Timers operations
 using ic0.performance_counter(0), before and after each call in a single update
 message. No bracket spans an await, self-call, callback lifetime or other message.
