@@ -79,6 +79,17 @@ case "${1:-}" in
     # Published files must be exact prepared source, including its annotated tag.
     version="$(bash "$shared/cargo-release-group.sh" version "$group")"
     bash "$shared/check-release-tag.sh" "$(git rev-parse HEAD)" "$version" "$group"
+    if [[ "$group" == jobs ]]; then
+      # Timers must already exist in the registry. Prepare the exact standalone
+      # Jobs archive and locked registry sources, then verify Wasm offline.
+      # This deliberately does not use the unpublished-workspace override.
+      cargo package -p ic-jobs --all-features --locked --no-verify
+      stage="$(mktemp -d target/publication-registry.XXXXXX)"
+      tar -xzf "target/package/ic-jobs-$version.crate" -C "$stage"
+      manifest="$stage/ic-jobs-$version/Cargo.toml"
+      cargo fetch --manifest-path "$manifest" --locked
+      cargo check --manifest-path "$manifest" --all-features --target wasm32-unknown-unknown --locked --offline
+    fi
     ;;
   *) echo 'Unknown release hook' >&2; exit 2 ;;
 esac
