@@ -8,6 +8,10 @@ Already accepted UTC cron, bounded catch-up and optional features remain in scop
 
 ## Crates.io completion target
 
+Completed on 2026-11-15: Timers 0.45.9 and Jobs 0.37.9 are published.
+See [qualification and delivery](../evidence/release-candidate.md). The ordered
+checklist below records the accepted completion scope.
+
 Maintainer direction, 2026-11-15: finish this rewrite soon and publish both crates
 to crates.io. This replaces the GitHub-only delivery target, without waiving the
 required legacy capabilities or failure guarantees. Keep publication disabled
@@ -36,9 +40,9 @@ Finish the remaining work in this order:
    changelogs and publish Timers before Jobs. Verify registry artifacts and
    GitHub delivery. Qualification packages remain unpublished.
 
-Current candidate versions remain Timers 0.45.9 and Jobs 0.37.9. The public Cargo
+The first published rewrite versions are Timers 0.45.9 and Jobs 0.37.9. The public Cargo
 sparse index checked on 2026-11-15 lists latest non-yanked stable versions 0.44.3
-and 0.36.3 respectively; recheck before publication. Both candidates are minor
+and 0.36.3 respectively before this publication. Both candidates are minor
 series changes relative to the published APIs. Intermediate GitHub checkpoints
 are not crates.io releases and do not require another version increment by
 themselves.
@@ -46,8 +50,8 @@ themselves.
 Product registry metadata, versioned local dependencies and packaged README files
 are prepared. Native archive verification passes; the extracted archive pair
 compiles for Wasm. Cargo 1.100 temporary-registry verification has a recorded
-limitation; registry-only Jobs verification follows Timers publication. Release
-adapter qualification and actual delivery remain outstanding.
+limitation; registry-only Jobs verification passed against published Timers.
+Release adapters, both deliveries and registry readback are now verified.
 
 Do not block this release on legacy performance comparisons, optional dependency
 refreshes, new calendar features, or migrations in consumer repositories being

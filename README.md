@@ -1,6 +1,6 @@
 # IC Scheduling — new architecture
 
-A design-first replacement repository for the scheduling functionality required
+Replacement scheduling libraries for the functionality required
 by **Canic management and buffered Entropy**, plus a new **calendar-aware Jobs scheduler**. Relay is explicitly out of scope.
 
 Start with the [architecture and implementation plan](docs/design/DESIGN.md)
@@ -8,14 +8,14 @@ and its [consumer requirements](docs/evidence/consumer-requirements.md).
 The [source inventory](docs/evidence/source-inventory.json) identifies the local
 working files inspected on 2026-11-15, including hashes for dirty sources.
 
-The proposed architecture separates a small retained-timer library (`ic-timers`)
+The architecture separates a small retained-timer library (`ic-timers`)
 from a cron-like calendar scheduler (`ic-jobs`). Read the [Jobs design](docs/design/jobs.md)
 for UTC calendar rules and execution semantics. Both permit breaking
 redesign. The [release scope](docs/design/release-scope.md) preserves legacy
 Timers/Jobs capabilities while deferring additional proposals. The old architecture,
 demo application and release framework are not carried forward.
 
-Status: release-candidate qualification. Jobs has Saffron-backed five-field UTC cron
+Status: published rewrite. Jobs has Saffron-backed five-field UTC cron
 occurrence preview and anchored fixed-rate intervals. Schedule support is opt-in via the
 `calendar` feature. Its separate opt-in `execution` feature provides a wasm32
 skip-late and bounded catch-up execution on Once with host-owned settled/queued
@@ -33,12 +33,12 @@ remain host responsibilities.
 Once callbacks can return `OnceNext::After(positive_delay)` to recur relative to
 completion, including awaits. Overflow stops recurrence; newer owner commands
 take precedence and traps still require explicit recovery.
-Development targets are
-Timers `0.45.9` and Jobs `0.37.9`, following the initial development checkpoint
-(`0.45.0` / `0.37.0`). These remain unpublished; the last observed crates.io
-versions were `0.44.3` / `0.36.3` (registry checked 2026-11-15).
-Track changes in the [grouped changelogs](CHANGELOG.md). Crates.io delivery is now requested. Registry metadata is prepared; publication
-requires the standard release checks and exact archive verification.
+Published on 2026-11-15: [Timers 0.45.9](https://crates.io/crates/ic-timers/0.45.9)
+and [Jobs 0.37.9](https://crates.io/crates/ic-jobs/0.37.9). These replace the
+0.44 / 0.36 APIs with a breaking redesign. Both registry artifacts and GitHub
+release tags are verified; Linux/macOS CI and the local installed-canister suite
+pass. See the [delivery evidence](docs/evidence/release-candidate.md) and
+[grouped changelogs](CHANGELOG.md).
 Existing Scheduling, Canic and Entropy
 are unchanged. Recorded local evidence does not establish deployment or production resource budgets.
 
@@ -113,10 +113,10 @@ explicitly opt-in (the default feature set is empty):
 
 ```toml
 [dependencies]
-ic-jobs = { path = "path/to/ic-scheduling-new/crates/ic-jobs", default-features = false, features = ["calendar"] }
+ic-jobs = { version = "0.37.9", default-features = false, features = ["calendar"] }
 ```
 
-Use the appropriate checkout path during GitHub-only development. Omit `calendar`
+Omit `calendar`
 to exclude Saffron and Chrono. Cargo features are additive;
 another dependency enabling it will enable it for that build as well. Calendar
 preview delegates to Saffron; the separate `execution` feature enables the

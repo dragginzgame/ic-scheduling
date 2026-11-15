@@ -84,7 +84,10 @@ case "${1:-}" in
       # Jobs archive and locked registry sources, then verify Wasm offline.
       # This deliberately does not use the unpublished-workspace override.
       cargo package -p ic-jobs --all-features --locked --no-verify
-      stage="$(mktemp -d target/publication-registry.XXXXXX)"
+      # Extraction must be outside this Cargo workspace; otherwise Cargo treats
+      # the normalized archive manifest as an undeclared workspace member.
+      stage="$(mktemp -d "${TMPDIR:-/tmp}/ic-jobs-registry.XXXXXX")"
+      printf 'Registry archive verification retained at: %s\n' "$stage"
       tar -xzf "target/package/ic-jobs-$version.crate" -C "$stage"
       manifest="$stage/ic-jobs-$version/Cargo.toml"
       cargo fetch --manifest-path "$manifest" --locked

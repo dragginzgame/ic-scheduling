@@ -72,3 +72,40 @@ canonical manifests retain the preceding GitHub checkpoint versions until the
 standard runner finalizes 0.45.9/0.37.9; this avoids advancing past the intended
 candidate merely to adopt release tooling. Native macOS CI is now configured;
 its first successful run and actual delivery are not claimed by this record.
+
+## Completed delivery
+
+Both crates were published on 2026-11-15, with independent registry downloads
+matching the live sparse-index checksums and embedded source commits:
+
+| Package | Release commit | Registry SHA-256 |
+| --- | --- | --- |
+| ic-timers 0.45.9 | `bcf945c134c838ccc26208ea671a8500f7f0b7b3` | `43219d539588feafbe5aeb1b30d32ebfc19c4843daca1b67ef9f10d9af6ecf7e` |
+| ic-jobs 0.37.9 | `e30de83e4ac7d0927d256fa20580773ff4a9c92c` | `dd8f588d286624e355ddb9954b6e801777cb7535bf1b8817f31ecc610dfc3a52` |
+
+GitHub tags are `timers-v0.45.9` and `jobs-v0.37.9`. Both were pushed atomically
+with their release commits. [Native CI](https://github.com/dragginzgame/ic-scheduling-new/actions/runs/43757640848)
+passed on Ubuntu 24.04 and macOS 15 ARM64, including setup, tests, archives and
+real metadata transactions; its single repository-history secret scan passed.
+The captured-source full gate passed separately for each release group, including
+the installed lifecycle/resource suite and pinned Entropy journey.
+
+Jobs' first publication admission stopped before upload because its manually
+extracted archive was inside the parent Cargo workspace. The identical archive
+was then extracted outside that workspace; locked registry preparation and
+all-feature Wasm checking passed against published Timers, without a path override.
+No Jobs upload intent/dispatch had been created by the failed admission. After
+rechecking source, tag, package eligibility and registry absence, Toko's standard
+single-attempt publication runner uploaded that unchanged archive once. Registry
+readback verified it. The batch's saved publication outcome was explicitly
+reconciled as published, then the normal checkout was fast-forwarded through the
+standard batch reconciliation command. Source, tags and registry versions were
+not replaced. The helper now uses an external temporary directory.
+
+Batch `batch-JYVpRsua` is complete. Retained local evidence is under
+`.git/release-state/frozen/batch-JYVpRsua/` and
+`target/release-frozen/batch-JYVpRsua/target/publication/`; downloaded registry
+archives and the successful registry-only Wasm log are in
+`target/registry-verification/`. No retained artifacts were automatically removed.
+The optional metadata editor remains the qualified IC Build 0.73.0 selection;
+0.86.0 was observed available and its nonessential refresh deferred.

@@ -1,5 +1,12 @@
 # Jobs changelog
 
+## [0.37.10] - Unreleased
+
+### 🛠️ Development
+
+- Keep standalone registry archive verification outside the product Cargo
+  workspace so the pre-upload Wasm check can resolve its published dependencies.
+
 ## [0.37.9] - 2026-11-15
 
 ### ✨ Added

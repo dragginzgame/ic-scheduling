@@ -306,7 +306,7 @@ Each invariant gets a primary proof owner. Native transition tests establish ord
 
 | Gate | Required evidence |
 | - | - |
-| Contract | Both real consumers compile against new APIs without importing old timer types |
+| Contract | The pinned Entropy adapter compiles without old timer types; Canic integration is deferred while that repository is rewritten |
 | Once precedence | Owner At B during A overrides A's Stop; owner Inactive overrides A's At C; equal repeated commands follow documented precedence |
 | No overlap | Suspended A plus repeated demand never creates B before A settles |
 | Recovery | Initial trap and post-await abandonment produce a current recovery token; ordinary rearm is refused; stale recover/completion cannot mutate state |
@@ -318,20 +318,29 @@ Each invariant gets a primary proof owner. Native transition tests establish ord
 | Time and exhaustion | Zero, past deadlines, overflow and exhausted counters cannot wrap into valid authority or create a busy loop |
 | Authentication | External caller, malformed token and obsolete ticket are rejected before callback execution |
 | Trap custody | Installed tests cover submission refusal, reply/reject, work trap, callback trap and cleanup failure with explicit resulting state |
-| Lifecycle | Upgrade reconstructs demand; required snapshot procedure rejects restored stale authority |
+| Lifecycle | Fresh-runtime upgrade reconstructs demand and unresolved Jobs remain blocked; heap snapshots are outside this release |
 | Ownership | Dependency and Wasm checks establish a single configured provider; interference test exposes foreign writes |
-| Consumer behavior | Canic never reissues an uncertain effect automatically; Entropy preserves opt-out, backoff and retry exhaustion |
+| Consumer behavior | Timer recovery never authorizes automatic replay; the pinned Entropy adapter preserves opt-out, backoff and retry exhaustion |
 | Removal | No old scheduler compatibility layer, copied policy family or duplicate provider remains |
 
 Record compiler, dependency locks, simulator/replica version, Wasm hashes and commands beside the gate results. Fault injection belongs in qualification artifacts and must not silently ship enabled.
 
-Do not claim improved performance from LOC reductions. Measure installed instruction cost for first arm, replacement, inactive command, Once completion and watchdog admission; also measure Wasm size, retained captures, pressure latency and build/test cost. Compare equivalent Canic and Entropy workloads on the same environment.
+Do not claim improved performance from LOC reductions. Installed measurements
+cover control/dispatch instruction brackets, Wasm size, retained captures and
+bounded pressure behavior. Equivalent legacy workload comparisons and actual
+Canic integration are deferred under the accepted release scope; the recorded
+costs do not establish an overall performance improvement over the old crates.
 
 Treat the baseline's 1,400–1,800 product-line target as a review trigger, not a correctness limit. A missed target requires explanation of remaining responsibilities; meeting it does not establish architectural improvement. Count migrated consumer glue and qualification tooling, so complexity cannot disappear merely by moving repositories.
 
 # 12 Completion criteria
 
-The rewrite is complete only when the Jobs gates pass, both existing consumers use the new ownership model, every required gate passes, excluded features are absent, resource limits are measured, and no correctness-critical TODO is deferred.
+The crate release is complete when the Jobs and timer gates in the accepted
+[release scope](release-scope.md) pass, excluded features remain absent, resource
+limits have local qualification, and no correctness-critical obligation is
+deferred. Actual consumer adoption and production workload budgets are separate
+from this crate release. The first published rewrite and its qualification are
+recorded in the [delivery evidence](../evidence/release-candidate.md).
 
 The first implementation review must show a working vertical slice and which old responsibilities it eliminated. “Imported provider,” “ported registry,” or “copied tests” is not redesign progress by itself.
 

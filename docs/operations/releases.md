@@ -32,11 +32,12 @@ an uncertain upload: inspect the retained intent and registry first. The standar
 batch runner owns saved-attempt recovery (`release-batch-status`,
 `release-batch-resume`, and explicit reconciliation).
 
-This wiring is being qualified for the first crates.io release. Installing the
-snapshot alone is not evidence that its local hooks or delivery have passed.
+The first release completed both groups and verified registry readback. Jobs
+registry verification extracts outside the product workspace; the original
+inside-workspace extraction was corrected after its pre-upload refusal. See the
+[delivery record](../evidence/release-candidate.md) for the completed recovery.
 
-The native CI matrix is Ubuntu 24.04 x86-64 and the GitHub-hosted macOS 15 runner
-(native architecture reported in each run). It qualifies locked setup, format,
+The native CI matrix is Ubuntu 24.04 x86-64 and the GitHub-hosted macOS 15 ARM64 runner. It qualifies locked setup, format,
 native tests, Wasm compilation, archives and metadata transactions. Full installed
 PocketIC and pinned Entropy qualification currently runs on the prepared Linux
 release host. CI runs one redacted repository-history secret scan, outside the

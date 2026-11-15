@@ -6,8 +6,9 @@ docs/evidence/consumer-requirements.md before implementation.
 The current scope decision is docs/design/release-scope.md: preserve legacy
 capabilities without copying the old architecture; defer additional proposals.
 
-The Rust workspace is unpublished, with product packages under
-crates/. Timers and Jobs have independent development versions and changelogs
+The Rust workspace publishes ic-timers and ic-jobs from crates/.
+The first rewrite releases are Timers 0.45.9 and Jobs 0.37.9; qualification
+packages remain unpublished. Timers and Jobs have independent development versions and changelogs
 under releases/, mapped in ci/cargo-release-groups.json.
 The maintainer has now requested completion and crates.io delivery for both crates;
 follow the fixed completion checklist in docs/design/release-scope.md. Keep
