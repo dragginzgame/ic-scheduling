@@ -1,5 +1,9 @@
 # Timers changelog
 
+## [0.45.2] - Unreleased
+
+Next development iteration; crates.io publication remains disabled.
+
 ## [0.45.1] - Development checkpoint
 
 GitHub-only checkpoint; not a crates.io release. Remaining qualification gates

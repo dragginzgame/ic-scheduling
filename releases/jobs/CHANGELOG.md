@@ -1,5 +1,9 @@
 # Jobs changelog
 
+## [0.37.2] - Unreleased
+
+Next development iteration; crates.io publication remains disabled.
+
 ## [0.37.1] - Development checkpoint
 
 GitHub-only checkpoint; not a crates.io release.

@@ -24,7 +24,7 @@ submission deferral and armed-deadline upgrade reconstruction. The initial
 trap-survival and owner-precedence checks. Watchdog pressure, metrics, instruction
 measurements and remaining failure/lifecycle qualification are open.
 Development targets are
-Timers `0.45.1` and Jobs `0.37.1`, following the initial development checkpoint
+Timers `0.45.2` and Jobs `0.37.2`, following the initial development checkpoint
 (`0.45.0` / `0.37.0`). These remain unpublished; the last observed crates.io
 versions were `0.44.3` / `0.36.3` (registry checked 2026-11-15).
 Track changes in the [grouped changelogs](CHANGELOG.md). Development delivery is
