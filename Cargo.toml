@@ -14,7 +14,7 @@ repository = "https://github.com/dragginzgame/ic-scheduling-new"
 # Jobs: releases/jobs/CHANGELOG.md
 ic-jobs = { version = "0.37.8", path = "crates/ic-jobs" }
 # Timers: releases/timers/CHANGELOG.md
-ic-timers = { version = "0.45.8", path = "crates/ic-timers" }
+ic-timers = { version = "0.45.9", path = "crates/ic-timers" }
 
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 ic-metrics = { version = "=0.30.8", default-features = false }
