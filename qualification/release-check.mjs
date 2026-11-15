@@ -28,7 +28,9 @@ for (const group of ['timers', 'jobs']) {
   mkdirSync(`${fixture}/qualification`);
   for (const path of ['Cargo.toml', 'Cargo.lock', 'once-probe', 'once-driver', 'executor-probe', 'executor-driver', 'calendar-probe', 'metrics-probe']) cpSync(`${root}/qualification/${path}`, `${fixture}/qualification/${path}`, { recursive: true });
   const previous = run('bash', [shared, 'version', group], fixture);
-  const version = previous.replace(/\d+$/, value => String(Number(value) + 1));
+  const ledger = readFileSync(`${fixture}/releases/${group}/CHANGELOG.md`, 'utf8');
+  const pending = ledger.match(/^## \[(\d+\.\d+\.\d+)\] - Unreleased$/m)?.[1];
+  const version = pending ?? previous.replace(/\d+$/, value => String(Number(value) + 1));
   const other = group === 'timers' ? 'jobs' : 'timers';
   const preserved = [`crates/ic-${other}/Cargo.toml`, `releases/${other}/CHANGELOG.md`];
   const original = preserved.map(path => readFileSync(`${fixture}/${path}`, 'utf8'));

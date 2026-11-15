@@ -14,6 +14,9 @@
 
 ### 🛠️ Development
 
+- Qualify release metadata using the declared pending version, including minor
+  releases, instead of assuming a patch increment.
+
 - Refresh current documentation for pending versus published APIs, schema migration,
   bounded catch-up and provider capacity; retain dated qualification history.
 
