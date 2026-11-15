@@ -215,7 +215,7 @@ fn bounded_command_sequences_preserve_progress_and_uncertainty() {
                         checkpoint.revision(),
                         checkpoint.through(),
                         checkpoint.selected_at(),
-                        checkpoint.paused(),
+                        checkpoint.control(),
                         None,
                     )
                     .unwrap();
@@ -244,11 +244,11 @@ fn bounded_command_sequences_preserve_progress_and_uncertainty() {
     }
 }
 
-fn snapshot(progress: &Progress) -> (u64, Option<u64>, bool, Option<Active>, u64, bool) {
+fn snapshot(progress: &Progress) -> (u64, Option<u64>, ControlState, Option<Active>, u64, bool) {
     (
         progress.revision,
         progress.through,
-        progress.paused,
+        progress.control,
         progress.active,
         progress.sequence,
         progress.faulted,
@@ -275,4 +275,56 @@ fn zero_occurrence_round_trips_before_acceptance_and_retires_once() {
     progress.complete(first).unwrap();
     assert_eq!(progress.through(), Some(0));
     assert_eq!(progress.select(0), Err(Error::BeforeCursor));
+}
+
+#[test]
+fn cancellation_is_terminal_and_refuses_unsettled_work_without_mutation() {
+    for phase in 0..3 {
+        let mut progress = Progress::unstarted();
+        let selected = progress.select(0).unwrap();
+        if phase > 0 {
+            progress.accept(selected, 0).unwrap();
+        }
+        if phase == 2 {
+            progress.block(selected).unwrap();
+        }
+        let before = snapshot(&progress);
+        if phase > 0 {
+            assert_eq!(
+                progress.cancel(),
+                Err(if phase == 1 {
+                    Error::Busy
+                } else {
+                    Error::RecoveryRequired
+                })
+            );
+            assert_eq!(snapshot(&progress), before);
+        } else {
+            progress.cancel().unwrap();
+            let checkpoint = progress.checkpoint().unwrap();
+            assert_eq!(checkpoint.control(), ControlState::Cancelled);
+            assert_eq!(checkpoint.selected_at(), None);
+            assert_eq!(checkpoint.through(), None);
+            let mut restored = Progress::restore(&checkpoint);
+            for result in [
+                restored.resume(),
+                restored.pause(),
+                restored.edit(10),
+                restored.select(0).map(|_| ()),
+                restored.accept(selected, 0).map(|_| ()),
+                restored.complete(selected),
+                restored.reconcile(selected),
+            ] {
+                assert_eq!(result, Err(Error::Cancelled));
+            }
+            assert_eq!(restored.checkpoint().unwrap(), checkpoint);
+        }
+    }
+    let mut paused = Progress::new(10);
+    paused.pause().unwrap();
+    paused.cancel().unwrap();
+    assert_eq!(
+        paused.checkpoint().unwrap().control(),
+        ControlState::Cancelled
+    );
 }

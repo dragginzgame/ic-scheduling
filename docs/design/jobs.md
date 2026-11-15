@@ -79,7 +79,23 @@ first deadline, even when zero or overdue, then applies the explicit policy.
 Cron binding selects after current time. `Schedule::once(at_ns)` admits one UTC
 instant, including zero and overdue instants, under the same delivery policy.
 It becomes idle after settlement or policy-based skipping; uncertainty still
-requires explicit recovery. After-completion intervals remain to implement in Jobs.
+requires explicit recovery.
+
+`Schedule::after_completion(first_at_ns, every_ns)` selects the first deadline
+the same way, then waits a positive interval after each normal settlement.
+NoWork, ExpectedFailure and lateness skipping all settle; retry policy remains
+separate unfinished work. CatchUp applies its age limit to the single pending
+occurrence; there is no completion-relative backlog. Preview methods show only
+the first deadline because later ones depend on actual settlement time.
+
+The settled cursor includes the completion horizon for this schedule. Pause and
+restoration retain it, so resuming does not restart the delay. Normal settlement
+of an old revision cannot advance a newer definition's cursor. An edit uses the
+new first deadline if it is after the edit horizon, otherwise horizon plus delay.
+Explicit recovery records the reconciliation horizon and pauses; later resume
+selects from that horizon without replaying the uncertain occurrence. Overflow
+leaves the job idle. Completion-relative scheduling needs no additional checkpoint field: restore checks the exact
+selected deadline against this cursor and rejects accumulated batch records.
 They must not introduce a second cron engine. `*/N` steps within a field,
 not an arbitrary elapsed interval. Typed calendar builders are not required.
 
@@ -150,6 +166,13 @@ an explicit missed-run policy. Changing a schedule increments its revision and
 invalidates old unaccepted eligibility. Running work retains its occurrence
 identity; its completion cannot overwrite a newer schedule or pause decision.
 
+`Job::cancel` terminally cancels pending, paused or idle work. Running and uncertain
+work returns Unsettled and must be settled or explicitly reconciled first.
+Cancellation invalidates timer eligibility, clears unaccepted selection and
+discards any remaining catch-up batch. Repeated cancellation succeeds; resume,
+pause and edit return Cancelled. Checkpoint restoration preserves the terminal
+state. This does not remove the retained timer registration or release its captures.
+
 Expected callback failure currently records an outcome; future calendar occurrences remain
 independent. Legacy bounded retries are now required by the release-scope decision
 but are not yet implemented. Confirmed abandonment blocks that job in recovery-required state, even
@@ -176,14 +199,16 @@ before it executes, and future work resumes with the current revision. This
 qualifies that restored-state condition, not a replica clock rollback or heap
 snapshot. See the future-cursor observation in [execution evidence](../evidence/jobs-progress.md).
 
-Checkpoint schema 3 retains the bounded remaining-batch record and represents
+Checkpoint schema 4 retains the bounded remaining-batch record and represents
 the settled cursor as `Option<u64>`. None means nothing settled; Some(0) means
 timestamp zero has settled. Decoding validates strictly increasing timestamps
 after any settled cursor, the fixed
 endpoint and agreement with selected/paused state. Restore checks every remaining
 timestamp against the schedule and rejects batches incompatible with the policy/count
 before timer admission. The host must retain the exact policy and definition
-association. Schemas 1 and 2 from earlier unpublished checkpoint previews are rejected;
+association. `ControlState` records Active, Paused or Cancelled. Cancelled records
+cannot contain selected work or a remaining batch; they restore inactive without
+evaluating recurrence. Schemas 1–3 from earlier unpublished previews are rejected;
 no deployed-data migration is claimed.
 
 Timer handles and closures are volatile. Persist versioned job definitions and

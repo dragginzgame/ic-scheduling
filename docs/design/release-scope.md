@@ -17,10 +17,10 @@ Evidence is the clean local legacy Scheduling checkout at
 | Latest-due coalescing for Jobs | Not in legacy Jobs; defer. Watchdog tick coalescing remains implemented |
 | Fixed-rate elapsed intervals | Legacy requirement; implementation started in 0.37.6 |
 | One-shot Jobs | `Schedule::once` implemented in 0.37.7 using shared admission, delivery policy and recovery |
-| Jobs recurrence after completion | Legacy requirement; still to implement in Jobs |
+| Jobs recurrence after completion | `Schedule::after_completion` added in 0.37.8; shared cursor preserves completion-relative deadlines |
 | Bounded retries/backoff with stable effect identity | Legacy requirement; still to implement without retrying uncertain work implicitly |
 | Persisted Running/Uncertain records and explicit disposition | Legacy requirement; unresolved-work restoration remains a release gate |
-| Pause/resume, reschedule and pending cancellation | Preserve capabilities; current pause/edit exist, terminal cancellation needs completion |
+| Pause/resume, reschedule and pending cancellation | Implemented; 0.37.8 adds terminal cancellation with checkpoint reconstruction and unsettled-work refusal |
 | Durable attempt correlation and recorded outcomes | Legacy requirement; reconcile with the new checkpoint/context contract |
 | Completion-relative timer recurrence | `OnceNext::After` added in 0.45.7 through the existing Once provider; no separate registration family |
 | Legacy transient timers and explicit removal | Still required; earlier omission is no longer assumed approved |
@@ -29,12 +29,19 @@ Evidence is the clean local legacy Scheduling checkout at
 
 Fixed-rate recurrence uses the shared execution, catch-up and checkpoint paths.
 From 0.37.7, binding selects its original first deadline, including zero and
-overdue instants; the explicit policy controls delivery. Schema 3 distinguishes
+overdue instants; the explicit policy controls delivery. The checkpoint distinguishes
 unstarted progress from settled timestamp zero. Cron still starts after now.
 One-shot Jobs use the same first-deadline contract and become idle after settlement
-or policy-based skipping. Jobs recurrence after completion remains unfinished. Legacy catch-up
+or policy-based skipping. Completion-relative Jobs preserve their next deadline
+through pause and reconstruction using the settled cursor. Legacy catch-up
 could retain an entire backlog; the new bounded/discard-excess policy is an accepted
 redesign, not an identical behavioral replacement.
+
+Schema 4 records Active, Paused or Cancelled control state. `Job::cancel` discards
+unaccepted selection and remaining catch-up work; it refuses running or uncertain
+work. Cancellation survives reconstruction and cannot be resumed or edited.
+The underlying timer declaration and captures remain retained; removal is a
+separate unfinished timer capability.
 
 Persisted unresolved work must restore blocked, retain exact occurrence/attempt
 identity, and require explicit result or retry-safety evidence. Neither timeouts

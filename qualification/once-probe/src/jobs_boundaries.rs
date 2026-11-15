@@ -49,7 +49,15 @@ pub extern "C" fn setup() {
         ic_jobs::Policy::SkipLate {
             lateness_ns: u64::MAX,
         },
-        Checkpoint::new(3, u64::MAX, Some(ic0::time()), None, false, None).unwrap(),
+        Checkpoint::new(
+            4,
+            u64::MAX,
+            Some(ic0::time()),
+            None,
+            ic_jobs::ControlState::Active,
+            None,
+        )
+        .unwrap(),
         |_| async {
             COUNTS.with(|counts| counts.borrow_mut()[3] += 1);
             Outcome::Success
@@ -67,7 +75,15 @@ pub extern "C" fn setup() {
         ic_jobs::Policy::SkipLate {
             lateness_ns: u64::MAX,
         },
-        Checkpoint::new(3, 1, Some(u64::MAX), None, false, None).unwrap(),
+        Checkpoint::new(
+            4,
+            1,
+            Some(u64::MAX),
+            None,
+            ic_jobs::ControlState::Active,
+            None,
+        )
+        .unwrap(),
         |_| async {
             COUNTS.with(|counts| counts.borrow_mut()[4] += 1);
             Outcome::Success
@@ -131,6 +147,7 @@ pub extern "C" fn state() {
                 Status::Armed { .. } => 2,
                 Status::Running { .. } => 3,
                 Status::RecoveryRequired { .. } => 4,
+                Status::Cancelled => ic0::trap(b"unexpected cancelled fixture"),
                 Status::Faulted => 5,
             };
             ic0::msg_reply_data_append(&[phase]);
@@ -204,7 +221,15 @@ pub extern "C" fn ahead_setup() {
             ["jobs", "ahead", &index.to_string()],
             minute(),
             policy,
-            Checkpoint::new(3, 7, Some(through), None, false, None).unwrap(),
+            Checkpoint::new(
+                4,
+                7,
+                Some(through),
+                None,
+                ic_jobs::ControlState::Active,
+                None,
+            )
+            .unwrap(),
             move |context| async move {
                 AHEAD_RUNS.with_borrow_mut(|runs| {
                     runs[index][0] += 1;

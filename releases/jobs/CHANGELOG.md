@@ -1,5 +1,24 @@
 # Jobs changelog
 
+## [0.37.8] - Development checkpoint
+
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### ✨ Added
+
+- Add terminal `Job::cancel` with idempotent cancellation, rejected resume/edit,
+  batch disposal and refusal while work is running or uncertain. Retained timer
+  declarations remain allocated.
+- Add completion-relative Jobs schedules. Preserve the completion-based deadline
+  through pause and checkpoint reconstruction using the existing progress cursor;
+  retain explicit delivery policy, owner edit precedence and recovery barriers.
+
+### 💥 Changed
+
+- Checkpoint schema 4 replaces the pause flag with Active/Paused/Cancelled control
+  state. Preserve terminal cancellation across reconstruction, reject remaining
+  work in cancelled records and refuse earlier preview schemas.
+
 ## [0.37.7] - Development checkpoint
 
 GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.

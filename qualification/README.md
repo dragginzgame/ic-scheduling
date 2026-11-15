@@ -77,13 +77,21 @@ initial/post-await trap barriers. The aggregate `make check-once` includes it.
 Using `--jobs-initial` instead selects fixed-rate initial-deadline checks plus
 the affected Jobs checkpoint lifecycle, downtime and catch-up upgrade cases.
 It covers zero, overdue and future admission, both delivery policies, unstarted
-reconstruction and the schema 3 host fixtures. Their existing cron-only storage
+reconstruction and the schema 4 host fixtures. Their existing cron-only storage
 formats explicitly require a present cursor; the new zero fixture tests None.
 
 `--jobs-one-shot` runs the same admission fixture with one-shot schedules and
 adds initial/post-await trap recovery. It checks idle exhaustion, including
 after lateness skipping and explicit recovery, with later time advances proving
 there is no recurrence.
+
+`--jobs-completion` checks completion-relative Jobs: actual delayed awaits,
+ExpectedFailure/NoWork settlement, lateness skipping, pause/resume, armed and
+paused upgrades, owner edit precedence, timestamp overflow and trap recovery.
+The host fixture persists the known completion schedule and its settled cursor;
+unresolved-work upgrades still refuse. It also checks cancellation before delivery,
+while paused and with a remaining catch-up batch; all stay cancelled across an
+actual upgrade and later time advances. Running and uncertain cancellation refuses.
 
 The same installed fixture/driver now exercises watchdogs through the shared
 product provider: prearmed successor survival across work traps, Continue cadence,

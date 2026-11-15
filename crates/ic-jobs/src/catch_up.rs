@@ -94,6 +94,8 @@ impl Schedule {
     /// Uses at most count + 1 Saffron searches and stores at most count timestamps;
     /// it never enumerates the older excluded interval. Individual supplier search
     /// cost remains separate from this bound. No clock is read and no job is changed.
+    /// An after-completion schedule can preview only its initial deadline; it
+    /// cannot accumulate a backlog before earlier work has completed.
     #[must_use]
     pub fn catch_up(&self, after: u64, now: u64, limit: CatchUpLimit) -> CatchUpPlan {
         self.catch_up_from(Some(after), now, limit)

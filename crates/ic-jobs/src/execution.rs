@@ -33,6 +33,8 @@ pub enum Outcome {
 /// Admission or control failure.
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
+    /// This job was terminally cancelled; it cannot be resumed or edited.
+    Cancelled,
     /// Timers refused admission or control.
     Timer(ic_timers::Error),
     /// Recovery belongs to a different job or obsolete occurrence.
@@ -63,6 +65,8 @@ pub struct Recovery {
 }
 /// Bounded projection of this job's eligibility and uncertainty.
 pub enum Status {
+    /// Terminally cancelled before acceptance; its retained timer is inactive.
+    Cancelled,
     /// Explicitly paused, with no accepted work.
     Paused,
     /// No future occurrence exists in the supported timestamp domain.
@@ -102,7 +106,7 @@ pub struct Job {
     timer: Once,
 }
 
-/// Bind a job. Cron starts after now; one-shot/fixed-rate select their original first
+/// Bind a job. Cron starts after now; explicit-deadline schedules select their first
 /// deadline, including zero or overdue deadlines, subject to the chosen policy.
 ///
 /// SkipLate applies a delivery tolerance and then selects future work. CatchUp
@@ -110,6 +114,9 @@ pub struct Job {
 /// and reconstruction retain its remaining occurrences. Batch completion skips
 /// excess and newly arrived occurrences before selecting future work.
 /// Neither policy automatically retries an uncertain occurrence.
+/// After-completion schedules have only one pending occurrence: CatchUp applies
+/// its age limit without building a batch. Every normal settlement, including
+/// skipping late work, schedules from settlement time; overflow leaves the job idle.
 /// Full calendar search budgets and unresolved-work persistence remain release gates.
 /// Timers must already be initialized. Each job consumes one timer declaration.
 /// # Errors
@@ -212,9 +219,7 @@ where
                 None => Outcome::NoWork,
             };
             let mut state = state.borrow_mut();
-            if state.progress.complete(selection).is_err()
-                || state.finish_batch(selection, ic0::time()).is_err()
-            {
+            if state.finish(selection, ic0::time()).is_err() {
                 state.faulted = true;
             }
             let next = match state.plan(ic0::time()) {
@@ -272,7 +277,9 @@ impl Job {
             return Ok(Status::Faulted);
         }
         if matches!(timer, OnceStatus::Inactive) {
-            return Ok(if state.progress.paused() {
+            return Ok(if state.progress.cancelled() {
+                Status::Cancelled
+            } else if state.progress.paused() {
                 Status::Paused
             } else {
                 Status::Idle
@@ -315,6 +322,9 @@ impl Job {
         change: impl FnOnce(&mut State, u64) -> Result<(), crate::progress::Error>,
     ) -> Result<(), Error> {
         let status = self.status()?;
+        if matches!(status, Status::Cancelled) {
+            return Err(Error::Cancelled);
+        }
         if matches!(status, Status::Faulted) {
             return Err(Error::Faulted);
         }
@@ -344,6 +354,27 @@ impl Job {
     /// Returns timer or terminal progress errors.
     pub fn pause(&self) -> Result<(), Error> {
         self.control(|state, _| state.progress.pause())
+    }
+    /// Terminally cancel pending or paused work and discard its remaining batch.
+    /// Does not remove the retained timer declaration. Repeated cancellation is
+    /// harmless; checkpoint/restore preserves it. Running or uncertain effects
+    /// must settle or be explicitly reconciled first.
+    /// # Errors
+    /// Returns Unsettled for running/recovery work, or timer/terminal errors.
+    pub fn cancel(&self) -> Result<(), Error> {
+        match self.status()? {
+            Status::Cancelled => return Ok(()),
+            Status::Running { .. } | Status::RecoveryRequired { .. } => {
+                return Err(Error::Unsettled);
+            }
+            Status::Faulted => return Err(Error::Faulted),
+            _ => {}
+        }
+        self.timer.set(OnceDemand::Inactive)?;
+        let mut state = self.state.borrow_mut();
+        state.progress.cancel().map_err(|_| Error::Faulted)?;
+        state.batch = None;
+        Ok(())
     }
     /// Resume according to policy without bypassing unresolved work. A paused
     /// catch-up batch retains its original selection and remaining count.

@@ -681,3 +681,79 @@ records remain unfinished. Reproduce via the focused command described in
 [qualification](../../qualification/README.md); compiler, suppliers and locks
 are unchanged. Combined probe SHA-256:
 `c50cb59677c6e0eccfbb6b696fb1adff6136c396f2b6621b1d6a295c4868e86e`.
+
+### Completion-relative Jobs — 0.37.8
+
+`Schedule::after_completion` selects the explicit first deadline, then computes
+the next deadline from normal settlement plus a positive interval. The existing
+cursor includes that settlement horizon, so pause and host reconstruction retain
+the deadline without a new queue, transport or checkpoint field. Schema 3 restore
+checks the exact selected deadline against the cursor and rejects catch-up batches
+for this schedule. Earlier-revision completion cannot advance a newer definition.
+
+ExpectedFailure, NoWork and lateness skipping currently all settle. Bounded retry
+policy remains unfinished; this does not infer permission to retry an uncertain
+effect. CatchUp applies its age limit to the one pending occurrence, without an
+invented backlog. Explicit reconciliation records a new horizon and pauses;
+resume schedules from that horizon. Arithmetic overflow exhausts recurrence.
+Calendar preview methods show only the initial deadline for this schedule form.
+
+All 27 all-feature native Jobs tests pass, including exact checkpoint validation,
+paused reconstruction, rejected batch state and unsigned overflow. Strict native
+Jobs and Wasm probe/host driver Clippy, formatting and Rustdoc pass. The focused
+installed `--jobs-completion` run proves a 20-second time advance during real
+awaits anchors the next deadline at completion, ExpectedFailure/NoWork recurrence,
+no burst after an hour's delay, lateness skipping, pause/resume, actual armed and
+paused upgrades, newer owner edits, overflow and factory/post-await recovery.
+Unresolved upgrades refuse. The affected `--jobs-initial` selection also passes,
+including existing checkpoint lifecycle, downtime and bounded catch-up upgrade
+and trap cases. These are local installed observations, not production evidence.
+
+Reproduce using the focused driver selections in
+[qualification](../../qualification/README.md). Compiler and suppliers are
+unchanged; the locks advance only the local product versions. This increment
+adds required functionality and its qualification; no LOC or performance gain
+is claimed.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Combined probe | `33e538a0ed2a7e2bace32838c70f80af7512703afda811d592c42042f9aeb70f` |
+| Product lock | `4dd2fedbdbcc9d5b45ad122193de654e0ddc92c106eff4f344cefc8965478709` |
+| Qualification lock | `1617ad0682b642f7fdfb6bd028bc9690a8734e9b5bd7cd82895e556f55d3561a` |
+
+### Terminal pending cancellation — 0.37.8
+
+`Job::cancel` now invalidates future timer eligibility and discards unaccepted
+selection and remaining catch-up work. It refuses Running/RecoveryRequired work
+with Unsettled; no unresolved identity or effect evidence is erased. Repeated
+cancellation succeeds. Pause, resume and edit return Cancelled after cancellation.
+The underlying timer registration and callback captures remain retained; removing
+registrations is still separate unfinished work.
+
+Checkpoint schema 4 replaces the pause flag with the shared ControlState enum:
+Active, Paused or Cancelled. The constructor rejects selected work or a batch in
+a cancelled record, and rejects earlier preview schemas. Cancelled restoration
+stays inactive without recurrence selection. Existing cron-only host fixtures
+explicitly refuse cancelled records rather than flattening them into a pause bit;
+the completion fixture persists all three states and the optional cursor. Host
+format identifiers were updated; no deployed-data migration is claimed.
+
+All 29 native Jobs tests pass. New cases cover terminal cancellation after a
+queued zero occurrence, checkpoint round-trip, refused future commands, paused
+cancellation, unchanged running/blocked progress on refusal and invalid cancelled
+records. Strict native Jobs and Wasm probe/host driver Clippy, Rustdoc, formatting
+and diff checks pass.
+
+The installed `--jobs-completion` selection now also cancels pending, paused and
+restored paused-batch jobs before invocation. Each remains Cancelled after actual
+upgrade and an hour's advance, with no callback invocation or remaining batch.
+The fixture asserts refusal during real awaits and after both trap types, and
+checks rejected resume/edit plus idempotent cancellation before and after upgrade.
+The affected `--jobs-initial` selection passes existing initial-deadline, checkpoint
+lifecycle, downtime and bounded catch-up upgrade/recovery checks under schema 4.
+These are local installed checks, not production evidence.
+
+Reproduce with the focused commands in [qualification](../../qualification/README.md).
+Compiler, suppliers and locks remain those of the current 0.45.8/0.37.8 iteration.
+Combined probe SHA-256:
+`36374273fe5af238e83da5d8efa93adb600b0352fbcf085b523810b7bab5ec50`.

@@ -30,11 +30,15 @@ See docs/evidence/watchdog-state.md.
 Jobs has occurrence-progress tests and an opt-in wasm32 Once adapter with explicit
 SkipLate or bounded CatchUp policy. Host-owned checkpoints support armed
 and paused reconstruction; running or recovery-required work refuses export.
-Schema 3 preserves remaining catch-up batches and an optional settled cursor
-across pause and upgrade. One-shot/fixed-rate binding admits its original first deadline,
+Schema 4 preserves control state, remaining catch-up batches and an optional settled cursor
+across pause and upgrade. Explicit-deadline schedules admit their first deadline,
 including zero and overdue timestamps; cron starts after current time. Age is
 evaluated at batch selection; finishing skips excess and occurrences that arrived
 during the batch. Recovery discards the remaining batch and leaves the job paused.
+After-completion Jobs use the cursor as their settlement horizon, preserve their
+deadline across pause/restore and have no accumulated catch-up batch.
+Terminal cancellation rejects running/uncertain work and survives checkpoints;
+it does not remove the retained timer declaration.
 Unresolved-work persistence remains unfinished; Jobs coalescing is deferred.
 See docs/evidence/jobs-progress.md.
 

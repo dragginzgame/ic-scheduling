@@ -106,6 +106,7 @@ pub extern "C" fn state() {
                 Status::Armed { .. } => 2,
                 Status::Running { .. } => 3,
                 Status::RecoveryRequired { .. } => 4,
+                Status::Cancelled => ic0::trap(b"unexpected cancelled fixture"),
                 Status::Faulted => 5,
             };
             COUNTS.with(|counts| {

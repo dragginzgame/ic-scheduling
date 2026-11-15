@@ -4,6 +4,17 @@
 //! prove termination before blocking it. These tokens are local, not persisted
 //! capabilities or permission to replay business effects.
 
+/// Owner-controlled eligibility, persisted separately from execution custody.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ControlState {
+    /// Work may become eligible according to its schedule and policy.
+    Active,
+    /// Work is suspended and may be resumed.
+    Paused,
+    /// Terminal cancellation; resume and schedule edits are refused.
+    Cancelled,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Occurrence {
     pub(super) revision: u64,
@@ -32,6 +43,7 @@ struct Active {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum Error {
+    Cancelled,
     Paused,
     Busy,
     RecoveryRequired,
@@ -46,7 +58,7 @@ pub(super) enum Error {
 pub(super) struct Progress {
     revision: u64,
     through: Option<u64>,
-    paused: bool,
+    control: ControlState,
     active: Option<Active>,
     sequence: u64,
     faulted: bool,
@@ -54,7 +66,9 @@ pub(super) struct Progress {
 impl Progress {
     #[cfg(any(feature = "execution", test))]
     pub(super) fn checkpoint(&self) -> Result<crate::checkpoint::Checkpoint, Error> {
-        self.check()?;
+        if self.faulted {
+            return Err(Error::Exhausted);
+        }
         let selected_at = match self.active {
             None => None,
             Some(Active {
@@ -71,7 +85,7 @@ impl Progress {
             revision: self.revision,
             through: self.through,
             selected_at,
-            paused: self.paused,
+            control: self.control,
             catch_up: None,
         })
     }
@@ -81,7 +95,7 @@ impl Progress {
         Self {
             revision: checkpoint.revision,
             through: checkpoint.through,
-            paused: checkpoint.paused,
+            control: checkpoint.control,
             active: checkpoint.selected_at.map(|scheduled_at| Active {
                 selection: Selection {
                     occurrence: Occurrence {
@@ -100,7 +114,7 @@ impl Progress {
         Self {
             revision: 1,
             through: Some(through),
-            paused: false,
+            control: ControlState::Active,
             active: None,
             sequence: 0,
             faulted: false,
@@ -115,6 +129,11 @@ impl Progress {
     }
     pub(super) const fn through(&self) -> Option<u64> {
         self.through
+    }
+
+    #[cfg(all(feature = "execution", target_arch = "wasm32"))]
+    pub(super) const fn revision(&self) -> u64 {
+        self.revision
     }
 
     #[cfg(all(feature = "execution", target_arch = "wasm32"))]
@@ -134,7 +153,12 @@ impl Progress {
 
     #[cfg(all(feature = "execution", target_arch = "wasm32"))]
     pub(super) const fn paused(&self) -> bool {
-        self.paused
+        matches!(self.control, ControlState::Paused)
+    }
+
+    #[cfg(all(feature = "execution", target_arch = "wasm32"))]
+    pub(super) const fn cancelled(&self) -> bool {
+        matches!(self.control, ControlState::Cancelled)
     }
 
     /// Admit a supplier-selected occurrence strictly after settled progress.
@@ -148,7 +172,7 @@ impl Progress {
                 Error::Busy
             });
         }
-        if self.paused {
+        if self.control == ControlState::Paused {
             return Err(Error::Paused);
         }
         if self.through.is_some_and(|through| scheduled_at <= through) {
@@ -243,13 +267,13 @@ impl Progress {
 
     pub(super) fn pause(&mut self) -> Result<(), Error> {
         self.check()?;
-        self.paused = true;
+        self.control = ControlState::Paused;
         self.cancel_queued();
         Ok(())
     }
     pub(super) fn resume(&mut self) -> Result<(), Error> {
         self.check()?;
-        self.paused = false;
+        self.control = ControlState::Active;
         Ok(())
     }
     /// A schedule edit invalidates unaccepted selection but preserves accepted or
@@ -262,6 +286,22 @@ impl Progress {
         self.revision = revision;
         self.through = self.through.max(Some(through));
         self.cancel_queued();
+        Ok(())
+    }
+
+    /// Cancel only before acceptance. Neither cancellation nor losing a handle
+    /// can erase running/uncertain identity or authorize effect replay.
+    pub(super) fn cancel(&mut self) -> Result<(), Error> {
+        self.check()?;
+        if let Some(active) = self.active {
+            match active.phase {
+                Phase::Accepted { .. } => return Err(Error::Busy),
+                Phase::Blocked => return Err(Error::RecoveryRequired),
+                Phase::Queued => {}
+            }
+        }
+        self.active = None;
+        self.control = ControlState::Cancelled;
         Ok(())
     }
     fn cancel_queued(&mut self) {
@@ -281,6 +321,8 @@ impl Progress {
     fn check(&self) -> Result<(), Error> {
         if self.faulted {
             Err(Error::Exhausted)
+        } else if self.control == ControlState::Cancelled {
+            Err(Error::Cancelled)
         } else {
             Ok(())
         }

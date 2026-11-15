@@ -40,7 +40,7 @@ checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
 name = "ic-jobs"
-version = "0.37.7"
+version = "0.37.8"
 dependencies = [
  "chrono",
  "ic-platform-runtime",
@@ -91,7 +91,7 @@ dependencies = [
 
 [[package]]
 name = "ic-timers"
-version = "0.45.7"
+version = "0.45.8"
 dependencies = [
  "ic-metrics",
  "ic-platform-runtime",

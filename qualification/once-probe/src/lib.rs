@@ -191,6 +191,7 @@ mod jobs;
 mod jobs_pressure;
 
 mod jobs_boundaries;
+mod jobs_completion;
 mod jobs_initial;
 
 mod jobs_catch_up;

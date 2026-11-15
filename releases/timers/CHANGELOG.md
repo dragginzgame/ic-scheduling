@@ -1,5 +1,10 @@
 # Timers changelog
 
+## [0.45.8] - Development checkpoint
+
+GitHub-only version checkpoint; no Timers behavior changes in this iteration.
+Not a crates.io release; qualification gates remain open.
+
 ## [0.45.7] - Development checkpoint
 
 GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.

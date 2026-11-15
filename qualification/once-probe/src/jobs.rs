@@ -90,6 +90,7 @@ pub extern "C" fn state() {
                     scheduled_at,
                     ..
                 } => (4, revision, scheduled_at),
+                Status::Cancelled => ic0::trap(b"unexpected cancelled fixture"),
                 Status::Faulted => (5, 0, 0),
             },
         );
@@ -272,11 +273,15 @@ pub(super) fn pre_upgrade() -> bool {
             return false;
         };
         let checkpoint = job.checkpoint().expect("host refuses unresolved job");
+        assert!(matches!(
+            checkpoint.control(),
+            ic_jobs::ControlState::Active | ic_jobs::ControlState::Paused
+        ));
         // This fixed host schema owns the every-minute rule; mode records lateness.
         let mode = MODE.with(Cell::get);
         assert!(matches!(mode, 0 | 5), "unsupported fixture definition");
         let mut bytes = [0; 35];
-        bytes[..8].copy_from_slice(b"JOBDATA4");
+        bytes[..8].copy_from_slice(b"JOBDATA5");
         bytes[8] = checkpoint.version();
         bytes[9..17].copy_from_slice(&checkpoint.revision().to_le_bytes());
         bytes[17..25].copy_from_slice(
@@ -299,7 +304,7 @@ pub(super) fn pre_upgrade() -> bool {
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 35];
     ic0::stable64_read(&mut bytes, 0);
-    if &bytes[..8] != b"JOBDATA4" {
+    if &bytes[..8] != b"JOBDATA5" {
         return false;
     }
     assert!(bytes[33] <= 3);
@@ -314,7 +319,11 @@ pub(super) fn post_upgrade() -> bool {
         u64::from_le_bytes(bytes[9..17].try_into().unwrap()),
         Some(u64::from_le_bytes(bytes[17..25].try_into().unwrap())),
         (bytes[33] & 1 != 0).then_some(selected),
-        bytes[33] & 2 != 0,
+        if bytes[33] & 2 != 0 {
+            ic_jobs::ControlState::Paused
+        } else {
+            ic_jobs::ControlState::Active
+        },
         None,
     )
     .unwrap();
@@ -340,7 +349,9 @@ pub(super) fn post_upgrade() -> bool {
 #[unsafe(export_name = "canister_update jobs_invalid_restore")]
 pub extern "C" fn invalid_restore() {
     ic_timers::initialize().unwrap();
-    let checkpoint = ic_jobs::Checkpoint::new(3, 1, Some(0), Some(1), false, None).unwrap();
+    let checkpoint =
+        ic_jobs::Checkpoint::new(4, 1, Some(0), Some(1), ic_jobs::ControlState::Active, None)
+            .unwrap();
     assert!(matches!(
         ic_jobs::restore(
             ["invalid", "job", "restore"],
@@ -378,11 +389,11 @@ pub extern "C" fn invalid_restore() {
         ),
     ] {
         let checkpoint = ic_jobs::Checkpoint::new(
-            3,
+            4,
             1,
             Some(0),
             Some(pending[0]),
-            false,
+            ic_jobs::ControlState::Active,
             Some(ic_jobs::CatchUpProgress::new(&pending, 180_000_000_000).unwrap()),
         )
         .unwrap();

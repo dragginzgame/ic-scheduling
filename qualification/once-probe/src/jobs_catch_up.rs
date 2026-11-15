@@ -143,6 +143,7 @@ pub extern "C" fn state() {
             Status::Armed { scheduled_at, .. } => (2, scheduled_at),
             Status::Running { scheduled_at, .. } => (3, scheduled_at),
             Status::RecoveryRequired { scheduled_at, .. } => (4, scheduled_at),
+            Status::Cancelled => ic0::trap(b"unexpected cancelled fixture"),
             Status::Faulted => (5, 0),
         },
     );
@@ -168,12 +169,16 @@ pub(super) fn pre_upgrade() -> bool {
             return false;
         };
         let checkpoint = job.checkpoint().expect("host refuses unsettled catch-up");
+        assert!(matches!(
+            checkpoint.control(),
+            ic_jobs::ControlState::Active | ic_jobs::ControlState::Paused
+        ));
         let mode = MODE.with(Cell::get);
         assert!(matches!(mode, 0 | 2 | 7));
         let pending = checkpoint
             .catch_up()
             .map_or(&[][..], CatchUpProgress::pending);
-        let mut bytes = b"CATCHUP2".to_vec();
+        let mut bytes = b"CATCHUP3".to_vec();
         bytes.extend([
             mode,
             u8::from(checkpoint.paused()),
@@ -213,7 +218,7 @@ pub(super) fn pre_upgrade() -> bool {
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 1024];
     ic0::stable64_read(&mut bytes, 0);
-    if &bytes[..8] != b"CATCHUP2" {
+    if &bytes[..8] != b"CATCHUP3" {
         return false;
     }
     assert!(matches!(bytes[8], 0 | 2 | 7) && bytes[9] <= 1 && bytes[11] <= 1 && bytes[12] <= 64);
@@ -241,11 +246,15 @@ pub(super) fn post_upgrade() -> bool {
     assert!(count <= 32);
     LOG.with(|log| *log.borrow_mut() = (0..count).map(|_| read(&bytes, &mut offset)).collect());
     let checkpoint = Checkpoint::new(
-        3,
+        4,
         revision,
         Some(through),
         (bytes[11] != 0).then_some(selected),
-        bytes[9] != 0,
+        if bytes[9] != 0 {
+            ic_jobs::ControlState::Paused
+        } else {
+            ic_jobs::ControlState::Active
+        },
         batch,
     )
     .unwrap();

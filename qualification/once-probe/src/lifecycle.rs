@@ -58,6 +58,9 @@ pub extern "C" fn init() {
 #[expect(unsafe_code, reason = "qualification owns this lifecycle hook")]
 #[unsafe(export_name = "canister_pre_upgrade")]
 pub extern "C" fn pre_upgrade() {
+    if super::jobs_completion::pre_upgrade() {
+        return;
+    }
     if super::jobs_catch_up::pre_upgrade() {
         return;
     }
@@ -85,6 +88,9 @@ pub extern "C" fn pre_upgrade() {
 #[expect(unsafe_code, reason = "qualification owns this lifecycle hook")]
 #[unsafe(export_name = "canister_post_upgrade")]
 pub extern "C" fn post_upgrade() {
+    if super::jobs_completion::post_upgrade() {
+        return;
+    }
     if super::jobs_catch_up::post_upgrade() {
         return;
     }

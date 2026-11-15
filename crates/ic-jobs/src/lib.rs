@@ -1,7 +1,7 @@
-//! One-shot, UTC cron and fixed-rate scheduling with optional IC execution.
+//! One-shot, UTC cron and elapsed-interval scheduling with optional IC execution.
 //!
 //! Enable the opt-in `calendar` feature for five-field UTC cron schedules and
-//! fixed-rate elapsed intervals and one-shot deadlines. Saffron owns calendar calculation.
+//! fixed-rate/after-completion intervals and one-shot deadlines. Saffron owns calendar calculation.
 //! Bounded catch-up previews are available through `Schedule::catch_up` when
 //! `calendar` is enabled. The opt-in `execution` feature adds wasm32 execution
 //! with explicit skip-late or bounded catch-up policy on
@@ -30,6 +30,8 @@ mod progress;
 mod checkpoint;
 #[cfg(feature = "execution")]
 pub use checkpoint::{CatchUpProgress, Checkpoint, CheckpointError};
+#[cfg(feature = "execution")]
+pub use progress::ControlState;
 
 #[cfg(all(feature = "execution", target_arch = "wasm32"))]
 mod execution;

@@ -180,3 +180,24 @@ fn one_shot_windows_and_catch_up_exhaust_after_one_occurrence() {
             .is_empty()
     );
 }
+
+#[test]
+fn completion_relative_deadlines_use_settlement_not_the_original_anchor() {
+    let schedule = Schedule::after_completion(7, NonZeroU64::new(10).unwrap());
+    assert_eq!(schedule.after_settlement(None), Some(Some(7)));
+    assert_eq!(schedule.after_settlement(Some(5)), Some(Some(7)));
+    assert_eq!(schedule.after_settlement(Some(7)), Some(Some(17)));
+    assert_eq!(schedule.after_settlement(Some(123)), Some(Some(133)));
+    assert_eq!(
+        schedule.after_settlement(Some(u64::MAX - 10)),
+        Some(Some(u64::MAX))
+    );
+    assert_eq!(schedule.after_settlement(Some(u64::MAX - 9)), Some(None));
+    assert_eq!(schedule.next_after(0, 7), Some(7));
+    assert_eq!(
+        schedule.next_after(7, u64::MAX),
+        None,
+        "preview cannot invent completion times"
+    );
+    assert_eq!(Schedule::once(7).after_settlement(None), None);
+}

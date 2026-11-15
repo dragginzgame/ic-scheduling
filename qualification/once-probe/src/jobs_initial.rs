@@ -72,7 +72,7 @@ pub extern "C" fn setup() {
             ["initial", "fixed", "job"],
             schedule,
             policy,
-            Checkpoint::new(3, 1, None, Some(0), false, None).unwrap(),
+            Checkpoint::new(4, 1, None, Some(0), ic_jobs::ControlState::Active, None).unwrap(),
             work,
         )
     } else {

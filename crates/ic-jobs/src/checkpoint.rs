@@ -1,11 +1,12 @@
 //! Validated progress data; hosts own encoding, storage and matching job definitions.
+use crate::progress::ControlState;
 
 /// Invalid host-restored progress. No timer declaration has been admitted yet.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CheckpointError {
     /// This library does not support the supplied progress schema.
     Version,
-    /// Revision zero or inconsistent selected, cursor, paused or remaining batch state.
+    /// Revision zero or inconsistent selection, cursor, control or remaining batch state.
     Progress,
 }
 impl std::fmt::Display for CheckpointError {
@@ -23,7 +24,7 @@ pub struct Checkpoint {
     pub(crate) revision: u64,
     pub(crate) through: Option<u64>,
     pub(crate) selected_at: Option<u64>,
-    pub(crate) paused: bool,
+    pub(crate) control: ControlState,
     pub(crate) catch_up: Option<CatchUpProgress>,
 }
 
@@ -72,6 +73,17 @@ impl Checkpoint {
         schedule: &crate::Schedule,
         policy: crate::Policy,
     ) -> bool {
+        if self.control == ControlState::Cancelled {
+            return true; // Constructor forbids any selected or remaining work.
+        }
+        if let Some(next) = schedule.after_settlement(self.through) {
+            return self.catch_up.is_none()
+                && (if self.control == ControlState::Paused {
+                    self.selected_at.is_none()
+                } else {
+                    self.selected_at == next
+                });
+        }
         let matches = |at| schedule.next_from(at, at) == Some(at);
         if self.selected_at.is_some_and(|at| !matches(at)) {
             return false;
@@ -89,27 +101,30 @@ impl Checkpoint {
     /// # Errors
     /// Rejects unsupported schemas, revision zero, selected work while paused,
     /// a selected occurrence at/before settled progress, or a batch inconsistent
-    /// with the cursor/selection. Schema 3 distinguishes no settled work (`None`)
-    /// from settled timestamp zero (`Some(0)`). Older preview schemas are rejected.
+    /// with the cursor/selection. Schema 4 records active, paused or cancelled
+    /// control state. Cancellation cannot retain selected work or a batch.
     pub fn new(
         version: u8,
         revision: u64,
         through: Option<u64>,
         selected_at: Option<u64>,
-        paused: bool,
+        control: ControlState,
         catch_up: Option<CatchUpProgress>,
     ) -> Result<Self, CheckpointError> {
-        if version != 3 {
+        if version != 4 {
             return Err(CheckpointError::Version);
         }
         if revision == 0
-            || selected_at.is_some_and(|at| paused || through.is_some_and(|end| at <= end))
+            || selected_at.is_some_and(|at| {
+                control != ControlState::Active || through.is_some_and(|end| at <= end)
+            })
+            || (control == ControlState::Cancelled && catch_up.is_some())
         {
             return Err(CheckpointError::Progress);
         }
         if let Some(batch) = &catch_up
             && (through.is_some_and(|end| batch.pending[0] <= end)
-                || (!paused && selected_at != Some(batch.pending[0])))
+                || (control == ControlState::Active && selected_at != Some(batch.pending[0])))
         {
             return Err(CheckpointError::Progress);
         }
@@ -117,14 +132,14 @@ impl Checkpoint {
             revision,
             through,
             selected_at,
-            paused,
+            control,
             catch_up,
         })
     }
     /// Progress schema version for the host's encoded record.
     #[must_use]
     pub const fn version(&self) -> u8 {
-        3
+        4
     }
     /// Preserved schedule revision.
     #[must_use]
@@ -132,6 +147,8 @@ impl Checkpoint {
         self.revision
     }
     /// Exclusive settled cursor in Unix nanoseconds; None means nothing settled.
+    /// For completion-relative schedules this also records the latest completion,
+    /// reconciliation or owner-edit horizon used to calculate the next deadline.
     #[must_use]
     pub const fn through(&self) -> Option<u64> {
         self.through
@@ -144,7 +161,12 @@ impl Checkpoint {
     /// Whether owner pause must survive reconstruction.
     #[must_use]
     pub const fn paused(&self) -> bool {
-        self.paused
+        matches!(self.control, ControlState::Paused)
+    }
+    /// Owner eligibility state to preserve in the host record.
+    #[must_use]
+    pub const fn control(&self) -> ControlState {
+        self.control
     }
     /// Remaining batch state, if catch-up is in progress.
     #[must_use]

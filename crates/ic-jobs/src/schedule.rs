@@ -33,7 +33,7 @@ impl Error for ScheduleError {
     }
 }
 
-/// A one-shot deadline, five-field UTC cron recurrence or anchored elapsed interval.
+/// A one-shot deadline, UTC cron rule, fixed-rate or after-completion interval.
 ///
 /// Saffron owns parsing, calendar arithmetic and next-occurrence search. No time
 /// zones, DST policies, seconds dialect or custom calendar engine are provided.
@@ -44,11 +44,26 @@ pub struct Schedule {
 #[derive(Clone, Debug)]
 enum Rule {
     Once(u64),
+    AfterCompletion { first: u64, every: NonZeroU64 },
     Cron(Cron),
     FixedRate { first: u64, every: NonZeroU64 },
 }
 
 impl Schedule {
+    /// Start at `first_at_ns`, then wait `every_ns` after each normal settlement.
+    /// Settlement includes NoWork, ExpectedFailure and lateness skipping. Traps
+    /// block for explicit recovery. Overflow ends recurrence. Preview methods
+    /// can show only the initial deadline; later deadlines require completion time.
+    #[must_use]
+    pub const fn after_completion(first_at_ns: u64, every_ns: NonZeroU64) -> Self {
+        Self {
+            rule: Rule::AfterCompletion {
+                first: first_at_ns,
+                every: every_ns,
+            },
+        }
+    }
+
     /// Run once at the supplied Unix nanosecond timestamp, including zero.
     /// Binding admits overdue deadlines; the explicit delivery policy controls
     /// whether work runs. Settlement exhausts this schedule without an implicit retry.
@@ -96,16 +111,32 @@ impl Schedule {
     /// Returns `None` for an empty window or no occurrence in that window.
     /// The horizon filters results; it does not bound supplier search work.
     /// This synchronous preview has no resumable budget and reads no clock.
+    /// After-completion schedules preview only their initial deadline; subsequent
+    /// deadlines depend on actual settlement and are selected by execution.
     #[must_use]
     pub fn next_after(&self, after_ns: u64, through_ns: u64) -> Option<u64> {
         self.next_from(after_ns.checked_add(1)?, through_ns)
+    }
+
+    /// None means calendar/fixed-rate selection; Some(None) means completion
+    /// recurrence exhausted the timestamp domain. The cursor includes completion,
+    /// explicit reconciliation and edit horizons, so paused/restored work keeps
+    /// its deadline rather than adding a delay from the time of resumption.
+    pub(crate) fn after_settlement(&self, through: Option<u64>) -> Option<Option<u64>> {
+        let Rule::AfterCompletion { first, every } = self.rule else {
+            return None;
+        };
+        Some(match through {
+            Some(through) if through >= first => through.checked_add(every.get()),
+            _ => Some(first),
+        })
     }
 
     #[cfg(all(feature = "execution", target_arch = "wasm32"))]
     pub(crate) fn first_at(&self) -> Option<u64> {
         match self.rule {
             Rule::Once(at) => Some(at),
-            Rule::FixedRate { first, .. } => Some(first),
+            Rule::FixedRate { first, .. } | Rule::AfterCompletion { first, .. } => Some(first),
             Rule::Cron(_) => None,
         }
     }
@@ -116,7 +147,15 @@ impl Schedule {
             return None;
         }
         let cron = match &self.rule {
-            Rule::Once(at) => return (from_ns <= *at && *at <= through_ns).then_some(*at),
+            Rule::Once(at) => {
+                return (from_ns <= *at && *at <= through_ns).then_some(*at);
+            }
+            Rule::AfterCompletion { .. } => {
+                return self
+                    .after_settlement(None)
+                    .flatten()
+                    .filter(|&at| from_ns <= at && at <= through_ns);
+            }
             Rule::Cron(cron) => cron,
             Rule::FixedRate { first, every } => {
                 let at = if from_ns <= *first {

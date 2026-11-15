@@ -22,7 +22,7 @@ async fn run() {
     let focused = args.next();
     assert!(focused.as_deref().is_none_or(|arg| matches!(
         arg,
-        "--after-completion" | "--jobs-initial" | "--jobs-one-shot"
+        "--after-completion" | "--jobs-initial" | "--jobs-one-shot" | "--jobs-completion"
     )));
     let server = std::env::var_os("POCKET_IC_BIN").expect("prepared PocketIC 16.0.0 server");
     let pic = PocketIcBuilder::new()
@@ -37,7 +37,9 @@ async fn run() {
     }
     let external = pic.create_canister().await;
     if focused.is_some() {
-        if focused.as_deref() == Some("--jobs-one-shot") {
+        if focused.as_deref() == Some("--jobs-completion") {
+            jobs_completion::check(&pic, &wasm, external).await;
+        } else if focused.as_deref() == Some("--jobs-one-shot") {
             jobs_initial::check(&pic, &wasm, external, true).await;
         } else if focused.as_deref() == Some("--jobs-initial") {
             jobs_initial::check(&pic, &wasm, external, false).await;
@@ -154,6 +156,7 @@ async fn run() {
     jobs_boundaries::check(&pic, &wasm, external).await;
     jobs_initial::check(&pic, &wasm, external, false).await;
     jobs_initial::check(&pic, &wasm, external, true).await;
+    jobs_completion::check(&pic, &wasm, external).await;
     jobs_boundaries::ahead(&pic, &wasm, external).await;
     jobs_catch_up::check(&pic, &wasm, external).await;
     pic.drop().await;
@@ -185,6 +188,7 @@ mod jobs;
 mod jobs_pressure;
 
 mod jobs_boundaries;
+mod jobs_completion;
 mod jobs_initial;
 
 mod jobs_catch_up;

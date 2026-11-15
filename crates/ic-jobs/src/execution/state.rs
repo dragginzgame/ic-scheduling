@@ -34,24 +34,27 @@ impl State {
     }
 
     pub(super) fn plan(&mut self, now: u64) -> OnceDemand {
-        if self.faulted || self.progress.paused() {
+        if self.faulted || self.progress.paused() || self.progress.cancelled() {
             return OnceDemand::Inactive;
         }
         if let Some(selection) = self.progress.selection() {
             return OnceDemand::At(selection.occurrence.scheduled_at);
         }
-        if self.start_batch(now).is_err() {
-            self.faulted = true;
-            return OnceDemand::Inactive;
-        }
-        let at = self
-            .batch
-            .as_ref()
-            .map(|batch| batch.pending[0])
-            .or_else(|| {
-                self.schedule
-                    .next_after(now.max(self.progress.through().unwrap_or(0)), u64::MAX)
-            });
+        let at = if let Some(next) = self.schedule.after_settlement(self.progress.through()) {
+            next
+        } else {
+            if self.start_batch(now).is_err() {
+                self.faulted = true;
+                return OnceDemand::Inactive;
+            }
+            self.batch
+                .as_ref()
+                .map(|batch| batch.pending[0])
+                .or_else(|| {
+                    self.schedule
+                        .next_after(now.max(self.progress.through().unwrap_or(0)), u64::MAX)
+                })
+        };
         let Some(at) = at else {
             return OnceDemand::Inactive;
         };
@@ -82,6 +85,14 @@ impl State {
         let age = now.checked_sub(at).ok_or(Error::Faulted)?;
         match self.policy {
             Policy::SkipLate { lateness_ns } => Ok(age <= lateness_ns),
+            Policy::CatchUp(limit)
+                if self
+                    .schedule
+                    .after_settlement(self.progress.through())
+                    .is_some() =>
+            {
+                Ok(age <= limit.max_age_ns)
+            }
             Policy::CatchUp(_) if self.batch.is_some() => Ok(true),
             Policy::CatchUp(limit) => {
                 if age > limit.max_age_ns {
@@ -102,8 +113,28 @@ impl State {
         }
     }
 
+    /// Only the current definition may advance its completion horizon. A newer
+    /// owner edit retains its own horizon even when old accepted work finishes.
+    pub(super) fn finish(&mut self, selection: Selection, now: u64) -> Result<(), Error> {
+        let current = selection.occurrence.revision == self.progress.revision();
+        self.progress
+            .complete(selection)
+            .map_err(|_| Error::Faulted)?;
+        if current
+            && self
+                .schedule
+                .after_settlement(self.progress.through())
+                .is_some()
+        {
+            self.progress
+                .skip_through(now)
+                .map_err(|_| Error::Faulted)?;
+        }
+        self.finish_batch(selection, now)
+    }
+
     /// Called only after normal settlement or explicit effect reconciliation.
-    pub(super) fn finish_batch(&mut self, selection: Selection, now: u64) -> Result<(), Error> {
+    fn finish_batch(&mut self, selection: Selection, now: u64) -> Result<(), Error> {
         let Some(batch) = &mut self.batch else {
             return Ok(());
         };
