@@ -1,6 +1,6 @@
 [package]
 name = "ic-jobs"
-version = "0.37.3"
+version = "0.37.4"
 edition.workspace = true
 rust-version.workspace = true
 license-file.workspace = true

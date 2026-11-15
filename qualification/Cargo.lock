@@ -800,7 +800,7 @@ dependencies = [
 
 [[package]]
 name = "ic-jobs"
-version = "0.37.3"
+version = "0.37.4"
 dependencies = [
  "chrono",
  "ic-platform-runtime",
@@ -892,7 +892,7 @@ dependencies = [
 
 [[package]]
 name = "ic-timers"
-version = "0.45.3"
+version = "0.45.4"
 dependencies = [
  "ic-metrics",
  "ic-platform-runtime",
