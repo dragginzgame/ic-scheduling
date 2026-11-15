@@ -1,5 +1,21 @@
 # Timers changelog
 
+## [0.45.6] - Development checkpoint
+
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### ♻️ Refactored
+
+- Remove the test-only watchdog scan and Once-only selection mode. Native tests
+  now use the production rotating selector, with only kind-checking helpers.
+  Remove 16 net Rust lines across implementation and tests.
+- Borrow the fixed 16-byte dispatch envelope from an array instead of allocating
+  and growing a Vec. Preserve the authenticated incarnation/sequence wire format
+  and let the protected async frame own the bytes through call settlement.
+- Store callback trait objects directly in Rc/RefCell, removing the inner Box
+  for Once factories and watchdog callbacks. Shared lifetime, exclusive invocation
+  and rejected-capture drop ordering are unchanged; per-attempt futures stay pinned.
+
 ## [0.45.5] - Development checkpoint
 
 GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.

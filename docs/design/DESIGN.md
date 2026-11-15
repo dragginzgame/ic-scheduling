@@ -1,5 +1,10 @@
 Status: proposed replacement architecture, 15 November 2026. Scope: Canic management, buffered Entropy, and a new calendar-aware Jobs scheduler; Relay remains excluded. This replaces the supplied consumer-driven baseline as the proposed implementation contract; it does not certify an implementation.
 
+Scope update: the maintainer now requires legacy Timers/Jobs capabilities and
+defers additional proposals. [Release scope](release-scope.md) supersedes earlier
+feature-omission decisions below; preserve the new ownership architecture without
+assuming every removed legacy capability can remain absent.
+
 Implementation note: Once, watchdogs and opt-in metrics are implemented and have
 installed local qualification. See [Once evidence](../evidence/once-provider.md),
 [watchdog evidence](../evidence/watchdog-state.md), [metrics](../evidence/metrics.md),

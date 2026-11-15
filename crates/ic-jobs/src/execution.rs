@@ -8,7 +8,6 @@ use ic_timers::{Once, OnceDemand, OnceNext, OnceResult, OnceStatus};
 use std::{
     cell::RefCell,
     future::Future,
-    pin::Pin,
     rc::{Rc, Weak},
 };
 
@@ -102,7 +101,6 @@ pub struct Job {
     state: Rc<RefCell<State>>,
     timer: Once,
 }
-type Work = Pin<Box<dyn Future<Output = OnceResult>>>;
 
 /// Bind a UTC job and select its first future occurrence.
 ///
@@ -180,40 +178,33 @@ where
         faulted: false,
     }));
     let captured = Rc::clone(&state);
-    let timer = ic_timers::bind_once(identity, move || -> Work {
+    let timer = ic_timers::bind_once(identity, move || {
         let now = ic0::time();
         let selected = {
             let mut state = captured.borrow_mut();
-            if state.faulted {
-                return Box::pin(async { stopped() });
-            }
-            let Some(selection) = state.progress.selection() else {
-                state.faulted = true;
-                return Box::pin(async { stopped() });
-            };
-            let deliver = match state.prepare(now) {
-                Ok(deliver) => deliver,
+            match state.accept(now) {
+                Ok(selected) => Some(selected),
                 Err(_) => {
                     state.faulted = true;
-                    return Box::pin(async { stopped() });
+                    None
                 }
-            };
-            if state.progress.accept(selection, now).is_err() {
-                state.faulted = true;
-                return Box::pin(async { stopped() });
             }
-            (selection, !deliver)
-        };
-        let (selection, late) = selected;
-        let context = Context {
-            revision: selection.occurrence.revision,
-            scheduled_at: selection.occurrence.scheduled_at,
-            started_at: now,
         };
         // Accept before invoking the factory, but never hold job state across it.
-        let future = (!late).then(|| work(context));
+        let future = selected.and_then(|(selection, deliver)| {
+            deliver.then(|| {
+                work(Context {
+                    revision: selection.occurrence.revision,
+                    scheduled_at: selection.occurrence.scheduled_at,
+                    started_at: now,
+                })
+            })
+        });
         let state = Rc::clone(&captured);
-        Box::pin(async move {
+        async move {
+            let Some((selection, _)) = selected else {
+                return stopped();
+            };
             let outcome = match future {
                 Some(future) => future.await,
                 None => Outcome::NoWork,
@@ -236,7 +227,7 @@ where
                 },
                 next,
             }
-        })
+        }
     })?;
     let job = Job { state, timer };
     let demand = job.state.borrow_mut().plan(ic0::time());

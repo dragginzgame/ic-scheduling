@@ -227,3 +227,65 @@ are unchanged from the preceding comparison.
 | --- | --- |
 | Before combined probe | `32fd23d5030b9036b3527be0bfbd9a9d3d95111effad6ca8024f01a910fc4c21` |
 | After combined probe | `a448ddceecf04dc19961761211fd08038249d231e98648b98a7c6eb2ce02c5df` |
+
+## Direct callback storage — 0.45.6
+
+Once factories and watchdog callbacks now use `Rc<RefCell<dyn FnMut(...)>>`
+instead of `Rc<RefCell<Box<dyn FnMut(...)>>>`. Rc's ordinary trait-object
+coercion supplies the dynamic representation without a second owning allocation.
+The shared allocation retains callbacks across dispatch; RefCell still enforces
+exclusive invocation. Once's per-attempt future remains boxed and pinned. No
+unsafe code, custom allocation scheme or public API change is introduced.
+
+This removes an ownership layer, not physical source lines. For non-zero-sized
+callback captures it removes the inner Box allocation; zero-sized Box values
+already need no allocation. It does not establish a universal byte saving per
+declaration, because pointer/layout and allocator effects also change.
+
+The existing 21 native Timers tests and full installed suite pass, including
+reentrant invocation/destruction, all 960 rejected captures, execution after
+public-handle destruction, trap custody, full flight pressure and Jobs catch-up.
+Strict native/Wasm Clippy, formatting and snapshot checks pass.
+
+The unchanged control fixture reports three identical samples per workload:
+
+| Binding operation | Before | After |
+| --- | ---: | ---: |
+| First Once | 2,142 | 2,130 |
+| Watchdog | 2,095 | 2,068 |
+| Third declaration | 2,212 | 2,200 |
+| 64th declaration | 24,406 | 24,394 |
+
+All measured owner-control costs remain unchanged. The combined probe falls from
+442,186 to 432,259 bytes (9,927 bytes). This fixture contains many callback types;
+do not treat that binary reduction as a universal minimum consumer saving.
+
+Before is the GitHub 0.45.5/0.37.5 checkpoint `975e053f4bb469717292c237b88aad152b53f5db`.
+After opens 0.45.6/0.37.6; only local package versions change in the locks.
+Compiler, suppliers, profile and fixture source are unchanged. Reproduction uses
+the existing `make check-once` command and `control_cost` rows.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Before combined probe | `a448ddceecf04dc19961761211fd08038249d231e98648b98a7c6eb2ce02c5df` |
+| After combined probe | `c63857831fd24af66db7124d5cf9b7b00497cc59bbcd83ebe7828ed70bb050c4` |
+| After product lock | `7f35cb46261358848c714d16a5e4782bbbe8e60d9ae876440285ed4440fa12e1` |
+| After qualification lock | `7e7a5a3bed5fc8a8d0b9c872671d4585b88b90b9b89a365b18271da2a6f9af2c` |
+
+## Fixed dispatch envelope — 0.45.6
+
+Self-dispatch now borrows an array containing the two little-endian u64 fields
+through Runtime's existing `with_raw_args` API. The protected async frame owns
+the array across the await. This removes the separate Vec allocation/growth and
+one product line; the 16-byte protocol, authentication and flight custody are
+unchanged. No unsafe conversion or new encoding helper is needed.
+
+All 21 native Timers tests, strict Wasm Clippy, formatting and the full installed
+suite pass, including malformed/stale envelopes, held flights, submission refusal
+and trap recovery. Existing fixtures are unchanged. No isolated instruction
+saving is claimed. Combined Wasm grows from 429,022 to 429,140 bytes (+118), so
+this is an allocation/representation simplification rather than a binary-size win.
+The before artifact is the Jobs future-allocation observation
+`ae5c98e1e7b3f9a2099e793d785b3775dc2ce470fe08dba2916c7b2a17eaec50`;
+after is `1b1757c0fe99220d941769b5a8858853c68d7e08fd56b6995519ada47c4e4683`.
+Compiler, suppliers, locks and `make check-once` reproduction are unchanged.

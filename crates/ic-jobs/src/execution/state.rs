@@ -62,15 +62,21 @@ impl State {
         }
     }
 
-    /// Re-evaluate delayed delivery before accepting business work. A frozen
-    /// batch is never recomputed, including after a pause or host reconstruction.
-    pub(super) fn prepare(&mut self, now: u64) -> Result<bool, Error> {
-        let at = self
-            .progress
-            .selection()
-            .ok_or(Error::Faulted)?
-            .occurrence
-            .scheduled_at;
+    /// Commit the current selection before the adapter invokes consumer code.
+    pub(super) fn accept(&mut self, now: u64) -> Result<(Selection, bool), Error> {
+        if self.faulted {
+            return Err(Error::Faulted);
+        }
+        let selection = self.progress.selection().ok_or(Error::Faulted)?;
+        let deliver = self.prepare(selection.occurrence.scheduled_at, now)?;
+        self.progress
+            .accept(selection, now)
+            .map_err(|_| Error::Faulted)?;
+        Ok((selection, deliver))
+    }
+
+    /// A frozen batch is never recomputed, including after pause or restoration.
+    fn prepare(&mut self, at: u64, now: u64) -> Result<bool, Error> {
         let age = now.checked_sub(at).ok_or(Error::Faulted)?;
         match self.policy {
             Policy::SkipLate { lateness_ns } => Ok(age <= lateness_ns),

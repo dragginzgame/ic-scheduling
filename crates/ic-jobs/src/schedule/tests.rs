@@ -84,3 +84,37 @@ fn impossible_rule_and_unsigned_timestamp_limits() {
     assert_eq!(rule.next_after(last, u64::MAX), None);
     assert_eq!(rule.next_after(u64::MAX, u64::MAX), None);
 }
+
+#[test]
+fn fixed_rate_keeps_its_anchor_and_checks_unsigned_limits() {
+    let schedule = Schedule::fixed_rate(7, NonZeroU64::new(10).unwrap());
+    for (after, through, expected) in [
+        (0, 6, None),
+        (0, 7, Some(7)),
+        (7, 16, None),
+        (7, 17, Some(17)),
+        (15, 27, Some(17)),
+        (17, 27, Some(27)),
+        (1000, 1010, Some(1007)),
+        (1007, 1007, None),
+    ] {
+        assert_eq!(schedule.next_after(after, through), expected);
+    }
+    let end = Schedule::fixed_rate(u64::MAX - 10, NonZeroU64::new(10).unwrap());
+    assert_eq!(end.next_after(u64::MAX - 11, u64::MAX), Some(u64::MAX - 10));
+    assert_eq!(end.next_after(u64::MAX - 10, u64::MAX), Some(u64::MAX));
+    assert_eq!(end.next_after(u64::MAX, u64::MAX), None);
+    let overflowing = Schedule::fixed_rate(1, NonZeroU64::new(u64::MAX).unwrap());
+    assert_eq!(overflowing.next_after(1, u64::MAX), None);
+    let unit = Schedule::fixed_rate(0, NonZeroU64::new(1).unwrap());
+    assert_eq!(unit.next_after(u64::MAX - 1, u64::MAX), Some(u64::MAX));
+}
+
+#[test]
+fn fixed_rate_reuses_bounded_catch_up_without_reanchoring() {
+    let schedule = Schedule::fixed_rate(7, NonZeroU64::new(10).unwrap());
+    let plan = schedule.catch_up(0, 107, crate::CatchUpLimit::new(30, 3).unwrap());
+    assert_eq!(plan.occurrences(), &[77, 87, 97]);
+    assert!(plan.has_excess());
+    assert_eq!(plan.through(), 107);
+}

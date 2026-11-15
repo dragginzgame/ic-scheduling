@@ -278,7 +278,7 @@ extern "C" fn timer() {
             if submitted == PER_TURN || runtime.flights.borrow().len() == MAX_FLIGHTS {
                 break;
             }
-            let Some(dispatch) = runtime.bindings.select(ic0::time(), true) else {
+            let Some(dispatch) = runtime.bindings.select(ic0::time()) else {
                 break;
             };
             if runtime
@@ -305,10 +305,9 @@ extern "C" fn timer() {
                     runtime: Rc::clone(&owner),
                     finished: false,
                 };
-                let mut envelope = owner.incarnation.to_le_bytes().to_vec();
-                envelope.extend_from_slice(&id.to_le_bytes());
+                let envelope = [owner.incarnation.to_le_bytes(), id.to_le_bytes()];
                 let response = Call::new(self_id(), METHOD, WaitPolicy::Unbounded)
-                    .take_raw_args(envelope)
+                    .with_raw_args(envelope.as_flattened())
                     .execute()
                     .await;
                 let flight = {

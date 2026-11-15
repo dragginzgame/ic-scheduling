@@ -88,3 +88,21 @@ traps. It must establish executor termination before calling abandon. Native
 future Drop does not automatically clear Running or grant recovery. The local
 weak-pointer identity is not a wire token, stable identifier or restoration fence.
 This increment does not qualify isolated messages or trap recovery.
+
+## Shared selector cleanup — 0.45.6
+
+The current implementation removes the test-only watchdog table scan and the
+Once-only flag on the shared selector. Production already always included both
+kinds. Native Once and watchdog tests now invoke that same rotating selector;
+their local helpers only assert/extract the expected dispatch kind. The old
+assertion that a Once-only scan ignored watchdog work is retired with that mode;
+callback-not-run-inline, mixed rotation and cadence-separation assertions remain.
+
+The change removes 28 lines from implementation files (including test-only
+helpers) and adds 12 net lines in test files: 16 net Rust lines removed overall.
+No scheduling logic was relocated to test helpers. All 21 native Timers tests,
+strict native/Wasm Clippy, formatting and the full installed suite pass. No
+performance improvement is claimed. Compiler, suppliers and locks remain those
+of the current 0.45.6 iteration. Reproduce with the native Timers tests and
+`make check-once`; combined probe SHA-256:
+`3a77b74cbf56bcde4e57fe5415e25d0cba7d8b8cde587490e1dcf399155b04e9`.

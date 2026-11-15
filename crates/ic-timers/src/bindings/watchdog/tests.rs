@@ -1,3 +1,4 @@
+use super::super::Scheduled;
 use super::*;
 use crate::engine;
 use std::{cell::Cell, future::ready};
@@ -43,9 +44,8 @@ fn shared_admission_and_reentrant_owner_commands() {
         Err(Error::Capacity)
     ));
     bindings.advance_watchdogs(10);
-    assert!(bindings.due(10).is_none());
     assert_eq!(calls.get(), 0);
-    let dispatch = bindings.watchdog_due().unwrap();
+    let dispatch = due(&bindings, 10);
     assert!(bindings.run_watchdog(&dispatch).unwrap());
     assert!(!bindings.run_watchdog(&dispatch).unwrap());
     assert_eq!(
@@ -67,15 +67,15 @@ fn authority_and_settlement_are_scoped_to_the_shared_table() {
         .unwrap();
     handle.set(Demand::KeepCadence, 0).unwrap();
     a.advance_watchdogs(10);
-    let old = a.watchdog_due().unwrap();
+    let old = due(&a, 10);
     assert_eq!(b.run_watchdog(&old), Err(Error::StaleAuthority));
     a.advance_watchdogs(100);
     assert!(a.run_watchdog(&old).unwrap());
     assert_eq!(handle.status().unwrap(), (Some(110), true, false));
-    assert!(a.watchdog_due().is_none());
+    assert!(a.select(100).is_none());
     assert!(old.settle().unwrap());
     a.advance_watchdogs(110);
-    let fresh = a.watchdog_due().unwrap();
+    let fresh = due(&a, 110);
     assert!(!old.settle().unwrap());
     assert!(a.run_watchdog(&fresh).unwrap());
     drop(a);
@@ -98,16 +98,13 @@ fn mixed_selection_and_wakes_keep_cadence_separate_from_delivery() {
     watchdog.set(Demand::At(0), 0).unwrap();
     bindings.advance_watchdogs(0);
     assert_eq!(bindings.wake(&std::iter::empty()), (Some(0), Some(10)));
-    assert!(matches!(
-        bindings.select(0, true),
-        Some(super::super::Scheduled::Once(_))
-    ));
-    let Some(super::super::Scheduled::Watchdog(dispatch)) = bindings.select(0, true) else {
+    assert!(matches!(bindings.select(0), Some(Scheduled::Once(_))));
+    let Some(Scheduled::Watchdog(dispatch)) = bindings.select(0) else {
         panic!("rotating mixed selection");
     };
     once.set(engine::Demand::Inactive).unwrap();
     assert_eq!(bindings.wake(&std::iter::empty()), (Some(0), Some(10)));
-    let submitted = super::super::Scheduled::Watchdog(dispatch.clone());
+    let submitted = Scheduled::Watchdog(dispatch.clone());
     assert_eq!(
         bindings.wake(&std::iter::once(&submitted)),
         (None, Some(10))
@@ -119,4 +116,11 @@ fn mixed_selection_and_wakes_keep_cadence_separate_from_delivery() {
     );
     assert!(bindings.run_watchdog(&dispatch).unwrap());
     assert!(dispatch.settle().unwrap());
+}
+
+fn due(bindings: &Bindings, now: u64) -> Dispatch {
+    let Some(Scheduled::Watchdog(dispatch)) = bindings.select(now) else {
+        panic!("expected watchdog work");
+    };
+    dispatch
 }

@@ -116,15 +116,17 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     println!(
         "jobs pressure: shared 64-declaration limit, eight held flights, queued pause, isolated recovery and healthy progress pass"
     );
-    bulk(pic, wasm, sender).await;
+    for mode in [0, 1] {
+        bulk(pic, wasm, sender, mode).await;
+    }
 }
 
-async fn bulk(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
+async fn bulk(pic: &PocketIc, wasm: &[u8], sender: CanisterId, mode: u8) {
     let id = pic.create_canister().await;
     pic.add_cycles(id, 100_000_000_000_000).await;
     pic.install_canister(id, wasm.to_vec(), vec![], None).await;
     let initial = pic
-        .update_call(id, sender, "jobs_bulk_setup", vec![])
+        .update_call(id, sender, "jobs_bulk_setup", vec![mode])
         .await
         .unwrap();
     assert_eq!(initial.len(), 64 * 8);
@@ -145,7 +147,15 @@ async fn bulk(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     for row in settled.as_chunks::<19>().0 {
         assert_eq!(&row[..3], &[2, 3, 3]);
         let last = u64::from_le_bytes(row[3..11].try_into().unwrap());
-        assert_eq!(last, first + 120_000_000_000);
+        assert_eq!(
+            last,
+            first
+                + if mode == 0 {
+                    120_000_000_000
+                } else {
+                    20_000_000_000
+                }
+        );
         let started = u64::from_le_bytes(row[11..19].try_into().unwrap());
         assert!(started >= last);
     }
@@ -161,6 +171,6 @@ async fn bulk(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     // Avoid future invocations of this deliberately single-batch assertion fixture.
     pic.stop_canister(id, None).await.unwrap();
     println!(
-        "jobs bulk: 64 catch-up jobs complete 192 ordered nonoverlapping awaits, discard excess and stop replenishing quotas"
+        "jobs bulk: mode={mode} 64 catch-up jobs complete 192 ordered nonoverlapping awaits, discard excess and stop replenishing quotas"
     );
 }

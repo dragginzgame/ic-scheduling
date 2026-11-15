@@ -1,6 +1,6 @@
 //! Input admission and timestamp adaptation around Saffron's UTC engine.
 
-use std::{error::Error, fmt};
+use std::{error::Error, fmt, num::NonZeroU64};
 
 use chrono::{DateTime, Utc};
 use saffron::{Cron, parse::CronParseError};
@@ -33,16 +33,36 @@ impl Error for ScheduleError {
     }
 }
 
-/// A five-field UTC cron recurrence, evaluated at minute boundaries.
+/// A five-field UTC cron recurrence or anchored elapsed-time interval.
 ///
 /// Saffron owns parsing, calendar arithmetic and next-occurrence search. No time
 /// zones, DST policies, seconds dialect or custom calendar engine are provided.
 #[derive(Clone, Debug)]
 pub struct Schedule {
-    cron: Cron,
+    rule: Rule,
+}
+#[derive(Clone, Debug)]
+enum Rule {
+    Cron(Cron),
+    FixedRate { first: u64, every: NonZeroU64 },
 }
 
 impl Schedule {
+    /// Recur at `first_at_ns + n * every_ns` for nonnegative integer n.
+    /// This is elapsed-time arithmetic, not a cron field or local calendar rule.
+    /// Overflow ends the recurrence; no timestamp wraps. Like cron previews,
+    /// `next_after` excludes its lower bound. Binding selects after current time;
+    /// host-restored progress and CatchUp control overdue execution.
+    #[must_use]
+    pub const fn fixed_rate(first_at_ns: u64, every_ns: NonZeroU64) -> Self {
+        Self {
+            rule: Rule::FixedRate {
+                first: first_at_ns,
+                every: every_ns,
+            },
+        }
+    }
+
     /// Compile minute, hour, day-of-month, month and weekday fields using
     /// Saffron's grammar. Names and calendar extensions follow the supplier.
     ///
@@ -54,7 +74,9 @@ impl Schedule {
             return Err(ScheduleError::InvalidLayout);
         }
         let cron = expression.parse().map_err(ScheduleError::Parse)?;
-        Ok(Self { cron })
+        Ok(Self {
+            rule: Rule::Cron(cron),
+        })
     }
 
     /// Find a UTC occurrence after an exclusive lower bound and through an
@@ -68,13 +90,25 @@ impl Schedule {
         if after_ns >= through_ns {
             return None;
         }
+        let cron = match &self.rule {
+            Rule::Cron(cron) => cron,
+            Rule::FixedRate { first, every } => {
+                let at = if after_ns < *first {
+                    *first
+                } else {
+                    let steps = ((after_ns - first) / every.get()).checked_add(1)?;
+                    first.checked_add(steps.checked_mul(every.get())?)?
+                };
+                return (at <= through_ns).then_some(at);
+            }
+        };
         // All u64 Unix nanoseconds fit Chrono's seconds range. Saffron's
         // exclusive search truncates the input minute before advancing it.
         let start = DateTime::<Utc>::from_timestamp(
             (after_ns / 1_000_000_000) as i64,
             (after_ns % 1_000_000_000) as u32,
         )?;
-        let next = self.cron.next_after(start)?;
+        let next = cron.next_after(start)?;
         // Avoid Chrono's signed-i64 nanosecond limit: timers use unsigned u64.
         let ns = i128::from(next.timestamp()) * 1_000_000_000
             + i128::from(next.timestamp_subsec_nanos());

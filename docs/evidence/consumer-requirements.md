@@ -50,8 +50,9 @@ also ignores the context. It uses `TimerCompletion::no_work()`.
 Neither in-scope consumer directly requests after-completion recurrence, transient
 remove-on-stop registration, context control capabilities, immediate watchdog
 commands, an inventory export, full memory-page summaries or the failure-streak
-query. This is permission to omit those from the *new design*, not permission to
-silently change the old published library.
+query. This originally justified omitting them from the new design. The later
+[maintainer scope decision](../design/release-scope.md) requires legacy
+capabilities regardless of their use by these two consumers.
 
 ## Jobs finding
 

@@ -1,11 +1,17 @@
 # UTC Jobs scheduler
 
+The [release-scope decision](release-scope.md) now requires legacy scheduling,
+retry and unresolved-record capabilities. Latest-due coalescing is deferred.
+Fixed-rate intervals are available through `Schedule::fixed_rate`; they share
+the existing off-by-default feature boundary and execution policies. Calendar
+calculation remains exclusively Saffron's responsibility.
+
 Status: Saffron-backed UTC preview, 2026-11-15. The maintainer explicitly selected
 Saffron and UTC, superseding the earlier named-zone and seconds-dialect scope.
 An opt-in wasm32 execution preview now binds one retained Once per job. It uses
 explicit SkipLate or bounded CatchUp policy; host-owned checkpoints support
 settled/queued reconstruction, including remaining catch-up work. Coalescing
-remains unimplemented. No custom calendar
+is deferred. No custom calendar
 engine is retained. See [progress and execution evidence](../evidence/jobs-progress.md).
 
 ## Current implementation
@@ -66,8 +72,11 @@ Day-field matching follows Saffron's OR behavior when both are restricted.
 A monthly 31st skips short months; February 29 skips non-leap years. Supplier
 syntax is the contract, not compatibility with every cron implementation.
 
-One-time UTC instants and anchored elapsed intervals remain future scheduler
-forms; they must not introduce a second cron engine. `*/N` steps within a field,
+Anchored elapsed intervals now use `Schedule::fixed_rate(first_at_ns, every_ns)`.
+The positive interval is a `NonZeroU64`; checked integer arithmetic preserves
+the original anchor without calendar interpretation. One-time UTC instants and
+after-completion intervals remain required legacy scheduler forms to implement.
+They must not introduce a second cron engine. `*/N` steps within a field,
 not an arbitrary elapsed interval. Typed calendar builders are not required.
 
 Named time zones, local timestamps, DST policies, time-zone database migration,
@@ -115,7 +124,7 @@ A schedule specifies intended eligibility, not a guarantee of execution at an
 exact wall-clock instant. IC message delivery and resource pressure can delay it.
 Report scheduled time and actual start separately.
 
-Coalescing to the latest due occurrence remains a proposed additional policy;
+Coalescing to the latest due occurrence is deferred from this release;
 there is no implicit policy default. Catch-up requires explicit limits on
 age and count and a documented disposition for excess occurrences. Neither a
 long outage nor a minute-level schedule may allocate an unbounded backlog or
@@ -137,9 +146,9 @@ an explicit missed-run policy. Changing a schedule increments its revision and
 invalidates old unaccepted eligibility. Running work retains its occurrence
 identity; its completion cannot overwrite a newer schedule or pause decision.
 
-Expected callback failure records an outcome; future calendar occurrences remain
-independent. Automatic retry of the same occurrence is not part of the initial
-contract. Confirmed abandonment blocks that job in recovery-required state, even
+Expected callback failure currently records an outcome; future calendar occurrences remain
+independent. Legacy bounded retries are now required by the release-scope decision
+but are not yet implemented. Confirmed abandonment blocks that job in recovery-required state, even
 when later occurrences become due. Only owner reconciliation can clear it. A
 calendar policy cannot bypass Timers' recovery barrier. No exactly-once remote
 effect guarantee is claimed.

@@ -129,10 +129,21 @@ pub extern "C" fn state() {
 #[unsafe(export_name = "canister_update jobs_bulk_setup")]
 pub extern "C" fn bulk_setup() {
     ic_timers::initialize().unwrap();
+    assert_eq!(ic0::msg_arg_data_size(), 1);
+    let mut mode = [0];
+    ic0::msg_arg_data_copy(&mut mode, 0);
+    let schedule = match mode[0] {
+        0 => Schedule::parse("* * * * *").unwrap(),
+        1 => Schedule::fixed_rate(
+            ic0::time().checked_add(5_000_000_000).unwrap(),
+            std::num::NonZeroU64::new(10_000_000_000).unwrap(),
+        ),
+        _ => ic0::trap(b"invalid schedule mode"),
+    };
     for index in 0..64 {
         let job = ic_jobs::bind(
             ["jobs", "bulk", &index.to_string()],
-            Schedule::parse("* * * * *").unwrap(),
+            schedule.clone(),
             ic_jobs::Policy::CatchUp(ic_jobs::CatchUpLimit::new(u64::MAX, 3).unwrap()),
             move |context| async move {
                 COUNTS.with_borrow_mut(|counts| {

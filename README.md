@@ -11,14 +11,16 @@ working files inspected on 2026-11-15, including hashes for dirty sources.
 The proposed architecture separates a small retained-timer library (`ic-timers`)
 from a cron-like calendar scheduler (`ic-jobs`). Read the [Jobs design](docs/design/jobs.md)
 for UTC calendar rules and execution semantics. Both permit breaking
-redesign; unused timer policy families, a demo application and the old release
-framework are not carried forward.
+redesign. The [release scope](docs/design/release-scope.md) preserves legacy
+Timers/Jobs capabilities while deferring additional proposals. The old architecture,
+demo application and release framework are not carried forward.
 
 Status: early implementation. Jobs has Saffron-backed five-field UTC cron
-occurrence preview. Calendar support is opt-in via the
+occurrence preview and anchored fixed-rate intervals. Schedule support is opt-in via the
 `calendar` feature. Its separate opt-in `execution` feature provides a wasm32
 skip-late and bounded catch-up execution on Once with host-owned settled/queued
-checkpoints; unresolved-work persistence and coalescing remain unfinished.
+checkpoints; unresolved-work persistence remains unfinished and Jobs coalescing
+is deferred.
 Timers has an initial
 [wasm32 Once provider](docs/evidence/once-provider.md), with installed checks for
 completion, trap recovery, owner precedence, held-flight pressure, low-cycle
@@ -28,7 +30,7 @@ trap-survival and owner-precedence checks. Timers' opt-in `metrics` feature expo
 aggregate counters using ic-metrics arithmetic, with host-owned export. Remaining
 resource, consumer and lifecycle qualification gates are open.
 Development targets are
-Timers `0.45.5` and Jobs `0.37.5`, following the initial development checkpoint
+Timers `0.45.6` and Jobs `0.37.6`, following the initial development checkpoint
 (`0.45.0` / `0.37.0`). These remain unpublished; the last observed crates.io
 versions were `0.44.3` / `0.36.3` (registry checked 2026-11-15).
 Track changes in the [grouped changelogs](CHANGELOG.md). Development delivery is
@@ -100,13 +102,19 @@ ic-jobs = { path = "path/to/ic-scheduling-new/crates/ic-jobs", default-features 
 Use the appropriate checkout path during GitHub-only development. Omit `calendar`
 to exclude Saffron and Chrono. Cargo features are additive;
 another dependency enabling it will enable it for that build as well. Calendar
-preview currently delegates to Saffron; job execution remains unimplemented.
+preview delegates to Saffron; the separate `execution` feature enables the
+wasm32 execution adapter described above.
 
 With `calendar` enabled, `Schedule::parse("0 9 * * *")` means daily at **09:00 UTC**.
 `next_after(after_ns, through_ns)` returns an optional unsigned Unix nanosecond
 instant after the lower bound and through the upper bound. Cron expressions have
 five fields and minute precision; time zones and a seconds field are not supported.
 See the [UTC Wasm measurements](docs/evidence/calendar-saffron.md).
+
+`Schedule::fixed_rate(first_at_ns, every_ns)` uses a positive `NonZeroU64`
+interval and preserves its original anchor. Binding currently selects strictly
+after current time; initial overdue admission and timestamp-zero execution
+remain part of the unfinished legacy schedule contract.
 
 The executor prerequisite probe runs with
 `make check-executor POCKET_IC_BIN=/absolute/path/to/pocket-ic` using a prepared

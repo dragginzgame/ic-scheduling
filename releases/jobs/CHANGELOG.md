@@ -1,5 +1,22 @@
 # Jobs changelog
 
+## [0.37.6] - Development checkpoint
+
+GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.
+
+### ✨ Added
+
+- Add anchored fixed-rate elapsed intervals through `Schedule::fixed_rate`,
+  reusing catch-up, execution and checkpoint validation. Checked unsigned
+  arithmetic ends recurrence at overflow; cron remains delegated to Saffron.
+  Full legacy schedule admission semantics remain an open scope item.
+
+### ♻️ Refactored
+
+- Return one concrete adapter future instead of boxing it before Timers boxes
+  and pins it. Keep acceptance synchronous before the consumer factory; combine
+  selection validation and acceptance under the existing state owner.
+
 ## [0.37.5] - Development checkpoint
 
 GitHub-only checkpoint; not a crates.io release. Qualification gates remain open.

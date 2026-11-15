@@ -43,7 +43,7 @@ fn binding_retains_original_and_rejected_captures_drop_outside_borrow() {
     handle.set(Demand::At(0)).unwrap();
     drop(handle);
     assert_eq!(calls.get(), 0);
-    let dispatch = runtime.due(0).unwrap();
+    let dispatch = due(&runtime, 0).unwrap();
     let (accepted, mut future) = runtime.start(&dispatch).unwrap().unwrap();
     assert_eq!(calls.get(), 1);
     assert!(runtime.start(&dispatch).unwrap().is_none());
@@ -83,7 +83,7 @@ fn consumer_factory_poll_and_drop_can_reenter() {
     );
     *slot.borrow_mut() = Some(Rc::clone(&handle));
     handle.set(Demand::At(0)).unwrap();
-    let dispatch = runtime.due(0).unwrap();
+    let dispatch = due(&runtime, 0).unwrap();
     let (accepted, mut future) = runtime.start(&dispatch).unwrap().unwrap();
     assert!(
         future
@@ -91,7 +91,7 @@ fn consumer_factory_poll_and_drop_can_reenter() {
             .poll(&mut Context::from_waker(Waker::noop()))
             .is_pending()
     );
-    assert!(runtime.due(u64::MAX).is_none());
+    assert!(due(&runtime, u64::MAX).is_none());
     drop(future);
     assert!(dropped.get());
     assert!(matches!(handle.state().unwrap(), State::Running { .. }));
@@ -114,7 +114,7 @@ fn authority_is_scoped_to_runtime_and_declaration() {
         .unwrap();
     a.set(Demand::At(0)).unwrap();
     b.set(Demand::At(0)).unwrap();
-    let ticket = first.due(0).unwrap();
+    let ticket = due(&first, 0).unwrap();
     assert!(matches!(second.start(&ticket), Err(Error::StaleAuthority)));
     let (accepted, future) = first.start(&ticket).unwrap().unwrap();
     drop(future);
@@ -149,9 +149,9 @@ fn bounded_admission_and_rotating_selection() {
         Err(Error::Capacity)
     ));
     for expected in 0..CAPACITY {
-        assert_eq!(runtime.due(0).unwrap().slot, expected);
+        assert_eq!(due(&runtime, 0).unwrap().slot, expected);
     }
-    assert_eq!(runtime.due(0).unwrap().slot, 0);
+    assert_eq!(due(&runtime, 0).unwrap().slot, 0);
 }
 
 #[test]
@@ -165,7 +165,7 @@ fn submitted_ticket_does_not_hide_new_due_work_or_a_replacement() {
         .unwrap();
     first.set(Demand::At(0)).unwrap();
     second.set(Demand::At(10)).unwrap();
-    let submitted = runtime.due(0).unwrap();
+    let submitted = due(&runtime, 0).unwrap();
     assert_eq!(
         runtime
             .wake(&std::iter::once(&Scheduled::Once(submitted.clone())))
@@ -180,7 +180,7 @@ fn submitted_ticket_does_not_hide_new_due_work_or_a_replacement() {
             .0,
         Some(0)
     );
-    let replacement = runtime.due(0).unwrap();
+    let replacement = due(&runtime, 0).unwrap();
     second.set(Demand::Inactive).unwrap();
     assert_eq!(
         runtime
@@ -197,8 +197,16 @@ fn submitted_ticket_does_not_hide_new_due_work_or_a_replacement() {
         .unwrap();
     assert_eq!(
         runtime
-            .wake(&std::iter::once(&Scheduled::Once(other.due(0).unwrap())))
+            .wake(&std::iter::once(&Scheduled::Once(due(&other, 0).unwrap())))
             .0,
         Some(0)
     );
+}
+
+fn due(bindings: &Bindings, now: u64) -> Option<Dispatch> {
+    match bindings.select(now) {
+        Some(Scheduled::Once(dispatch)) => Some(dispatch),
+        None => None,
+        Some(Scheduled::Watchdog(_)) => panic!("Once-only fixture selected watchdog work"),
+    }
 }

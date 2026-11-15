@@ -10,7 +10,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-pub(super) type Callback = Rc<RefCell<Box<dyn FnMut() -> Next>>>;
+pub(super) type Callback = Rc<RefCell<dyn FnMut() -> Next>>;
 
 pub(crate) struct WatchdogHandle(Handle);
 #[derive(Clone)]
@@ -33,7 +33,7 @@ impl Bindings {
             identity,
             Kind::Watchdog {
                 state: WatchdogState::new(cadence),
-                callback: Rc::new(RefCell::new(Box::new(work))),
+                callback: Rc::new(RefCell::new(work)),
             },
         )
         .map(WatchdogHandle)
@@ -48,25 +48,6 @@ impl Bindings {
                 let _ = state.advance(now);
             }
         }
-    }
-    #[cfg(test)]
-    pub(crate) fn watchdog_due(&self) -> Option<Dispatch> {
-        let mut table = self.0.borrow_mut();
-        let count = table.entries.len();
-        for _ in 0..count {
-            let slot = table.cursor;
-            table.cursor = (slot + 1) % count;
-            if let Kind::Watchdog { state, .. } = &table.entries[slot].kind
-                && let Some(ticket) = state.pending()
-            {
-                return Some(Dispatch {
-                    table: Rc::downgrade(&self.0),
-                    slot,
-                    ticket,
-                });
-            }
-        }
-        None
     }
     /// Invoke only in an isolated work message, after the control turn commits.
     /// No table borrow spans callback invocation or reentrant owner commands.

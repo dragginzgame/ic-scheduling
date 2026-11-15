@@ -557,3 +557,63 @@ in both locks; its adoption changed policy documentation, not executable tooling
 | Combined once_probe.wasm | `c19dc66d73e942f068b76dbc163c2d4aec33c5f9a093df51cc38908850d8047b` |
 | Product Cargo.lock | `e08355a6cfd2a9ee3f06c6fb1dbf581a6831357d92f9476aabe5a15e838d06b6` |
 | Qualification Cargo.lock | `14ac0c780f15e1e15f03fa691f63504119369a8d3dceb903a89360fc94f2ce7d` |
+
+### One future allocation boundary — 0.37.6
+
+The Jobs callback adapter now returns a single concrete async future, instead
+of a boxed trait-object future which Timers boxed again. Success and fault paths
+share that future type; Timers remains the owner of dynamic storage and pinning.
+The existing State owner now validates the current selection and records
+acceptance in one method. The adapter releases the state borrow before invoking
+the consumer factory, synchronously, before the returned future is polled.
+
+This preserves initial-message rollback evidence and acceptance-before-factory
+ordering. A late occurrence still settles as NoWork; invalid state remains
+terminal and does not invoke the factory. No extra trait, state enum, allocator
+or dependency was introduced. Across the adapter and State module this removes
+three net physical product lines and the extra per-attempt Box allocation.
+
+All 18 native Jobs tests, strict native/Wasm Clippy, formatting and the complete
+installed suite pass. Installed cases cover factory/post-await traps, wrong-job
+recovery, future-destructor reentry, pause/edit precedence, checkpoints and full
+64-job catch-up. No new fixture was needed.
+
+With unchanged fixture source, compiler, suppliers and build profile, the combined
+probe decreases from 432,259 to 429,022 bytes (3,237 bytes). This is a fixture-wide
+size observation, not a measured per-occurrence instruction saving or a universal
+consumer size guarantee. Reproduce with `make check-once` and the prepared server.
+The current Timers 0.45.6 callback-storage change is present in both artifacts.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Before combined probe | `c63857831fd24af66db7124d5cf9b7b00497cc59bbcd83ebe7828ed70bb050c4` |
+| After combined probe | `ae5c98e1e7b3f9a2099e793d785b3775dc2ce470fe08dba2916c7b2a17eaec50` |
+| Product lock | `7f35cb46261358848c714d16a5e4782bbbe8e60d9ae876440285ed4440fa12e1` |
+| Qualification lock | `7e7a5a3bed5fc8a8d0b9c872671d4585b88b90b9b89a365b18271da2a6f9af2c` |
+
+### Anchored fixed-rate intervals — 0.37.6
+
+The legacy-capability scope now includes elapsed fixed-rate recurrence.
+`Schedule::fixed_rate` calculates the next anchored timestamp with checked
+unsigned arithmetic and a positive interval. It uses the existing bounded
+catch-up, execution and checkpoint validation paths; no dependency or separate
+executor was added. Calendar rules still belong exclusively to Saffron.
+
+All 20 all-feature native Jobs tests pass, including anchor alignment, exclusive
+windows, unsigned overflow and combined catch-up age/count limits. Strict Jobs,
+probe and driver Clippy pass. The installed suite passes with the bulk fixture
+exercising both cron and fixed-rate schedules: each mode completes 192 ordered,
+nonoverlapping awaits across 64 jobs, discards excess and does not replenish its
+batch quota. This is local PocketIC evidence, not production qualification.
+
+Binding still selects strictly after current time. Initial overdue deadlines and
+timestamp-zero execution remain unfinished; this increment does not establish
+full legacy schedule parity. One-shot and after-completion schedules also remain
+required. See the [scope decision](../design/release-scope.md).
+
+Reproduce with `make check-once` using the prepared PocketIC server; look for
+`jobs bulk: mode=0` and `mode=1`. Compiler, suppliers and locks are unchanged from
+the 0.37.6 observation above. Combined probe SHA-256:
+`cc20b1fdecd42701c9fa1219a4ca08156192f087e0f6d7d6a73628f7c0437b17`.
+The fixture now exercises an additional schedule mode, so this artifact is not
+a like-for-like binary-size comparison with earlier probes.

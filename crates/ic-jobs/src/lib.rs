@@ -1,12 +1,13 @@
-//! UTC calendar scheduling backed by Saffron and optional IC execution.
+//! UTC cron and anchored fixed-rate scheduling with optional IC execution.
 //!
-//! Enable the opt-in `calendar` feature for five-field UTC cron schedules.
+//! Enable the opt-in `calendar` feature for five-field UTC cron schedules and
+//! fixed-rate elapsed intervals. Saffron owns calendar calculation.
 //! Bounded catch-up previews are available through `Schedule::catch_up` when
 //! `calendar` is enabled. The opt-in `execution` feature adds wasm32 execution
 //! with explicit skip-late or bounded catch-up policy on
 //! retained Once timers. Default builds include neither calendar nor IC execution
 //! dependencies. Host-owned checkpoints support settled/queued reconstruction;
-//! unresolved-work persistence and coalescing remain unfinished.
+//! legacy retry/unresolved-work persistence remains unfinished; coalescing is deferred.
 
 #[cfg(feature = "calendar")]
 mod schedule;

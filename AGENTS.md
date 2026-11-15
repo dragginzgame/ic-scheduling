@@ -3,6 +3,8 @@
 Follow the installed TOKO-TOOLING.md engineering baseline and this local overlay.
 Read docs/design/DESIGN.md, docs/design/jobs.md and
 docs/evidence/consumer-requirements.md before implementation.
+The current scope decision is docs/design/release-scope.md: preserve legacy
+capabilities without copying the old architecture; defer additional proposals.
 
 The Rust workspace is unpublished, with product packages under
 crates/. Timers and Jobs have independent development versions and changelogs
@@ -31,7 +33,7 @@ and paused reconstruction; running or recovery-required work refuses export.
 Schema 2 preserves remaining catch-up batches across pause and upgrade. Age is
 evaluated at batch selection; finishing skips excess and occurrences that arrived
 during the batch. Recovery discards the remaining batch and leaves the job paused.
-Unresolved-work persistence and coalescing remain unfinished.
+Unresolved-work persistence remains unfinished; Jobs coalescing is deferred.
 See docs/evidence/jobs-progress.md.
 
 The root Cargo.toml owns product dependencies. Qualification owns its own

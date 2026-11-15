@@ -14,7 +14,7 @@ use crate::engine::{Attempt, ControlError, Demand, OnceState, Recovery, State, T
 
 pub(super) const CAPACITY: usize = 64;
 type WorkFuture = Pin<Box<dyn Future<Output = Demand>>>;
-type Factory = Rc<RefCell<Box<dyn FnMut() -> WorkFuture>>>;
+type Factory = Rc<RefCell<dyn FnMut() -> WorkFuture>>;
 
 #[derive(Debug, Eq, PartialEq)]
 pub(super) enum Error {
@@ -108,7 +108,7 @@ impl Bindings {
             identity,
             Kind::Once {
                 state: OnceState::new(),
-                factory: Rc::new(RefCell::new(Box::new(move || Box::pin(work())))),
+                factory: Rc::new(RefCell::new(move || -> WorkFuture { Box::pin(work()) })),
             },
         )
     }
@@ -142,15 +142,7 @@ impl Bindings {
 
     /// Return one due reservation, rotating across the bounded table. Transport
     /// must reserve flight capacity and suppress duplicate submission itself.
-    #[cfg(test)]
-    pub(super) fn due(&self, now: u64) -> Option<Dispatch> {
-        match self.select(now, false) {
-            Some(Scheduled::Once(dispatch)) => Some(dispatch),
-            _ => None,
-        }
-    }
-
-    pub(super) fn select(&self, now: u64, include_watchdogs: bool) -> Option<Scheduled> {
+    pub(super) fn select(&self, now: u64) -> Option<Scheduled> {
         let mut table = self.0.borrow_mut();
         let count = table.entries.len();
         for _ in 0..count {
@@ -166,7 +158,7 @@ impl Bindings {
                         }));
                     }
                 }
-                Kind::Watchdog { state, .. } if include_watchdogs => {
+                Kind::Watchdog { state, .. } => {
                     if let Some(ticket) = state.pending() {
                         return Some(Scheduled::Watchdog(watchdog::Dispatch {
                             table: Rc::downgrade(&self.0),
@@ -175,7 +167,6 @@ impl Bindings {
                         }));
                     }
                 }
-                _ => {}
             }
         }
         None
