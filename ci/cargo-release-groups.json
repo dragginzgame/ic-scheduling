@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "groups": [
+    {
+      "name": "jobs",
+      "primary": "ic-jobs",
+      "version": "package",
+      "members": ["ic-jobs"],
+      "changelog": "releases/jobs/CHANGELOG.md",
+      "dependencies": []
+    },
+    {
+      "name": "timers",
+      "primary": "ic-timers",
+      "version": "package",
+      "members": ["ic-timers"],
+      "changelog": "releases/timers/CHANGELOG.md",
+      "dependencies": []
+    }
+  ]
+}

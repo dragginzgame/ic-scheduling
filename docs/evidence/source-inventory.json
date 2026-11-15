@@ -1,0 +1,172 @@
+{
+  "observed_at_utc": "2026-11-15T08:35:44.540863+00:00",
+  "scope": "Local working trees; no remote/deployment inventory. Relay explicitly excluded by maintainer. Git-ignored artifacts and vendor code excluded. Dirty source identified by file hashes.",
+  "search": "rg -l --hidden \"ic[-_]jobs|ic[-_]timers\" .. -g Cargo.toml -g \"*.rs\" -g \"!**/target/**\" -g \"!**/vendor/**\" -g \"!**/.git/**\" -g \"!**/ic-scheduling/**\" -g \"!**/ic-scheduling-new/**\" -g \"!**/ic-relay/**\"",
+  "repositories": [
+    {
+      "repository": "canic",
+      "head": "f6b5c37ead9f443f49d1d7cac0b0897f56d221e7",
+      "dirty": true
+    },
+    {
+      "repository": "ic-auth",
+      "head": "10f9143add8e26dcd24accf06ed18f2ab86b4436",
+      "dirty": true
+    },
+    {
+      "repository": "ic-backup",
+      "head": "ec681f21506db0482b2cf3843f44593c56347994",
+      "dirty": true
+    },
+    {
+      "repository": "ic-blob-storage",
+      "head": "3c26f6c5c9bd0a32e0ad1a4c7d644f056c6c5e46",
+      "dirty": true
+    },
+    {
+      "repository": "ic-db",
+      "head": "62963f78e9b8e28fc161f41435f83114aaca3123",
+      "dirty": true
+    },
+    {
+      "repository": "ic-entropy",
+      "head": "6c400b2c0259323ad1464fc692a4c4c378a2b101",
+      "dirty": false
+    },
+    {
+      "repository": "ic-observability",
+      "head": "a93e3b6a5f9ee91aca8641a04b7bf90e46824615",
+      "dirty": true
+    },
+    {
+      "repository": "ic-platform",
+      "head": "95b61fb4bcdeb9f8e70ddcb65e83929213ff99a5",
+      "dirty": true
+    },
+    {
+      "repository": "ic-query",
+      "head": "51b7d50895327ba8afe6c27d82834a5aae3c07db",
+      "dirty": true
+    },
+    {
+      "repository": "ic-scheduling",
+      "head": "b1a1258ead537ee6b76f71c3bd5f5df3e23e4225",
+      "dirty": true
+    },
+    {
+      "repository": "ic-storage",
+      "head": "d2762f2dc7db339a88446e9c7c620ab95785711b",
+      "dirty": true
+    },
+    {
+      "repository": "ic-tooling",
+      "head": "3aaaec1aef866aa106a2445d1394cd4c74eafe02",
+      "dirty": true
+    },
+    {
+      "repository": "ic-tooling-new",
+      "head": null,
+      "dirty": true
+    },
+    {
+      "repository": "ic-wire",
+      "head": "63c4b214929d981ad57c94fb71219875e8004885",
+      "dirty": false
+    },
+    {
+      "repository": "toko-tooling",
+      "head": "38a3b259453c56d9fb66e780e53957641f1e73b2",
+      "dirty": false
+    }
+  ],
+  "files": [
+    {
+      "path": "canic/Cargo.toml",
+      "sha256": "2ec0224e6f622ce345b0e87785ad2fe36d0e862d90c3fb6072e5eb00f699a5f1"
+    },
+    {
+      "path": "canic/crates/canic-management/Cargo.toml",
+      "sha256": "e6d14f386a144c45b717b121f909456b503e80f26e799f17d85d97df76d5b678"
+    },
+    {
+      "path": "canic/crates/canic-management/src/engine/mod.rs",
+      "sha256": "97ed2a8ae13426c7887acf6f2feebfe7d7002a92809de36ecc6dd282784ed5fd"
+    },
+    {
+      "path": "ic-entropy/Cargo.toml",
+      "sha256": "de9af6d6187ac6fdcdf6f34fd1020fd7e600ea73d8c492cf31d9b4b9966e41c0"
+    },
+    {
+      "path": "ic-entropy/crates/ic-entropy-ic/Cargo.toml",
+      "sha256": "d91524cf823819850b564cac2a74b89d7734bee0080610af2727dc2027ee328e"
+    },
+    {
+      "path": "ic-entropy/crates/ic-entropy-ic/src/buffered/mod.rs",
+      "sha256": "0e93d82d512c9e1da1c80a702197c41612cff1bb892881358c936736ca57ee95"
+    },
+    {
+      "path": "ic-scheduling/LICENSE.md",
+      "sha256": "3f2971bfefccf71cf4929cabd1fa000e0c7b3d4002b9a08ca58821ccb048c123"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-jobs/src/job.rs",
+      "sha256": "fa38aacda390e89b9b59cdb5c10f57925a97791b26a1ef692c7ffcb257b92f94"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-jobs/src/policy.rs",
+      "sha256": "4b3ff00b947f134c219843af078c54db786840e88c6ae3dea2541a5814b140ea"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-timers/src/control/mod.rs",
+      "sha256": "cf2ddfadeb50e441c7e0712565a224e86dec8b873a8ba908a515981064950046"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-timers/src/lib.rs",
+      "sha256": "e4183bc699a016da841d4c98d70bb269d32b4add8367fd0f7c14043ca26ba179"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-timers/src/platform/backend.rs",
+      "sha256": "9a58cb04f1966e640ad549160f9b1c36b72e0bb58c34c5aaa119ce12f5743a37"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-timers/src/platform/ffi.rs",
+      "sha256": "7075756e0fd38b1a9035ceaa22df3c65de13798a7679ac4e1269741ccec36d6b"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-timers/src/platform/ownership/mod.rs",
+      "sha256": "1899ea9ebaceddbfc36d59909c7d6f4a3b4b5acd113b0232d28eafbd4aa8af63"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-timers/src/registry/entry.rs",
+      "sha256": "3e571b065039b1378bffeb85b31c817661cf934beaa46f197b0d46ce01770835"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-timers/src/registry/mod.rs",
+      "sha256": "7ce3d0d6a31f2c3c6a51c896b671cd9bbdf116740dfabe1f45d8a884ce149f36"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-timers/src/registry/watchdog/mod.rs",
+      "sha256": "f419525c29e6973e471241f96ca68a8c098360d974206e0f47cc685343f8fa5a"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-timers/src/runtime/dispatch.rs",
+      "sha256": "c9b94f7aa89c399fdb3aacef640321726bc5e31af242ba3a6387c5fcd456df1f"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-timers/src/runtime/registration.rs",
+      "sha256": "48bf6201dad1a0c8990950fe921e5360758bc8c75e07cbbbb4efac7f91f85c83"
+    },
+    {
+      "path": "ic-scheduling/crates/ic-timers/src/snapshot/metrics/mod.rs",
+      "sha256": "9f2ae776b9034d0e1dbea3ff52b2e0f337c5845b39d6bac76a72df51c537c0bf"
+    },
+    {
+      "path": "ic-scheduling/docs/integration/canic.md",
+      "sha256": "69961abdcebd39d5c04c425463f9dd491b6563acaccfb634ea5db3864d3f3831"
+    },
+    {
+      "path": "ic-scheduling/docs/reports/experiments/jobs-shadow-2026-11-15.md",
+      "sha256": "62ba81f3a59341741f9fde313b6964c317965ca8d01809dfa6a4392a0406923c"
+    }
+  ]
+}
