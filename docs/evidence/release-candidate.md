@@ -1,5 +1,41 @@
 # Scheduling release qualification and delivery
 
+## Qualification maintenance — 2026-11-16
+
+The qualification workspace now selects Testkit 0.107.3 and its Protocol 0.2.6
+held-reply dependency. The maintained pinned Entropy fixture also adopts
+Wire 0.24.2 through explicit framed `encode` / `decode` calls. Runtime/guard
+0.23.14, Types 0.21.2 and Metrics 0.30.8 remain current. Product manifests,
+root lockfile, source and packaged file inventories are unchanged; this is
+Git-only qualification delivery. Timers 0.46.0 and Jobs 0.39.0 remain the
+published versions. Pending development notes are retained for their next
+actual releases rather than publishing unchanged product payloads.
+
+Registry archive review selected these non-yanked supplier identities:
+
+| Package | Source commit | Registry SHA-256 |
+| --- | --- | --- |
+| ic-testkit 0.107.3 | `3c3fd63a6c16f4f1c38eef7984d211791022ba37` | `f1abdecdc13e767e8f5f7f83f2c19e48a414d6a7eea2e2ffdbfe95222c56d6c2` |
+| ic-wire 0.24.2 | `1da48059e36132b09775f6130638b8b9c3169538` | `852a98f3b818bf1e6841c63845d88ded595b659181377e749cf8cf50b12b48c6` |
+
+Strict native driver and native/Wasm Entropy probe Clippy pass. Installed
+executor lifecycle/admission checks, the full Once/watchdog/Jobs suite and the
+actual Entropy query-refusal/refill/suspension/upgrade/reinstall journey pass.
+The real release metadata transaction fixture passes for both groups, retaining
+independent qualification-lock synchronization, unselected identities and
+downgrade refusal. Metadata shows one Runtime and one executor guard in both
+qualification graphs, and one Wire 0.24.2 in the consumer fixture. Logs and
+package inventories remain under `target/evidence/qualification-ic-refresh/`.
+These are local Linux/PocketIC 16.0.0 observations, not a fresh hosted matrix.
+
+The separately selected release metadata executable remains on qualified
+ic-build 0.73.0. Current ic-build 0.87.3 has no `cli` feature, binary target or
+equivalent rendering export. Its missing supported successor is tracked by
+[Tooling #8 — Supply a released successor for the displaced Cargo release metadata editor](https://github.com/dragginzgame/ic-tooling/issues/8).
+New-editor adoption is not claimed. Upstream simulator-owned IC package
+versions remain in PocketIC 16.1.0's supported graph; no forced transitive
+major-version overrides or sibling source changes were introduced.
+
 ## Completed: Timers 0.46.0 / Jobs 0.39.0
 
 2026-11-16: Scheduling adopted Toko Tooling 0.44.11 and published Runtime

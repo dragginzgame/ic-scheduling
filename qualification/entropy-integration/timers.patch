@@ -244,11 +244,12 @@
 -ic-platform-runtime = { version = "0.22.3", default-features = false }
 -ic-platform-types = { version = "0.20.3", default-features = false }
 -ic-testkit = { version = "0.106.0", default-features = false }
+-ic-wire = { version = "0.22.0", default-features = false }
 +ic-platform-protocol = { version = "=0.2.6", default-features = false }
 +ic-platform-runtime = { version = "=0.23.14", default-features = false, features = ["call-ic0", "system-raw"] }
 +ic-platform-types = { version = "=0.21.2", default-features = false }
-+ic-testkit = { version = "=0.107.2", default-features = false }
- ic-wire = { version = "0.22.0", default-features = false }
++ic-testkit = { version = "=0.107.3", default-features = false }
++ic-wire = { version = "0.24.2", default-features = false }
  serde = { version = "1.0.229", features = ["derive"] }
  tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread"] }
 -toko-tooling = "=0.43.2"
@@ -271,7 +272,7 @@
  [lints]
 --- a/qualification/entropy-probe/src/canister/mod.rs
 +++ b/qualification/entropy-probe/src/canister/mod.rs
-@@ -7,40 +7,40 @@
+@@ -7,40 +7,56 @@
      TAKE,
  };
  use ic_entropy_ic::{self as entropy, Error, RefillState};
@@ -286,29 +287,46 @@
 -fn decode<T: DeserializeOwned, const ID: u64>(bytes: Vec<u8>) -> T {
 -    ic_wire::native::decode_request(ID, &bytes, LIMITS).expect("fixture request")
 +fn decode<T: DeserializeOwned, const ID: u64>(bytes: &[u8]) -> Result<T, &'static str> {
-+    ic_wire::native::decode_request(ID, bytes, LIMITS).map_err(|_| "fixture request")
++    ic_wire::decode(
++        bytes,
++        ic_wire::Encoding::Frame {
++            method: ID,
++            direction: ic_wire::Direction::Request,
++        },
++        LIMITS,
++    )
++    .map_err(|_| "fixture request")
++}
++
++fn encode<T: Serialize, const ID: u64>(value: T) -> Result<Vec<u8>, &'static str> {
++    ic_wire::encode(
++        &value,
++        ic_wire::Encoding::Frame {
++            method: ID,
++            direction: ic_wire::Direction::Response,
++        },
++        LIMITS,
++    )
++    .map_err(|_| "fixture response")
  }
 
 -fn encode<T: Serialize, const ID: u64>(value: T) -> Vec<u8> {
 -    ic_wire::native::encode_response(ID, &value, LIMITS).expect("fixture response")
-+fn encode<T: Serialize, const ID: u64>(value: T) -> Result<Vec<u8>, &'static str> {
-+    ic_wire::native::encode_response(ID, &value, LIMITS).map_err(|_| "fixture response")
++fn encode_unit<const ID: u64>((): ()) -> Result<Vec<u8>, &'static str> {
++    encode::<_, ID>(())
  }
 
 -fn encode_unit<const ID: u64>() -> Vec<u8> {
-+fn encode_unit<const ID: u64>((): ()) -> Result<Vec<u8>, &'static str> {
-     encode::<_, ID>(())
- }
-
--#[cdk::init(decode_with = "decode::<_, { INIT }>")]
--fn init() {
+-    encode::<_, ID>(())
 +fn guard() -> Result<(), std::convert::Infallible> {
 +    Ok(())
 +}
 +fn fail<E: std::fmt::Debug>(error: E) -> ! {
 +    runtime::system::trap(&format!("{error:?}"))
-+}
-+
+ }
+
+-#[cdk::init(decode_with = "decode::<_, { INIT }>")]
+-fn init() {
 +#[runtime::init(runtime = runtime, guard = guard, decode = decode::<_, { INIT }>, max_bytes = 4096, on_error = fail)]
 +fn init(_input: ()) {
      entropy::reconstruct().unwrap();
@@ -331,7 +349,7 @@
      let status = entropy::status();
      State {
          seeds: status.buffered_seeds as u32,
-@@ -50,63 +50,42 @@
+@@ -50,63 +66,42 @@
      }
  }
 
@@ -541,7 +559,58 @@
  };
  use serde::de::DeserializeOwned;
  use std::{path::PathBuf, time::Duration};
-@@ -66,16 +63,14 @@
+@@ -15,7 +12,15 @@
+ const EXPECTED_POOL_CAPACITY: u32 = 256;
+
+ fn request(id: u64) -> Vec<u8> {
+-    ic_wire::native::encode_request(id, &(), LIMITS).unwrap()
++    ic_wire::encode(
++        &(),
++        ic_wire::Encoding::Frame {
++            method: id,
++            direction: ic_wire::Direction::Request,
++        },
++        LIMITS,
++    )
++    .unwrap()
+ }
+
+ async fn update<T: DeserializeOwned>(pic: &PocketIc, pid: Principal, name: &str, id: u64) -> T {
+@@ -23,7 +28,15 @@
+         .update_call(pid, Principal::anonymous(), name, request(id))
+         .await
+         .unwrap();
+-    ic_wire::native::decode_response(id, &bytes, LIMITS).unwrap()
++    ic_wire::decode(
++        &bytes,
++        ic_wire::Encoding::Frame {
++            method: id,
++            direction: ic_wire::Direction::Response,
++        },
++        LIMITS,
++    )
++    .unwrap()
+ }
+
+ async fn query<T: DeserializeOwned>(pic: &PocketIc, pid: Principal, name: &str, id: u64) -> T {
+@@ -31,7 +44,15 @@
+         .query_call(pid, Principal::anonymous(), name, request(id))
+         .await
+         .unwrap();
+-    ic_wire::native::decode_response(id, &bytes, LIMITS).unwrap()
++    ic_wire::decode(
++        &bytes,
++        ic_wire::Encoding::Frame {
++            method: id,
++            direction: ic_wire::Direction::Response,
++        },
++        LIMITS,
++    )
++    .unwrap()
+ }
+
+ async fn inspect(pic: &PocketIc, pid: Principal) -> State {
+@@ -66,16 +87,14 @@
              .expect("run make test-installed to build and select the probe artifact"),
      );
      let wasm = std::fs::read(path).unwrap();
@@ -566,7 +635,26 @@
      let pid = pic.create_canister().await;
      pic.add_cycles(pid, 10_000_000_000_000).await;
      pic.install_canister(pid, wasm.clone(), request(INIT), None)
-@@ -177,5 +172,5 @@
+@@ -144,7 +163,17 @@
+     })
+     .await;
+     let reply = pic.await_call(held).await.unwrap();
+-    assert!(ic_wire::native::decode_response::<bool>(CONTEND, &reply, LIMITS).unwrap());
++    assert!(
++        ic_wire::decode::<bool>(
++            &reply,
++            ic_wire::Encoding::Frame {
++                method: CONTEND,
++                direction: ic_wire::Direction::Response
++            },
++            LIMITS
++        )
++        .unwrap()
++    );
+     full_pool(pic, pid).await;
+     let recovered: SourceState = query(pic, pid, "source_state", SOURCE_STATE).await;
+     assert!(!recovered.busy);
+@@ -177,5 +206,5 @@
          .await
          .unwrap();
      assert_eq!(full_pool(pic, pid).await.remaining, 0);

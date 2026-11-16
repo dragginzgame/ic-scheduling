@@ -13,6 +13,12 @@ both existing lockfiles with `--locked`, installs pinned tools and selects the
 published IC Build 0.73.0 metadata editor. Checks then run offline. Recovery only
 admits saved tools; it does not refresh dependencies or repair locks.
 
+The current ic-build 0.87.3 package does not contain the displaced metadata
+executable or its `cli` feature. Keep the qualified 0.73.0 selection until a
+supported successor is supplied; this is separate from the adopted Testkit /
+Wire qualification updates. The concrete supplier gap is
+[Tooling #8 — Supply a released successor for the displaced Cargo release metadata editor](https://github.com/dragginzgame/ic-tooling/issues/8).
+
 For Timers 0.45.10/0.45.11 and Jobs 0.38.0/0.38.1, the maintainer waived the
 Entropy journey. Their release gates require `POCKET_IC_BIN` but not
 `ENTROPY_SOURCE`; all Scheduling-owned checks and archive checks remain required.

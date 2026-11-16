@@ -1,5 +1,12 @@
 # Jobs changelog
 
+## [0.39.1] - Unreleased
+
+### 🛠️ Development
+
+- Refresh private execution qualification to Testkit 0.107.3 / Protocol 0.2.6,
+  alongside the pinned consumer's Wire 0.24.2 probe migration.
+
 ## [0.39.0] - 2026-11-16
 
 ### 💥 Changed

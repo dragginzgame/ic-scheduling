@@ -757,9 +757,9 @@ checksum = "b5cd1e020757542a942d6191457a68512bf8a21bdb443370d92743da67557b71"
 
 [[package]]
 name = "ic-platform-protocol"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93ed6052f78c99bf45bcf1ffdd11bd6eb4de4463dbe425a7b63e093b8f7a0ed2"
+checksum = "758e0b8455b2ab340a4503f211357b7725f52a55a2c8c209ee2f01b122763b7e"
 
 [[package]]
 name = "ic-platform-runtime"
@@ -792,9 +792,9 @@ dependencies = [
 
 [[package]]
 name = "ic-testkit"
-version = "0.107.2"
+version = "0.107.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d0ad701e379df81e149511b0d6bbb810648770ec777a4eb88fd7e87e4ee2883"
+checksum = "f1abdecdc13e767e8f5f7f83f2c19e48a414d6a7eea2e2ffdbfe95222c56d6c2"
 dependencies = [
  "ic-platform-protocol",
  "ic-platform-types",

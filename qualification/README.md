@@ -5,7 +5,7 @@ catalog and lockfile. All packages remain unpublished and inherit the shared
 compiler, Toko pin and lint baseline. The license path points to the repository
 root. Qualification consumes product packages; the reverse dependency is forbidden.
 Host drivers use `ic-testkit::pocket_ic`, matching ic-platform’s qualification
-boundary. Testkit 0.107.2 selects PocketIC client 16.1.0; the prepared 16.0.0
+boundary. Testkit 0.107.3 selects PocketIC client 16.1.0; the prepared 16.0.0
 server is supported. Do not add a direct `pocket-ic` dependency.
 
 `calendar-probe` builds the actual Saffron-backed UTC Jobs adapter as a

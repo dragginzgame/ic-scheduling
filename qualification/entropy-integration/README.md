@@ -9,9 +9,10 @@ being rewritten and needs a separate integration review when its API settles.
 regardless of the checkout's current branch or working changes. It materializes
 tracked product and qualification sources under ignored
 `qualification/target/entropy-integration/`,
-applies `timers.patch`, and adds local Cargo overrides for unpublished Timers.
+applies `timers.patch`, and adds local Cargo overrides for the Timers candidate.
 It does not copy Entropy's release machinery or modify its checkout. The patch
-changes the dependency version, target gates and buffered timer adapter only.
+changes the dependency cohort, target gates, retained timer adapter and the
+probe's explicit Runtime/Wire codec and Testkit startup callers.
 The existing consumer tests run from that isolated copy.
 
 Run from the Scheduling root with prepared Rust/Wasm tools, cached dependencies
@@ -49,8 +50,11 @@ consumer's query-refusal guard, resolving
 [Platform #19 — Expose replicated-execution observation for Entropy's source admission](https://github.com/dragginzgame/ic-platform/issues/19).
 The patch preserves the typed refusal before source claim/submission, using the
 public boolean observation without admitting a task or mutating state. Its
-installed journey passes on Runtime 0.23.14, Protocol 0.2.6, Types 0.21.2 and
-Testkit 0.107.2. Native tests pass too. Actual Entropy source remains unchanged.
+installed journey passes on Runtime 0.23.14, Protocol 0.2.6, Types 0.21.2,
+Testkit 0.107.3 and Wire 0.24.2. Wire framing now uses root-level `encode` /
+`decode` with an explicit method identity and request/response direction;
+the existing frame IDs, schemas and resource limits are retained. Actual Entropy
+source remains unchanged. See the dated evidence for the tested selections.
 
 See [recorded evidence](../../docs/evidence/entropy-integration.md) for results,
 hashes and the remaining lifecycle limits.

@@ -1,5 +1,12 @@
 # Timers changelog
 
+## [0.46.1] - Unreleased
+
+### 🛠️ Development
+
+- Refresh private qualification to Testkit 0.107.3 / Protocol 0.2.6 and migrate
+  the pinned Entropy probe to Wire 0.24.2's explicit frame codec API.
+
 ## [0.46.0] - 2026-11-16
 
 ### 💥 Changed

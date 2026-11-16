@@ -1,5 +1,22 @@
 # Entropy consumer migration qualification
 
+## Qualification supplier refresh — 2026-11-16
+
+The same immutable consumer revision now qualifies Testkit 0.107.3 and
+Wire 0.24.2, retaining Protocol 0.2.6, Runtime/guard 0.23.14 and Types 0.21.2.
+The probe and native driver replace the removed `ic_wire::native` entrypoints
+with root-level `encode` / `decode` and explicit request/response frame
+directions. Method IDs, value schemas and the shared byte/allocation/node/depth
+limits are unchanged. The maintained patch materializes and applies cleanly.
+
+Strict native all-target and Wasm probe Clippy pass. The actual release-Wasm
+`background_refill_and_lifecycle` passes in 22.21 seconds, including query
+refusal before source mutation, refill, source contention/stale custody,
+suspension, upgrade and reinstall. Metadata resolves one Runtime and one
+executor guard, with one current Wire selection. Logs remain under
+`target/evidence/qualification-ic-refresh/`. This is local Linux/PocketIC 16.0.0
+qualification, not adoption or delivery in the Entropy repository.
+
 ## Runtime 0.23 migration — 2026-11-16
 
 The maintained adapter still materializes only immutable Entropy commit
