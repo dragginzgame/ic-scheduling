@@ -18,7 +18,7 @@ of current 0.87.3 is deferred to the next release-tool maintenance batch. This
 delivery does not change its metadata contract. The pinned Entropy journey
 remains required: its source is read from the exact Git commit, independently
 of the consumer checkout's current branch and dirty files. No Entropy source
-or working-tree changes are included. Existing version-specific waivers do
+or working-tree changes are included. Existing version-specific waivers
 did not apply to these releases.
 
 The exporter preview and installation passed, retaining the same 76 managed
