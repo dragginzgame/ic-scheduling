@@ -18,7 +18,7 @@ The existing installed test assertions are preserved; its Testkit startup now
 uses `ic-testkit::pocket_ic::PocketIcBuilder` directly. No sibling files change.
 The [current adoption evidence](once-provider.md) records supplier identity
 and the earlier blocked attempt. The standard captured-source release gate
-will requalify the final candidate; no release claim follows from this fixture.
+requalified both release groups successfully; see the [delivery record](release-candidate.md).
 
 ## Original timer migration — 2026-11-15
 

@@ -1,39 +1,57 @@
 # Scheduling release qualification and delivery
 
-## Pending: Timers 0.46.0 / Jobs 0.39.0
+## Completed: Timers 0.46.0 / Jobs 0.39.0
 
-2026-11-16: Scheduling adopts Toko Tooling 0.44.11 and published Runtime
+2026-11-16: Scheduling adopted Toko Tooling 0.44.11 and published Runtime
 0.23.14 / Types 0.21.2 / Testkit 0.107.2. The maintained Entropy adapter uses
 Protocol 0.2.6. Scheduling's held-reply driver retains Protocol 0.2.5 through
 Testkit's exact requirement. Both maintained workspaces resolve one Runtime
 and one executor guard; qualification retains its independent catalog and lock.
 Hosts composing Timers with Runtime 0.22 must migrate their callers together,
-so the planned releases advance the minor versions. Package versions remain
-at published Timers 0.45.12 and Jobs 0.38.2 until standard preparation. Jobs
-checkpoint schema 7 and calendar behavior remain unchanged.
+so these releases advance the minor versions. Jobs checkpoint schema 7 and
+calendar behavior remain unchanged.
 
-The earlier Runtime 0.23.13 migration passed strict product/probe Wasm Clippy,
-native driver Clippy, the installed executor cases, the complete installed
-Once/watchdog/Jobs suite and paired metrics checks. Runtime 0.23.14 adds only
-the replicated-execution observation missing from the pinned Entropy guard.
-The updated Entropy adapter now passes all 24 native tests and its actual
-release-Wasm installed query-refusal/lifecycle journey. Supplier identities
-and logs are recorded in the [Runtime adoption evidence](once-provider.md).
-No query guard is bypassed and no sibling source is edited or published.
+Batch `batch-waYcz4QJ` captured adoption commit
+`fc5a4f16c3be0b48cec0532b0d091192ace8c039`, then completed both supplier-first
+releases and registry publication. Each group passed its complete standard gate:
+tool/snapshot/format/hook admission, strict native and Wasm Clippy, native
+feature variants, Wasm documentation, calendar, installed executor, complete
+Once/watchdog/Jobs failure/lifecycle/resource checks, paired metrics, the pinned
+Entropy native/Wasm/installed journey and archives. Prepared metadata received
+its separate archive checks. Jobs additionally passed the registry-only
+all-feature Wasm archive check against published Timers 0.46.0. Normal-checkout
+reconciliation fast-forwarded through the standard batch command.
+
+The maintainer chose to wait for
+[Platform #19 — Expose replicated-execution observation for Entropy's source admission](https://github.com/dragginzgame/ic-platform/issues/19).
+Runtime 0.23.14 supplies that boolean, and the actual Entropy query-refusal and
+lifecycle journey passes without bypassing its guard. No Entropy waiver was
+used and no sibling source was edited or published. This completes
+[Scheduling #2 — Migrate Timers to Runtime 0.23 with one executor and retained watchdog recovery](https://github.com/dragginzgame/ic-scheduling/issues/2).
 
 Toko Tooling 0.44.11 also requires actionable CI setup diagnostics. Scheduling
-now retains bounded, sanitized failures and selected hidden Rust attempt logs,
+retains bounded, sanitized failures and selected hidden Rust attempt logs,
 with a seven-day artifact lifetime and explicit upload/missing-evidence results.
-The focused offline failure rehearsal passes; hosted upload/retrieval has not
-been observed. Both exact tooling pins, lockfiles and all 76 snapshot-managed
-files agree with the reviewed registry archive.
+The focused offline failure rehearsal passes; hosted failure upload/retrieval
+has not been observed. Both exact tooling pins, lockfiles and all 76 managed
+snapshot files agree with the reviewed registry archive.
 
-The maintainer chose to wait for [Platform #19 — Expose replicated-execution observation for Entropy's source admission](https://github.com/dragginzgame/ic-platform/issues/19) rather than waive Entropy.
-The published context API and actual consumer check clear that blocker;
-earlier version-specific Entropy waivers remain unchanged. The next step is
-the complete standard captured-source gate and archive admission, followed by
-supplier-first GitHub and registry delivery. Current local observations are
-Linux/PocketIC 16.0.0 evidence, not hosted macOS or release proof.
+Independent registry downloads match the non-yanked sparse-index checksums and
+embedded source commits:
+
+| Package | Release commit | Registry SHA-256 |
+| --- | --- | --- |
+| ic-timers 0.46.0 | `ccb6bd7c7aed6ce51a1f67274029d1370fdc74e1` | `5824a0528889edf09e57818528e5dda36f6ce9ab9819650e07a7d9867add9a17` |
+| ic-jobs 0.39.0 | `38fb219f1fda831b6d8439acfd6282d8b86947cc` | `665db056c7b2cce1e56094bc8dbb6fca03b5c6d7ab204f4dd472f66167108bae` |
+
+Remote annotated tags `timers-v0.46.0` and `jobs-v0.39.0` peel to those commits.
+Readbacks remain under `target/publication/readback-0460-0390/`; batch recovery
+and publication evidence remain in their standard retained locations. The
+normal log is `target/evidence/platform-02314/release-batch.log`. Focused
+post-push review of the adoption and both release commits found no actionable
+issue. Local installed evidence is Linux/PocketIC 16.0.0. The
+[Jobs release CI run](https://github.com/dragginzgame/ic-scheduling/actions/runs/43954676663)
+was in progress at this observation; no hosted macOS qualification is claimed.
 
 ## Completed: Timers 0.45.12 / Jobs 0.38.2
 

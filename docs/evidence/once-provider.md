@@ -1,4 +1,4 @@
-> Current delivery: [0.45.12 / 0.38.2 qualification](release-candidate.md).
+> Current delivery: [0.46.0 / 0.39.0 qualification](release-candidate.md).
 > Earlier open-gate statements below describe their dated implementation slice.
 
 # Installed Once provider slice — 2026-11-15
@@ -29,7 +29,8 @@ no temporary guard bypass or sibling edit is used. Logs remain under
 `target/evidence/platform-02313/entropy-02314-installed-fixed.log`.
 This clears the consumer API blocker behind
 [Platform #19 — Expose replicated-execution observation for Entropy's source admission](https://github.com/dragginzgame/ic-platform/issues/19).
-Full standard release/archive admission still applies before delivery.
+Both standard captured-source gates, final archives and registry delivery now
+pass; see the [completed delivery record](release-candidate.md).
 
 ## Earlier Runtime adoption review — 2026-11-16
 
