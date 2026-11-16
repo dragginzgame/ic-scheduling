@@ -1,5 +1,31 @@
 # Scheduling release qualification and delivery
 
+## Candidate: Timers 0.45.12 / Jobs 0.38.2
+
+Supplier review on 2026-11-16 selected published Toko Tooling 0.44.6 and
+Testkit 0.107.1. Metrics 0.30.8 remains current. Runtime 0.23.11 was probed and
+refused during Cargo resolution because its `runtime` feature no longer exists.
+Review of its released source at `cbbf26ade6644ed6fbcadfe3ccbafe809c362f25`
+also found no public global-timer setter, canister-version primitive or
+trap-aware protected-task API. Scheduling needs all three for timer ownership,
+upgrade incarnation and abandonment custody. Retain the qualified Runtime
+0.22.5 graph for this delivery; migration remains blocked until Platform
+provides the required primitives and their installed failure contract can pass.
+No local runtime replacement or weakened recovery behavior is introduced.
+
+The metadata editor remains the qualified IC Build 0.73.0; optional adoption
+of current 0.87.3 is deferred to the next release-tool maintenance batch. This
+delivery does not change its metadata contract. The pinned Entropy journey
+remains required: its source is read from the exact Git commit, independently
+of the consumer checkout's current branch and dirty files. No Entropy source
+or working-tree changes are included. Existing version-specific waivers do
+not apply to these candidates.
+
+The exporter preview and installation passed, retaining the same 76 managed
+files and entrypoint selection. Product APIs, Jobs schema 7 and supported
+consumer build requirements are unchanged; both candidates are patch releases.
+Release qualification and delivery results are pending.
+
 ## Completed: Timers 0.45.11 / Jobs 0.38.1
 
 2026-11-16: deploy the completed issue #1 tooling fixes using Toko Tooling 0.44.5.

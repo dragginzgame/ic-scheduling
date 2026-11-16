@@ -1,5 +1,16 @@
 # Timers changelog
 
+## [0.45.12] - Unreleased
+
+### 🛠️ Development
+
+- Adopt Toko Tooling 0.44.6 and qualify installed behavior with Testkit 0.107.1.
+- Read the pinned Entropy integration commit independently of its working tree,
+  preserving immutable source admission while allowing concurrent consumer work.
+- Retain Runtime 0.22.5: released 0.23.11 lacks the timer, incarnation and
+  trap-aware executor primitives required by the provider. Revisit migration
+  when Platform supplies those capabilities; no replacement runtime is embedded here.
+
 ## [0.45.11] - 2026-11-16
 
 ### 🛠️ Development

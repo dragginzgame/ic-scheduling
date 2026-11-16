@@ -9,9 +9,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
 const source = path.resolve(process.argv[2] ?? path.join(root, '../ic-entropy'));
 function git(...args) { return execFileSync('git', ['--no-optional-locks', '-C', source, ...args]); }
-if (git('rev-parse', 'HEAD').toString().trim() !== revision
-    || git('status', '--porcelain').length !== 0) {
-    throw new Error('Entropy source must be the clean pinned revision; review and repin before proceeding.');
+if (git('rev-parse', '--verify', `${revision}^{commit}`).toString().trim() !== revision) {
+    throw new Error('Entropy source must contain the pinned commit; review and repin before proceeding.');
 }
 const parent = path.join(root, 'qualification/target/entropy-integration');
 fs.mkdirSync(parent, { recursive: true });

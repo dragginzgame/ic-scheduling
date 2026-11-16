@@ -6,7 +6,8 @@ Toko owns release sequencing, capture, recovery, explicit staging and atomic pus
 The local hooks own the complete crate-specific gate and source-bound evidence.
 
 Prepare Rust 1.100.0/Wasm, Node, cached dependencies, a PocketIC 16.0.0 server and
-a clean Entropy checkout at the revision required by its qualification adapter.
+an Entropy repository containing the immutable revision required by its
+qualification adapter.
 Export absolute `POCKET_IC_BIN` and `ENTROPY_SOURCE` paths. Release setup fetches
 both existing lockfiles with `--locked`, installs pinned tools and selects the
 published IC Build 0.73.0 metadata editor. Checks then run offline. Recovery only

@@ -4,9 +4,11 @@ This is a reviewable migration draft, not an adopted Entropy change. The source
 repository remains read-only. Entropy is the stable consumer target; Canic is
 being rewritten and needs a separate integration review when its API settles.
 
-`prepare.mjs` requires a clean local Entropy checkout at
-`6c400b2c0259323ad1464fc692a4c4c378a2b101`. It materializes tracked product and
-qualification sources under ignored `qualification/target/entropy-integration/`,
+`prepare.mjs` requires a local Entropy repository containing commit
+`6c400b2c0259323ad1464fc692a4c4c378a2b101`. It reads only that immutable commit,
+regardless of the checkout's current branch or working changes. It materializes
+tracked product and qualification sources under ignored
+`qualification/target/entropy-integration/`,
 applies `timers.patch`, and adds local Cargo overrides for unpublished Timers.
 It does not copy Entropy's release machinery or modify its checkout. The patch
 changes the dependency version, target gates and buffered timer adapter only.
@@ -32,8 +34,8 @@ cargo test --manifest-path "$entropy_stage/qualification/Cargo.toml" --target-di
 ```
 
 The first resolution in each isolated workspace updates its copied lockfile for
-the local override; subsequent checks are locked. The helper deliberately refuses
-a different source revision: review the consumer changes and patch before repinning.
+the local override; subsequent checks are locked. The helper never reads working-tree
+source: review the consumer changes and patch before changing the pinned revision.
 Actual adoption also needs an approved dependency source and reviewed lock changes;
 the first published rewrite is Timers 0.45.9. There is no compatibility facade.
 
