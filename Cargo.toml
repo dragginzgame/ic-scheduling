@@ -11,7 +11,7 @@ publish = ["crates-io"]
 repository = "https://github.com/dragginzgame/ic-scheduling"
 
 [workspace.dependencies]
-ic-timers = { version = "0.45.11", path = "crates/ic-timers" }
+ic-timers = { version = "0.45.12", path = "crates/ic-timers" }
 
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 ic-metrics = { version = "=0.30.8", default-features = false }
