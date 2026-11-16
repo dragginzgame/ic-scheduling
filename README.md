@@ -15,7 +15,7 @@ redesign. The [release scope](docs/design/release-scope.md) preserves legacy
 Timers/Jobs capabilities while deferring additional proposals. The old architecture,
 demo application and release framework are not carried forward.
 
-Status: Timers 0.45.10 and Jobs 0.38.0 are published. The API descriptions
+Status: Timers 0.45.11 and Jobs 0.38.1 are published. The API descriptions
 below follow those releases. Schema 7 replaces Jobs 0.37.9's schema 6.
 Jobs supports Saffron-backed five-field UTC cron, one-shot deadlines, anchored
 fixed-rate intervals and completion-relative recurrence. Schedule support is opt-in via the
@@ -35,8 +35,8 @@ remain host responsibilities.
 Once callbacks can return `OnceNext::After(positive_delay)` to recur relative to
 completion, including awaits. Overflow stops recurrence; newer owner commands
 take precedence and traps still require explicit recovery.
-Published on 2026-11-15: [Timers 0.45.10](https://crates.io/crates/ic-timers/0.45.10)
-and [Jobs 0.38.0](https://crates.io/crates/ic-jobs/0.38.0). These replace the
+Published on 2026-11-16: [Timers 0.45.11](https://crates.io/crates/ic-timers/0.45.11)
+and [Jobs 0.38.1](https://crates.io/crates/ic-jobs/0.38.1). These replace the
 0.44 / 0.36 APIs with a breaking redesign. Both registry artifacts and GitHub
 release tags are verified. Native, Wasm, local installed-canister and archive
 release gates passed; Entropy integration was excluded by maintainer direction
@@ -126,7 +126,7 @@ explicitly opt-in (the default feature set is empty):
 
 ```toml
 [dependencies]
-ic-jobs = { version = "0.38.0", default-features = false, features = ["calendar"] }
+ic-jobs = { version = "0.38.1", default-features = false, features = ["calendar"] }
 ```
 
 Omit `calendar`

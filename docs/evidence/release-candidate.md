@@ -1,6 +1,6 @@
 # Scheduling release qualification and delivery
 
-## Pending delivery: Timers 0.45.11 / Jobs 0.38.1
+## Completed: Timers 0.45.11 / Jobs 0.38.1
 
 2026-11-16: deploy the completed issue #1 tooling fixes using Toko Tooling 0.44.5.
 Live registry review confirms Runtime 0.22.5, Metrics 0.30.8, Testkit 0.106.0 and
@@ -16,6 +16,25 @@ archive gates remain required, with the newly adopted canonical hook checker.
 Focused catalog lint, deliberate unused-alias rejection, group metadata
 transactions, hook preservation/refusal cases and local hook activation passed
 before source capture. Hosted Linux/macOS hook qualification remains separate.
+
+Both groups passed the complete selected captured-source gate and final archive
+checks, then published successfully in batch `batch-Ji8w7KBh`. Jobs passed the
+registry-only all-feature Wasm check against published Timers. The normal checkout
+was fast-forwarded through standard batch reconciliation. Independent registry
+downloads matched the sparse-index checksums and embedded source commits:
+
+| Package | Release commit | Registry SHA-256 |
+| --- | --- | --- |
+| ic-timers 0.45.11 | `63972519969497199dd54f3a0fba6ea7c236c98c` | `3b2cc50b49c7fb6f919c05d13ad47b6fcc2cb95718d3d38c48374728e73f8954` |
+| ic-jobs 0.38.1 | `d774cdaa0301fab7aa8051133818d6d37c8846b1` | `7928150a1e62f4d62e853448f868636183b6e55b477e007bad3373bf0786c429` |
+
+Remote tags are `timers-v0.45.11` and `jobs-v0.38.1`. Readback is retained under
+`target/publication/readback-04511-0381/`; batch recovery and publication evidence
+remain in the standard `.git/release-state/frozen/` and `target/release-frozen/`
+locations. Focused post-push review found no new actionable issue. The repository
+had zero open GitHub issues after delivery; #1 remains completed. The
+[Jobs release CI run](https://github.com/dragginzgame/ic-scheduling/actions/runs/43894479344)
+was in progress at this observation; no hosted macOS pass is claimed yet.
 
 ## Completed: Timers 0.45.10 / Jobs 0.38.0
 
