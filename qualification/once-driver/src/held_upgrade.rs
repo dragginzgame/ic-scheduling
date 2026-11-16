@@ -1,6 +1,6 @@
 //! Host upgrade refusal preserves a live attempt until its real reply settles.
 use ic_testkit::{
-    pic::fixtures::{RawReplyLimits, RawReplyMethod, ReplyMode, held::HeldReplyFixture},
+    held::{Catalog, Fixture, Limits, Reply},
     pocket_ic::{CanisterId, ErrorCode, nonblocking::PocketIc},
 };
 use std::time::Duration;
@@ -8,19 +8,22 @@ use std::time::Duration;
 pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     let target = pic.create_canister().await;
     pic.add_cycles(target, 100_000_000_000_000).await;
-    let mut held = HeldReplyFixture::new(
-        pic,
-        target,
-        &[RawReplyMethod {
-            name: "hold",
-            mode: ReplyMode::Update,
-            reply: b"ok",
+    let catalog = Catalog::new(
+        &[Reply {
+            method: "hold",
+            bytes: b"ok",
         }],
-        RawReplyLimits {
-            methods: 1,
+        Limits {
+            slots: 1,
             reply_bytes: 2,
-            method_name_bytes: 4,
+            name_bytes: 4,
         },
+    )
+    .unwrap();
+    let mut held = Fixture::new(
+        pic,
+        target.as_slice().try_into().unwrap(),
+        &catalog,
         50_000_000_000,
         100_000,
     )

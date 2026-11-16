@@ -1,7 +1,5 @@
 //! Installed prearm, trap survival, and synchronous owner precedence.
-use ic_testkit::pic::fixtures::{
-    RawReplyLimits, RawReplyMethod, ReplyMode, held::HeldReplyFixture,
-};
+use ic_testkit::held::{Catalog, Fixture, Limits, Reply};
 use ic_testkit::pocket_ic::{CanisterId, nonblocking::PocketIc};
 use std::time::Duration;
 
@@ -86,19 +84,22 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
 pub(super) async fn admission(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     let target = pic.create_canister().await;
     pic.add_cycles(target, 100_000_000_000_000).await;
-    let mut held = HeldReplyFixture::new(
-        pic,
-        target,
-        &[RawReplyMethod {
-            name: "hold",
-            mode: ReplyMode::Update,
-            reply: b"ok",
+    let catalog = Catalog::new(
+        &[Reply {
+            method: "hold",
+            bytes: b"ok",
         }],
-        RawReplyLimits {
-            methods: 1,
+        Limits {
+            slots: 1,
             reply_bytes: 2,
-            method_name_bytes: 4,
+            name_bytes: 4,
         },
+    )
+    .unwrap();
+    let mut held = Fixture::new(
+        pic,
+        target.as_slice().try_into().unwrap(),
+        &catalog,
         50_000_000_000,
         100_000,
     )
@@ -176,22 +177,25 @@ pub(super) async fn pressure(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     let target = pic.create_canister().await;
     pic.add_cycles(target, 100_000_000_000_000).await;
     let methods = vec![
-        RawReplyMethod {
-            name: "hold",
-            mode: ReplyMode::Update,
-            reply: b"ok"
+        Reply {
+            method: "hold",
+            bytes: b"ok"
         };
         8
     ];
-    let mut held = HeldReplyFixture::new(
-        pic,
-        target,
+    let catalog = Catalog::new(
         &methods,
-        RawReplyLimits {
-            methods: 8,
+        Limits {
+            slots: 8,
             reply_bytes: 16,
-            method_name_bytes: 32,
+            name_bytes: 32,
         },
+    )
+    .unwrap();
+    let mut held = Fixture::new(
+        pic,
+        target.as_slice().try_into().unwrap(),
+        &catalog,
         50_000_000_000,
         100_000,
     )

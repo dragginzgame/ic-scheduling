@@ -5,6 +5,8 @@
 ### 🛠️ Development
 
 - Adopt Toko Tooling 0.44.6 and qualify installed behavior with Testkit 0.107.1.
+- Migrate held-flight and upgrade probes to Testkit's admitted catalog API,
+  preserving their explicit resource limits and caller-owned simulator progress.
 - Read the pinned Entropy integration commit independently of its working tree,
   preserving immutable source admission while allowing concurrent consumer work.
 - Retain Runtime 0.22.5: released 0.23.11 lacks the timer, incarnation and

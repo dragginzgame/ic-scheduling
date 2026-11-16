@@ -5,6 +5,7 @@
 ### 🛠️ Development
 
 - Adopt Toko Tooling 0.44.6 and qualify execution with Testkit 0.107.1.
+- Migrate the shared-flight pressure probe to Testkit's admitted held-reply catalog.
 - Retain the qualified Runtime 0.22.5 dependency until Platform exposes the
   timer and trap-recovery capabilities needed by the execution provider.
 

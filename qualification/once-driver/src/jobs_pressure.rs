@@ -1,6 +1,6 @@
 //! Jobs share transport capacity without sharing occurrence or recovery authority.
 use ic_testkit::{
-    pic::fixtures::{RawReplyLimits, RawReplyMethod, ReplyMode, held::HeldReplyFixture},
+    held::{Catalog, Fixture, Limits, Reply},
     pocket_ic::{CanisterId, nonblocking::PocketIc},
 };
 use std::time::Duration;
@@ -18,22 +18,25 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     let target = pic.create_canister().await;
     pic.add_cycles(target, 100_000_000_000_000).await;
     let methods = vec![
-        RawReplyMethod {
-            name: "hold",
-            mode: ReplyMode::Update,
-            reply: b"ok",
+        Reply {
+            method: "hold",
+            bytes: b"ok",
         };
         8
     ];
-    let mut held = HeldReplyFixture::new(
-        pic,
-        target,
+    let catalog = Catalog::new(
         &methods,
-        RawReplyLimits {
-            methods: 8,
+        Limits {
+            slots: 8,
             reply_bytes: 16,
-            method_name_bytes: 32,
+            name_bytes: 32,
         },
+    )
+    .unwrap();
+    let mut held = Fixture::new(
+        pic,
+        target.as_slice().try_into().unwrap(),
+        &catalog,
         50_000_000_000,
         100_000,
     )

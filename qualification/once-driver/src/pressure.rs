@@ -1,6 +1,6 @@
 //! Full-table admission and held-flight pressure, without advancing held-call time.
 use ic_testkit::{
-    pic::fixtures::{RawReplyLimits, RawReplyMethod, ReplyMode, held::HeldReplyFixture},
+    held::{Catalog, Fixture, Limits, Reply},
     pocket_ic::{CanisterId, nonblocking::PocketIc},
 };
 
@@ -8,22 +8,25 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     let target = pic.create_canister().await;
     pic.add_cycles(target, 100_000_000_000_000).await;
     let methods = vec![
-        RawReplyMethod {
-            name: "hold",
-            mode: ReplyMode::Update,
-            reply: b"ok"
+        Reply {
+            method: "hold",
+            bytes: b"ok"
         };
         12
     ];
-    let mut held = HeldReplyFixture::new(
-        pic,
-        target,
+    let catalog = Catalog::new(
         &methods,
-        RawReplyLimits {
-            methods: 12,
+        Limits {
+            slots: 12,
             reply_bytes: 24,
-            method_name_bytes: 48,
+            name_bytes: 48,
         },
+    )
+    .unwrap();
+    let mut held = Fixture::new(
+        pic,
+        target.as_slice().try_into().unwrap(),
+        &catalog,
         50_000_000_000,
         100_000,
     )

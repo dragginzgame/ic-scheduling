@@ -24,6 +24,15 @@ not apply to these candidates.
 The exporter preview and installation passed, retaining the same 76 managed
 files and entrypoint selection. Product APIs, Jobs schema 7 and supported
 consumer build requirements are unchanged; both candidates are patch releases.
+Chrono 0.4.45, Saffron 0.1.0 and Tokio 1.54.1 also remain current stable selections.
+
+Capture `batch-CsXseGvy` stopped in qualification-driver Clippy before version
+preparation or delivery: Testkit 0.107.1 removed `pic::fixtures`. Product native
+tests passed, but the complete gate did not. The driver now uses Testkit's
+`held::{Catalog, Fixture, Limits, Reply}` directly, retaining slot/reply/name
+budgets and converting PocketIC identifiers through their byte boundary.
+The failed capture and logs remain retained. A fresh capture will qualify the
+changed driver; this adapter does not support reusing partial failed-gate receipts.
 Release qualification and delivery results are pending.
 
 ## Completed: Timers 0.45.11 / Jobs 0.38.1
