@@ -10,7 +10,7 @@ The Rust workspace publishes ic-timers and ic-jobs from crates/.
 The first rewrite releases are Timers 0.45.9 and Jobs 0.37.9; qualification
 packages remain unpublished. Timers and Jobs have independent development versions and changelogs
 under releases/, mapped in ci/cargo-release-groups.json.
-Current published versions are Timers 0.45.11 and Jobs 0.38.1; schema 7 below
+Current published versions are Timers 0.45.12 and Jobs 0.38.2; schema 7 below
 describes Jobs 0.38, not Jobs 0.37.9. Keep actual publication behind the qualified
 release and archive checks in docs/design/release-scope.md.
 Jobs delegates five-field UTC recurrence to Saffron, plus a

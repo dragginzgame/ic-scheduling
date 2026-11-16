@@ -1,6 +1,6 @@
 # Scheduling release qualification and delivery
 
-## Candidate: Timers 0.45.12 / Jobs 0.38.2
+## Completed: Timers 0.45.12 / Jobs 0.38.2
 
 Supplier review on 2026-11-16 selected published Toko Tooling 0.44.6 and
 Testkit 0.107.1. Metrics 0.30.8 remains current. Runtime 0.23.11 was probed and
@@ -19,11 +19,11 @@ delivery does not change its metadata contract. The pinned Entropy journey
 remains required: its source is read from the exact Git commit, independently
 of the consumer checkout's current branch and dirty files. No Entropy source
 or working-tree changes are included. Existing version-specific waivers do
-not apply to these candidates.
+did not apply to these releases.
 
 The exporter preview and installation passed, retaining the same 76 managed
 files and entrypoint selection. Product APIs, Jobs schema 7 and supported
-consumer build requirements are unchanged; both candidates are patch releases.
+consumer build requirements are unchanged; both are patch releases.
 Chrono 0.4.45, Saffron 0.1.0 and Tokio 1.54.1 also remain current stable selections.
 
 Capture `batch-CsXseGvy` stopped in qualification-driver Clippy before version
@@ -31,9 +31,33 @@ preparation or delivery: Testkit 0.107.1 removed `pic::fixtures`. Product native
 tests passed, but the complete gate did not. The driver now uses Testkit's
 `held::{Catalog, Fixture, Limits, Reply}` directly, retaining slot/reply/name
 budgets and converting PocketIC identifiers through their byte boundary.
-The failed capture and logs remain retained. A fresh capture will qualify the
+The failed capture and logs remain retained. A fresh capture qualified the
 changed driver; this adapter does not support reusing partial failed-gate receipts.
-Release qualification and delivery results are pending.
+
+Batch `batch-L1VZpgtf` completed both supplier-first releases and publication on
+2026-11-16. Each group passed its complete captured-source gate: strict native
+and Wasm Clippy, native feature variants, Wasm documentation, calendar,
+executor, Once/watchdog failure/lifecycle/resource checks, metrics comparison,
+the pinned Entropy native/Wasm/installed journey and archive verification.
+Jobs additionally passed the registry-only all-feature Wasm archive check
+against published Timers. The standard reconciliation fast-forwarded the
+normal checkout; no sibling source was edited.
+
+Independent downloads matched the sparse-index checksums and embedded source
+commits:
+
+| Package | Release commit | Registry SHA-256 |
+| --- | --- | --- |
+| ic-timers 0.45.12 | `459294282341af10b0f20c1bd53e595ece548fc9` | `1f7011aa45f76d32ccc065482ea7dda6755e58f1ea205fd361d0c3b4146215ac` |
+| ic-jobs 0.38.2 | `3ec37ab990cb4b13fc252d1813643254e6ce2eb2` | `67732eb7c44bdb10a82d027ac0352b09c42af08f410757f296e0a34add673358` |
+
+Remote tags are `timers-v0.45.12` and `jobs-v0.38.2`. Readback artifacts remain
+under `target/publication/readback-04512-0382/`; standard batch and publication
+receipts remain in their existing recovery locations. Post-push review of the
+adoption, affected qualification callers and both release commits found no
+actionable issue. The [Jobs release CI run](https://github.com/dragginzgame/ic-scheduling/actions/runs/43914621435)
+was in progress at this observation; hosted macOS success is not claimed.
+The Runtime 0.23.11 migration remains blocked as described above.
 
 ## Completed: Timers 0.45.11 / Jobs 0.38.1
 
