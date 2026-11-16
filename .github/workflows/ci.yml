@@ -34,6 +34,7 @@ jobs:
           uname -sm
           make tools-check check fmt-check qualify-rust qualify-archives
           node qualification/release-check.mjs
+          make check-formatting-hooks
   secrets:
     runs-on: ubuntu-24.04
     steps:

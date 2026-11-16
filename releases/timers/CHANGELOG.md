@@ -1,5 +1,13 @@
 # Timers changelog
 
+## [0.45.11] - Unreleased
+
+### 🛠️ Development
+
+- Adopt Toko Tooling 0.44.5 and activate the canonical staged-formatting hook,
+  with focused qualification across product and qualification workspaces.
+  Fixes [#1](https://github.com/dragginzgame/ic-scheduling/issues/1).
+
 ## [0.45.10] - 2026-11-15
 
 ### 🛠️ Development

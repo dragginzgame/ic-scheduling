@@ -1,5 +1,14 @@
 # Jobs changelog
 
+## [0.38.1] - Unreleased
+
+### 🛠️ Development
+
+- Adopt Toko Tooling 0.44.5, restore strict workspace dependency linting and
+  remove the unused Jobs catalog alias while preserving its release membership.
+- Activate and qualify the canonical staged-formatting hook across both workspaces.
+  Fixes [#1](https://github.com/dragginzgame/ic-scheduling/issues/1).
+
 ## [0.38.0] - 2026-11-15
 
 ### 💥 Changed

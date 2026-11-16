@@ -6,6 +6,10 @@ Timers and Jobs have independent versions and release groups:
 - [Jobs changelog](releases/jobs/CHANGELOG.md)
 
 The group package manifests own their versions; the root has no shared version.
+Pending developer-tooling maintenance removes the unused Jobs dependency alias,
+restores strict catalog linting and activates the canonical formatting hook with
+focused qualification. Resolves [#1](https://github.com/dragginzgame/ic-scheduling/issues/1).
+
 The first rewrite releases, Timers 0.45.9 and Jobs 0.37.9, were published on
 2026-11-15. The latest published versions are Timers 0.45.10 and Jobs 0.38.0,
 also released on 2026-11-15 through the qualified grouped release workflow.

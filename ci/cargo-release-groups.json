@@ -8,7 +8,7 @@
       "version": "package",
       "members": ["ic-jobs"],
       "changelog": "releases/jobs/CHANGELOG.md",
-      "dependencies": ["ic-jobs"]
+      "dependencies": []
     },
     {
       "name": "timers",

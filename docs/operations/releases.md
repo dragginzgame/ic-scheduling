@@ -12,13 +12,13 @@ both existing lockfiles with `--locked`, installs pinned tools and selects the
 published IC Build 0.73.0 metadata editor. Checks then run offline. Recovery only
 admits saved tools; it does not refresh dependencies or repair locks.
 
-For Timers 0.45.10 and Jobs 0.38.0 only, the maintainer explicitly waived the
+For Timers 0.45.10/0.45.11 and Jobs 0.38.0/0.38.1, the maintainer waived the
 Entropy journey. Their release gates require `POCKET_IC_BIN` but not
 `ENTROPY_SOURCE`; all Scheduling-owned checks and archive checks remain required.
 Ordinary `make qualify` and subsequent releases retain Entropy qualification.
 
 `make qualify` runs formatting/tool admission, strict Clippy early, native tests,
-Wasm documentation, installed failure/lifecycle/resource checks, the isolated
+Wasm documentation, canonical hook qualification, installed failure/lifecycle/resource checks, the isolated
 Entropy journey and archive checks. The Toko validation runner retains failures.
 Source tests and extracted archive tests have separate responsibilities. Cargo
 1.100's temporary registry limitation is recorded in the candidate evidence.

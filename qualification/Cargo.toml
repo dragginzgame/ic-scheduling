@@ -21,7 +21,7 @@ ic-platform-runtime = { version = "=0.22.5", default-features = false, features 
 ic-testkit = { version = "=0.106.0", default-features = false }
 ic-timers = { path = "../crates/ic-timers" }
 tokio = { version = "1.54.1", default-features = false, features = ["rt"] }
-toko-tooling = "=0.44.4"
+toko-tooling = "=0.44.5"
 
 [workspace.lints.cargo]
 unused_dependencies = "deny"

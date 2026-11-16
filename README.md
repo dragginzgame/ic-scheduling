@@ -48,7 +48,7 @@ are unchanged. Recorded local evidence does not establish deployment or producti
 ## Development
 
 Rust is pinned to 1.100.0 with Clippy, rustfmt and the `wasm32-unknown-unknown`
-target. Toko Tooling is pinned to 0.44.4 in Cargo and installed under
+target. Toko Tooling is pinned to 0.44.5 in Cargo and installed under
 `vendor/toko-tooling/`, with its checksum receipt at `.toko-tooling.snapshot`.
 Read [the engineering baseline](TOKO-TOOLING.md) and [local instructions](AGENTS.md).
 
@@ -57,6 +57,7 @@ From the repository root, prepare the declared Rust toolchain with rustup, then:
 ```sh
 make install-tools
 make tools-check
+make install-hooks
 make check
 make lint PACKAGE=ic-timers
 make doc PACKAGE=ic-jobs
@@ -88,11 +89,16 @@ make deps-update DEPENDENCY_PACKAGE=toko-tooling
 optionally selects a version within the manifest requirement. To adopt a new
 Toko release, change its exact Cargo pin, update its lock selection, then run
 `make toko-tooling-preview` and `make toko-tooling-update`.
+Run `make install-hooks` after setup or a tooling update in each clone. It sets
+repository-local `core.hooksPath` to `vendor/toko-tooling/.githooks`. The canonical
+hook formats the staged selection and rejects partially staged files; CI still
+checks formatting independently. `make check-formatting-hooks` exercises this
+checkout's hook with prepared tools, including both maintained workspaces.
 
 [Qualification](qualification/README.md) has its own manifest and lockfile and
 contains calendar, executor, timer/Jobs, metrics and isolated Entropy probes. Dependency and formatting commands include
 both workspaces. Standard Toko release/publication entrypoints are installed; see
-[release operations](docs/operations/releases.md). No Git hook is installed.
+[release operations](docs/operations/releases.md).
 
 ## Timer lifetimes and observations
 

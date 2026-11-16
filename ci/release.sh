@@ -26,7 +26,7 @@ case "${1:-}" in
     editor --check > /dev/null
     test -x "${POCKET_IC_BIN:?Set POCKET_IC_BIN to the prepared 16.0.0 server}"
     # Entropy source admission belongs to qualify-entropy; the maintainer waived
-    # that journey for Timers 0.45.10 / Jobs 0.38.0 only (see Makefile).
+    # that journey for the selected deliveries (see Makefile).
     ;;
   version|files) bash "$shared/cargo-release-group.sh" "$1" "$group" ;;
   preflight)

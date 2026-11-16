@@ -1,5 +1,22 @@
 # Scheduling release qualification and delivery
 
+## Pending delivery: Timers 0.45.11 / Jobs 0.38.1
+
+2026-11-16: deploy the completed issue #1 tooling fixes using Toko Tooling 0.44.5.
+Live registry review confirms Runtime 0.22.5, Metrics 0.30.8, Testkit 0.106.0 and
+Toko Tooling 0.44.5 remain the latest non-yanked stable selections. Both locks
+change only Toko Tooling. Public package versions remain unchanged until the
+standard supplier-first patch release prepares them.
+
+Carry forward the maintainer's explicit instruction to exclude Entropy from
+this deployment, scoped to these two versions. Its checkout has advanced beyond
+the adapter's pinned revision; no fresh Entropy qualification is claimed.
+Scheduling's native/Wasm, installed failure/lifecycle/resource, metrics and
+archive gates remain required, with the newly adopted canonical hook checker.
+Focused catalog lint, deliberate unused-alias rejection, group metadata
+transactions, hook preservation/refusal cases and local hook activation passed
+before source capture. Hosted Linux/macOS hook qualification remains separate.
+
 ## Completed: Timers 0.45.10 / Jobs 0.38.0
 
 Registry freshness reviewed on 2026-11-15 before source capture: the selected
