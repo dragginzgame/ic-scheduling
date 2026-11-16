@@ -23,6 +23,9 @@ async fn run() {
     assert!(focused.as_deref().is_none_or(|arg| matches!(
         arg,
         "--after-completion"
+            | "--runtime-core"
+            | "--refusal"
+            | "--jobs-behavior"
             | "--jobs-initial"
             | "--jobs-one-shot"
             | "--jobs-completion"
@@ -43,8 +46,13 @@ async fn run() {
         return;
     }
     let external = pic.create_canister().await;
-    if focused.is_some() {
-        if focused.as_deref() == Some("--diagnostics") {
+    if focused.is_some() && focused.as_deref() != Some("--runtime-core") {
+        if focused.as_deref() == Some("--jobs-behavior") {
+            jobs::check(&pic, &wasm, external).await;
+        } else if focused.as_deref() == Some("--refusal") {
+            refusal::check(&pic, &wasm, external).await;
+            refusal::watchdog(&pic, &wasm, external).await;
+        } else if focused.as_deref() == Some("--diagnostics") {
             metrics::check(&pic, &wasm, external).await;
         } else if focused.as_deref() == Some("--lifetimes") {
             lifetimes::check(&pic, &wasm, external).await;
@@ -150,6 +158,13 @@ async fn run() {
                 0
             );
         }
+    }
+    if focused.as_deref() == Some("--runtime-core") {
+        pic.drop().await;
+        println!(
+            "Once runtime completion, initial/post-await traps, failed cleanup and explicit recovery pass"
+        );
+        return;
     }
     pressure::check(&pic, &wasm, external).await;
     after_completion::check(&pic, &wasm, external).await;

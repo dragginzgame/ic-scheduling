@@ -1,7 +1,8 @@
 //! Qualification-only many-declaration workload; holds real calls in Testkit.
 use super::{
-    Call, Observation, Once, OnceDemand, OnceNext, OnceResult, Principal, RefCell, WaitPolicy, ic0,
+    Call, Observation, Once, OnceDemand, OnceNext, OnceResult, Principal, RefCell, Wait, ic0,
 };
+use ic_platform_runtime::system;
 thread_local! {
     static HANDLES: RefCell<Vec<Once>> = const { RefCell::new(Vec::new()) };
     static COUNTS: RefCell<([u8; 64], [u8; 64])> = const { RefCell::new(([0;64], [0;64])) };
@@ -25,10 +26,8 @@ pub extern "C" fn setup() {
             ic_timers::Lifetime::Retained,
             move || async move {
                 COUNTS.with(|counts| counts.borrow_mut().0[index] += 1);
-                let response = Call::new(target, "hold", WaitPolicy::Unbounded)
-                    .execute()
-                    .await;
-                assert!(response.is_ok());
+                let response = Call::new(target, "hold", Wait::Unbounded).execute().await;
+                drop(crate::expect_reply(response));
                 COUNTS.with(|counts| counts.borrow_mut().1[index] += 1);
                 OnceResult {
                     observation: Observation::Success,
@@ -108,7 +107,7 @@ pub extern "C" fn counts() {
 #[expect(unsafe_code, reason = "qualification owns this entrypoint")]
 #[unsafe(export_name = "canister_update pressure_interfere")]
 pub extern "C" fn interfere() {
-    ic0::global_timer_set(ic0::time().checked_add(1_000_000_000).unwrap());
+    system::global_timer_set(system::time().checked_add(1_000_000_000).unwrap());
     HANDLES.with(|handles| {
         let handles = handles.borrow();
         assert_eq!(

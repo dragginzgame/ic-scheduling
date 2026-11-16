@@ -1,9 +1,10 @@
 //! Host-owned unresolved records across real upgrades; no automatic replay.
-use super::{Call, Cell, RefCell, WaitPolicy, ic0, self_id};
+use super::{Call, Cell, RefCell, Wait, ic0, self_id};
 use ic_jobs::{
     Attempt, CatchUpProgress, Checkpoint, Context, ControlState, Job, Outcome, Policy,
     RecoveryDisposition, RetryPolicy, Schedule, Status, UnresolvedPhase,
 };
+use ic_platform_runtime::system;
 use std::num::NonZeroU64;
 const SECOND: u64 = 1_000_000_000;
 thread_local! {
@@ -49,10 +50,11 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
         } else {
             1
         } {
-            Call::new(self_id(), "jobs_unresolved_echo", WaitPolicy::Unbounded)
-                .execute()
-                .await
-                .unwrap();
+            drop(crate::expect_reply(
+                Call::new(self_id(), "jobs_unresolved_echo", Wait::Unbounded)
+                    .execute()
+                    .await,
+            ));
         }
         if !upgraded && matches!(mode, 1 | 4 | 6) {
             ic0::trap(b"unresolved after await");
@@ -98,7 +100,7 @@ pub extern "C" fn echo() {
         && matches!(MODE.with(Cell::get), 4 | 5)
         && EDITED.with(Cell::get) == 0
     {
-        let at = ic0::time() + 100 * SECOND;
+        let at = system::time() + 100 * SECOND;
         JOB.with_borrow(|slot| slot.as_ref().unwrap().edit(Schedule::once(at)).unwrap());
         EDITED.with(|value| value.set(at));
     }
@@ -257,15 +259,15 @@ pub(super) fn pre_upgrade() -> bool {
         }
         super::outcomes::append(progress.last_outcome(), &mut bytes);
         if ic0::stable64_size() == 0 {
-            assert_eq!(ic0::stable64_grow(1), 0);
+            assert_eq!(ic0::stable64_grow(1), Some(0));
         }
-        ic0::stable64_write(&bytes, 0);
+        ic0::stable64_write(0, &bytes);
         true
     })
 }
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 168];
-    ic0::stable64_read(&mut bytes, 0);
+    ic0::stable64_read(0, &mut bytes);
     if &bytes[..8] != b"UNRESOL3" {
         return false;
     }

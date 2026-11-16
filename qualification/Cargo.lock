@@ -425,6 +425,7 @@ name = "executor-probe"
 version = "0.0.0"
 dependencies = [
  "ic-platform-runtime",
+ "ic-platform-types",
  "toko-tooling",
 ]
 
@@ -756,49 +757,31 @@ checksum = "b5cd1e020757542a942d6191457a68512bf8a21bdb443370d92743da67557b71"
 
 [[package]]
 name = "ic-platform-protocol"
-version = "0.2.3"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fe6bc76a461f60b585bee7d6e5117bbe6e63de87ef3cfe4982f0895c00fad91"
+checksum = "93ed6052f78c99bf45bcf1ffdd11bd6eb4de4463dbe425a7b63e093b8f7a0ed2"
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.22.5"
+version = "0.23.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92a494623fc12ba0673eb18518612e95e9a103d88ba71d4bd8fa902a227fde80"
+checksum = "6f91abeacf7b1602e67b49391ea1e66d1c8f7e45779de79a5835b9c8dac3afb8"
 dependencies = [
  "ic-platform-runtime-guard",
- "ic-platform-types 0.20.4",
- "ic0",
- "pin-project-lite",
- "serde",
- "slotmap",
- "thiserror 2.0.18",
+ "ic-platform-types",
 ]
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.22.5"
+version = "0.23.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93880ece1df84dd6462c4b42e7b454c603d216e3f8f2265f258f1153a82cd842"
+checksum = "239aeacc00fa6015ea4656defdfe643cdd6116f180887ea27b8164105c58a2ce"
 
 [[package]]
 name = "ic-platform-types"
-version = "0.20.4"
+version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8df2753db752bd0c29fa87353b98613465a5f0c5269b6fb8dd0e45ea5c12a22"
-dependencies = [
- "crc32fast",
- "data-encoding",
- "serde",
- "serde_bytes",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "ic-platform-types"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "339477b696137ec7fd6f96725c5733b80d67c5fd75b27c8dfaa83846629b9958"
+checksum = "3b08201b2ebbb9a9f0e1c8ee2854f48ff3f68a777c441147273c600bf6723d7d"
 dependencies = [
  "crc32fast",
  "data-encoding",
@@ -809,12 +792,12 @@ dependencies = [
 
 [[package]]
 name = "ic-testkit"
-version = "0.107.1"
+version = "0.107.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4fe4ea7882118e731ef1ebe8c668fc5dfa5252c1c972b1de68bc444868fae42"
+checksum = "6d0ad701e379df81e149511b0d6bbb810648770ec777a4eb88fd7e87e4ee2883"
 dependencies = [
  "ic-platform-protocol",
- "ic-platform-types 0.21.1",
+ "ic-platform-types",
  "pocket-ic",
  "thiserror 2.0.18",
  "wat",
@@ -845,12 +828,6 @@ dependencies = [
  "sha2",
  "thiserror 2.0.18",
 ]
-
-[[package]]
-name = "ic0"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f05349d5c51ab6cc962c8963f877f826997ee6b737c6be3aafc9779eb8a4dd05"
 
 [[package]]
 name = "ic_principal"
@@ -1138,6 +1115,7 @@ name = "metrics-probe"
 version = "0.0.0"
 dependencies = [
  "ic-platform-runtime",
+ "ic-platform-types",
  "ic-timers",
  "toko-tooling",
 ]
@@ -1257,6 +1235,7 @@ version = "0.0.0"
 dependencies = [
  "ic-jobs",
  "ic-platform-runtime",
+ "ic-platform-types",
  "ic-timers",
  "toko-tooling",
 ]
@@ -1940,15 +1919,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "slotmap"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdd58c3c93c3d278ca835519292445cb4b0d4dc59ccfdf7ceadaab3f8aeb4038"
-dependencies = [
- "version_check",
-]
-
-[[package]]
 name = "smallvec"
 version = "1.16.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2221,9 +2191,9 @@ dependencies = [
 
 [[package]]
 name = "toko-tooling"
-version = "0.44.6"
+version = "0.44.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c27413bf2875a061354aff385a92c66bdf9f058ac372d28b062aaf982c4229c8"
+checksum = "7d16b815ae322ae3f88580ee6af1611bdafde08b77592cd886bfa0eece0f1be8"
 
 [[package]]
 name = "tower"

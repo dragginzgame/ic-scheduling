@@ -1,5 +1,6 @@
 //! Installed removal, transient custody and stale queued-delivery checks.
-use super::{Call, Cell, RefCell, WaitPolicy, ic0, self_id};
+use super::{Call, Cell, RefCell, Wait, ic0, self_id};
+use ic_platform_runtime::system;
 use ic_timers::{
     Lifetime, Once, OnceDemand, OnceNext, OnceResult, OnceStatus, Watchdog, WatchdogDemand,
     WatchdogNext, WatchdogResult,
@@ -53,7 +54,7 @@ fn replace_victim() {
     )
     .unwrap();
     replacement
-        .set(OnceDemand::At(ic0::time() + 10_000_000_000))
+        .set(OnceDemand::At(system::time() + 10_000_000_000))
         .unwrap();
     REPLACEMENT.with_borrow_mut(|slot| *slot = Some(replacement));
 }
@@ -117,10 +118,11 @@ pub extern "C" fn setup() {
                 }
                 async {
                     RUNS.with(|value| value.set(value.get() + 1));
-                    Call::new(self_id(), "lifetime_echo", WaitPolicy::Unbounded)
-                        .execute()
-                        .await
-                        .unwrap();
+                    drop(crate::expect_reply(
+                        Call::new(self_id(), "lifetime_echo", Wait::Unbounded)
+                            .execute()
+                            .await,
+                    ));
                     if MODE.with(Cell::get) == 2 {
                         ic0::trap(b"transient post-await trap");
                     }
@@ -144,7 +146,7 @@ pub extern "C" fn echo() {
         let job = slot.as_ref().unwrap();
         assert_eq!(job.remove(), Err(ic_timers::Error::Busy));
         if MODE.with(Cell::get) == 3 && RUNS.with(Cell::get) == 1 {
-            job.set(OnceDemand::At(ic0::time() + 10_000_000_000))
+            job.set(OnceDemand::At(system::time() + 10_000_000_000))
                 .unwrap();
         }
     });

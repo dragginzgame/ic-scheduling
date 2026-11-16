@@ -1,5 +1,6 @@
 //! Actual synchronous watchdog execution and committed successor observations.
 use super::{Cell, Observation, RefCell, ic0};
+use ic_platform_runtime::system;
 use ic_timers::{Watchdog, WatchdogDemand, WatchdogNext, WatchdogResult, WatchdogStatus};
 use std::num::NonZeroU64;
 thread_local! {
@@ -46,7 +47,7 @@ pub extern "C" fn setup() {
                 };
                 // Arbitrarily delayed delivery need not see a future deadline.
                 if !SHORT_CADENCE.with(Cell::get) {
-                    assert!(at > ic0::time());
+                    assert!(at > system::time());
                 }
                 match MODE.with(Cell::get) {
                     1 => ic0::trap(b"watchdog work trap"),
@@ -56,7 +57,7 @@ pub extern "C" fn setup() {
                     }
                     3 => {
                         handle
-                            .set(WatchdogDemand::At(ic0::time() + 10_000_000_000))
+                            .set(WatchdogDemand::At(system::time() + 10_000_000_000))
                             .unwrap();
                     }
                     _ => {}
@@ -65,14 +66,15 @@ pub extern "C" fn setup() {
             if MODE.with(Cell::get) == 5 && !BUSY.with(|busy| busy.replace(true)) {
                 STARTS.with(|starts| starts.set(starts.get() + 1));
                 let target = TARGET.with(Cell::get).unwrap();
-                let _task = ic_platform_runtime::executor::spawn_protected(async move {
-                    let result = super::Call::new(target, "hold", super::WaitPolicy::Unbounded)
+                ic_platform_runtime::executor::run_update(async move {
+                    let result = super::Call::new(target, "hold", super::Wait::Unbounded)
                         .execute()
                         .await;
-                    assert!(result.is_ok());
+                    drop(crate::expect_reply(result));
                     FINISHES.with(|finishes| finishes.set(finishes.get() + 1));
                     BUSY.with(|busy| busy.set(false));
-                });
+                })
+                .expect("watchdog consumer task");
             }
             CALLS.with(|calls| calls.set(calls.get() + 1));
             WatchdogResult {
@@ -172,10 +174,10 @@ pub extern "C" fn block() {
             ["watchdog", "blocker", &index.to_string()],
             ic_timers::Lifetime::Retained,
             move || async move {
-                let result = super::Call::new(target, "hold", super::WaitPolicy::Unbounded)
+                let result = super::Call::new(target, "hold", super::Wait::Unbounded)
                     .execute()
                     .await;
-                assert!(result.is_ok());
+                drop(crate::expect_reply(result));
                 BLOCKER_FINISHES.with(|count| count.set(count.get() + 1));
                 super::OnceResult {
                     observation: Observation::Success,

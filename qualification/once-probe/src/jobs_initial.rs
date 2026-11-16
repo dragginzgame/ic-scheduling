@@ -1,6 +1,7 @@
 //! Initial elapsed deadlines, including epoch zero and unstarted reconstruction.
 use super::{Cell, RefCell, ic0};
 use ic_jobs::{Checkpoint, Job, Outcome, Policy, Schedule, Status};
+use ic_platform_runtime::system;
 use std::num::NonZeroU64;
 
 thread_local! {
@@ -26,8 +27,8 @@ pub extern "C" fn setup() {
     assert!(mode <= 5 || (one_shot && mode <= 7));
     MODE.with(|value| value.set(mode));
     let first = match mode {
-        3 => ic0::time() - 20_000_000_000,
-        4 => ic0::time() + 10_000_000_000,
+        3 => system::time() - 20_000_000_000,
+        4 => system::time() + 10_000_000_000,
         _ => 0,
     };
     let every = if matches!(mode, 0 | 5) {
@@ -58,10 +59,11 @@ pub extern "C" fn setup() {
             LOG.with_borrow_mut(|log| log.push(context.scheduled_at));
             assert!(context.started_at >= context.scheduled_at);
             if MODE.with(Cell::get) == 7 {
-                super::Call::new(super::self_id(), "echo", super::WaitPolicy::Unbounded)
-                    .execute()
-                    .await
-                    .unwrap();
+                drop(crate::expect_reply(
+                    super::Call::new(super::self_id(), "echo", super::Wait::Unbounded)
+                        .execute()
+                        .await,
+                ));
                 ic0::trap(b"one-shot post-await trap");
             }
             Outcome::Success

@@ -1,9 +1,10 @@
 //! Host-owned future-deadline reconstruction and raw self-dispatch qualification.
 use super::{
-    Call, Cell, Observation, Once, OnceDemand, OnceNext, OnceResult, OnceStatus, RefCell,
-    WaitPolicy, ic0, self_id,
+    Call, Cell, Observation, Once, OnceDemand, OnceNext, OnceResult, OnceStatus, RefCell, Wait,
+    ic0, self_id,
 };
 use ic_platform_runtime::executor;
+use ic_platform_runtime::system;
 
 thread_local! {
     static HANDLE: RefCell<Option<Once>> = const { RefCell::new(None) };
@@ -14,7 +15,7 @@ thread_local! {
 }
 fn bind(deadline: u64) {
     ic_timers::initialize().unwrap();
-    EPOCH.with(|epoch| epoch.set(ic0::canister_version()));
+    EPOCH.with(|epoch| epoch.set(system::canister_version()));
     DEADLINE.with(|value| value.set(deadline));
     let handle = ic_timers::bind_once(
         ["lifecycle", "once", "future"],
@@ -22,10 +23,8 @@ fn bind(deadline: u64) {
         || async {
             RUNS.with(|count| count.set(count.get() + 1));
             if let Some(target) = TARGET.with(Cell::get) {
-                let response = Call::new(target, "hold", WaitPolicy::Unbounded)
-                    .execute()
-                    .await;
-                assert!(response.is_ok());
+                let response = Call::new(target, "hold", Wait::Unbounded).execute().await;
+                drop(crate::expect_reply(response));
             }
             OnceResult {
                 observation: Observation::Success,
@@ -52,7 +51,7 @@ pub extern "C" fn init() {
     let mut args = [0];
     ic0::msg_arg_data_copy(&mut args, 0);
     assert_eq!(args, [1]);
-    bind(ic0::time().checked_add(10_000_000_000).unwrap());
+    bind(system::time().checked_add(10_000_000_000).unwrap());
 }
 
 /// This host fixture persists a Jobs checkpoint or an Armed Once declaration.
@@ -85,12 +84,12 @@ pub extern "C" fn pre_upgrade() {
         },
     );
     if ic0::stable64_size() == 0 {
-        assert_eq!(ic0::stable64_grow(1), 0);
+        assert_eq!(ic0::stable64_grow(1), Some(0));
     }
     let mut bytes = [0; 16];
     bytes[..8].copy_from_slice(b"ONCEDEMO");
     bytes[8..].copy_from_slice(&deadline.to_le_bytes());
-    ic0::stable64_write(&bytes, 0);
+    ic0::stable64_write(0, &bytes);
 }
 
 /// Rebind fresh volatile capabilities from host-owned persisted demand.
@@ -115,7 +114,7 @@ pub extern "C" fn post_upgrade() {
         return;
     }
     let mut bytes = [0; 16];
-    ic0::stable64_read(&mut bytes, 0);
+    ic0::stable64_read(0, &mut bytes);
     assert_eq!(&bytes[..8], b"ONCEDEMO");
     bind(u64::from_le_bytes(bytes[8..].try_into().unwrap()));
 }
@@ -172,7 +171,7 @@ pub extern "C" fn rearm() {
         let slot = slot.borrow();
         let handle = slot.as_ref().unwrap();
         assert!(matches!(handle.status().unwrap(), OnceStatus::Inactive));
-        let deadline = ic0::time().checked_add(10_000_000_000).unwrap();
+        let deadline = system::time().checked_add(10_000_000_000).unwrap();
         handle.set(OnceDemand::At(deadline)).unwrap();
         DEADLINE.with(|value| value.set(deadline));
     });
@@ -191,14 +190,17 @@ pub extern "C" fn relay() {
     assert!(size <= 17);
     let mut bytes = vec![0; size];
     ic0::msg_arg_data_copy(&mut bytes, 0);
-    executor::in_tracking_executor_context(|| {
-        let _task = executor::spawn_protected(async move {
-            let response = Call::new(self_id(), "__ic_scheduling_once", WaitPolicy::Unbounded)
-                .take_raw_args(bytes)
-                .execute()
-                .await;
-            ic0::msg_reply_data_append(&[u8::from(response.is_ok())]);
-            ic0::msg_reply();
-        });
-    });
+    executor::run_update(async move {
+        let response = Call::new(self_id(), "__ic_scheduling_once", Wait::Unbounded)
+            .owned_args(bytes)
+            .execute()
+            .await;
+        let completion = response.expect("relay submission");
+        let replied = matches!(
+            completion.outcome(),
+            ic_platform_runtime::call::Outcome::Reply(_)
+        );
+        ic_platform_runtime::system::reply(&[u8::from(replied)]).expect("relay reply");
+    })
+    .expect("relay task");
 }

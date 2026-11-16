@@ -1,5 +1,26 @@
 # Timers changelog
 
+## [0.46.0] - Unreleased
+
+### 💥 Changed
+
+- Move the execution provider to the Runtime 0.23 cohort. Canisters composing
+  Timers with Runtime 0.22 must migrate their runtime callers together; two
+  executor guards remain refused. Tracks
+  [Scheduling #2 — Migrate Timers to Runtime 0.23 with one executor and retained watchdog recovery](https://github.com/dragginzgame/ic-scheduling/issues/2).
+- Use timer/update roots and committed task observations for abandonment custody;
+  failed cleanup remains blocked. Honor immediate submission backoff before
+  attempting another flight in the same control turn.
+
+### 🛠️ Development
+
+- Migrate native and Wasm qualification to Types 0.21.2, Protocol 0.2.6 and
+  Testkit 0.107.2, retaining the installed failure and upgrade coverage.
+- Retain bounded, sanitized CI setup failure diagnostics and selected hidden
+  Rust attempt logs as seven-day artifacts, preserving the failing status.
+- Adopt Toko Tooling 0.44.11, including flat qualification layout, independent
+  dependency selection and repository-wide named-supplier adoption guidance.
+
 ## [0.45.12] - 2026-11-16
 
 ### 🛠️ Development

@@ -21,7 +21,7 @@ fn main() {
     for (mode, expected_reply, expected_events) in [
         (0, 1, [1, 1, 1, 1, 0]),
         (1, 2, [1, 0, 0, 0, 0]),
-        (2, 2, [1, 1, 0, 0, 1]),
+        (2, 2, [1, 1, 0, 1, 1]),
     ] {
         let result = pic.update_call(canister, sender, "launch", vec![mode]);
         let events = pic
@@ -43,7 +43,7 @@ fn main() {
     assert_eq!(
         pic.query_call(canister, sender, "events", vec![])
             .expect("events after rejected admission"),
-        vec![1, 1, 0, 0, 1]
+        vec![1, 1, 0, 1, 1]
     );
     println!("executor probe: 3 lifecycle and 3 admission checks passed");
 }

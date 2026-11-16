@@ -3,7 +3,7 @@ use crate::{
     Outcome, Policy, RecoveryDisposition, Schedule,
     state::{Selection, State},
 };
-use ic_platform_runtime::ic0;
+use ic_platform_runtime::system;
 use ic_timers::{Once, OnceDemand, OnceNext, OnceResult, OnceStatus};
 use std::{
     cell::RefCell,
@@ -141,7 +141,7 @@ where
     let checkpoint = crate::Checkpoint::new(
         7,
         1,
-        first.is_none().then(ic0::time),
+        first.is_none().then(system::time),
         first,
         crate::ControlState::Active,
         None,
@@ -225,7 +225,7 @@ where
     )));
     let captured = Rc::clone(&state);
     let timer = ic_timers::bind_once(identity, ic_timers::Lifetime::Retained, move || {
-        let now = ic0::time();
+        let now = system::time();
         let selected = {
             let mut state = captured.borrow_mut();
             match state.accept_dispatch(now) {
@@ -257,7 +257,7 @@ where
                 None => Outcome::NoWork,
             };
             let mut state = state.borrow_mut();
-            let finished_at = ic0::time();
+            let finished_at = system::time();
             if state
                 .finish(
                     selection,
@@ -284,7 +284,7 @@ where
             if state.last_outcome.is_none() {
                 state.faulted = true;
             }
-            let next = match state.plan(ic0::time()) {
+            let next = match state.plan(system::time()) {
                 None => OnceNext::Stop,
                 Some(at) => OnceNext::At(at),
             };
@@ -301,7 +301,7 @@ where
         }
     })?;
     let job = Job { state, timer };
-    let demand = job.state.borrow_mut().plan(ic0::time());
+    let demand = job.state.borrow_mut().plan(system::time());
     job.timer
         .set(demand.map_or(OnceDemand::Inactive, OnceDemand::At))?;
     Ok(job)
@@ -456,14 +456,14 @@ impl Job {
         );
         let demand = {
             let mut state = self.state.borrow_mut();
-            if change(&mut state, ic0::time()).is_err() {
+            if change(&mut state, system::time()).is_err() {
                 state.faulted = true;
                 return Err(Error::Faulted);
             }
             if running {
                 None
             } else {
-                Some(state.plan(ic0::time()))
+                Some(state.plan(system::time()))
             }
         };
         if let Some(demand) = demand {
@@ -543,7 +543,7 @@ impl Job {
                 return Err(Error::Faulted);
             }
             state
-                .recover(recovery.selection, disposition, ic0::time())
+                .recover(recovery.selection, disposition, system::time())
                 .map_err(|error| match error {
                     crate::state::Error::Stale => Error::StaleRecovery,
                     crate::state::Error::RetryUnavailable => Error::RetryUnavailable,

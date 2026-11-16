@@ -1,6 +1,7 @@
 //! Completion-relative Jobs, using real calls and host-owned settled upgrades.
-use super::{Call, Cell, RefCell, WaitPolicy, ic0, self_id};
+use super::{Call, Cell, RefCell, Wait, ic0, self_id};
 use ic_jobs::{Checkpoint, Context, ControlState, Job, Outcome, Policy, Schedule, Status};
+use ic_platform_runtime::system;
 use std::num::NonZeroU64;
 thread_local! {
     static JOB: RefCell<Option<Job>> = const { RefCell::new(None) };
@@ -43,15 +44,16 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
             runs.get()
         });
         for _ in 0..if run == 1 { 100 } else { 1 } {
-            Call::new(self_id(), "jobs_completion_echo", WaitPolicy::Unbounded)
-                .execute()
-                .await
-                .unwrap();
+            drop(crate::expect_reply(
+                Call::new(self_id(), "jobs_completion_echo", Wait::Unbounded)
+                    .execute()
+                    .await,
+            ));
         }
         if MODE.with(Cell::get) == 4 {
             ic0::trap(b"completion post-await trap");
         }
-        FINISHED.with(|finished| finished.set(ic0::time()));
+        FINISHED.with(|finished| finished.set(system::time()));
         if run == 1 {
             Outcome::ExpectedFailure
         } else {
@@ -117,7 +119,7 @@ pub extern "C" fn echo() {
                     EDITED.with(|value| value.set(1));
                 }
                 2 => {
-                    let at = ic0::time() + 100_000_000_000;
+                    let at = system::time() + 100_000_000_000;
                     job.edit(Schedule::once(at)).unwrap();
                     EDITED.with(|value| value.set(at));
                 }
@@ -239,15 +241,15 @@ pub(super) fn pre_upgrade() -> bool {
         }
         super::outcomes::append(checkpoint.last_outcome(), &mut bytes);
         if ic0::stable64_size() == 0 {
-            assert_eq!(ic0::stable64_grow(1), 0);
+            assert_eq!(ic0::stable64_grow(1), Some(0));
         }
-        ic0::stable64_write(&bytes, 0);
+        ic0::stable64_write(0, &bytes);
         true
     })
 }
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 104];
-    ic0::stable64_read(&mut bytes, 0);
+    ic0::stable64_read(0, &mut bytes);
     if &bytes[..8] != b"JOBSCMP4" {
         return false;
     }

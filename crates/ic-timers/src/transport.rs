@@ -7,9 +7,9 @@ use crate::{
     metrics::Event,
 };
 use ic_platform_runtime::{
-    Principal,
-    call::{Call, CallFailed, WaitPolicy},
-    executor, ic0,
+    call::{Call, Outcome, SubmitError, Wait},
+    executor::{self, TaskHandle, TaskState},
+    raw as ic0, system,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -27,6 +27,7 @@ struct Flight {
     id: u64,
     dispatch: Scheduled,
     accepted: Option<Accepted>,
+    work: Option<TaskHandle>,
 }
 struct Runtime {
     bindings: Bindings,
@@ -78,7 +79,7 @@ pub fn initialize() -> Result<(), Error> {
                 bindings: Bindings::new(),
                 flights: RefCell::new(Vec::new()),
                 sequence: Cell::new(0),
-                incarnation: ic0::canister_version(),
+                incarnation: system::canister_version(),
                 faulted: Cell::new(false),
                 timer: Cell::new(0),
                 retry_at: Cell::new(0),
@@ -145,7 +146,7 @@ where
             let next = match result.next {
                 OnceNext::Stop => Demand::Inactive,
                 OnceNext::At(at) => Demand::At(at),
-                OnceNext::After(delay) => ic0::time()
+                OnceNext::After(delay) => system::time()
                     .checked_add(delay.get())
                     .map_or(Demand::Inactive, Demand::At),
             };
@@ -230,7 +231,7 @@ impl Runtime {
         if !self.faulted.replace(true) {
             self.record(Event::ProviderFault);
         }
-        ic0::global_timer_set(0);
+        system::global_timer_set(0);
         self.timer.set(0);
     }
     fn arm(&self) -> Result<(), Error> {
@@ -245,7 +246,7 @@ impl Runtime {
         let deadline = match eligible {
             None => 0,
             Some(at) => {
-                let now = ic0::time();
+                let now = system::time();
                 let at = at.max(self.retry_at.get());
                 if at > now {
                     at
@@ -264,7 +265,7 @@ impl Runtime {
         // Cadence control must keep advancing even when delivery is backpressured.
         let deadline = match cadence {
             Some(at) => {
-                let Some(earliest) = ic0::time().checked_add(1) else {
+                let Some(earliest) = system::time().checked_add(1) else {
                     self.fail();
                     return Err(Error::Faulted);
                 };
@@ -273,7 +274,7 @@ impl Runtime {
             }
             None => deadline,
         };
-        let previous = ic0::global_timer_set(deadline);
+        let previous = system::global_timer_set(deadline);
         if previous != self.timer.replace(deadline) {
             self.fail();
             return Err(Error::Faulted);
@@ -281,13 +282,6 @@ impl Runtime {
         Ok(())
     }
 }
-fn self_id() -> Principal {
-    let mut bytes = [0; 29];
-    let len = ic0::canister_self_size();
-    ic0::canister_self_copy(&mut bytes[..len], 0);
-    Principal::from_slice(&bytes[..len])
-}
-
 #[expect(
     unsafe_code,
     reason = "this crate owns the canister global timer export"
@@ -295,109 +289,129 @@ fn self_id() -> Principal {
 #[unsafe(export_name = "canister_global_timer")]
 extern "C" fn timer() {
     let Ok(runtime) = runtime() else { return };
-    runtime.timer.set(0); // The IC clears the fired one-shot before this message.
+    runtime.timer.set(0);
     if runtime.check().is_err() {
         return;
     }
-    runtime.bindings.advance_watchdogs(ic0::time());
-    // A cadence wake advances control state but must not bypass delivery backoff.
-    if ic0::time() < runtime.retry_at.get() {
+    runtime.bindings.advance_watchdogs(system::time());
+    if system::time() < runtime.retry_at.get() {
         let _ = runtime.arm();
         return;
     }
-    executor::in_tracking_executor_context(|| {
-        let mut submitted = 0;
-        for _ in 0..crate::bindings::CAPACITY {
-            if submitted == PER_TURN || runtime.flights.borrow().len() == MAX_FLIGHTS {
-                break;
-            }
-            let Some(dispatch) = runtime.bindings.select(ic0::time()) else {
-                break;
+    let mut submitted = 0;
+    for _ in 0..crate::bindings::CAPACITY {
+        if submitted == PER_TURN || runtime.flights.borrow().len() == MAX_FLIGHTS {
+            break;
+        }
+        let Some(dispatch) = runtime.bindings.select(system::time()) else {
+            break;
+        };
+        if runtime
+            .flights
+            .borrow()
+            .iter()
+            .any(|flight| same(&flight.dispatch, &dispatch))
+        {
+            continue;
+        }
+        let Some(id) = runtime.sequence.get().checked_add(1) else {
+            runtime.fail();
+            break;
+        };
+        runtime.sequence.set(id);
+        runtime.flights.borrow_mut().push(Flight {
+            id,
+            dispatch,
+            accepted: None,
+            work: None,
+        });
+        let owner = Rc::clone(&runtime);
+        let task = executor::run_global_timer(async move {
+            let mut guard = FlightGuard {
+                runtime: Rc::clone(&owner),
+                finished: false,
             };
-            if runtime
-                .flights
-                .borrow()
-                .iter()
-                .any(|flight| same(&flight.dispatch, &dispatch))
-            {
-                continue;
-            }
-            let Some(id) = runtime.sequence.get().checked_add(1) else {
-                runtime.fail();
-                break;
+            let envelope = [owner.incarnation.to_le_bytes(), id.to_le_bytes()];
+            let response = Call::new(system::canister_self(), METHOD, Wait::Unbounded)
+                .args(envelope.as_flattened())
+                .execute()
+                .await;
+            let flight = {
+                let mut flights = owner.flights.borrow_mut();
+                flights
+                    .iter()
+                    .position(|flight| flight.id == id)
+                    .map(|index| flights.remove(index))
             };
-            runtime.sequence.set(id);
-            runtime.flights.borrow_mut().push(Flight {
-                id,
-                dispatch,
-                accepted: None,
-            });
-            let owner = Rc::clone(&runtime);
-            let _task = executor::spawn_protected(async move {
-                let mut flight_guard = FlightGuard {
-                    runtime: Rc::clone(&owner),
-                    finished: false,
-                };
-                let envelope = [owner.incarnation.to_le_bytes(), id.to_le_bytes()];
-                let response = Call::new(self_id(), METHOD, WaitPolicy::Unbounded)
-                    .with_raw_args(envelope.as_flattened())
-                    .execute()
-                    .await;
-                let flight = {
-                    let mut flights = owner.flights.borrow_mut();
-                    flights
-                        .iter()
-                        .position(|flight| flight.id == id)
-                        .map(|index| flights.remove(index))
-                };
-                if let Some(flight) = flight {
-                    if matches!(
-                        response,
-                        Err(CallFailed::CallPerformFailed(_)
-                            | CallFailed::InsufficientLiquidCycleBalance(_))
-                    ) {
+            if let Some(flight) = flight {
+                match response {
+                    Err(SubmitError::Refused(_) | SubmitError::InsufficientBalance { .. }) => {
                         owner.record(Event::Deferred);
-                        match ic0::time().checked_add(RETRY_NS) {
+                        match system::time().checked_add(RETRY_NS) {
                             Some(at) => owner.retry_at.set(at),
                             None => owner.fail(),
                         }
-                    } else if let Scheduled::Watchdog(dispatch) = &flight.dispatch {
-                        // Synchronous work has no suspended provider-owned future.
-                        // A trap rolls its work message back; either reply or reject
-                        // definitively settles this flight, preserving its successor.
-                        match dispatch.settle(response.is_err()) {
-                            Ok(true) if response.is_err() => {
-                                owner.record(Event::Accepted);
-                                owner.record(Event::Abandoned);
-                            }
-                            Err(_) => owner.fail(),
-                            _ => {}
-                        }
-                    } else if response.is_err() {
-                        if let Some(accepted) = flight.accepted {
-                            // Do not infer termination solely from a rejection. A live
-                            // Running attempt remains blocked by a terminal provider fault.
-                            if accepted.is_running().unwrap_or(true) {
-                                owner.fail();
-                            }
-                        } else if let Scheduled::Once(dispatch) = &flight.dispatch {
-                            match owner.bindings.rejected(dispatch) {
-                                Ok(true) => {
+                    }
+                    Err(_) => owner.fail(),
+                    Ok(completion) => {
+                        let rejected = !matches!(completion.outcome(), Outcome::Reply(_));
+                        if let Scheduled::Watchdog(dispatch) = &flight.dispatch {
+                            // Work is synchronous; a rejected work message leaves the
+                            // prearmed successor committed and definitively settles custody.
+                            match dispatch.settle(rejected) {
+                                Ok(true) if rejected => {
                                     owner.record(Event::Accepted);
                                     owner.record(Event::Abandoned);
                                 }
                                 Err(_) => owner.fail(),
                                 _ => {}
                             }
+                        } else if rejected {
+                            if let Some(accepted) = flight.accepted {
+                                // Only committed successful destruction proves termination.
+                                // A rejected response or Running task does not authorize replay.
+                                match flight.work.as_ref().map(TaskHandle::state) {
+                                    Some(TaskState::TerminatedByCleanup) => {
+                                        match accepted.abandon() {
+                                            Ok(true) => owner.record(Event::Abandoned),
+                                            Err(_) => owner.fail(),
+                                            _ => {}
+                                        }
+                                    }
+                                    Some(TaskState::Completed)
+                                        if !accepted.is_running().unwrap_or(true) => {}
+                                    _ => owner.fail(),
+                                }
+                            } else if let Scheduled::Once(dispatch) = &flight.dispatch {
+                                // An initial trap rolls back the task handle and acceptance;
+                                // the earlier committed dispatch still owns the uncertain work.
+                                match owner.bindings.rejected(dispatch) {
+                                    Ok(true) => {
+                                        owner.record(Event::Accepted);
+                                        owner.record(Event::Abandoned);
+                                    }
+                                    Err(_) => owner.fail(),
+                                    _ => {}
+                                }
+                            }
                         }
                     }
                 }
-                flight_guard.finished = true;
-                let _ = owner.arm();
-            });
-            submitted += 1;
+            }
+            guard.finished = true;
+            let _ = owner.arm();
+        });
+        if task.is_err() {
+            runtime.fail();
+            break;
         }
-    });
+        submitted += 1;
+        // Root entry polls immediately. A synchronous submission refusal can
+        // establish backoff before this control turn returns; honor it now.
+        if runtime.check().is_err() || system::time() < runtime.retry_at.get() {
+            break;
+        }
+    }
     let _ = runtime.arm();
 }
 
@@ -413,43 +427,17 @@ impl Drop for FlightGuard {
     }
 }
 
-struct WorkGuard {
-    runtime: Rc<Runtime>,
-    accepted: Accepted,
-    finished: bool,
-}
-impl Drop for WorkGuard {
-    fn drop(&mut self) {
-        if !self.finished {
-            if executor::is_recovering_from_trap() {
-                match self.accepted.abandon() {
-                    Ok(true) => self.runtime.record(Event::Abandoned),
-                    Err(_) => self.runtime.fail(),
-                    _ => {}
-                }
-            } else {
-                self.runtime.fail(); // Unqualified cancellation does not authorize replay.
-            }
-        }
-    }
-}
 #[expect(
     unsafe_code,
     reason = "this crate owns its authenticated work endpoint"
 )]
 #[unsafe(export_name = "canister_update __ic_scheduling_once")]
 extern "C" fn dispatch() {
-    let mut caller = [0; 29];
-    let len = ic0::msg_caller_size();
-    if len > caller.len() {
-        ic0::trap(b"invalid caller")
-    }
-    ic0::msg_caller_copy(&mut caller[..len], 0);
-    if Principal::from_slice(&caller[..len]) != self_id() {
-        ic0::trap(b"self only")
+    if system::caller() != system::canister_self() {
+        ic0::trap(b"self only");
     }
     if ic0::msg_arg_data_size() != 16 {
-        ic0::trap(b"invalid dispatch envelope")
+        ic0::trap(b"invalid dispatch envelope");
     }
     let mut bytes = [0; 16];
     ic0::msg_arg_data_copy(&mut bytes, 0);
@@ -459,7 +447,7 @@ extern "C" fn dispatch() {
         ic0::trap(b"uninitialized")
     };
     if runtime.check().is_err() {
-        ic0::trap(b"provider fault")
+        ic0::trap(b"provider fault");
     }
     if incarnation != runtime.incarnation {
         ic0::msg_reply();
@@ -477,55 +465,59 @@ extern "C" fn dispatch() {
     };
     let selected = match selected {
         Scheduled::Watchdog(dispatch) => {
-            executor::in_tracking_executor_context(|| {
-                if runtime.bindings.run_watchdog(&dispatch).is_err() {
-                    runtime.fail();
-                    ic0::trap(b"watchdog acceptance failed");
-                }
-            });
+            if runtime.bindings.run_watchdog(&dispatch).is_err() {
+                runtime.fail();
+                ic0::trap(b"watchdog acceptance failed");
+            }
             let _ = runtime.arm();
             ic0::msg_reply();
             return;
         }
         Scheduled::Once(dispatch) => dispatch,
     };
-    executor::in_tracking_executor_context(|| {
-        let owner = Rc::clone(&runtime);
-        let _task = executor::spawn_protected(async move {
-            let result = owner.bindings.start(&selected);
-            let (accepted, future) = match result {
-                Ok(Some(value)) => value,
-                Ok(None) => {
-                    ic0::msg_reply();
-                    return;
-                }
-                Err(_) => {
-                    owner.fail();
-                    ic0::trap(b"acceptance failed")
-                }
-            };
-            if let Some(flight) = owner
-                .flights
-                .borrow_mut()
-                .iter_mut()
-                .find(|flight| flight.id == id)
-            {
-                flight.accepted = Some(accepted.clone());
+    let owner = Rc::clone(&runtime);
+    let task = executor::run_update(async move {
+        let (accepted, future) = match owner.bindings.start(&selected) {
+            Ok(Some(value)) => value,
+            Ok(None) => {
+                system::reply(&[]).expect("work reply authority");
+                return;
             }
-            let mut guard = WorkGuard {
-                runtime: Rc::clone(&owner),
-                accepted,
-                finished: false,
-            };
-            let (next, observation) = future.await;
-            if guard.accepted.complete(next, observation).is_err() {
+            Err(_) => {
                 owner.fail();
+                ic0::trap(b"acceptance failed")
             }
-            guard.finished = true;
-            let _ = owner.arm();
-            ic0::msg_reply();
-        });
+        };
+        if let Some(flight) = owner
+            .flights
+            .borrow_mut()
+            .iter_mut()
+            .find(|flight| flight.id == id)
+        {
+            flight.accepted = Some(accepted.clone());
+        }
+        let (next, observation) = future.await;
+        if accepted.complete(next, observation).is_err() {
+            owner.fail();
+        }
+        let _ = owner.arm();
+        system::reply(&[]).expect("work reply authority");
     });
+    let task = match task {
+        Ok(task) => task,
+        Err(_) => {
+            runtime.fail();
+            ic0::trap(b"work task admission failed")
+        }
+    };
+    if let Some(flight) = runtime
+        .flights
+        .borrow_mut()
+        .iter_mut()
+        .find(|flight| flight.id == id)
+    {
+        flight.work = Some(task);
+    }
 }
 
 fn same(a: &Scheduled, b: &Scheduled) -> bool {
@@ -608,7 +600,7 @@ impl Watchdog {
     pub fn set(&self, demand: WatchdogDemand) -> Result<(), Error> {
         let runtime = self.runtime.upgrade().ok_or(Error::StaleAuthority)?;
         runtime.check()?;
-        self.handle.set(demand, ic0::time())?;
+        self.handle.set(demand, system::time())?;
         runtime.arm()
     }
     /// Observe this declaration without controlling consumer-owned async work.

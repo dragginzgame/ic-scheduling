@@ -1,6 +1,7 @@
 //! Shared admission and independent Jobs failure custody under held-flight pressure.
-use super::{Call, Principal, RefCell, WaitPolicy, ic0};
+use super::{Call, Principal, RefCell, Wait, ic0};
 use ic_jobs::{Job, Outcome, Schedule, Status};
+use ic_platform_runtime::system;
 
 thread_local! {
     static JOBS: RefCell<Vec<Job>> = const { RefCell::new(Vec::new()) };
@@ -38,10 +39,8 @@ pub extern "C" fn setup() {
                     counts.0[index] == 1
                 });
                 if index < 8 && first {
-                    let reply = Call::new(target, "hold", WaitPolicy::Unbounded)
-                        .execute()
-                        .await;
-                    assert!(reply.is_ok());
+                    let reply = Call::new(target, "hold", Wait::Unbounded).execute().await;
+                    drop(crate::expect_reply(reply));
                     if index == 0 {
                         ic0::trap(b"one pressured job abandons after await");
                     }
@@ -142,7 +141,7 @@ pub extern "C" fn bulk_setup() {
     let schedule = match mode[0] {
         0 => Schedule::parse("* * * * *").unwrap(),
         1 => Schedule::fixed_rate(
-            ic0::time().checked_add(5_000_000_000).unwrap(),
+            system::time().checked_add(5_000_000_000).unwrap(),
             std::num::NonZeroU64::new(10_000_000_000).unwrap(),
         ),
         _ => ic0::trap(b"invalid schedule mode"),
@@ -163,10 +162,11 @@ pub extern "C" fn bulk_setup() {
                     assert!(context.scheduled_at > values[index].0);
                     values[index] = (context.scheduled_at, context.started_at);
                 });
-                Call::new(super::self_id(), "echo", WaitPolicy::Unbounded)
-                    .execute()
-                    .await
-                    .unwrap();
+                drop(crate::expect_reply(
+                    Call::new(super::self_id(), "echo", Wait::Unbounded)
+                        .execute()
+                        .await,
+                ));
                 COUNTS.with_borrow_mut(|counts| counts.1[index] += 1);
                 Outcome::Success
             },

@@ -1,5 +1,5 @@
 //! Bounded catch-up execution and host-owned batch persistence.
-use super::{Call, Cell, RefCell, WaitPolicy, ic0, self_id};
+use super::{Call, Cell, RefCell, Wait, ic0, self_id};
 use ic_jobs::{
     CatchUpLimit, CatchUpProgress, Checkpoint, Context, Job, Outcome, Policy, Schedule, Status,
 };
@@ -48,12 +48,11 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
             assert!(log.len() < 96);
             log.push(context.scheduled_at);
         });
-        assert!(
-            Call::new(self_id(), "catch_up_echo", WaitPolicy::Unbounded)
+        drop(crate::expect_reply(
+            Call::new(self_id(), "catch_up_echo", Wait::Unbounded)
                 .execute()
-                .await
-                .is_ok()
-        );
+                .await,
+        ));
         let mode = MODE.with(Cell::get);
         if mode == 4 || (mode == 10 && LOG.with(|log| log.borrow().len()) == 2) {
             ic0::trap(b"catch-up post-await trap");
@@ -170,7 +169,9 @@ pub(super) fn pre_upgrade() -> bool {
         let Some(job) = slot.as_ref() else {
             return false;
         };
-        let checkpoint = job.checkpoint().expect("host refuses unsettled catch-up");
+        let checkpoint = job
+            .checkpoint()
+            .unwrap_or_else(|_| ic0::trap(b"host refuses unsettled catch-up"));
         assert!(
             checkpoint.retry().is_none(),
             "fixture definition disables retries"
@@ -216,15 +217,15 @@ pub(super) fn pre_upgrade() -> bool {
         assert!(bytes.len() <= 1024);
         bytes.resize(1024, 0);
         if ic0::stable64_size() == 0 {
-            assert_eq!(ic0::stable64_grow(1), 0);
+            assert_eq!(ic0::stable64_grow(1), Some(0));
         }
-        ic0::stable64_write(&bytes, 0);
+        ic0::stable64_write(0, &bytes);
         true
     })
 }
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 1024];
-    ic0::stable64_read(&mut bytes, 0);
+    ic0::stable64_read(0, &mut bytes);
     if &bytes[..8] != b"CATCHUP5" {
         return false;
     }

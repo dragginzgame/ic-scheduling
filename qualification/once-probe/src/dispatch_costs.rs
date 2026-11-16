@@ -1,7 +1,6 @@
 //! Message-prefix instruction samples for actual dispatch and async resumption.
 use super::{
-    Call, Cell, Observation, Once, OnceDemand, OnceNext, OnceResult, RefCell, WaitPolicy, ic0,
-    self_id,
+    Call, Cell, Observation, Once, OnceDemand, OnceNext, OnceResult, RefCell, Wait, ic0, self_id,
 };
 thread_local! {
     static HANDLES: RefCell<Vec<Once>> = const { RefCell::new(Vec::new()) };
@@ -26,17 +25,16 @@ pub extern "C" fn setup() {
             ["dispatch-cost", "once", &index.to_string()],
             ic_timers::Lifetime::Retained,
             move || {
-                let factory_prefix = ic0::performance_counter(0);
+                let factory_prefix = ic0::instruction_counter();
                 SAMPLES.with(|samples| samples.borrow_mut()[index][0] = factory_prefix);
                 async move {
-                    let poll_prefix = ic0::performance_counter(0);
+                    let poll_prefix = ic0::instruction_counter();
                     SAMPLES.with(|samples| samples.borrow_mut()[index][1] = poll_prefix);
-                    let response =
-                        Call::new(self_id(), "dispatch_costs_echo", WaitPolicy::Unbounded)
-                            .execute()
-                            .await;
-                    let resume_prefix = ic0::performance_counter(0);
-                    let echo = response.unwrap().into_bytes();
+                    let response = Call::new(self_id(), "dispatch_costs_echo", Wait::Unbounded)
+                        .execute()
+                        .await;
+                    let resume_prefix = ic0::instruction_counter();
+                    let echo = crate::expect_reply(response);
                     assert_eq!(echo.len(), 8);
                     let echo_prefix = u64::from_le_bytes(echo.try_into().unwrap());
                     SAMPLES.with(|samples| samples.borrow_mut()[index][3] = echo_prefix);
@@ -61,7 +59,7 @@ pub extern "C" fn setup() {
 #[expect(unsafe_code, reason = "qualification owns this endpoint")]
 #[unsafe(export_name = "canister_update dispatch_costs_echo")]
 pub extern "C" fn echo() {
-    let prefix = ic0::performance_counter(0);
+    let prefix = ic0::instruction_counter();
     ic0::msg_reply_data_append(&prefix.to_le_bytes());
     ic0::msg_reply();
 }
@@ -90,19 +88,22 @@ pub extern "C" fn state() {
     ic0::msg_reply();
 }
 
-/// Separate raw-entry/context/task baselines, without importing scheduler state.
+/// Separate raw-entry, pre-task and first-poll baselines, without scheduler state.
+/// # Panics
+/// Traps if task admission or its manual reply fails.
 #[expect(unsafe_code, reason = "qualification owns this endpoint")]
 #[unsafe(export_name = "canister_update executor_costs_baseline")]
 pub extern "C" fn executor_baseline() {
-    let entry = ic0::performance_counter(0);
-    ic_platform_runtime::executor::in_tracking_executor_context(|| {
-        let context = ic0::performance_counter(0);
-        let _task = ic_platform_runtime::executor::spawn_protected(async move {
-            let poll = ic0::performance_counter(0);
-            for value in [entry, context, poll] {
-                ic0::msg_reply_data_append(&value.to_le_bytes());
-            }
-            ic0::msg_reply();
-        });
-    });
+    let entry = ic0::instruction_counter();
+    let admitted = ic0::instruction_counter();
+    ic_platform_runtime::executor::run_update(async move {
+        let poll = ic0::instruction_counter();
+        let bytes = [
+            entry.to_le_bytes(),
+            admitted.to_le_bytes(),
+            poll.to_le_bytes(),
+        ];
+        ic_platform_runtime::system::reply(bytes.as_flattened()).expect("baseline reply");
+    })
+    .expect("baseline task");
 }

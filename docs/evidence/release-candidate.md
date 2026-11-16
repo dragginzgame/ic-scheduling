@@ -1,5 +1,40 @@
 # Scheduling release qualification and delivery
 
+## Pending: Timers 0.46.0 / Jobs 0.39.0
+
+2026-11-16: Scheduling adopts Toko Tooling 0.44.11 and published Runtime
+0.23.14 / Types 0.21.2 / Testkit 0.107.2. The maintained Entropy adapter uses
+Protocol 0.2.6. Scheduling's held-reply driver retains Protocol 0.2.5 through
+Testkit's exact requirement. Both maintained workspaces resolve one Runtime
+and one executor guard; qualification retains its independent catalog and lock.
+Hosts composing Timers with Runtime 0.22 must migrate their callers together,
+so the planned releases advance the minor versions. Package versions remain
+at published Timers 0.45.12 and Jobs 0.38.2 until standard preparation. Jobs
+checkpoint schema 7 and calendar behavior remain unchanged.
+
+The earlier Runtime 0.23.13 migration passed strict product/probe Wasm Clippy,
+native driver Clippy, the installed executor cases, the complete installed
+Once/watchdog/Jobs suite and paired metrics checks. Runtime 0.23.14 adds only
+the replicated-execution observation missing from the pinned Entropy guard.
+The updated Entropy adapter now passes all 24 native tests and its actual
+release-Wasm installed query-refusal/lifecycle journey. Supplier identities
+and logs are recorded in the [Runtime adoption evidence](once-provider.md).
+No query guard is bypassed and no sibling source is edited or published.
+
+Toko Tooling 0.44.11 also requires actionable CI setup diagnostics. Scheduling
+now retains bounded, sanitized failures and selected hidden Rust attempt logs,
+with a seven-day artifact lifetime and explicit upload/missing-evidence results.
+The focused offline failure rehearsal passes; hosted upload/retrieval has not
+been observed. Both exact tooling pins, lockfiles and all 76 snapshot-managed
+files agree with the reviewed registry archive.
+
+The maintainer chose to wait for [Platform #19 — Expose replicated-execution observation for Entropy's source admission](https://github.com/dragginzgame/ic-platform/issues/19) rather than waive Entropy.
+The published context API and actual consumer check clear that blocker;
+earlier version-specific Entropy waivers remain unchanged. The next step is
+the complete standard captured-source gate and archive admission, followed by
+supplier-first GitHub and registry delivery. Current local observations are
+Linux/PocketIC 16.0.0 evidence, not hosted macOS or release proof.
+
 ## Completed: Timers 0.45.12 / Jobs 0.38.2
 
 Supplier review on 2026-11-16 selected published Toko Tooling 0.44.6 and

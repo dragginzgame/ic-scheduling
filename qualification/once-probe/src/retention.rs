@@ -1,5 +1,6 @@
 //! Installed capture custody under full-table control churn; no allocator replacement.
-use super::{Call, Observation, OnceDemand, OnceNext, OnceResult, WaitPolicy, ic0, self_id};
+use super::{Call, Observation, OnceDemand, OnceNext, OnceResult, Wait, ic0, self_id};
+use ic_platform_runtime::system;
 use ic_timers::{Once, Watchdog, WatchdogDemand, WatchdogNext, WatchdogResult};
 use std::{cell::RefCell, num::NonZeroU64};
 
@@ -86,10 +87,11 @@ pub extern "C" fn setup() {
                     capture.touch();
                     async {
                         let _attempt = Attempt::new();
-                        Call::new(self_id(), "echo", WaitPolicy::Unbounded)
-                            .execute()
-                            .await
-                            .unwrap();
+                        drop(crate::expect_reply(
+                            Call::new(self_id(), "echo", Wait::Unbounded)
+                                .execute()
+                                .await,
+                        ));
                         result()
                     }
                 },
@@ -122,7 +124,7 @@ pub extern "C" fn setup() {
 #[expect(unsafe_code, reason = "qualification owns this endpoint")]
 #[unsafe(export_name = "canister_update retention_churn")]
 pub extern "C" fn churn() {
-    let future = ic0::time().checked_add(60_000_000_000).unwrap();
+    let future = system::time().checked_add(60_000_000_000).unwrap();
     for round in 0..16 {
         HANDLES.with_borrow(|handles| {
             for handle in &handles.0 {
@@ -209,7 +211,7 @@ pub extern "C" fn drop_handles() {
     // Drop outside the fixture borrow too, so a regression can run capture Drop.
     let handles = HANDLES.with_borrow_mut(std::mem::take);
     if mode[0] == 1 {
-        let at = ic0::time().checked_add(1_000_000_000).unwrap();
+        let at = system::time().checked_add(1_000_000_000).unwrap();
         for handle in &handles.0 {
             handle.set(OnceDemand::At(at)).unwrap();
         }

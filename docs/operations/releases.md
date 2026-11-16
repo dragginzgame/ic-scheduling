@@ -48,3 +48,14 @@ native tests, Wasm compilation, archives and metadata transactions. Full install
 PocketIC and pinned Entropy qualification currently runs on the prepared Linux
 release host. CI runs one redacted repository-history secret scan, outside the
 host matrix. A Linux pass alone does not claim macOS qualification.
+
+CI setup phases run through `ci/setup.mjs`. Failures retain sanitized final
+64 KiB diagnostics and at most four explicitly reported Rust attempt logs of
+64 KiB each, without following attempt symlinks or uploading tool stores. The
+workflow uploads only `target/ci-setup/`, keeps artifacts for seven days and
+links the artifact in its result. Missing logs, collection failures and upload
+failures are reported separately; the original setup failure remains fatal.
+Run `node qualification/setup-check.mjs` when changing this boundary. Its offline
+failure rehearsal covers redaction, hidden attempt selection, missing output,
+symlink refusal, truncation and collector failure. Hosted upload/retrieval is a
+separate observation, not established by that local rehearsal.

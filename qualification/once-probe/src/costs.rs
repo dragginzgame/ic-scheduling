@@ -1,13 +1,14 @@
 //! Single-message instruction observations; never span an await or callback lifetime.
 use super::{Observation, OnceDemand, OnceNext, OnceResult, ic0};
+use ic_platform_runtime::system;
 use ic_timers::{WatchdogDemand, WatchdogNext, WatchdogResult};
 use std::num::NonZeroU64;
 
 fn measured<T>(work: impl FnOnce() -> T) -> (u64, T) {
-    let before = ic0::performance_counter(0);
+    let before = ic0::instruction_counter();
     let result = work();
     (
-        ic0::performance_counter(0).checked_sub(before).unwrap(),
+        ic0::instruction_counter().checked_sub(before).unwrap(),
         result,
     )
 }
@@ -72,7 +73,7 @@ pub extern "C" fn control_costs() {
         last_bind = cost;
     }
     costs.push(last_bind);
-    let future = ic0::time().checked_add(60_000_000_000).unwrap();
+    let future = system::time().checked_add(60_000_000_000).unwrap();
     costs.push(measured(|| once.set(OnceDemand::At(future)).unwrap()).0);
     costs.push(measured(|| once.set(OnceDemand::At(future + 1)).unwrap()).0);
     costs.push(measured(|| once.set(OnceDemand::At(future + 1)).unwrap()).0);

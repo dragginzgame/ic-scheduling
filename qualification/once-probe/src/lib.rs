@@ -1,10 +1,10 @@
 //! Actual Once provider installed-canister fixture. No alternate provider.
 
 use ic_platform_runtime::{
-    Principal,
-    call::{Call, WaitPolicy},
-    ic0,
+    call::{Call, Completion, Outcome as CallOutcome, SubmitError, Wait},
+    raw as ic0, system,
 };
+use ic_platform_types::Principal;
 use ic_timers::{Observation, Once, OnceDemand, OnceNext, OnceResult, OnceStatus};
 use std::cell::{Cell, RefCell};
 thread_local! {
@@ -15,10 +15,13 @@ thread_local! {
     static FINISHED_AT: Cell<u64> = const { Cell::new(0) };
 }
 fn self_id() -> Principal {
-    let mut bytes = [0; 29];
-    let len = ic0::canister_self_size();
-    ic0::canister_self_copy(&mut bytes[..len], 0);
-    Principal::from_slice(&bytes[..len])
+    system::canister_self()
+}
+fn expect_reply(result: Result<Completion, SubmitError>) -> Vec<u8> {
+    match result.expect("call submission").into_parts().0 {
+        CallOutcome::Reply(bytes) => bytes,
+        outcome => panic!("expected a reply, received {outcome:?}"),
+    }
 }
 /// Bind once and arm without inline execution. Modes 1/2 trap before/after await.
 ///
@@ -52,16 +55,16 @@ pub extern "C" fn arm() {
                             1
                         };
                         for _ in 0..calls {
-                            let result = Call::new(self_id(), "echo", WaitPolicy::Unbounded)
+                            let result = Call::new(self_id(), "echo", Wait::Unbounded)
                                 .execute()
                                 .await;
-                            assert!(result.is_ok());
+                            drop(crate::expect_reply(result));
                         }
                         if matches!(MODE.with(Cell::get), 2 | 5) {
                             ic0::trap(b"after await")
                         }
                         FINISHES.with(|v| v.set(v.get() + 1));
-                        FINISHED_AT.with(|v| v.set(ic0::time()));
+                        FINISHED_AT.with(|v| v.set(system::time()));
                         OnceResult {
                             observation: Observation::Success,
                             next: match MODE.with(Cell::get) {
@@ -173,7 +176,7 @@ mod metrics;
 struct CleanupTrap(bool);
 impl Drop for CleanupTrap {
     fn drop(&mut self) {
-        if self.0 && ic_platform_runtime::executor::is_recovering_from_trap() {
+        if self.0 {
             ic0::trap(b"deliberate consumer cleanup trap");
         }
     }

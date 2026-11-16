@@ -1,5 +1,27 @@
 # Entropy consumer migration qualification
 
+## Runtime 0.23 migration — 2026-11-16
+
+The maintained adapter still materializes only immutable Entropy commit
+`6c400b2c0259323ad1464fc692a4c4c378a2b101`; sibling branch/working changes are
+not qualification inputs. It binds the actual local Timers candidate, migrates
+Runtime to 0.23.14, Types to 0.21.2, Protocol to 0.2.6 and Testkit to 0.107.2,
+and uses explicit entrypoint codecs and timer/update roots. The source guard
+and standalone example use Runtime's public replicated-execution boolean.
+The guard still returns `Error::NonReplicated` before source custody/mutation.
+
+All 24 native tests and the actual release-Wasm installed
+`background_refill_and_lifecycle` pass locally on Linux/PocketIC 16.0.0.
+The installed observation includes query refusal, background fill, source
+contention/stale custody, suspension/reconstruction, upgrade and reinstall.
+The existing installed test assertions are preserved; its Testkit startup now
+uses `ic-testkit::pocket_ic::PocketIcBuilder` directly. No sibling files change.
+The [current adoption evidence](once-provider.md) records supplier identity
+and the earlier blocked attempt. The standard captured-source release gate
+will requalify the final candidate; no release claim follows from this fixture.
+
+## Original timer migration — 2026-11-15
+
 Local observation, 2026-11-15. Entropy is not being rewritten; it is the stable
 integration target. Canic's current API is provisional during its rewrite.
 This qualifies an isolated migration draft, not adoption, remote state or deployment.

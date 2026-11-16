@@ -20,6 +20,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 ic-platform-runtime.workspace = true
+ic-platform-types.workspace = true
 
 [lints]
 workspace = true

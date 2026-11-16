@@ -1,9 +1,10 @@
 //! Explicit retry-safe outcomes, stable effect identity and pending retry upgrades.
-use super::{Call, Cell, RefCell, WaitPolicy, ic0, self_id};
+use super::{Call, Cell, RefCell, Wait, ic0, self_id};
 use ic_jobs::{
     Checkpoint, Context, ControlState, Job, Outcome, Policy, RetryPolicy, RetryProgress, Schedule,
     Status,
 };
+use ic_platform_runtime::system;
 use std::num::NonZeroU64;
 const SECOND: u64 = 1_000_000_000;
 thread_local! {
@@ -26,7 +27,7 @@ fn policy() -> Policy {
         Policy::SkipLate {
             // First delivery is within tolerance; later retry delays exceed it.
             lateness_ns: if MODE.with(Cell::get) == 7 {
-                ic0::time() + 5 * SECOND
+                system::time() + 5 * SECOND
             } else {
                 u64::MAX
             },
@@ -56,10 +57,11 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
                 0,
             ])
         });
-        Call::new(self_id(), "jobs_retry_echo", WaitPolicy::Unbounded)
-            .execute()
-            .await
-            .unwrap();
+        drop(crate::expect_reply(
+            Call::new(self_id(), "jobs_retry_echo", Wait::Unbounded)
+                .execute()
+                .await,
+        ));
         if (matches!(MODE.with(Cell::get), 4 | 12 | 14) && context.attempt == 2)
             || (MODE.with(Cell::get) == 13 && context.attempt == 3)
             || (MODE.with(Cell::get) == 17 && context.attempt == 2 && context.scheduled_at == 0)
@@ -68,7 +70,7 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
         }
         LAST.with(|value| {
             let mut last = value.get();
-            last[3] = ic0::time();
+            last[3] = system::time();
             value.set(last);
         });
         match MODE.with(Cell::get) {
@@ -113,7 +115,7 @@ pub extern "C" fn echo() {
         assert_eq!(job.cancel(), Err(ic_jobs::Error::Unsettled));
         let attempt = LAST.with(Cell::get)[2];
         if MODE.with(Cell::get) == 5 && attempt == 2 {
-            job.edit(Schedule::once(ic0::time() + 100 * SECOND))
+            job.edit(Schedule::once(system::time() + 100 * SECOND))
                 .unwrap();
             assert!(matches!(
                 job.status().unwrap(),
@@ -173,12 +175,12 @@ pub extern "C" fn control() {
                     assert_eq!(job.recover(stale, ic_jobs::RecoveryDisposition::RetrySafe), Err(ic_jobs::Error::StaleRecovery));
                     let checkpoint = job.checkpoint().unwrap();
                     assert_eq!(checkpoint.retry().unwrap().failed_attempts(), attempt);
-                    assert_eq!(checkpoint.retry().unwrap().failed_at(), ic0::time());
-                    assert_eq!(checkpoint.retry().unwrap().retry_at(), ic0::time() + 15 * SECOND);
+                    assert_eq!(checkpoint.retry().unwrap().failed_at(), system::time());
+                    assert_eq!(checkpoint.retry().unwrap().retry_at(), system::time() + 15 * SECOND);
                 }
                 assert!(matches!(job.status().unwrap(), Status::Paused));
             }
-            5 => job.edit(Schedule::once(ic0::time() + 100 * SECOND)).unwrap(),
+            5 => job.edit(Schedule::once(system::time() + 100 * SECOND)).unwrap(),
             _ => panic!("invalid command"),
         }
     });
@@ -279,15 +281,15 @@ pub(super) fn pre_upgrade() -> bool {
         }
         super::outcomes::append(checkpoint.last_outcome(), &mut bytes);
         if ic0::stable64_size() == 0 {
-            assert_eq!(ic0::stable64_grow(1), 0);
+            assert_eq!(ic0::stable64_grow(1), Some(0));
         }
-        ic0::stable64_write(&bytes, 0);
+        ic0::stable64_write(0, &bytes);
         true
     })
 }
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 152];
-    ic0::stable64_read(&mut bytes, 0);
+    ic0::stable64_read(0, &mut bytes);
     if &bytes[..8] != b"JOBRETR2" {
         return false;
     }

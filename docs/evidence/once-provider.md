@@ -1,4 +1,4 @@
-> Current candidate: [0.45.9 / 0.37.9 qualification](release-candidate.md).
+> Current delivery: [0.45.12 / 0.38.2 qualification](release-candidate.md).
 > Earlier open-gate statements below describe their dated implementation slice.
 
 # Installed Once provider slice — 2026-11-15
@@ -7,6 +7,82 @@ The ic-timers 0.45.1 development increment now connects its retained Once core
 to an IC global timer and authenticated isolated self-calls. The new once-probe
 imports the actual product; it is not another model or a replacement provider.
 This is a local PocketIC observation, not production/deployment qualification.
+
+## Runtime adoption completion — 2026-11-16
+
+Published Runtime 0.23.14 (source `a813d4ea5378515984a547a9f4e9d37f2124cf14`)
+adds the side-effect-free `raw::in_replicated_execution()` boolean needed by
+Entropy. The downloaded archive SHA-256
+`6f91abeacf7b1602e67b49391ea1e66d1c8f7e45779de79a5835b9c8dac3afb8`
+matches its non-yanked registry record. The source diff from 0.23.13 changes
+only that observation. Both Scheduling workspaces now select Runtime/guard
+0.23.14 and Toko Tooling 0.44.11. The Entropy adapter selects Protocol 0.2.6;
+the maintained held-reply driver retains Protocol 0.2.5 through Testkit 0.107.2's
+exact supplier requirement. Types remains 0.21.2 throughout.
+
+The actual pinned Entropy release Wasm builds and its installed
+`background_refill_and_lifecycle` passes, including the original typed query
+refusal before source mutation, fresh-request custody, background fill,
+suspension, upgrade and reinstall. All 24 native tests pass. The maintained
+patch also migrates its Testkit startup and standalone example context guard;
+no temporary guard bypass or sibling edit is used. Logs remain under
+`target/evidence/platform-02313/entropy-02314-installed-fixed.log`.
+This clears the consumer API blocker behind
+[Platform #19 — Expose replicated-execution observation for Entropy's source admission](https://github.com/dragginzgame/ic-platform/issues/19).
+Full standard release/archive admission still applies before delivery.
+
+## Earlier Runtime adoption review — 2026-11-16
+
+Published Runtime 0.23.13 at `9dfdc0083fa5d6e56da7b90c04c20de4b2d3cc9f`
+supplies timer roots, timer arming, canister version, raw stable-memory access
+and liquid-cycle observation/burning. Its archive SHA-256
+`9f5f46eebbf414e38b7ad6db694ce05bebeae40ff8df28eba6c1e48a6c308df4`
+matches the non-yanked sparse-index record. Source review confirms the supplying
+primitives requested by these two issues are now public:
+
+- [Platform #14 — Supply a stable-memory boundary for Scheduling's installed upgrade probes](https://github.com/dragginzgame/ic-platform/issues/14):
+  the six lifecycle/checkpoint fixtures can use the new raw stable-memory APIs.
+  Growth returns `Option<u64>` and reads/writes take the offset first; callers
+  must migrate those signatures while preserving actual upgrade persistence.
+- [Platform #15 — Supply cycle-pressure APIs for Scheduling's installed submission-refusal tests](https://github.com/dragginzgame/ic-platform/issues/15):
+  the real low-cycle Once/watchdog scenarios can use `raw::liquid_cycle_balance`
+  and `raw::cycles_burn`, alongside the existing `Call::required_cycles` quote.
+
+Published Testkit 0.107.2 resolves the Types conflict recorded in
+[Tooling #5 — Publish a Testkit Types requirement compatible with Runtime 0.23.13](https://github.com/dragginzgame/ic-tooling/issues/5).
+Both maintained workspaces now resolve Runtime/guard 0.23.13 and Types 0.21.2;
+qualification selects Protocol 0.2.5 and Testkit 0.107.2. Full metadata records
+under `target/evidence/platform-02313/` show one Runtime and one guard, with no
+legacy Runtime/Types selections in those graphs.
+
+The transport now uses timer roots for delivery and update roots for work.
+Bounded flight records retain opaque task observations. Only committed
+`TerminatedByCleanup` authorizes abandoning accepted work; a reject or a task
+left Running does not. Initial traps retain the earlier committed dispatch
+when no task handle can escape. Synchronous submission refusal ends the current
+control turn immediately after setting backoff. Failed cleanup remains a
+terminal provider fault. Host upgrade guards explicitly trap on unsettled
+checkpoints rather than relying on a Rust panic's platform error classification.
+
+Strict product Wasm Clippy, the three migrated probe builds, native driver
+Clippy, the installed executor cases and the complete installed Once/watchdog/
+Jobs failure, pressure, upgrade and resource suite pass. Paired metrics-off/on
+checks pass. Logs remain under `target/evidence/platform-02313/`. These are local
+Linux/PocketIC 16.0.0 observations; they are not hosted macOS or registry delivery.
+
+The pinned Entropy adapter now maps the raw_rand/HTTP codecs, task roots,
+explicit entrypoints and candidate Timers version to the new cohort. Its 24
+native tests pass. Actual Wasm integration still fails at the missing replicated-
+execution observation tracked by
+[Platform #19 — Expose replicated-execution observation for Entropy's source admission](https://github.com/dragginzgame/ic-platform/issues/19).
+A static-only fixture isolated that absent guard to check the remaining APIs;
+that fixture was never executed and does not establish query-refusal behavior.
+No guard bypass is retained in the maintained patch. Full Entropy installed
+acceptance and release admission remain pending. The implementation is tracked in
+[Scheduling #2 — Migrate Timers to Runtime 0.23 with one executor and retained watchdog recovery](https://github.com/dragginzgame/ic-scheduling/issues/2).
+No supplier source was edited.
+The maintainer explicitly chose to wait for Platform #19 before deployment;
+earlier version-specific Entropy waivers do not apply to this candidate.
 
 ## Implemented boundary
 

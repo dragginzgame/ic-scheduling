@@ -26,6 +26,22 @@ for (const name of names) {
 const patch = path.join(here, 'timers.patch');
 execFileSync('git', ['apply', '--check', patch], { cwd: staged });
 execFileSync('git', ['apply', patch], { cwd: staged });
+// Qualification binds the actual candidate, including across a minor release.
+const metadata = JSON.parse(execFileSync('cargo', [
+    'metadata', '--no-deps', '--format-version', '1', '--locked', '--offline',
+    '--manifest-path', path.join(root, 'Cargo.toml'),
+], { cwd: root, encoding: 'utf8' }));
+const candidate = metadata.packages.find(item => item.name === 'ic-timers'
+    && item.manifest_path === path.join(root, 'crates/ic-timers/Cargo.toml'));
+if (!candidate || !/^\d+\.\d+\.\d+$/.test(candidate.version)) {
+    throw new Error('Expected one stable local Timers candidate.');
+}
+const consumerManifest = path.join(staged, 'Cargo.toml');
+const consumer = fs.readFileSync(consumerManifest, 'utf8');
+const selected = consumer.replace(/^(ic-timers = \{ version = ")[^"]+(".*)$/m,
+    `$1=${candidate.version}$2`);
+if (selected === consumer) throw new Error('Missing candidate Timers declaration.');
+fs.writeFileSync(consumerManifest, selected);
 // Registry publication is disabled; resolve the draft dependency to this exact checkout.
 const override = `\n[patch.crates-io]\nic-timers = { path = ${JSON.stringify(path.join(root, 'crates/ic-timers'))} }\n`;
 for (const name of ['Cargo.toml', 'qualification/Cargo.toml']) {

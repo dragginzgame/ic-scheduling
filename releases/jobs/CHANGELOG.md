@@ -1,5 +1,22 @@
 # Jobs changelog
 
+## [0.39.0] - Unreleased
+
+### 💥 Changed
+
+- Move optional execution to Timers' Runtime 0.23 cohort. Hosts using Runtime
+  0.22 must migrate their runtime composition before enabling the new execution
+  adapter. Checkpoint schema 7 and calendar behavior remain unchanged. Tracks
+  [Scheduling #2 — Migrate Timers to Runtime 0.23 with one executor and retained watchdog recovery](https://github.com/dragginzgame/ic-scheduling/issues/2).
+
+### 🛠️ Development
+
+- Qualify the execution adapter and schema-7 upgrade probes on the shared
+  Runtime 0.23.14 / Types 0.21.2 / Testkit 0.107.2 selection.
+- Retain bounded, sanitized CI setup failure diagnostics and selected hidden
+  Rust attempt logs as seven-day artifacts, preserving the failing status.
+- Adopt Toko Tooling 0.44.11 across product and qualification workspaces.
+
 ## [0.38.2] - 2026-11-16
 
 ### 🛠️ Development

@@ -39,9 +39,18 @@ source: review the consumer changes and patch before changing the pinned revisio
 Actual adoption also needs an approved dependency source and reviewed lock changes;
 the first published rewrite is Timers 0.45.9. There is no compatibility facade.
 
-The patch retains the initial `^0.45.4` requirement. The local override resolves
-compatible later 0.45 versions from this checkout; the linked evidence
-records the exact version originally qualified, not every subsequent build.
+The patch targets the Runtime 0.23 / Types 0.21 / Protocol 0.2 cohort and the
+Timers 0.46 series. Preparation binds Timers to the actual local candidate
+version before applying the local path override, including during the standard
+pre-bump release gate. The source repository remains unchanged.
+
+Runtime 0.23.14 publishes the replicated-execution observation required by the
+consumer's query-refusal guard, resolving
+[Platform #19 — Expose replicated-execution observation for Entropy's source admission](https://github.com/dragginzgame/ic-platform/issues/19).
+The patch preserves the typed refusal before source claim/submission, using the
+public boolean observation without admitting a task or mutating state. Its
+installed journey passes on Runtime 0.23.14, Protocol 0.2.6, Types 0.21.2 and
+Testkit 0.107.2. Native tests pass too. Actual Entropy source remains unchanged.
 
 See [recorded evidence](../../docs/evidence/entropy-integration.md) for results,
 hashes and the remaining lifecycle limits.

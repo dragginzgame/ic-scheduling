@@ -1,6 +1,7 @@
 //! Installed idle schedules, ordinary outcomes and host-restored numeric limits.
 use super::{RefCell, ic0};
 use ic_jobs::{Checkpoint, Error, Job, Outcome, Schedule, Status};
+use ic_platform_runtime::system;
 
 thread_local! {
     static JOBS: RefCell<Vec<Job>> = const { RefCell::new(Vec::new()) };
@@ -54,7 +55,7 @@ pub extern "C" fn setup() {
         Checkpoint::new(
             7,
             u64::MAX,
-            Some(ic0::time()),
+            Some(system::time()),
             None,
             ic_jobs::ControlState::Active,
             None,
@@ -180,9 +181,9 @@ pub extern "C" fn catch_up_plans() {
     ] {
         let schedule = Schedule::parse(rule).unwrap();
         let limit = ic_jobs::CatchUpLimit::new(age, count).unwrap();
-        let before = ic0::performance_counter(0);
+        let before = ic0::instruction_counter();
         let plan = schedule.catch_up(0, now, limit);
-        let cost = ic0::performance_counter(0).checked_sub(before).unwrap();
+        let cost = ic0::instruction_counter().checked_sub(before).unwrap();
         ic0::msg_reply_data_append(&[
             u8::try_from(plan.occurrences().len()).unwrap(),
             u8::from(plan.has_excess()),
@@ -212,7 +213,7 @@ thread_local! {
 pub extern "C" fn ahead_setup() {
     ic_timers::initialize().unwrap();
     let minute_ns = 60_000_000_000;
-    let through = (ic0::time() / minute_ns + 10) * minute_ns;
+    let through = (system::time() / minute_ns + 10) * minute_ns;
     for (index, policy) in [
         ic_jobs::Policy::SkipLate {
             lateness_ns: u64::MAX,
@@ -261,7 +262,7 @@ pub extern "C" fn ahead_control() {
     AHEAD.with_borrow(|jobs| {
         for job in jobs {
             let before = job.checkpoint().unwrap();
-            assert!(Some(ic0::time()) < before.through());
+            assert!(Some(system::time()) < before.through());
             job.pause().unwrap();
             job.edit(minute()).unwrap();
             let paused = job.checkpoint().unwrap();

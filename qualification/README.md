@@ -5,7 +5,7 @@ catalog and lockfile. All packages remain unpublished and inherit the shared
 compiler, Toko pin and lint baseline. The license path points to the repository
 root. Qualification consumes product packages; the reverse dependency is forbidden.
 Host drivers use `ic-testkit::pocket_ic`, matching ic-platform’s qualification
-boundary. Testkit 0.107.1 selects PocketIC client 16.1.0; the prepared 16.0.0
+boundary. Testkit 0.107.2 selects PocketIC client 16.1.0; the prepared 16.0.0
 server is supported. Do not add a direct `pocket-ic` dependency.
 
 `calendar-probe` builds the actual Saffron-backed UTC Jobs adapter as a
@@ -33,11 +33,16 @@ consumer checkout, applies a small timer migration and runs its existing native,
 Wasm and installed checks against local Timers. It does not adopt
 the migration in Entropy or duplicate its maintained test suite.
 
-`executor-probe` and `executor-driver` check Platform Runtime's protected-task
+`executor-probe` and `executor-driver` check Platform Runtime's update-root
 completion and initial/post-await trap behavior in a locally installed PocketIC
 canister. Run `make check-executor POCKET_IC_BIN=/absolute/path/to/pocket-ic`
 with a prepared 16.0.0 server and local loopback access. The command builds and
 runs offline; it does not install the server. See [executor evidence](../docs/evidence/executor-probe.md).
+
+The Runtime 0.23 probe observes successful cleanup through the retained task
+handle after execution commits. Its five event bytes distinguish control,
+start, completion, destruction and committed cleanup; it does not use a
+destructor-time recovery flag.
 
 The supplier probe does not import Timers or install a global timer. The product Once slice now has a separate
 `once-probe`/`once-driver` pair and `make check-once POCKET_IC_BIN=...` target.
@@ -46,6 +51,15 @@ precedence, full declaration/flight admission, foreign timer detection, consumer
 cleanup traps, low-cycle submission deferral, malformed/stale envelopes and
 armed-deadline upgrade reconstruction;
 see [Once provider evidence](../docs/evidence/once-provider.md).
+After building the probe, the driver accepts `--runtime-core`, `--refusal` and
+`--jobs-behavior` for focused completion/trap, low-cycle and Jobs recovery cases.
+For example:
+
+```sh
+cargo run --manifest-path qualification/Cargo.toml -p once-driver --locked --offline -- \
+  qualification/target/wasm32-unknown-unknown/release/once_probe.wasm --runtime-core
+```
+
 The held-upgrade scenario verifies a host pre-upgrade guard refuses Running work,
 preserves its original reply settlement, and permits reconstruction of fresh
 armed demand afterward. It does not qualify upgrading with unresolved effects.

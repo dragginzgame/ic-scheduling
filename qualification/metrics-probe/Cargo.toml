@@ -24,6 +24,7 @@ metrics = ["ic-timers/metrics"]
 
 [dependencies]
 ic-platform-runtime.workspace = true
+ic-platform-types.workspace = true
 ic-timers.workspace = true
 
 [lints]

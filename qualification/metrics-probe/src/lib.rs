@@ -1,9 +1,9 @@
 //! Paired metrics-feature workload. Same scheduling and message exports in both builds.
 use ic_platform_runtime::{
-    Principal,
-    call::{Call, WaitPolicy},
-    ic0,
+    call::{Call, Outcome, Wait},
+    raw as ic0, system,
 };
+use ic_platform_types::Principal;
 use ic_timers::{
     Observation, OnceDemand, OnceNext, OnceResult, WatchdogDemand, WatchdogNext, WatchdogResult,
 };
@@ -27,10 +27,7 @@ fn count(index: usize) {
     });
 }
 fn self_id() -> Principal {
-    let mut bytes = [0; 29];
-    let len = ic0::canister_self_size();
-    ic0::canister_self_copy(&mut bytes[..len], 0);
-    Principal::from_slice(&bytes[..len])
+    system::canister_self()
 }
 
 /// Initialize and arm one async Once and one synchronous watchdog.
@@ -39,22 +36,24 @@ fn self_id() -> Principal {
 #[expect(unsafe_code, reason = "qualification owns this endpoint")]
 #[unsafe(export_name = "canister_update setup")]
 pub extern "C" fn setup() {
-    let before = ic0::performance_counter(0);
+    let before = ic0::instruction_counter();
     ic_timers::initialize().unwrap();
     let once = ic_timers::bind_once(
         ["metrics-cost", "once", "work"],
         ic_timers::Lifetime::Retained,
         || {
-            cost(1, ic0::performance_counter(0));
+            cost(1, ic0::instruction_counter());
             async {
                 count(0);
-                assert!(
-                    Call::new(self_id(), "echo", WaitPolicy::Unbounded)
+                assert!(matches!(
+                    Call::new(self_id(), "echo", Wait::Unbounded)
                         .execute()
                         .await
-                        .is_ok()
-                );
-                cost(2, ic0::performance_counter(0));
+                        .expect("echo submission")
+                        .outcome(),
+                    Outcome::Reply(_)
+                ));
+                cost(2, ic0::instruction_counter());
                 count(1);
                 OnceResult {
                     observation: Observation::ExpectedFailure,
@@ -70,7 +69,7 @@ pub extern "C" fn setup() {
         NonZeroU64::new(1_000_000_000).unwrap(),
         ic_timers::Lifetime::Retained,
         || {
-            cost(3, ic0::performance_counter(0));
+            cost(3, ic0::instruction_counter());
             count(2);
             WatchdogResult {
                 observation: Observation::NoWork,
@@ -80,7 +79,7 @@ pub extern "C" fn setup() {
     )
     .unwrap();
     watchdog.set(WatchdogDemand::At(0)).unwrap();
-    cost(0, ic0::performance_counter(0).checked_sub(before).unwrap());
+    cost(0, ic0::instruction_counter().checked_sub(before).unwrap());
     ic0::msg_reply();
 }
 

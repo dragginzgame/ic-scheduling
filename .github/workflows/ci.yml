@@ -19,14 +19,36 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Prepare pinned tools and locked sources
+        id: setup
         shell: bash
         run: |
           set -euo pipefail
-          rustup show
-          cargo fetch --locked
-          cargo fetch --manifest-path qualification/Cargo.toml --locked
-          make install-tools
-          bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$PWD" --package ic-build --version 0.73.0 --bin ic-build-release-metadata --profile debug --features cli
+          node ci/setup.mjs rustup rustup show
+          node ci/setup.mjs product-sources cargo fetch --locked
+          node ci/setup.mjs qualification-sources cargo fetch --manifest-path qualification/Cargo.toml --locked
+          node ci/setup.mjs pinned-tools make install-tools
+          node ci/setup.mjs metadata-editor bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$PWD" --package ic-build --version 0.73.0 --bin ic-build-release-metadata --profile debug --features cli
+      - name: Retain sanitized setup diagnostics
+        id: setup-evidence
+        if: ${{ !cancelled() && steps.setup.outcome == 'failure' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: setup-${{ matrix.os }}-${{ github.run_attempt }}
+          path: target/ci-setup/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Report setup evidence custody
+        if: ${{ always() && steps.setup.outcome == 'failure' }}
+        shell: bash
+        env:
+          ARTIFACT_URL: ${{ steps.setup-evidence.outputs.artifact-url }}
+        run: |
+          if [[ -n "$ARTIFACT_URL" ]]; then
+            printf 'Sanitized setup evidence: %s\n' "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Setup evidence upload failed or required evidence was missing.' | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
       - name: Qualify native host and archive paths
         shell: bash
         run: |
@@ -41,15 +63,41 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+      - name: Prepare history scanner
+        id: setup
+        shell: bash
+        run: |
+          node ci/setup.mjs history-scanner bash -euo pipefail -c '
+            source vendor/toko-tooling/ci/tool-versions.env
+            mkdir -p target/gitleaks
+            archive="target/gitleaks/gitleaks.tar.gz"
+            curl --fail --location --retry 2 "https://github.com/gitleaks/gitleaks/releases/download/v${TOKO_TOOLING_GITLEAKS_VERSION}/gitleaks_${TOKO_TOOLING_GITLEAKS_VERSION}_linux_x64.tar.gz" -o "$archive"
+            printf "%s  %s\n" "$TOKO_TOOLING_GITLEAKS_SHA256_LINUX_X64" "$archive" | sha256sum --check --strict
+            tar -xzf "$archive" -C target/gitleaks gitleaks
+            test "$(target/gitleaks/gitleaks version)" = "$TOKO_TOOLING_GITLEAKS_VERSION"
+          '
+      - name: Retain sanitized scanner setup diagnostics
+        id: setup-evidence
+        if: ${{ !cancelled() && steps.setup.outcome == 'failure' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: setup-history-scanner-${{ github.run_attempt }}
+          path: target/ci-setup/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Report scanner setup evidence custody
+        if: ${{ always() && steps.setup.outcome == 'failure' }}
+        shell: bash
+        env:
+          ARTIFACT_URL: ${{ steps.setup-evidence.outputs.artifact-url }}
+        run: |
+          if [[ -n "$ARTIFACT_URL" ]]; then
+            printf 'Sanitized setup evidence: %s\n' "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Setup evidence upload failed or required evidence was missing.' | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
       - name: Scan repository history once
         shell: bash
         run: |
-          set -euo pipefail
-          source vendor/toko-tooling/ci/tool-versions.env
-          mkdir -p target/gitleaks
-          archive="target/gitleaks/gitleaks.tar.gz"
-          curl --fail --location --retry 2 "https://github.com/gitleaks/gitleaks/releases/download/v${TOKO_TOOLING_GITLEAKS_VERSION}/gitleaks_${TOKO_TOOLING_GITLEAKS_VERSION}_linux_x64.tar.gz" -o "$archive"
-          printf '%s  %s\n' "$TOKO_TOOLING_GITLEAKS_SHA256_LINUX_X64" "$archive" | sha256sum --check --strict
-          tar -xzf "$archive" -C target/gitleaks gitleaks
-          test "$(target/gitleaks/gitleaks version)" = "$TOKO_TOOLING_GITLEAKS_VERSION"
           target/gitleaks/gitleaks git --redact=100 --no-banner --no-color --log-level error

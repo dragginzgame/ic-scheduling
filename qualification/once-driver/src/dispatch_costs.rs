@@ -83,7 +83,7 @@ async fn baseline(pic: &PocketIc, id: CanisterId, sender: CanisterId, count: u8,
         u64::from_le_bytes(baseline[index * 8..index * 8 + 8].try_into().unwrap())
     });
     println!(
-        "executor_baseline declarations={count} phase={phase} raw={} context={} protected_poll={}",
+        "executor_baseline declarations={count} phase={phase} raw={} before_task={} root_poll={}",
         baseline[0], baseline[1], baseline[2]
     );
 }

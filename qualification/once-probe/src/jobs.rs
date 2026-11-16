@@ -1,5 +1,5 @@
 //! Actual Jobs-to-Once execution and host-owned checkpoint reconstruction.
-use super::{Call, Cell, RefCell, WaitPolicy, ic0, self_id};
+use super::{Call, Cell, RefCell, Wait, ic0, self_id};
 use ic_jobs::{Context, Job, Outcome, Schedule, Status};
 use std::{
     future::Future,
@@ -213,11 +213,11 @@ pub extern "C" fn calendar_costs() {
         ("0 9 31 FEB *", 0),
         ("* * * * *", u64::MAX / 60_000_000_000 * 60_000_000_000),
     ] {
-        let before = ic0::performance_counter(0);
+        let before = ic0::instruction_counter();
         let schedule = Schedule::parse(rule).unwrap();
-        let parsed = ic0::performance_counter(0);
+        let parsed = ic0::instruction_counter();
         let next = schedule.next_after(after, u64::MAX);
-        let searched = ic0::performance_counter(0);
+        let searched = ic0::instruction_counter();
         for value in [
             parsed.checked_sub(before).unwrap(),
             searched.checked_sub(parsed).unwrap(),
@@ -236,10 +236,10 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
     CONTEXT.with(|value| value.set([context.revision, context.scheduled_at, context.started_at]));
     let future = async {
         STARTS.with(|value| value.set(value.get() + 1));
-        let reply = Call::new(self_id(), "jobs_echo", WaitPolicy::Unbounded)
+        let reply = Call::new(self_id(), "jobs_echo", Wait::Unbounded)
             .execute()
             .await;
-        assert!(reply.is_ok());
+        drop(crate::expect_reply(reply));
         if MODE.with(Cell::get) == 2 {
             ic0::trap(b"job post-await trap");
         }
@@ -284,7 +284,9 @@ pub(super) fn pre_upgrade() -> bool {
         let Some(job) = slot.as_ref() else {
             return false;
         };
-        let checkpoint = job.checkpoint().expect("host refuses unresolved job");
+        let checkpoint = job
+            .checkpoint()
+            .unwrap_or_else(|_| ic0::trap(b"host refuses unresolved job"));
         assert!(
             checkpoint.retry().is_none(),
             "fixture definition disables retries"
@@ -312,15 +314,15 @@ pub(super) fn pre_upgrade() -> bool {
         bytes[34] = mode;
         super::outcomes::append(checkpoint.last_outcome(), &mut bytes);
         if ic0::stable64_size() == 0 {
-            assert_eq!(ic0::stable64_grow(1), 0);
+            assert_eq!(ic0::stable64_grow(1), Some(0));
         }
-        ic0::stable64_write(&bytes, 0);
+        ic0::stable64_write(0, &bytes);
         true
     })
 }
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 75];
-    ic0::stable64_read(&mut bytes, 0);
+    ic0::stable64_read(0, &mut bytes);
     if &bytes[..8] != b"JOBDATA7" {
         return false;
     }

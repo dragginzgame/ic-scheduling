@@ -1,6 +1,6 @@
 //! Real cycle pressure, confined to an installed qualification canister.
 use super::{Cell, Observation, Once, OnceDemand, OnceNext, OnceResult, OnceStatus, RefCell, ic0};
-use ic_platform_runtime::cdk::api;
+use ic_platform_runtime::system;
 use ic_timers::{Watchdog, WatchdogDemand, WatchdogNext, WatchdogResult, WatchdogStatus};
 use std::num::NonZeroU64;
 
@@ -53,12 +53,19 @@ pub extern "C" fn setup() {
         handle.set(WatchdogDemand::At(0)).unwrap();
         WATCHDOG.with(|slot| *slot.borrow_mut() = Some(handle));
     }
-    let timer = ic0::global_timer_set(0);
-    ic0::global_timer_set(timer);
-    let cost = ic0::cost_call("__ic_scheduling_once".len() as u64, 16);
-    let balance = ic0::canister_liquid_cycle_balance128();
+    let timer = system::global_timer_set(0);
+    system::global_timer_set(timer);
+    let cost = super::Call::new(
+        super::self_id(),
+        "__ic_scheduling_once",
+        super::Wait::Unbounded,
+    )
+    .args(&[0; 16])
+    .required_cycles()
+    .unwrap();
+    let balance = ic0::liquid_cycle_balance();
     let burn = balance.checked_sub(cost / 2).unwrap();
-    assert_eq!(api::cycles_burn(burn), burn);
+    assert_eq!(ic0::cycles_burn(burn), burn);
     ic0::msg_reply_data_append(&timer.to_le_bytes());
     ic0::msg_reply_data_append(&cost.to_le_bytes());
     ic0::msg_reply();
@@ -72,8 +79,8 @@ pub extern "C" fn setup() {
 pub extern "C" fn state() {
     // The setter is unavailable in queries. Restore the exact value so the
     // provider's ownership observation remains valid.
-    let timer = ic0::global_timer_set(0);
-    ic0::global_timer_set(timer);
+    let timer = system::global_timer_set(0);
+    system::global_timer_set(timer);
     let status = HANDLE.with(
         |slot| match slot.borrow().as_ref().unwrap().status().unwrap() {
             OnceStatus::Armed(_) => 1,
