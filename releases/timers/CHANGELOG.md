@@ -1,6 +1,6 @@
 # Timers changelog
 
-## [0.46.2] - Unreleased
+## [0.46.2] - 2026-11-17
 
 ### 🛠️ Development
 
