@@ -4,6 +4,14 @@
 
 ### 🛠️ Development
 
+- Adopt Testkit 0.109.0 in native qualification and the pinned Entropy fixture.
+- Bind qualification receipts to release intent and invalidate previous success
+  before retries, preserving full Timers reverse-consumer qualification.
+- Reuse the exact final-candidate Rust stage across release groups on qualified
+  Linux hosts; reject missing or changed original evidence before preparation.
+- Keep Timers reverse-consumer archive qualification while narrowing Jobs-only
+  final archive admission. This addresses the archive dispatch portion of
+  [deployment validation #4](https://github.com/dragginzgame/ic-scheduling/issues/4).
 - Reuse Toko's pinned CI installer for Gitleaks and its nonempty Cargo test
   runner for native and Entropy qualification.
 - Let the CI diagnostic-size fixture drain its piped output before exit, fixing

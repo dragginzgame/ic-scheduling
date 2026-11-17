@@ -98,19 +98,19 @@ check-metrics: toko-tooling-check | toko-execution-check
 	cp qualification/target/wasm32-unknown-unknown/release/metrics_probe.wasm qualification/target/metrics_on.wasm
 	$(_toko_recursive_prefix)POCKET_IC_BIN="$(POCKET_IC_BIN)" cargo run --manifest-path qualification/Cargo.toml -p once-driver --target-dir qualification/target --locked --offline -- --metrics-cost qualification/target/metrics_off.wasm qualification/target/metrics_on.wasm
 
-.PHONY: check-formatting-hooks qualify qualify-rust qualify-archives qualify-entropy
+.PHONY: check-formatting-hooks qualify qualify-release qualify-rust qualify-archives qualify-entropy
 check-formatting-hooks: toko-tooling-check | toko-execution-check
 	node qualification/formatting-check.mjs
 
-# Maintainer waived Entropy integration for the selected deliveries (2026-11-15/16).
-# Ordinary qualification and subsequent versions retain the consumer journey.
-QUALIFICATION_ENTROPY_TARGET := $(if $(filter timers:0.45.10 jobs:0.38.0 timers:0.45.11 jobs:0.38.1,$(RELEASE_GROUP):$(RELEASE_VERSION)),,qualify-entropy)
+QUALIFICATION_SCOPE ?= workspace
 qualify:
-	$(_toko_recursive_prefix)VALIDATION_REPOSITORY_ROOT="$(CURDIR)" bash vendor/toko-tooling/scripts/ci/run-validation-targets.sh --fail-fast tools-check check fmt-check check-formatting-hooks qualify-rust check-calendar-wasm check-executor check-once check-metrics $(QUALIFICATION_ENTROPY_TARGET) qualify-archives
+	$(_toko_recursive_prefix)bash ci/qualify-release.sh --workspace
 qualify-rust:
-	bash ci/qualify.sh rust
+	QUALIFICATION_SCOPE='$(QUALIFICATION_SCOPE)' bash ci/rust-stage.sh
+qualify-release:
+	$(_toko_recursive_prefix)bash ci/qualify-release.sh
 qualify-archives:
-	bash ci/qualify.sh archives
+	bash ci/qualify.sh archives '$(QUALIFICATION_SCOPE)'
 qualify-entropy:
 	bash ci/qualify.sh entropy
 

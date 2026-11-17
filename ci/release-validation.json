@@ -1,0 +1,1 @@
+{"groups":["jobs","timers"],"schema":1,"stages":["tools-check","check","fmt-check","check-formatting-hooks","qualify-rust","check-calendar-wasm","check-executor","check-once","check-metrics","qualify-entropy","qualify-archives"]}

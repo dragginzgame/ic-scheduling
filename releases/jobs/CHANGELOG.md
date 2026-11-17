@@ -4,6 +4,14 @@
 
 ### 🛠️ Development
 
+- Adopt Testkit 0.109.0 in native qualification and the pinned Entropy fixture.
+- Select Jobs implementation validation from an annotated release baseline,
+  retain full gates for shared inputs, and reject stale qualification success
+  after failed retries. Reuse exact final-candidate Rust stage evidence across
+  groups on qualified Linux hosts, with evidence integrity checks before preparation.
+- Scope final Jobs archive admission to Jobs and its published Timers supplier;
+  retain paired archives for Timers reverse-consumer qualification. This addresses
+  the archive dispatch portion of [deployment validation #4](https://github.com/dragginzgame/ic-scheduling/issues/4).
 - Reuse Toko's pinned CI installer for Gitleaks and its nonempty Cargo test
   runner for native and Entropy qualification.
 - Fix macOS CI's diagnostic-size rehearsal by waiting for its fixture output to

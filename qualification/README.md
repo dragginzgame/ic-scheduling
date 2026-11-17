@@ -5,20 +5,30 @@ catalog and lockfile. All packages remain unpublished and inherit the shared
 compiler, Toko pin and lint baseline. The license path points to the repository
 root. Qualification consumes product packages; the reverse dependency is forbidden.
 Host drivers use `ic-testkit::pocket_ic`, matching ic-platform’s qualification
-boundary. Testkit 0.108.0 selects PocketIC client 16.1.0; the prepared 16.0.0
+boundary. Testkit 0.109.0 selects PocketIC client 16.1.0; the prepared 16.0.0
 server is supported. Do not add a direct `pocket-ic` dependency.
 
-Testkit 0.108.0's held-reply feature admits Protocol `>=0.3.2, <0.4.0` and
-selects 0.3.4, completing the migration beyond the older compatibility fix from
+Testkit 0.109.0's held-reply feature admits Protocol `>=0.3.2, <0.4.0` and
+selects 0.3.5, completing the migration beyond the older compatibility fix from
 [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
-Direct Protocol callers in the pinned Entropy fixture also select 0.3.4.
-Both workspaces use Runtime/guard 0.23.16, Types 0.21.2 and optional Metrics
-0.30.9. Types and Testkit use compatible requirements; Runtime owns its exact
+Direct Protocol callers in the pinned Entropy fixture also select 0.3.5.
+The current qualification lock selects Runtime/guard 0.23.17, Types 0.21.2
+and optional Metrics 0.30.11. Types and Testkit use compatible requirements; Runtime owns its exact
 singleton guard. Testkit's changed Protocol error type remains inside private
 qualification; Scheduling's public library API is unchanged.
 
+Local Testkit 0.109.0 adoption on 2026-11-17 passed native driver Clippy,
+`make check-executor check-once` with the prepared PocketIC 16.0.0 server,
+and the freshly rebuilt pinned Entropy `background_refill_and_lifecycle` test.
+The complete Once run includes Jobs upgrade/recovery, retry and catch-up cases.
+Logs are retained under `target/testkit-01090-*.log`. This is local Linux evidence;
+hosted macOS validation and deployment remain separate. The optional Testkit
+managed-server feature is not enabled by these callers.
+
 Runtime requirements admit compatible 0.23 patches from 0.23.14; the locks
-select 0.23.16. Run `node qualification/runtime-composition-check.mjs` from
+select 0.23.17. The previously qualified Runtime composition matrix covers
+0.23.14–0.23.16; the installed Testkit adoption checks are separate evidence.
+Run `node qualification/runtime-composition-check.mjs` from
 the repository root when changing that boundary. With the published 0.23.14,
 0.23.15, 0.23.16 and legacy 0.22.5 packages cached, the offline check composes real
 Timers/Jobs consumers, verifies one matching Runtime/guard, compiles all three

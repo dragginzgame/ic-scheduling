@@ -47,6 +47,8 @@ jobs:
             node qualification/setup-check.mjs
             make tools-check check fmt-check qualify-rust qualify-archives
             node qualification/release-check.mjs
+            node qualification/archive-scope-check.mjs
+            node qualification/validation-scope-check.mjs
             make check-formatting-hooks
           '
       - name: Retain sanitized failure diagnostics

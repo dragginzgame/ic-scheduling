@@ -248,7 +248,7 @@
 +ic-platform-protocol = { version = "0.3.4", default-features = false }
 +ic-platform-runtime = { version = "0.23.14", default-features = false, features = ["call-ic0", "system-raw"] }
 +ic-platform-types = { version = "0.21.2", default-features = false }
-+ic-testkit = { version = "0.108.0", default-features = false }
++ic-testkit = { version = "0.109.0", default-features = false }
 +ic-wire = { version = "0.24.2", default-features = false }
  serde = { version = "1.0.229", features = ["derive"] }
  tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread"] }

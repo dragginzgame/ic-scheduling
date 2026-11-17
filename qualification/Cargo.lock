@@ -751,21 +751,21 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.30.9"
+version = "0.30.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3638e09231dbc2662e2ea6dd366f4588067cbb4cb1789050c91b267584a6ab8c"
+checksum = "668d99823f32f894f87b98c6ece3de57653f5f416d479ad4cd7faca223eb6dc3"
 
 [[package]]
 name = "ic-platform-protocol"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9263bb1cc99bf3eb81f6c23144873561ea7e52caa1e420a1cd58d3d2e1c5f85"
+checksum = "a2ae9adc784809f210d491f301a9b4549bf619dbbeac835dc7c8d49d1eb152b0"
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.23.16"
+version = "0.23.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0724826cb1344a689458e60d0e3ddcc92331ae5b82264ecdaff887923645018d"
+checksum = "dfc857c146215a6f2ae50e724c70b7afffaebeb407c54c283f6860357d5da439"
 dependencies = [
  "ic-platform-runtime-guard",
  "ic-platform-types",
@@ -773,9 +773,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.23.16"
+version = "0.23.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "153f322c800d2bb8e428bd597305834e5750d1f52d357b68aadc73fc2a9690a7"
+checksum = "32124ec3fa34eb2a21a2818a8578757057d9fb2eb57f6355f73d925bc46e2258"
 
 [[package]]
 name = "ic-platform-types"
@@ -792,9 +792,9 @@ dependencies = [
 
 [[package]]
 name = "ic-testkit"
-version = "0.108.0"
+version = "0.109.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fa2e6157d27d15ba1bc93923adc3221e1c09f9f28ec2f8bdde09b04b528cf80"
+checksum = "6405078e5332b34ab898d4c32c41f39b358655bb3d4aae508d3ff17f781cf66c"
 dependencies = [
  "ic-platform-protocol",
  "ic-platform-types",
@@ -2723,9 +2723,9 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.9.1"
+version = "1.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e13084392c5e4bc371903e2935a5eaeed24905a7511356b883835e18a78f6879"
+checksum = "85ccff8a4805aba1eaa4cd4afcd49f7557dd2cf5fd79ffc37f8959466effc5aa"
 
 [[package]]
 name = "zerotrie"

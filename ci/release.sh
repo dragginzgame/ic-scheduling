@@ -5,6 +5,8 @@ export PATH="$PWD/.tools/host/bin:$PWD/.tools/rust/common/bin:$PATH"
 group="${RELEASE_GROUP:-}"
 case "$group" in timers|jobs) ;; *) echo 'Select RELEASE_GROUP=timers or jobs' >&2; exit 2 ;; esac
 shared="$PWD/vendor/toko-tooling/scripts/ci"
+# shellcheck source=vendor/toko-tooling/scripts/ci/release-receipts.sh
+source "$shared/release-receipts.sh"
 editor() {
   bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$PWD" --package ic-cargo-metadata --version 0.1.0 --bin ic-cargo-metadata --profile release "$@"
 }
@@ -12,7 +14,14 @@ receipt() {
   printf '%s/scheduling-%s-%s.validated' "$(git rev-parse --absolute-git-dir)/release-state" "$group" "${RELEASE_SOURCE:?}"
 }
 check_receipt() {
-  [[ "$(cat "$(receipt)")" == "$RELEASE_SOURCE" ]] || { echo 'Missing source-bound qualification' >&2; exit 1; }
+  release_receipt_check "$(receipt)" qualification_identity || {
+    echo 'Missing or mismatched source-bound qualification' >&2; exit 1;
+  }
+}
+qualification_identity() {
+  printf '%s\n' scheduling-qualification-v2
+  release_receipt_identity
+  bash ci/rust-stage.sh check
 }
 case "${1:-}" in
   setup)
@@ -25,8 +34,7 @@ case "${1:-}" in
     make tools-check
     editor --check > /dev/null
     test -x "${POCKET_IC_BIN:?Set POCKET_IC_BIN to the prepared 16.0.0 server}"
-    # Entropy source admission belongs to qualify-entropy; the maintainer waived
-    # that journey for the selected deliveries (see Makefile).
+    # Entropy source admission belongs to qualify-entropy.
     ;;
   version|files) bash "$shared/cargo-release-group.sh" "$1" "$group" ;;
   preflight)
@@ -38,9 +46,16 @@ case "${1:-}" in
   verify)
     test "$(git rev-parse HEAD)" = "${RELEASE_SOURCE:?}"
     test -z "$(git status --porcelain)"
-    make qualify
     mkdir -p "$(dirname "$(receipt)")"
-    printf '%s\n' "$RELEASE_SOURCE" > "$(receipt)"
+    # Retain a previous attempt, then invalidate it before running the gate.
+    # A failed retry cannot leave an older success admitted for preparation.
+    release_receipt_archive "$(receipt).previous.XXXXXX" "$(receipt)"
+    if [[ -f "$(receipt)" ]]; then rm -- "$(receipt)"; fi
+    make qualify-release
+    # Qualification must not authorize bytes that changed while it ran.
+    test "$(git rev-parse HEAD)" = "$RELEASE_SOURCE"
+    test -z "$(git status --porcelain)"
+    release_receipt_write "$(receipt)" qualification_identity
     ;;
   prepare)
     check_receipt
@@ -51,7 +66,7 @@ case "${1:-}" in
   prepared)
     check_receipt
     bash "$shared/cargo-release-group.sh" check "$group"
-    bash ci/qualify.sh archives
+    bash ci/qualify.sh archives "$group"
     ;;
   index)
     check_receipt
