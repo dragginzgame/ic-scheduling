@@ -65,6 +65,10 @@ PocketIC and pinned Entropy qualification currently runs on the prepared Linux
 release host. CI runs one redacted repository-history secret scan, outside the
 host matrix. A Linux pass alone does not claim macOS qualification.
 
+Gitleaks setup uses the installed Toko CI tool installer and its reviewed version
+and checksum catalog. Native and Entropy Cargo test selections use Toko's
+nonempty-test runner, preserving Cargo failures and rejecting zero-test success.
+
 CI setup, native qualification and history scanning run through `ci/setup.mjs`.
 Failures retain sanitized final
 64 KiB diagnostics and at most four explicitly reported Rust attempt logs of

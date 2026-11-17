@@ -87,15 +87,7 @@ jobs:
         env:
           CI_PHASE_TIMEOUT_SECONDS: 60
         run: |
-          node ci/setup.mjs history-scanner bash -euo pipefail -c '
-            source vendor/toko-tooling/ci/tool-versions.env
-            mkdir -p target/gitleaks
-            archive="target/gitleaks/gitleaks.tar.gz"
-            curl --fail --location --retry 2 "https://github.com/gitleaks/gitleaks/releases/download/v${TOKO_TOOLING_GITLEAKS_VERSION}/gitleaks_${TOKO_TOOLING_GITLEAKS_VERSION}_linux_x64.tar.gz" -o "$archive"
-            printf "%s  %s\n" "$TOKO_TOOLING_GITLEAKS_SHA256_LINUX_X64" "$archive" | sha256sum --check --strict
-            tar -xzf "$archive" -C target/gitleaks gitleaks
-            test "$(target/gitleaks/gitleaks version)" = "$TOKO_TOOLING_GITLEAKS_VERSION"
-          '
+          node ci/setup.mjs history-scanner bash vendor/toko-tooling/scripts/ci/install-ci-tool.sh gitleaks --install-dir target/gitleaks
       - name: Scan repository history once
         id: scan
         timeout-minutes: 2

@@ -4,6 +4,8 @@
 
 ### 🛠️ Development
 
+- Reuse Toko's pinned CI installer for Gitleaks and its nonempty Cargo test
+  runner for native and Entropy qualification.
 - Let the CI diagnostic-size fixture drain its piped output before exit, fixing
   the macOS truncation rehearsal without changing the published library.
 

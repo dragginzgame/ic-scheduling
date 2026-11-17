@@ -22,8 +22,12 @@ and a PocketIC 16.0.0 server. Local loopback access is required for installation
 entropy_stage="$(node qualification/entropy-integration/prepare.mjs ../ic-entropy)"
 entropy_build="$PWD/qualification/target/entropy-integration-build"
 entropy_installed="$PWD/qualification/target/entropy-installed-build"
-cargo test --manifest-path "$entropy_stage/Cargo.toml" --target-dir "$entropy_build" --workspace --all-features --offline
-cargo test --manifest-path "$entropy_stage/Cargo.toml" --target-dir "$entropy_build" -p ic-entropy-ic --no-default-features --locked --offline
+bash vendor/toko-tooling/scripts/ci/run-nonempty-cargo-test.sh \
+    --manifest-path "$entropy_stage/Cargo.toml" --target-dir "$entropy_build" \
+    --workspace --all-features --offline
+bash vendor/toko-tooling/scripts/ci/run-nonempty-cargo-test.sh \
+    --manifest-path "$entropy_stage/Cargo.toml" --target-dir "$entropy_build" \
+    -p ic-entropy-ic --no-default-features --locked --offline
 for entropy_features in '--all-features' '--no-default-features'; do
     cargo clippy --manifest-path "$entropy_stage/Cargo.toml" --target-dir "$entropy_build" -p ic-entropy-ic "$entropy_features" --all-targets --locked --offline -- -D warnings
     cargo clippy --manifest-path "$entropy_stage/Cargo.toml" --target-dir "$entropy_build" -p ic-entropy-ic "$entropy_features" --target wasm32-unknown-unknown --locked --offline -- -D warnings
@@ -31,12 +35,16 @@ done
 cargo build --manifest-path "$entropy_stage/qualification/Cargo.toml" --target-dir "$entropy_installed" -p entropy-probe --target wasm32-unknown-unknown --release --offline
 POCKET_IC_BIN=/absolute/path/to/pocket-ic \
 ENTROPY_PROBE_WASM="$entropy_installed/wasm32-unknown-unknown/release/entropy_probe.wasm" \
-cargo test --manifest-path "$entropy_stage/qualification/Cargo.toml" --target-dir "$entropy_installed" -p entropy-probe --test installed --locked --offline -- --nocapture
+bash vendor/toko-tooling/scripts/ci/run-nonempty-cargo-test.sh \
+    --manifest-path "$entropy_stage/qualification/Cargo.toml" --target-dir "$entropy_installed" \
+    -p entropy-probe --test installed --locked --offline -- --nocapture
 ```
 
 The first resolution in each isolated workspace updates its copied lockfile for
 the local override; subsequent checks are locked. The helper never reads working-tree
 source: review the consumer changes and patch before changing the pinned revision.
+The shared Cargo test runner preserves test failures and rejects selections that
+execute zero passing tests, including the fresh-source tests without buffering.
 Actual adoption also needs an approved dependency source and reviewed lock changes;
 the first published rewrite is Timers 0.45.9. There is no compatibility facade.
 
