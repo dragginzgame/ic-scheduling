@@ -35,7 +35,7 @@ unchanged. Published source identities are Platform
 `2b0ebb98aacf746c8c38d1a70599dada8b0ce572` and Testkit
 `78f1d2fbfbda6cac3b39f49dfe8aaa3c26472135`.
 
-`make qualify` passes all eleven unchanged targets on the dirty normal checkout:
+Before capture, `make qualify` passed all eleven unchanged targets on the dirty normal checkout:
 tools/snapshot, format/hooks, native and Wasm lint/tests/docs, calendar, installed
 executor, full Once/watchdog/Jobs failure/lifecycle/resource checks, paired Metrics,
 the pinned Entropy journey and package/archive checks. Product, qualification
@@ -69,10 +69,12 @@ consumer checks and full batch logs remain under `target/evidence/deploy-0463-03
 
 Hosted Linux passed on source `d7a8158`; macOS exposed a large-output fixture's
 premature `process.exit`, with its sanitized failure artifact successfully
-uploaded and linked. The Git-only follow-up changes that fixture to `exitCode`;
-its local rehearsal passes and fresh macOS CI remains required. This affects no
-published product code. Pending 0.46.4 / 0.39.4 notes collect that contributor-only
-correction; current published versions remain 0.46.3 / 0.39.3.
+uploaded and linked. The Git-only follow-up at
+`31d814ef07faeb0c9afc589bc4d8cd37833b0032` changes that fixture to `exitCode`.
+Its local rehearsal and [full Ubuntu/macOS CI with secret scanning](https://github.com/dragginzgame/ic-scheduling/actions/runs/44069071026)
+pass, including the diagnostic/timeout checks. This affects no published product
+code. Pending 0.46.4 / 0.39.4 notes collect that contributor-only correction;
+current published versions remain 0.46.3 / 0.39.3.
 
 ## Completed: Timers 0.46.2 / Jobs 0.39.2
 

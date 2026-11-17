@@ -110,6 +110,7 @@ The first hosted macOS rehearsal at source `d7a8158` exposed a fixture that
 discarded a large piped write through `process.exit`. The wrapper retained and
 [uploaded its sanitized failure log](https://github.com/dragginzgame/ic-scheduling/actions/runs/44067540364/artifacts/14320149254),
 and the custody step reported that artifact. The fixture now uses `exitCode` so
-its write drains; local Linux rehearsal passes. The following hosted run owns
-macOS acceptance of that correction. This observation proves a hosted failure
-upload, not a completed cancellation/timeout artifact-retrieval exercise.
+its write drains. The [follow-up CI run at `31d814e`](https://github.com/dragginzgame/ic-scheduling/actions/runs/44069071026)
+passed both native hosts and secret scanning, including the diagnostic/timeout
+rehearsal. The earlier artifact proves a hosted failure upload, not a completed
+cancellation/timeout artifact-retrieval exercise.
