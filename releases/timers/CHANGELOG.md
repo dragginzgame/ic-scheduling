@@ -1,5 +1,12 @@
 # Timers changelog
 
+## [0.46.2] - Unreleased
+
+### 🛠️ Development
+
+- Allow compatible Metrics 0.30 patch updates from 0.30.8 instead of requiring
+  that exact patch. The current locked selection remains 0.30.8.
+
 ## [0.46.1] - 2026-11-17
 
 ### 🛠️ Development

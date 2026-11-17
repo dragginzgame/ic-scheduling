@@ -1,6 +1,24 @@
 # Scheduling release qualification and delivery
 
-## Prepared Platform adoption — 2026-11-17
+## Prepared: Timers 0.46.2 / Jobs 0.39.2
+
+The maintainer requested compatible Metrics/Saffron requirements while the
+preceding immutable release batch was already delivering. The normal checkout
+was first reconciled with that completed batch. Root requirements now use
+`ic-metrics = "0.30.8"` and `saffron = "0.1.0"` instead of exact pins.
+Cargo interprets these as `^0.30.8` and `^0.1.0`, admitting compatible
+patches while excluding the next minor series. No current type/runtime conflict
+requires the exact patch restrictions. Feature selections are unchanged.
+
+Locked/offline metadata passes for both product and qualification workspaces,
+resolving Metrics 0.30.8 and Saffron 0.1.0. Both lockfiles are byte-identical
+to their pre-edit inputs. Evidence remains under
+`target/evidence/dependency-ranges/`. These changed public dependency contracts
+require fresh patch archives; the selected follow-up is Timers 0.46.2 then
+Jobs 0.39.2 through the unchanged complete standard gate. No follow-up delivery
+is claimed yet.
+
+## Completed: Timers 0.46.1 / Jobs 0.39.1
 
 Products and independent qualification now select Runtime/guard 0.23.15.
 Direct Entropy consumers select Protocol 0.3.2; Types remains current at
@@ -44,16 +62,34 @@ selects that package/bin, release profile and no features in release setup,
 native CI and the real transaction fixture. Registry tool installation and
 absolute-path admission pass. Both actual group transactions pass with the
 new renderer, including qualification locks, unrelated-group preservation,
-invalid selections and downgrade refusal. Toko retains rendering transaction,
-source/graph admission and rollback ownership. Local fixture evidence is
+invalid selections and downgrade refusal. Toko retains transaction, source/graph admission and rollback ownership. Local fixture evidence is
 `target/evidence/deploy-0461-0391/metadata-transactions.log`.
 
-The normal checkout contains prepared adoption changes, including both
-updated dependency locks. Package versions remain Timers 0.46.0 / Jobs 0.39.0;
-the selected delivery is Timers 0.46.1 followed by Jobs 0.39.1. The standard
-complete captured-source and archive gates remain required before publication.
-No registry delivery is claimed at this preparation stage. No sibling source
-was edited.
+Batch `batch-ctELp59j` captured source
+`f9fcf56ce7e8c0b35adac492731d7271ef297b3e` and completed both supplier-first
+releases and registry publication. Each group passed the complete standard
+captured-source gate, including native/Wasm lint, native feature variants,
+documentation, calendar, executor, Once/watchdog/Jobs, metrics, pinned Entropy
+and archives. Prepared metadata received its separate archive checks. Jobs
+also passed registry-only all-feature Wasm archive qualification against
+published Timers 0.46.1. Standard reconciliation fast-forwarded the clean
+normal checkout. No sibling source was edited or published.
+
+Independent registry downloads match the non-yanked sparse-index checksums
+and embedded source commits:
+
+| Package | Release commit | Registry SHA-256 |
+| --- | --- | --- |
+| ic-timers 0.46.1 | `7c83dc9cc68be8e289eee8a1ae086a1b22930d65` | `49da2550fbafb683db45df0354deda35abddd7f1aab8606d6590fcdc7f095fd1` |
+| ic-jobs 0.39.1 | `9c52b71702f0aff0d3e40bf3eb9044f9c4b295a7` | `7ae6adc263236b9243fb67718df0c768d60c5236bfe730c59c29781868f2a588` |
+
+Remote tags are `timers-v0.46.1` and `jobs-v0.39.1`. Readbacks remain under
+`target/publication/readback-0461-0391/`; batch logs remain under
+`target/evidence/deploy-0461-0391/` and standard recovery locations. Focused
+post-push review found no actionable issue in the delivered source/metadata;
+the subsequently requested Metrics/Saffron range relaxation is the next
+captured candidate. The [Jobs release CI run](https://github.com/dragginzgame/ic-scheduling/actions/runs/44059386656)
+was in progress at this observation; no hosted macOS success is claimed.
 
 ## Qualification maintenance — 2026-11-16
 

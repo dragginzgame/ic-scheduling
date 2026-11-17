@@ -1,5 +1,12 @@
 # Jobs changelog
 
+## [0.39.2] - Unreleased
+
+### 🛠️ Development
+
+- Allow compatible Saffron 0.1 patch updates instead of requiring exactly
+  0.1.0. The current locked selection remains 0.1.0.
+
 ## [0.39.1] - 2026-11-17
 
 ### 🛠️ Development

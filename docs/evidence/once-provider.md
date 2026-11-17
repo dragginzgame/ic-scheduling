@@ -1,4 +1,4 @@
-> Current delivery: [0.46.0 / 0.39.0 qualification](release-candidate.md).
+> Current delivery: [0.46.1 / 0.39.1 qualification](release-candidate.md).
 > Earlier open-gate statements below describe their dated implementation slice.
 
 # Installed Once provider slice — 2026-11-15
@@ -31,9 +31,9 @@ Once/watchdog/Jobs failure/lifecycle/resource suite, paired metrics and the
 actual Entropy query-refusal/source-custody/upgrade journey pass. Metadata for
 products, qualification and the consumer fixture each records one Runtime and
 one executor guard. Logs and metadata remain under
-`target/evidence/platform-02315/`. These are Linux/PocketIC 16.0.0 observations;
-this adoption has not been committed or published, and the standard complete
-release/archive gates remain required before delivery.
+`target/evidence/platform-02315/`. These are Linux/PocketIC 16.0.0 observations.
+The complete standard captured-source and archive gates subsequently passed
+for both 0.46.1 / 0.39.1 deliveries; see the [release record](release-candidate.md).
 
 ## Runtime adoption completion — 2026-11-16
 
