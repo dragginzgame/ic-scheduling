@@ -1,5 +1,32 @@
 # Scheduling release qualification and delivery
 
+## Completed: Timers 0.46.4 / Jobs 0.39.4
+
+Published on 2026-11-17 from batch `batch-tdjzvAhQ`, captured at `ed57028`.
+Both groups passed the full installed qualification gate with Testkit 0.109.0,
+including Entropy. Jobs reused the exact final-candidate Rust-stage proof from
+Timers; runtime journeys and final archive admission remained fresh.
+[Source CI](https://github.com/dragginzgame/ic-scheduling/actions/runs/44157530413)
+passed Ubuntu, macOS and history scanning before release.
+
+| Package | Release commit | Registry SHA-256 |
+| --- | --- | --- |
+| ic-timers 0.46.4 | `2f666a4e54fabfaaf39a0a3ce40811011a3f68f3` | `20d39ed057656ec75675eb72a4d552a5fa30acedf18b8678d884429cfa5331bf` |
+| ic-jobs 0.39.4 | `76e4311d7dd9b7caac94d3cf36ab2435475f6682` | `cdeb840cb5a150804d8305b25dd880b43bd7c963a6e9644910c9914e98887cf3` |
+
+Both group tags were pushed and independent registry downloads matched these
+checksums and embedded commits. Jobs' prepared archive initially refused because
+the newly published Timers archive was absent from the offline cache. A locked
+fetch against the extracted Jobs manifest supplied it; exact batch resume reused
+retained qualification, passed final archive admission and published Jobs once.
+No version, source or proof was replaced. Cold-cache supplier preparation remains
+a follow-up for the adapter; this recovery does not claim it is automatic.
+
+The standard batch reconciliation fast-forwarded the normal checkout. Retained
+evidence is under `.git/release-state/frozen/batch-tdjzvAhQ/`,
+`target/release-frozen/batch-tdjzvAhQ/`, `target/deploy-timings.log` and
+`target/registry-verification/2026-11-17-testkit/`. No batch evidence was deleted.
+
 ## Completed: Timers 0.46.3 / Jobs 0.39.3
 
 The maintainer identified the remaining Runtime exact-patch dependency as a
