@@ -90,6 +90,15 @@ corruption and candidate drift followed by recovery. The 2026-11-17 local run
 observed 68.5 seconds for execution and 33.7 seconds for reuse including evidence
 checks. These are stage observations, not an end-to-end delivery speed claim.
 
+Toko Tooling 0.45.0 was adopted through the canonical published-crate exporter
+on 2026-11-18. The real disposable fixture passed cross-group reuse, changed-log
+and missing-proof refusal, candidate drift refusal and restored-evidence recovery.
+It observed 57.8 seconds for execution and 29.0 seconds for reuse on the prepared
+Linux host with cached dependencies/tools and fresh fixture build directories.
+This was local qualification with simulated release metadata and no publication;
+it is not an end-to-end speed comparison. Group metadata, archive dispatch and
+receipt failure fixtures also passed. Logs are `target/adoption-0450-*.log`.
+
 Installed Once, executor, metrics and Entropy journeys continue to execute for
 each applicable release: they consume current source and external runtime inputs,
 and have no qualified final-candidate stage evidence contract. Format, tooling

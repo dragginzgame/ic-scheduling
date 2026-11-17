@@ -1,5 +1,11 @@
 # Jobs changelog
 
+## [0.39.5] - Unreleased
+
+### 🛠️ Development
+
+- Adopt Testkit 0.110.0 and Toko Tooling 0.45.0, including the maintained Entropy fixture.
+
 ## [0.39.4] - 2026-11-17
 
 ### 🛠️ Development

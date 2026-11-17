@@ -1,5 +1,12 @@
 # Timers changelog
 
+## [0.46.5] - Unreleased
+
+### 🛠️ Development
+
+- Adopt Testkit 0.110.0 and Toko Tooling 0.45.0, including the maintained Entropy fixture.
+- Move metrics tests into ordinary module files without changing behavior.
+
 ## [0.46.4] - 2026-11-17
 
 ### 🛠️ Development

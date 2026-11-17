@@ -59,7 +59,7 @@ consumer's query-refusal guard, resolving
 The patch preserves the typed refusal before source claim/submission, using the
 public boolean observation without admitting a task or mutating state. The
 fresh fixture resolution selects Runtime 0.23.17, Protocol
-0.3.5, Types 0.21.2, Testkit 0.109.0 and Wire 0.24.3 (within the existing
+0.3.5, Types 0.21.2, Testkit 0.110.0 and Wire 0.24.3 (within the existing
 `0.24.2` requirement).
 Wire framing now uses root-level `encode` /
 `decode` with an explicit method identity and request/response direction;
@@ -67,7 +67,7 @@ the existing frame IDs, schemas and resource limits are retained. Actual Entropy
 source remains unchanged. See the dated evidence for the tested selections.
 
 Both direct fixture catalogs and Scheduling's native held-reply graph select
-Protocol 0.3.5. Testkit 0.109.0 admits Protocol `>=0.3.2, <0.4.0`, superseding
+Protocol 0.3.5. Testkit 0.110.0 admits Protocol `>=0.3.2, <0.4.0`, superseding
 the earlier exact-patch compatibility fix from
 [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
 The exercised HTTP/randomness modules are unchanged from Protocol 0.3.2.

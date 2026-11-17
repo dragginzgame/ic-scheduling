@@ -20,7 +20,9 @@ function run(command, args, cwd = fixture, env = {}, expected = 0) {
     }
     return result.stdout.trim();
 }
-const files = run('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], root).split('\0').filter(Boolean);
+const deleted = new Set(run('git', ['ls-files', '--deleted', '-z'], root).split('\0'));
+const files = run('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], root)
+    .split('\0').filter(file => file && !deleted.has(file));
 for (const file of files) {
     assert.ok(fs.lstatSync(path.join(root, file)).isFile());
     fs.mkdirSync(path.dirname(path.join(fixture, file)), { recursive: true });

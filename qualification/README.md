@@ -5,10 +5,10 @@ catalog and lockfile. All packages remain unpublished and inherit the shared
 compiler, Toko pin and lint baseline. The license path points to the repository
 root. Qualification consumes product packages; the reverse dependency is forbidden.
 Host drivers use `ic-testkit::pocket_ic`, matching ic-platform’s qualification
-boundary. Testkit 0.109.0 selects PocketIC client 16.1.0; the prepared 16.0.0
+boundary. Testkit 0.110.0 selects PocketIC client 16.1.0; the prepared 16.0.0
 server is supported. Do not add a direct `pocket-ic` dependency.
 
-Testkit 0.109.0's held-reply feature admits Protocol `>=0.3.2, <0.4.0` and
+Testkit 0.110.0's held-reply feature admits Protocol `>=0.3.2, <0.4.0` and
 selects 0.3.5, completing the migration beyond the older compatibility fix from
 [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
 Direct Protocol callers in the pinned Entropy fixture also select 0.3.5.
@@ -17,7 +17,16 @@ and optional Metrics 0.30.11. Types and Testkit use compatible requirements; Run
 singleton guard. Testkit's changed Protocol error type remains inside private
 qualification; Scheduling's public library API is unchanged.
 
-Local Testkit 0.109.0 adoption on 2026-11-17 passed native driver Clippy,
+Local Testkit 0.110.0 / Toko Tooling 0.45.0 adoption on 2026-11-18 passed
+native driver Clippy through the real Rust-stage fixture, installed executor and
+complete Once checks, and the freshly rebuilt pinned Entropy
+`background_refill_and_lifecycle` test with the prepared PocketIC 16.0.0 server.
+Logs are `target/adoption-01100-installed.log` and
+`target/adoption-0450-rust-stage.log`. Testkit's optional managed-server and CLI
+features remain disabled. These are local Linux results, not hosted CI or release
+evidence.
+
+Earlier Testkit 0.109.0 adoption on 2026-11-17 passed native driver Clippy,
 `make check-executor check-once` with the prepared PocketIC 16.0.0 server,
 and the freshly rebuilt pinned Entropy `background_refill_and_lifecycle` test.
 The complete Once run includes Jobs upgrade/recovery, retry and catch-up cases.

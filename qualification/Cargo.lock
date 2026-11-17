@@ -158,9 +158,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "bytes"
-version = "1.12.1"
+version = "1.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
+checksum = "776dfebd015e2d8732c684a2c71003674ccb49457b539b9e82151ba38e96dd7c"
 
 [[package]]
 name = "calendar-probe"
@@ -792,9 +792,9 @@ dependencies = [
 
 [[package]]
 name = "ic-testkit"
-version = "0.109.0"
+version = "0.110.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6405078e5332b34ab898d4c32c41f39b358655bb3d4aae508d3ff17f781cf66c"
+checksum = "16709c74c5c169ea786224ea8e10a8b45446219000c18c441e8aa73bd1409252"
 dependencies = [
  "ic-platform-protocol",
  "ic-platform-types",
@@ -2191,9 +2191,9 @@ dependencies = [
 
 [[package]]
 name = "toko-tooling"
-version = "0.44.11"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d16b815ae322ae3f88580ee6af1611bdafde08b77592cd886bfa0eece0f1be8"
+checksum = "3789a925c1165317eff84cc80436195b66c0478b0c2b441bc2f1a755caf6a23a"
 
 [[package]]
 name = "tower"
