@@ -1,4 +1,4 @@
-> Current delivery: [0.46.1 / 0.39.1 qualification](release-candidate.md).
+> Current delivery: [0.46.2 / 0.39.2 qualification](release-candidate.md).
 > Earlier open-gate statements below describe their dated implementation slice.
 
 # Installed Once provider slice — 2026-11-15
@@ -33,7 +33,8 @@ products, qualification and the consumer fixture each records one Runtime and
 one executor guard. Logs and metadata remain under
 `target/evidence/platform-02315/`. These are Linux/PocketIC 16.0.0 observations.
 The complete standard captured-source and archive gates subsequently passed
-for both 0.46.1 / 0.39.1 deliveries; see the [release record](release-candidate.md).
+for both 0.46.1 / 0.39.1 deliveries and the compatible-range 0.46.2 / 0.39.2
+follow-up; see the [release record](release-candidate.md).
 
 ## Runtime adoption completion — 2026-11-16
 

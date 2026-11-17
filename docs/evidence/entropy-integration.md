@@ -18,6 +18,11 @@ Runtime and one executor guard; logs remain under
 `target/evidence/platform-02315/`. This is local Linux/PocketIC 16.0.0
 qualification, not an Entropy adoption or deployment claim.
 
+The subsequent standard captured-source gates passed this same installed
+journey for both Scheduling delivery batches (0.46.1 / 0.39.1 and the
+compatible-range 0.46.2 / 0.39.2 follow-up). See the
+[verified release record](release-candidate.md).
+
 The older exact-patch blocker described below is resolved by Testkit 0.107.4,
 as supplied in
 [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).

@@ -1,6 +1,6 @@
 # Scheduling release qualification and delivery
 
-## Prepared: Timers 0.46.2 / Jobs 0.39.2
+## Completed: Timers 0.46.2 / Jobs 0.39.2
 
 The maintainer requested compatible Metrics/Saffron requirements while the
 preceding immutable release batch was already delivering. The normal checkout
@@ -10,13 +10,42 @@ Cargo interprets these as `^0.30.8` and `^0.1.0`, admitting compatible
 patches while excluding the next minor series. No current type/runtime conflict
 requires the exact patch restrictions. Feature selections are unchanged.
 
-Locked/offline metadata passes for both product and qualification workspaces,
-resolving Metrics 0.30.8 and Saffron 0.1.0. Both lockfiles are byte-identical
-to their pre-edit inputs. Evidence remains under
-`target/evidence/dependency-ranges/`. These changed public dependency contracts
-require fresh patch archives; the selected follow-up is Timers 0.46.2 then
-Jobs 0.39.2 through the unchanged complete standard gate. No follow-up delivery
-is claimed yet.
+Locked/offline metadata passed for both product and qualification workspaces.
+At the requirement edit both lockfiles were byte-identical to their previous
+inputs. Release preparation subsequently advanced only the selected local
+product identities. A before/after metadata comparison confirms all external
+package identities are unchanged; Metrics remains 0.30.8 and Saffron 0.1.0.
+Evidence remains under `target/evidence/dependency-ranges/`.
+
+Batch `batch-KiZkiMsE` captured source
+`26dc48583ea44f5674ca977006a29e864c5c694d` and delivered Timers 0.46.2 then
+Jobs 0.39.2. Each passed the unchanged complete captured-source gate: tools,
+format/hooks, native/Wasm lint, native feature variants, documentation,
+calendar, installed executor and full Once/watchdog/Jobs, metrics, pinned
+Entropy and archives. Prepared metadata passed separate archive admission;
+Jobs also passed registry-only all-feature Wasm archive qualification against
+published Timers 0.46.2. Standard reconciliation fast-forwarded the normal
+checkout. The new metadata renderer remained the admitted 0.1.0 executable.
+
+Independent registry downloads match the non-yanked index checksums and embedded
+source commits:
+
+| Package | Release commit | Registry SHA-256 |
+| --- | --- | --- |
+| ic-timers 0.46.2 | `e38d3af0a88ac714ec123468c989dd65a26a680a` | `138b380cfecf7608fd697109d7347c002acb68985da8cadcd9fc6b6768c6b63c` |
+| ic-jobs 0.39.2 | `6d9f4b96a156410170a59ac378a0909bb41a6706` | `37262586d830f36305db5845b6755014a5be07d07e3ff546338dc1cef5f61fee` |
+
+Both published manifests/index entries contain the intended compatible
+requirements, and remote annotated tags `timers-v0.46.2` / `jobs-v0.39.2`
+peel to those commits. Readbacks remain under
+`target/publication/readback-0462-0392/`; logs remain under
+`target/evidence/deploy-0462-0392/` and the standard retained batch locations.
+Focused post-push review of the range edit, affected manifests and both release
+commits found no actionable issue. The
+[Jobs release CI run](https://github.com/dragginzgame/ic-scheduling/actions/runs/44061205676)
+was running its native Ubuntu/macOS jobs at this observation; the secret scan
+passed. No fresh hosted matrix success is claimed, and no sibling source was
+edited or published.
 
 ## Completed: Timers 0.46.1 / Jobs 0.39.1
 
@@ -87,8 +116,8 @@ Remote tags are `timers-v0.46.1` and `jobs-v0.39.1`. Readbacks remain under
 `target/publication/readback-0461-0391/`; batch logs remain under
 `target/evidence/deploy-0461-0391/` and standard recovery locations. Focused
 post-push review found no actionable issue in the delivered source/metadata;
-the subsequently requested Metrics/Saffron range relaxation is the next
-captured candidate. The [Jobs release CI run](https://github.com/dragginzgame/ic-scheduling/actions/runs/44059386656)
+the subsequently requested Metrics/Saffron range relaxation was delivered
+in the following 0.46.2 / 0.39.2 batch. The [Jobs release CI run](https://github.com/dragginzgame/ic-scheduling/actions/runs/44059386656)
 was in progress at this observation; no hosted macOS success is claimed.
 
 ## Qualification maintenance — 2026-11-16
