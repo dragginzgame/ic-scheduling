@@ -1,4 +1,4 @@
-// Bound and sanitize setup diagnostics before printing or retaining them.
+// Bound CI commands and sanitize diagnostics before printing or retaining them.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -47,8 +47,11 @@ function attemptLog(directory, store) {
 
 export async function runPhase(phase, command, args, environment = process.env) {
     if (!/^[a-z0-9-]+$/.test(phase) || !command) throw new Error('expected phase and command');
+    const seconds = Number(environment.CI_PHASE_TIMEOUT_SECONDS ?? 0);
+    if (!Number.isInteger(seconds) || seconds < 0 || seconds > 86400) throw new Error('invalid CI phase timeout');
     let tail = Buffer.alloc(0), total = 0, launchError = '';
-    const child = spawn(command, args, { env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
+    const grouped = seconds > 0 && process.platform !== 'win32';
+    const child = spawn(command, args, { env: environment, detached: grouped, stdio: ['ignore', 'pipe', 'pipe'] });
     function capture(chunk) {
         total += chunk.length;
         tail = Buffer.concat([tail, chunk]).subarray(-limit);
@@ -56,8 +59,37 @@ export async function runPhase(phase, command, args, environment = process.env) 
     child.stdout.on('data', capture);
     child.stderr.on('data', capture);
     child.on('error', error => { launchError = error.message; });
+    let stopped = 0, termination;
+    function send(signal) {
+        if (!child.pid) return;
+        try {
+            if (grouped) process.kill(-child.pid, signal);
+            else child.kill(signal);
+        } catch (error) {
+            if (error.code !== 'ESRCH') capture(Buffer.from(`\nTermination failed: ${error.message}\n`));
+        }
+    }
+    function stop(status, reason, signal = 'SIGTERM') {
+        if (stopped) return;
+        stopped = status;
+        capture(Buffer.from(`\n${reason}; terminating command group, then SIGKILL after 2 seconds.\n`));
+        send(signal);
+        // Keep this grace even if the leader exits first: descendants may ignore TERM.
+        termination = new Promise(resolve => setTimeout(() => { send('SIGKILL'); resolve(); }, 2000));
+    }
+    const interrupt = () => stop(130, 'CI command interrupted', 'SIGINT');
+    const terminate = () => stop(143, 'CI command terminated');
+    if (seconds) {
+        process.on('SIGINT', interrupt);
+        process.on('SIGTERM', terminate);
+    }
+    const deadline = seconds ? setTimeout(() => stop(124, `CI phase timeout after ${seconds} seconds`), seconds * 1000) : undefined;
     const [code, signal] = await new Promise(resolve => child.on('close', (...result) => resolve(result)));
-    const status = code ?? (signal === 'SIGINT' ? 130 : signal === 'SIGTERM' ? 143 : 1);
+    clearTimeout(deadline);
+    await termination;
+    process.removeListener('SIGINT', interrupt);
+    process.removeListener('SIGTERM', terminate);
+    const status = stopped || (code ?? (signal === 'SIGINT' ? 130 : signal === 'SIGTERM' ? 143 : 1));
     const heading = `Setup phase=${phase} tool=${path.basename(command)} status=${status}${signal ? ` signal=${signal}` : ''}`;
     const raw = `${total > limit ? '[TRUNCATED: final 64 KiB]\n' : ''}${tail.toString()}${launchError}`;
     const safe = sanitize(raw, environment);

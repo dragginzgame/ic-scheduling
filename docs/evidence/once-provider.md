@@ -8,6 +8,38 @@ to an IC global timer and authenticated isolated self-calls. The new once-probe
 imports the actual product; it is not another model or a replacement provider.
 This is a local PocketIC observation, not production/deployment qualification.
 
+## Current supplier qualification — 2026-11-17
+
+Both products and independent qualification select Runtime/guard 0.23.16 and
+optional Metrics 0.30.9. Native held-reply and staged Entropy qualification now
+use Testkit 0.108.0 / Protocol 0.3.4 with Types 0.21.2, removing the old Protocol
+0.2 hold. The full installed executor, Once/watchdog/Jobs lifecycle/resource,
+paired Metrics and pinned Entropy suites pass on Linux/PocketIC 16.0.0.
+The complete `make qualify` and archive gate passes; source identities and
+metadata checks are recorded in the [prepared release evidence](release-candidate.md).
+Logs remain under `target/evidence/platform-02316/`. This is local qualification,
+not publication or macOS CI evidence.
+
+## Compatible Runtime requirement — 2026-11-17
+
+Scheduling now declares `Runtime = "0.23.14"` (`^0.23.14`) in the product,
+qualification and direct Entropy fixture catalogs. The locks now select 0.23.16.
+The singleton guard remains owned and exactly selected by Runtime itself;
+Scheduling's former `=0.23.15` constraint was not needed to enforce one executor.
+
+The published Timers 0.46.0 / Runtime 0.23.15 resolver conflict is reproduced
+under `target/evidence/runtime-pin/published-0460-conflict.log`. A maintained
+composition check now selects actual published Runtime 0.23.14, 0.23.15 and
+0.23.16 separately with the local Timers and execution-enabled Jobs packages. All
+resolve with one matching Runtime/guard and compile for Wasm. A valid legacy
+0.22.5 request still refuses specifically because its executor guard's Cargo
+`links` identity conflicts; no guard bypass or extra executor was introduced.
+The current fixture output is `target/evidence/platform-02316/composition.log`.
+
+This relaxes a consumer requirement without changing provider code. Existing
+installed behavior evidence on 0.23.14 and 0.23.15 remains dated below; the current
+0.23.16 selection is qualified above. No future Runtime patch is pre-qualified.
+
 ## Runtime 0.23.15 adoption — 2026-11-17
 
 Products and the independent qualification workspace now select published

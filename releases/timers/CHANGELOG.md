@@ -1,5 +1,19 @@
 # Timers changelog
 
+## [0.46.3] - Unreleased
+
+### 🛠️ Development
+
+- Adopt published Runtime/guard 0.23.16 and Metrics 0.30.9. Move native and
+  pinned Entropy qualification to Testkit 0.108.0 / Protocol 0.3.4, completing
+  the held-reply migration to Protocol 0.3 without changing the library API.
+- Bound native and scanner CI jobs using measured timings, with earlier command
+  deadlines that retain sanitized failure evidence before the hard job limit.
+- Accept compatible Runtime 0.23 patches from 0.23.14 instead of requiring one
+  exact patch, allowing hosts to select 0.23.14 or 0.23.15 with one matching
+  executor guard. Composition also covers the selected Runtime 0.23.16.
+  Resolves [Scheduling #3 — Qualify Timers with Platform Runtime 0.23.15](https://github.com/dragginzgame/ic-scheduling/issues/3).
+
 ## [0.46.2] - 2026-11-17
 
 ### 🛠️ Development

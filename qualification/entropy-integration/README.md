@@ -49,22 +49,22 @@ Runtime 0.23.14 publishes the replicated-execution observation required by the
 consumer's query-refusal guard, resolving
 [Platform #19 — Expose replicated-execution observation for Entropy's source admission](https://github.com/dragginzgame/ic-platform/issues/19).
 The patch preserves the typed refusal before source claim/submission, using the
-public boolean observation without admitting a task or mutating state. Its
-installed journey is qualified against the selected Runtime 0.23.15, Protocol
-0.3.2, Types 0.21.2, Testkit 0.107.4 and Wire 0.24.3 (within the existing
+public boolean observation without admitting a task or mutating state. The
+adapter now selects Runtime 0.23.16, Protocol
+0.3.4, Types 0.21.2, Testkit 0.108.0 and Wire 0.24.3 (within the existing
 `0.24.2` requirement).
 Wire framing now uses root-level `encode` /
 `decode` with an explicit method identity and request/response direction;
 the existing frame IDs, schemas and resource limits are retained. Actual Entropy
 source remains unchanged. See the dated evidence for the tested selections.
 
-Both direct fixture catalogs select Protocol 0.3.2. Scheduling's separate native
-held-reply graph selects Protocol 0.2.8 through Testkit's supported `^0.2.7`
-requirement. The supplying exact-patch compatibility fix is
+Both direct fixture catalogs and Scheduling's native held-reply graph select
+Protocol 0.3.4. Testkit 0.108.0 admits Protocol `>=0.3.2, <0.4.0`, superseding
+the earlier exact-patch compatibility fix from
 [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
-The HTTP codec exercised across that boundary is identical in these two
-Protocol versions. Revisit the native selection when Testkit supports 0.3;
-do not force an unsupported transitive override.
+The exercised HTTP/randomness modules are unchanged from Protocol 0.3.2.
+The shared type and runtime singleton boundaries remain qualified independently
+in both fixture workspaces; no transitive override is needed.
 
 See [recorded evidence](../../docs/evidence/entropy-integration.md) for results,
 hashes and the remaining lifecycle limits.

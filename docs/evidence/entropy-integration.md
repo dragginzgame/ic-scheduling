@@ -3,34 +3,35 @@
 ## Current Platform cohort — 2026-11-17
 
 The maintained immutable-source adapter now selects Runtime/macros/guard
-0.23.15, Protocol 0.3.2, Types 0.21.2 and Testkit 0.107.4. Wire resolves to
+0.23.16, Protocol 0.3.4, Types 0.21.2 and Testkit 0.108.0. Wire resolves to
 0.24.3 through the existing compatible requirement. Both direct fixture
 catalogs select the new Platform versions; the read-only Entropy checkout
 and its pinned source revision are unchanged.
 
 The selected Protocol HTTP and randomness modules are byte-identical to the
-earlier 0.2.7 implementation. New unrelated capabilities stay disabled.
-Native all-target and Wasm Clippy pass, the actual release probe builds and
-its installed `background_refill_and_lifecycle` passes in 22.60 seconds,
+prior 0.3.2 selection. New unrelated capabilities stay disabled.
+The complete `make qualify` gate passes, including native all-target and Wasm
+Clippy, native feature tests, the actual release probe and its installed
+`background_refill_and_lifecycle` in 21.58 seconds,
 including query refusal, source contention/stale custody, refill,
 suspension/reconstruction, upgrade and reinstall. Metadata records one
-Runtime and one executor guard; logs remain under
-`target/evidence/platform-02315/`. This is local Linux/PocketIC 16.0.0
+Runtime, one matching executor guard and one Types identity in both staged
+workspaces; logs and metadata remain under
+`target/evidence/platform-02316/`. This is local Linux/PocketIC 16.0.0
 qualification, not an Entropy adoption or deployment claim.
 
-The subsequent standard captured-source gates passed this same installed
-journey for both Scheduling delivery batches (0.46.1 / 0.39.1 and the
+The prior Runtime 0.23.15 / Protocol 0.3.2 / Testkit 0.107.4 observation remains
+under `target/evidence/platform-02315/`. Standard captured-source gates passed
+that installed journey for both Scheduling delivery batches (0.46.1 / 0.39.1 and the
 compatible-range 0.46.2 / 0.39.2 follow-up). See the
 [verified release record](release-candidate.md).
 
 The older exact-patch blocker described below is resolved by Testkit 0.107.4,
 as supplied in
 [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
-Scheduling's separate native held-reply graph now selects Protocol 0.2.8
-within that supplier's supported `^0.2.7` range. Its exercised HTTP codec is
-identical to 0.3.2 and the installed held-flight/watchdog/upgrade cases pass.
-Revisit that native selection when Testkit supports 0.3; do not force a
-transitive major-version override.
+Testkit 0.108.0 now admits Protocol `>=0.3.2, <0.4.0`, so Scheduling's native
+held-reply graph also selects 0.3.4. Its installed held-flight/watchdog/upgrade
+cases pass. No older native Protocol selection or transitive override remains.
 
 ## Protocol 0.2.7 adoption — 2026-11-16
 

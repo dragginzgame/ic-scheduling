@@ -1,5 +1,50 @@
 # Scheduling release qualification and delivery
 
+## Prepared: Timers 0.46.3 / Jobs 0.39.3
+
+The maintainer identified the remaining Runtime exact-patch dependency as a
+consumer constraint. Scheduling now accepts `^0.23.14` in product and
+qualification catalogs and the maintained Entropy adapter. Both dependency
+locks now select Runtime/guard 0.23.16 and Metrics 0.30.9. Native held-reply and
+both pinned Entropy fixture catalogs select Protocol 0.3.4 with Testkit 0.108.0;
+Types remains current at 0.21.2. The old native Protocol 0.2 hold is removed.
+Types, Protocol and Testkit declarations admit compatible patches; Runtime
+continues to select its coordinated singleton guard exactly.
+
+The published Timers 0.46.0 / direct Runtime 0.23.15 conflict reproduces.
+The prepared products compose with actual published 0.23.14, 0.23.15 and 0.23.16
+consumers, each resolving one Runtime/guard and compiling for Wasm. The
+incompatible Runtime 0.22.5 guard still refuses. See the
+[provider evidence](once-provider.md) and
+`node qualification/runtime-composition-check.mjs`.
+
+Published Timers 0.46.1 / 0.46.2 already support Runtime 0.23.15; users of
+0.46.0 need to upgrade. Published versions cannot be edited retroactively.
+This range fix and supplier adoption are prepared locally with pending patch
+notes, not committed or released. Testkit's Protocol 0.3 error-type change is
+private to qualification and changes no Scheduling library API, so both pending
+versions remain compatible patches. Metrics keeps its compatible `^0.30.8`
+requirement; only its locked selection advances.
+
+The selected supplier archives match their latest stable, non-yanked registry
+records, reviewed on 2026-11-17. Runtime 0.23.16 and Metrics 0.30.9 have identical
+`src/` bytes to their prior selections. Testkit's held-reply modules are identical
+after module-directory moves; Protocol's exercised HTTP/randomness modules are
+unchanged. Published source identities are Platform
+`69ba457c282167ebac271ae35a3e8339b4d24e54`, Metrics
+`2b0ebb98aacf746c8c38d1a70599dada8b0ce572` and Testkit
+`78f1d2fbfbda6cac3b39f49dfe8aaa3c26472135`.
+
+`make qualify` passes all eleven unchanged targets on the dirty normal checkout:
+tools/snapshot, format/hooks, native and Wasm lint/tests/docs, calendar, installed
+executor, full Once/watchdog/Jobs failure/lifecycle/resource checks, paired Metrics,
+the pinned Entropy journey and package/archive checks. Product, qualification
+and both staged Entropy graphs each resolve one Runtime/guard and one Types
+identity; the held-reply graph now uses Protocol 0.3.4. Default product metadata
+still excludes Metrics. Logs, metadata and registry records are retained under
+`target/evidence/platform-02316/`. This is local Linux/PocketIC 16.0.0 evidence;
+macOS CI and source-bound release/publication gates remain separate obligations.
+
 ## Completed: Timers 0.46.2 / Jobs 0.39.2
 
 The maintainer requested compatible Metrics/Saffron requirements while the

@@ -11,6 +11,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native:
+    # Measured budgets and collection headroom: docs/operations/releases.md.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -18,54 +20,72 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        timeout-minutes: 1
       - name: Prepare pinned tools and locked sources
         id: setup
+        timeout-minutes: 9
         shell: bash
+        env:
+          CI_PHASE_TIMEOUT_SECONDS: 480
         run: |
-          set -euo pipefail
-          node ci/setup.mjs rustup rustup show
-          node ci/setup.mjs product-sources cargo fetch --locked
-          node ci/setup.mjs qualification-sources cargo fetch --manifest-path qualification/Cargo.toml --locked
-          node ci/setup.mjs pinned-tools make install-tools
-          node ci/setup.mjs metadata-editor bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$PWD" --package ic-cargo-metadata --version 0.1.0 --bin ic-cargo-metadata --profile release
-      - name: Retain sanitized setup diagnostics
+          node ci/setup.mjs native-setup bash -euo pipefail -c '
+            rustup show
+            cargo fetch --locked
+            cargo fetch --manifest-path qualification/Cargo.toml --locked
+            make install-tools
+            bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$PWD" --package ic-cargo-metadata --version 0.1.0 --bin ic-cargo-metadata --profile release
+          '
+      - name: Qualify native host and archive paths
+        id: qualification
+        timeout-minutes: 9
+        shell: bash
+        env:
+          CI_PHASE_TIMEOUT_SECONDS: 480
+        run: |
+          node ci/setup.mjs native-qualification bash -euo pipefail -c '
+            uname -sm
+            node qualification/setup-check.mjs
+            make tools-check check fmt-check qualify-rust qualify-archives
+            node qualification/release-check.mjs
+            make check-formatting-hooks
+          '
+      - name: Retain sanitized failure diagnostics
         id: setup-evidence
-        if: ${{ !cancelled() && steps.setup.outcome == 'failure' }}
+        if: ${{ !cancelled() && (steps.setup.outcome == 'failure' || steps.qualification.outcome == 'failure') }}
+        timeout-minutes: 1
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: setup-${{ matrix.os }}-${{ github.run_attempt }}
           path: target/ci-setup/
           retention-days: 7
           if-no-files-found: error
-      - name: Report setup evidence custody
-        if: ${{ always() && steps.setup.outcome == 'failure' }}
+      - name: Report failure evidence custody
+        if: ${{ always() && (steps.setup.outcome == 'failure' || steps.qualification.outcome == 'failure') }}
+        timeout-minutes: 1
         shell: bash
         env:
           ARTIFACT_URL: ${{ steps.setup-evidence.outputs.artifact-url }}
         run: |
           if [[ -n "$ARTIFACT_URL" ]]; then
-            printf 'Sanitized setup evidence: %s\n' "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+            printf 'Sanitized failure evidence: %s\n' "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo 'Setup evidence upload failed or required evidence was missing.' | tee -a "$GITHUB_STEP_SUMMARY"
+            echo 'Failure evidence upload failed or required evidence was missing.' | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
-      - name: Qualify native host and archive paths
-        shell: bash
-        run: |
-          set -euo pipefail
-          uname -sm
-          make tools-check check fmt-check qualify-rust qualify-archives
-          node qualification/release-check.mjs
-          make check-formatting-hooks
   secrets:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        timeout-minutes: 1
         with:
           fetch-depth: 0
       - name: Prepare history scanner
         id: setup
+        timeout-minutes: 2
         shell: bash
+        env:
+          CI_PHASE_TIMEOUT_SECONDS: 60
         run: |
           node ci/setup.mjs history-scanner bash -euo pipefail -c '
             source vendor/toko-tooling/ci/tool-versions.env
@@ -76,28 +96,34 @@ jobs:
             tar -xzf "$archive" -C target/gitleaks gitleaks
             test "$(target/gitleaks/gitleaks version)" = "$TOKO_TOOLING_GITLEAKS_VERSION"
           '
-      - name: Retain sanitized scanner setup diagnostics
+      - name: Scan repository history once
+        id: scan
+        timeout-minutes: 2
+        shell: bash
+        env:
+          CI_PHASE_TIMEOUT_SECONDS: 60
+        run: |
+          node ci/setup.mjs history-scan target/gitleaks/gitleaks git --redact=100 --no-banner --no-color --log-level error
+      - name: Retain sanitized scanner failure diagnostics
         id: setup-evidence
-        if: ${{ !cancelled() && steps.setup.outcome == 'failure' }}
+        if: ${{ !cancelled() && (steps.setup.outcome == 'failure' || steps.scan.outcome == 'failure') }}
+        timeout-minutes: 1
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: setup-history-scanner-${{ github.run_attempt }}
           path: target/ci-setup/
           retention-days: 7
           if-no-files-found: error
-      - name: Report scanner setup evidence custody
-        if: ${{ always() && steps.setup.outcome == 'failure' }}
+      - name: Report scanner failure evidence custody
+        if: ${{ always() && (steps.setup.outcome == 'failure' || steps.scan.outcome == 'failure') }}
+        timeout-minutes: 1
         shell: bash
         env:
           ARTIFACT_URL: ${{ steps.setup-evidence.outputs.artifact-url }}
         run: |
           if [[ -n "$ARTIFACT_URL" ]]; then
-            printf 'Sanitized setup evidence: %s\n' "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
+            printf 'Sanitized failure evidence: %s\n' "$ARTIFACT_URL" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo 'Setup evidence upload failed or required evidence was missing.' | tee -a "$GITHUB_STEP_SUMMARY"
+            echo 'Failure evidence upload failed or required evidence was missing.' | tee -a "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
-      - name: Scan repository history once
-        shell: bash
-        run: |
-          target/gitleaks/gitleaks git --redact=100 --no-banner --no-color --log-level error

@@ -15,7 +15,7 @@ ic-timers = { version = "0.46.2", path = "crates/ic-timers" }
 
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 ic-metrics = { version = "0.30.8", default-features = false }
-ic-platform-runtime = { version = "=0.23.15", default-features = false, features = ["call-ic0", "system-raw"] }
+ic-platform-runtime = { version = "0.23.14", default-features = false, features = ["call-ic0", "system-raw"] }
 saffron = { version = "0.1.0", default-features = false, features = ["std"] }
 toko-tooling = "=0.44.11"
 

@@ -20,6 +20,15 @@ Install package/bin `ic-cargo-metadata` 0.1.0 in release profile without feature
 Toko's admitted absolute executable selection, bounded-input contract,
 transaction/rollback ownership and independent Cargo graph checks are retained.
 
+Runtime compatibility belongs to the package requirement and the selected
+Runtime's own guard, not a Scheduling patch pin. The prepared Timers 0.46.3 /
+Jobs 0.39.3 requirements admit `^0.23.14`; both locks select 0.23.16. Composition
+checks cover 0.23.14, 0.23.15 and 0.23.16 with one matching Runtime/guard.
+Published Timers 0.46.0 is immutable and still requires exactly Runtime 0.23.14;
+published 0.46.1 / 0.46.2 require exactly 0.23.15. Consumers needing 0.23.15
+can upgrade to those existing releases now. The compatible-range change needs
+its next ordinary release before registry consumers receive it.
+
 For Timers 0.45.10/0.45.11 and Jobs 0.38.0/0.38.1, the maintainer waived the
 Entropy journey. Their release gates require `POCKET_IC_BIN` but not
 `ENTROPY_SOURCE`; all Scheduling-owned checks and archive checks remain required.
@@ -56,13 +65,43 @@ PocketIC and pinned Entropy qualification currently runs on the prepared Linux
 release host. CI runs one redacted repository-history secret scan, outside the
 host matrix. A Linux pass alone does not claim macOS qualification.
 
-CI setup phases run through `ci/setup.mjs`. Failures retain sanitized final
+CI setup, native qualification and history scanning run through `ci/setup.mjs`.
+Failures retain sanitized final
 64 KiB diagnostics and at most four explicitly reported Rust attempt logs of
 64 KiB each, without following attempt symlinks or uploading tool stores. The
 workflow uploads only `target/ci-setup/`, keeps artifacts for seven days and
 links the artifact in its result. Missing logs, collection failures and upload
-failures are reported separately; the original setup failure remains fatal.
+failures are reported separately; the original command failure remains fatal.
+Command deadlines return status 124, send TERM to the command's process group,
+then KILL after a two-second grace, including descendants that outlive the leader.
+The deadlines precede the Actions step and job limits so ordinary command hangs
+can finish collection and upload. A hard runner/job termination or cancellation
+can still prevent upload; local rehearsal does not establish hosted custody.
+
+Budgets selected on 2026-11-17 from five successful retained CI runs:
+[43914912997](https://github.com/dragginzgame/ic-scheduling/actions/runs/43914912997),
+[43955013371](https://github.com/dragginzgame/ic-scheduling/actions/runs/43955013371),
+[43956784538](https://github.com/dragginzgame/ic-scheduling/actions/runs/43956784538),
+[44059386656](https://github.com/dragginzgame/ic-scheduling/actions/runs/44059386656)
+and [44061753917](https://github.com/dragginzgame/ic-scheduling/actions/runs/44061753917).
+Durations use job start/completion timestamps, excluding queue time; these are
+observations, not worst-case guarantees for future runner or download conditions.
+
+| Job | Observed duration | Job limit | Command limits |
+| --- | --- | --- | --- |
+| Native Ubuntu 24.04 | 177–217 s | 20 min | Setup 8 min; qualification 8 min |
+| Native macOS 15 | 213–306 s | 20 min | Setup 8 min; qualification 8 min |
+| Repository secrets | 5–7 s | 5 min | Scanner setup 60 s; history scan 60 s |
+
+Across these samples, native setup peaked at 159 s and qualification at 139 s.
+The eight-minute phase budgets allow about three times those observations.
+Actions step backstops are nine minutes for native commands and two minutes for
+scanner commands; checkout, evidence upload and custody reporting each have a
+one-minute limit. Revisit the budgets when maintained CI work or observed timings
+change, keeping command deadlines below hard limits and leaving collection time.
+
 Run `node qualification/setup-check.mjs` when changing this boundary. Its offline
 failure rehearsal covers redaction, hidden attempt selection, missing output,
-symlink refusal, truncation and collector failure. Hosted upload/retrieval is a
-separate observation, not established by that local rehearsal.
+symlink refusal, truncation, collector failure, successful completion and a hung
+command with a TERM-resistant descendant. Native CI runs the rehearsal on both
+hosts; local Linux results alone do not qualify macOS signals or hosted upload.

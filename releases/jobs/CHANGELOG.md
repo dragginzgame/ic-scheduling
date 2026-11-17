@@ -1,5 +1,18 @@
 # Jobs changelog
 
+## [0.39.3] - Unreleased
+
+### 🛠️ Development
+
+- Qualify execution with Runtime/guard 0.23.16 and optional Metrics 0.30.9,
+  using Testkit 0.108.0 / Protocol 0.3.4 for native and pinned consumer fixtures.
+  The Testkit error-type change is private to qualification; Jobs' API is unchanged.
+- Bound native and scanner CI jobs using measured timings, with earlier command
+  deadlines that retain sanitized failure evidence before the hard job limit.
+- Allow the execution adapter to share the host's compatible Runtime 0.23 patch
+  from 0.23.14, retaining one executor guard and the current 0.23.16 lock selection.
+  Resolves [Scheduling #3 — Qualify Timers with Platform Runtime 0.23.15](https://github.com/dragginzgame/ic-scheduling/issues/3).
+
 ## [0.39.2] - 2026-11-17
 
 ### 🛠️ Development

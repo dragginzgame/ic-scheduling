@@ -1,5 +1,25 @@
 # Metrics feature cost — 2026-11-15
 
+## Supplier adoption replay — 2026-11-17
+
+The existing paired workload passes with local Timers 0.46.2, Runtime/guard
+0.23.16, Metrics 0.30.9, Types 0.21.2, Testkit 0.108.0 and PocketIC client/server
+16.1.0/16.0.0 on Linux with Rust 1.100.0. Three fresh canisters per build agree
+within each instruction bracket. Full raw Wasm is 107,138 bytes disabled and
+113,099 enabled (+5,961); code sections including section headers are 74,051
+and 79,545 bytes (+5,494). Instruction deltas are +1,844 for setup, +67 through
+Once factory entry, +72 through Once resumption and +101 through watchdog entry.
+These remain fixture-inclusive prefix costs, not whole-async-lifetime costs.
+Behavior and diagnostic assertions pass with both feature selections.
+
+Retained binaries: `qualification/target/metrics_off.wasm` SHA-256
+`2a8a5f9e45642882daee8f07b203fd193894626a504aaeb0620164c1981fbfdf` and
+`metrics_on.wasm` SHA-256
+`4f54d6593a2920dccb00e84ac8042fa18928662e4dfcf0964d062e69d10a4631`.
+Reproduce with `make check-metrics`; the complete gate log is
+`target/evidence/platform-02316/qualify.log`. This is local qualification;
+the original 0.45.4 observation follows.
+
 Timers 0.45.4 adds a small qualification-only paired workload. No product behavior
 changed in this slice. The same `metrics-probe` source is built in release mode
 with the metrics feature disabled and enabled. Both builds export the same setup,

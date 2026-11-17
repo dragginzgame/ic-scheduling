@@ -1,5 +1,16 @@
 # Aggregate timer diagnostics — 2026-11-15
 
+## Current supplier qualification — 2026-11-17
+
+Both maintained locks select Metrics 0.30.9 through the compatible `^0.30.8`
+requirement, with default features disabled. Its product source bytes are
+identical to 0.30.8. Native feature tests, strict native/Wasm lint and the full
+installed suite pass with Runtime 0.23.16 / Testkit 0.108.0. The disabled product
+metadata still excludes Metrics; enabled recording remains inert. The current
+[paired cost observation](metrics-cost.md) and
+[prepared release evidence](release-candidate.md) identify the tested cohort.
+The original 0.45.3 observation follows.
+
 Timers 0.45.3 adds off-by-default `metrics`, using pinned ic-metrics 0.30.8 with
 default features disabled. With it enabled, `ic_timers::metrics()` reads six
 aggregate counters for the live provider incarnation. Host code owns encoding

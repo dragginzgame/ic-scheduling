@@ -5,15 +5,24 @@ catalog and lockfile. All packages remain unpublished and inherit the shared
 compiler, Toko pin and lint baseline. The license path points to the repository
 root. Qualification consumes product packages; the reverse dependency is forbidden.
 Host drivers use `ic-testkit::pocket_ic`, matching ic-platform’s qualification
-boundary. Testkit 0.107.4 selects PocketIC client 16.1.0; the prepared 16.0.0
+boundary. Testkit 0.108.0 selects PocketIC client 16.1.0; the prepared 16.0.0
 server is supported. Do not add a direct `pocket-ic` dependency.
 
-Testkit 0.107.4's held-reply feature admits Protocol `^0.2.7` and currently
-selects 0.2.8, resolving the exact-patch constraint from
+Testkit 0.108.0's held-reply feature admits Protocol `>=0.3.2, <0.4.0` and
+selects 0.3.4, completing the migration beyond the older compatibility fix from
 [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
-Direct Protocol callers in the pinned Entropy fixture select 0.3.2. Keep the
-native supplier within its supported range; revisit that selection when Testkit
-admits Protocol 0.3. Both workspaces use Runtime/guard 0.23.15 and Types 0.21.2.
+Direct Protocol callers in the pinned Entropy fixture also select 0.3.4.
+Both workspaces use Runtime/guard 0.23.16, Types 0.21.2 and optional Metrics
+0.30.9. Types and Testkit use compatible requirements; Runtime owns its exact
+singleton guard. Testkit's changed Protocol error type remains inside private
+qualification; Scheduling's public library API is unchanged.
+
+Runtime requirements admit compatible 0.23 patches from 0.23.14; the locks
+select 0.23.16. Run `node qualification/runtime-composition-check.mjs` from
+the repository root when changing that boundary. With the published 0.23.14,
+0.23.15, 0.23.16 and legacy 0.22.5 packages cached, the offline check composes real
+Timers/Jobs consumers, verifies one matching Runtime/guard, compiles all three
+supported patches for Wasm and confirms the incompatible old guard still refuses.
 
 `calendar-probe` builds the actual Saffron-backed UTC Jobs adapter as a
 standalone Wasm module. Its raw export selects fixed calendar scenarios; the

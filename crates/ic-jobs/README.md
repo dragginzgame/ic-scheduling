@@ -12,6 +12,9 @@ empty.
   Jobs share Timers' 64 declarations, eight transport flights and four submissions
   per control turn; each Job retains one declaration.
 
+The execution adapter accepts compatible Platform Runtime 0.23 patches from
+0.23.14, sharing the single Runtime/guard selected with Timers and the host.
+
 Use `Schedule::parse("0 9 * * *")` for 09:00 UTC daily. The other constructors are
 `once`, `fixed_rate` and `after_completion`; timestamps are Unix nanoseconds.
 Binding takes a delivery policy and `RetryPolicy` (`NONE` disables retries).
