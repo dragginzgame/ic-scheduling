@@ -1,5 +1,12 @@
 # Timers changelog
 
+## [0.46.4] - Unreleased
+
+### 🛠️ Development
+
+- Let the CI diagnostic-size fixture drain its piped output before exit, fixing
+  the macOS truncation rehearsal without changing the published library.
+
 ## [0.46.3] - 2026-11-17
 
 ### 🛠️ Development

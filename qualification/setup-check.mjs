@@ -51,7 +51,8 @@ const symlink = check('symlink', `console.error('Cargo tool attempt retained: '+
 });
 assert.match(symlink.result.stderr, /attempt symlink refused/);
 assert.deepEqual(fs.readdirSync(path.join(symlink.cwd, 'target/ci-setup')), ['symlink.log']);
-const large = check('large', 'console.error("x".repeat(200000)); process.exit(23)');
+// Let piped diagnostics drain before exit; process.exit can discard writes on macOS.
+const large = check('large', 'console.error("x".repeat(200000)); process.exitCode = 23');
 assert.match(large.result.stdout, /TRUNCATED/);
 assert.ok(fs.statSync(path.join(large.cwd, 'target/ci-setup/large.log')).size < 66 * 1024);
 const success = check('success', 'console.log("completed")', undefined, { CI_PHASE_TIMEOUT_SECONDS: '5' }, 0);

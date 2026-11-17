@@ -1,6 +1,6 @@
 # Scheduling release qualification and delivery
 
-## Prepared: Timers 0.46.3 / Jobs 0.39.3
+## Completed: Timers 0.46.3 / Jobs 0.39.3
 
 The maintainer identified the remaining Runtime exact-patch dependency as a
 consumer constraint. Scheduling now accepts `^0.23.14` in product and
@@ -12,19 +12,19 @@ Types, Protocol and Testkit declarations admit compatible patches; Runtime
 continues to select its coordinated singleton guard exactly.
 
 The published Timers 0.46.0 / direct Runtime 0.23.15 conflict reproduces.
-The prepared products compose with actual published 0.23.14, 0.23.15 and 0.23.16
+The products compose with actual published 0.23.14, 0.23.15 and 0.23.16
 consumers, each resolving one Runtime/guard and compiling for Wasm. The
 incompatible Runtime 0.22.5 guard still refuses. See the
 [provider evidence](once-provider.md) and
 `node qualification/runtime-composition-check.mjs`.
 
-Published Timers 0.46.1 / 0.46.2 already support Runtime 0.23.15; users of
-0.46.0 need to upgrade. Published versions cannot be edited retroactively.
-This range fix and supplier adoption are prepared locally with pending patch
-notes, not committed or released. Testkit's Protocol 0.3 error-type change is
-private to qualification and changes no Scheduling library API, so both pending
-versions remain compatible patches. Metrics keeps its compatible `^0.30.8`
-requirement; only its locked selection advances.
+Published Timers 0.46.1 / 0.46.2 support Runtime 0.23.15 but still pin it exactly;
+0.46.0 pins 0.23.14. Those immutable releases cannot be edited retroactively.
+Timers 0.46.3 and Jobs 0.39.3 now publish the compatible requirement, resolving
+[Scheduling #3 — Qualify Timers with Platform Runtime 0.23.15](https://github.com/dragginzgame/ic-scheduling/issues/3).
+Testkit's Protocol 0.3 error-type change is private to qualification and changes
+no Scheduling library API, so both releases are compatible patches. Metrics
+keeps its compatible `^0.30.8` requirement; its locked selection advances.
 
 The selected supplier archives match their latest stable, non-yanked registry
 records, reviewed on 2026-11-17. Runtime 0.23.16 and Metrics 0.30.9 have identical
@@ -43,7 +43,36 @@ and both staged Entropy graphs each resolve one Runtime/guard and one Types
 identity; the held-reply graph now uses Protocol 0.3.4. Default product metadata
 still excludes Metrics. Logs, metadata and registry records are retained under
 `target/evidence/platform-02316/`. This is local Linux/PocketIC 16.0.0 evidence;
-macOS CI and source-bound release/publication gates remain separate obligations.
+macOS CI and source-bound release/publication gates are separate observations.
+
+Batch `batch-Jq5rvHFC` captured committed source
+`d7a8158977855ddf8f25175e1ee4154ef4a075e5`, then delivered Timers before Jobs.
+Both complete captured-source gates and prepared archive checks passed. Jobs
+also passed registry-only all-feature Wasm archive verification against published
+Timers 0.46.3. Both annotated tags and `origin/main` match the release commits;
+standard reconciliation fast-forwarded the normal checkout.
+
+Independent registry downloads match their non-yanked index checksums and
+embedded source commits:
+
+| Package | Release commit | Registry SHA-256 |
+| --- | --- | --- |
+| ic-timers 0.46.3 | `1ff3de1ec101dc1eeda54048e531dd762f9f0abe` | `978acbba1761d3d45e0e8424368ab0ab69b2bfbb996ac1fe3321cc6f8358f2c5` |
+| ic-jobs 0.39.3 | `3c4ec293ed3734d299a00ed40e19b4965b89e161` | `e0c465a675bf4d0c2a40f5145ad1e58850b99d5c1a249ac48d2066d9f60b4caa` |
+
+Both registry entries declare Runtime `^0.23.14`; Jobs requires Timers `^0.46.3`.
+Registry-only consumers selecting both releases and exact Runtime 0.23.14,
+0.23.15 or 0.23.16 each compile for native and Wasm with one matching executor
+guard and no path overrides. The previous Timers 0.46.2 / Runtime 0.23.16
+conflict reproduces. Readbacks remain under `target/publication/readback-0463-0393/`;
+consumer checks and full batch logs remain under `target/evidence/deploy-0463-0393/`.
+
+Hosted Linux passed on source `d7a8158`; macOS exposed a large-output fixture's
+premature `process.exit`, with its sanitized failure artifact successfully
+uploaded and linked. The Git-only follow-up changes that fixture to `exitCode`;
+its local rehearsal passes and fresh macOS CI remains required. This affects no
+published product code. Pending 0.46.4 / 0.39.4 notes collect that contributor-only
+correction; current published versions remain 0.46.3 / 0.39.3.
 
 ## Completed: Timers 0.46.2 / Jobs 0.39.2
 

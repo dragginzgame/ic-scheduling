@@ -1,5 +1,12 @@
 # Jobs changelog
 
+## [0.39.4] - Unreleased
+
+### 🛠️ Development
+
+- Fix macOS CI's diagnostic-size rehearsal by waiting for its fixture output to
+  drain before exit. Product code and published dependencies are unchanged.
+
 ## [0.39.3] - 2026-11-17
 
 ### 🛠️ Development

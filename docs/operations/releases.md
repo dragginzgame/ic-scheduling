@@ -21,13 +21,13 @@ Toko's admitted absolute executable selection, bounded-input contract,
 transaction/rollback ownership and independent Cargo graph checks are retained.
 
 Runtime compatibility belongs to the package requirement and the selected
-Runtime's own guard, not a Scheduling patch pin. The prepared Timers 0.46.3 /
+Runtime's own guard, not a Scheduling patch pin. Published Timers 0.46.3 /
 Jobs 0.39.3 requirements admit `^0.23.14`; both locks select 0.23.16. Composition
 checks cover 0.23.14, 0.23.15 and 0.23.16 with one matching Runtime/guard.
 Published Timers 0.46.0 is immutable and still requires exactly Runtime 0.23.14;
-published 0.46.1 / 0.46.2 require exactly 0.23.15. Consumers needing 0.23.15
-can upgrade to those existing releases now. The compatible-range change needs
-its next ordinary release before registry consumers receive it.
+published 0.46.1 / 0.46.2 require exactly 0.23.15. Consumers blocked by those pins
+can upgrade to Timers 0.46.3 / Jobs 0.39.3. Registry-only consumers compile for
+native and Wasm with all three qualified Runtime patches and one matching guard.
 
 For Timers 0.45.10/0.45.11 and Jobs 0.38.0/0.38.1, the maintainer waived the
 Entropy journey. Their release gates require `POCKET_IC_BIN` but not
@@ -105,3 +105,11 @@ failure rehearsal covers redaction, hidden attempt selection, missing output,
 symlink refusal, truncation, collector failure, successful completion and a hung
 command with a TERM-resistant descendant. Native CI runs the rehearsal on both
 hosts; local Linux results alone do not qualify macOS signals or hosted upload.
+
+The first hosted macOS rehearsal at source `d7a8158` exposed a fixture that
+discarded a large piped write through `process.exit`. The wrapper retained and
+[uploaded its sanitized failure log](https://github.com/dragginzgame/ic-scheduling/actions/runs/44067540364/artifacts/14320149254),
+and the custody step reported that artifact. The fixture now uses `exitCode` so
+its write drains; local Linux rehearsal passes. The following hosted run owns
+macOS acceptance of that correction. This observation proves a hosted failure
+upload, not a completed cancellation/timeout artifact-retrieval exercise.

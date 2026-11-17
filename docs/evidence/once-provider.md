@@ -1,4 +1,4 @@
-> Current delivery: [0.46.2 / 0.39.2 qualification](release-candidate.md).
+> Current delivery: [0.46.3 / 0.39.3 qualification](release-candidate.md).
 > Earlier open-gate statements below describe their dated implementation slice.
 
 # Installed Once provider slice — 2026-11-15
@@ -16,9 +16,9 @@ use Testkit 0.108.0 / Protocol 0.3.4 with Types 0.21.2, removing the old Protoco
 0.2 hold. The full installed executor, Once/watchdog/Jobs lifecycle/resource,
 paired Metrics and pinned Entropy suites pass on Linux/PocketIC 16.0.0.
 The complete `make qualify` and archive gate passes; source identities and
-metadata checks are recorded in the [prepared release evidence](release-candidate.md).
+metadata checks are recorded in the [release evidence](release-candidate.md).
 Logs remain under `target/evidence/platform-02316/`. This is local qualification,
-not publication or macOS CI evidence.
+with registry delivery recorded separately; it does not prove macOS CI acceptance.
 
 ## Compatible Runtime requirement — 2026-11-17
 
