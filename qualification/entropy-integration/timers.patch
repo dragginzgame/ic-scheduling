@@ -7,9 +7,9 @@
 -ic-platform = { version = "0.33.0", default-features = false }
 -ic-platform-runtime = { version = "0.22.3", default-features = false }
 -ic-timers = { version = "0.44.0", default-features = false }
-+ic-platform-protocol = { version = "=0.2.6", default-features = false }
++ic-platform-protocol = { version = "=0.3.2", default-features = false }
 +ic-platform-types = { version = "=0.21.2", default-features = false }
-+ic-platform-runtime = { version = "=0.23.14", default-features = false, features = ["call-ic0", "system-raw"] }
++ic-platform-runtime = { version = "=0.23.15", default-features = false, features = ["call-ic0", "system-raw"] }
 +ic-timers = { version = "0.46.0", default-features = false }
  rand_chacha = { version = "0.10.0", default-features = false }
 
@@ -245,10 +245,10 @@
 -ic-platform-types = { version = "0.20.3", default-features = false }
 -ic-testkit = { version = "0.106.0", default-features = false }
 -ic-wire = { version = "0.22.0", default-features = false }
-+ic-platform-protocol = { version = "=0.2.6", default-features = false }
-+ic-platform-runtime = { version = "=0.23.14", default-features = false, features = ["call-ic0", "system-raw"] }
++ic-platform-protocol = { version = "=0.3.2", default-features = false }
++ic-platform-runtime = { version = "=0.23.15", default-features = false, features = ["call-ic0", "system-raw"] }
 +ic-platform-types = { version = "=0.21.2", default-features = false }
-+ic-testkit = { version = "=0.107.3", default-features = false }
++ic-testkit = { version = "=0.107.4", default-features = false }
 +ic-wire = { version = "0.24.2", default-features = false }
  serde = { version = "1.0.229", features = ["derive"] }
  tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread"] }

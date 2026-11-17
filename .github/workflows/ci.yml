@@ -27,7 +27,7 @@ jobs:
           node ci/setup.mjs product-sources cargo fetch --locked
           node ci/setup.mjs qualification-sources cargo fetch --manifest-path qualification/Cargo.toml --locked
           node ci/setup.mjs pinned-tools make install-tools
-          node ci/setup.mjs metadata-editor bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$PWD" --package ic-build --version 0.73.0 --bin ic-build-release-metadata --profile debug --features cli
+          node ci/setup.mjs metadata-editor bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$PWD" --package ic-cargo-metadata --version 0.1.0 --bin ic-cargo-metadata --profile release
       - name: Retain sanitized setup diagnostics
         id: setup-evidence
         if: ${{ !cancelled() && steps.setup.outcome == 'failure' }}

@@ -10,14 +10,15 @@ an Entropy repository containing the immutable revision required by its
 qualification adapter.
 Export absolute `POCKET_IC_BIN` and `ENTROPY_SOURCE` paths. Release setup fetches
 both existing lockfiles with `--locked`, installs pinned tools and selects the
-published IC Build 0.73.0 metadata editor. Checks then run offline. Recovery only
+published `ic-cargo-metadata` 0.1.0 executable. Checks then run offline. Recovery only
 admits saved tools; it does not refresh dependencies or repair locks.
 
-The current ic-build 0.87.3 package does not contain the displaced metadata
-executable or its `cli` feature. Keep the qualified 0.73.0 selection until a
-supported successor is supplied; this is separate from the adopted Testkit /
-Wire qualification updates. The concrete supplier gap is
+The standalone renderer replaces the displaced Build 0.73.0 CLI selection,
+resolving
 [Tooling #8 — Supply a released successor for the displaced Cargo release metadata editor](https://github.com/dragginzgame/ic-tooling/issues/8).
+Install package/bin `ic-cargo-metadata` 0.1.0 in release profile without features.
+Toko's admitted absolute executable selection, bounded-input contract,
+transaction/rollback ownership and independent Cargo graph checks are retained.
 
 For Timers 0.45.10/0.45.11 and Jobs 0.38.0/0.38.1, the maintainer waived the
 Entropy journey. Their release gates require `POCKET_IC_BIN` but not

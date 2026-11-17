@@ -18,7 +18,7 @@ for (const target of ['release-patch', 'release-minor', 'release-major', 'publis
 for (const kind of ['patch', 'minor', 'major']) {
   assert.equal(run('perl', ['vendor/toko-tooling/scripts/ci/validate-release-inputs.pl', 'next-version', '0.45.8', kind]), { patch: '0.45.9', minor: '0.46.0', major: '1.0.0' }[kind]);
 }
-const editor = run('bash', ['vendor/toko-tooling/scripts/dev/install-rust-tools.sh', '--consumer', root, '--package', 'ic-build', '--version', '0.73.0', '--bin', 'ic-build-release-metadata', '--profile', 'debug', '--features', 'cli', '--check']);
+const editor = run('bash', ['vendor/toko-tooling/scripts/dev/install-rust-tools.sh', '--consumer', root, '--package', 'ic-cargo-metadata', '--version', '0.1.0', '--bin', 'ic-cargo-metadata', '--profile', 'release', '--check']);
 mkdirSync('qualification/target/release-hooks', { recursive: true });
 const shared = resolve('vendor/toko-tooling/scripts/ci/cargo-release-group.sh');
 for (const group of ['timers', 'jobs']) {

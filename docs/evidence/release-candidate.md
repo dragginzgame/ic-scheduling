@@ -1,5 +1,60 @@
 # Scheduling release qualification and delivery
 
+## Prepared Platform adoption — 2026-11-17
+
+Products and independent qualification now select Runtime/guard 0.23.15.
+Direct Entropy consumers select Protocol 0.3.2; Types remains current at
+0.21.2. Testkit 0.107.4 resolves the earlier exact-patch constraint from
+[Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
+Its native held-reply graph selects Protocol 0.2.8 within the supported
+`^0.2.7` range. That exercised HTTP module is identical to 0.3.2. Revisit
+the native selection when Testkit supports Protocol 0.3; no unsupported
+transitive override or extra declaration was introduced.
+
+Registry downloads match these non-yanked supplier identities:
+
+| Package | Source commit | Registry SHA-256 |
+| --- | --- | --- |
+| Runtime 0.23.15 | `80a5b488666629dd28152f6bcb6d489091d55994` | `654fbae9abca1d9f1ccf1aa7835ba1303b08bc828706f12c0e8a45446a206410` |
+| Protocol 0.3.2 | `80a5b488666629dd28152f6bcb6d489091d55994` | `b2b1db444c839e816c1f2b6edec5ef8966a3f022a73a12819cc0db8477e5b560` |
+| Native Protocol 0.2.8 | `4e14822ca504b43e47942aeda4074ca2766da944` | `e6c994e205363960ac400252160967bfdec2e9574e5086232d0ccef88ffa5d77` |
+| Testkit 0.107.4 | `67ac61f89a7311e278027bee3078de7e24a0a241` | `8629db43fa7a3e3655184c6173a5ccdecf67a87d29f0c929228bec7f8a1c392b` |
+
+Strict product native/Wasm Clippy, native drivers and the three Wasm probe
+lints pass. Installed executor checks, the complete Once/watchdog/Jobs suite,
+paired metrics and the actual Entropy query-refusal/lifecycle journey pass.
+Metadata for products, qualification and the consumer fixture each records
+one Runtime and one executor guard. The [provider evidence](once-provider.md)
+and [consumer evidence](entropy-integration.md) record the changed boundaries;
+logs and metadata remain under `target/evidence/platform-02315/`.
+These are Linux/PocketIC 16.0.0 observations, not a fresh hosted matrix.
+
+Release preparation reviewed the live first-party registry selections on
+2026-11-17: Runtime 0.23.15, Protocol 0.3.2, Types 0.21.2, Testkit 0.107.4,
+Metrics 0.30.8, Wire 0.24.3 and Toko Tooling 0.44.11 remain current. The
+supported native Protocol 0.2.8 selection is retained as described above.
+Supplier records remain under `target/evidence/deploy-0461-0391/suppliers/`.
+
+The newly published `ic-cargo-metadata` 0.1.0 resolves
+[Tooling #8 — Supply a released successor for the displaced Cargo release metadata editor](https://github.com/dragginzgame/ic-tooling/issues/8).
+Registry archive SHA-256
+`5430d9278184df2c90d096712bd44b5dffa5c619dba550a646ee979c13400d0d`
+matches source `de86fe21dc746eda79e662008f0d670f20970ac7`. Scheduling now
+selects that package/bin, release profile and no features in release setup,
+native CI and the real transaction fixture. Registry tool installation and
+absolute-path admission pass. Both actual group transactions pass with the
+new renderer, including qualification locks, unrelated-group preservation,
+invalid selections and downgrade refusal. Toko retains rendering transaction,
+source/graph admission and rollback ownership. Local fixture evidence is
+`target/evidence/deploy-0461-0391/metadata-transactions.log`.
+
+The normal checkout contains prepared adoption changes, including both
+updated dependency locks. Package versions remain Timers 0.46.0 / Jobs 0.39.0;
+the selected delivery is Timers 0.46.1 followed by Jobs 0.39.1. The standard
+complete captured-source and archive gates remain required before publication.
+No registry delivery is claimed at this preparation stage. No sibling source
+was edited.
+
 ## Qualification maintenance — 2026-11-16
 
 The qualification workspace now selects Testkit 0.107.3 and its Protocol 0.2.6

@@ -4,8 +4,14 @@
 
 ### 🛠️ Development
 
-- Refresh private execution qualification to Testkit 0.107.3 / Protocol 0.2.6,
-  alongside the pinned consumer's Wire 0.24.2 probe migration.
+- Qualify optional execution on the shared Runtime 0.23.15 cohort with Types
+  0.21.2; schema 7 and calendar behavior are unchanged.
+- Refresh private native fixtures to Testkit 0.107.4 / Protocol 0.2.8, resolving
+  the exact-patch constraint in [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
+- Use Protocol 0.3.2 and Wire's explicit frame codec in direct consumer
+  qualification; retain the native supplier's supported Protocol 0.2 range.
+- Adopt the standalone release metadata renderer in native transaction checks
+  and delivery, resolving [Tooling #8 — Supply a released successor for the displaced Cargo release metadata editor](https://github.com/dragginzgame/ic-tooling/issues/8).
 
 ## [0.39.0] - 2026-11-16
 

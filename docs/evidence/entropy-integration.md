@@ -1,5 +1,63 @@
 # Entropy consumer migration qualification
 
+## Current Platform cohort — 2026-11-17
+
+The maintained immutable-source adapter now selects Runtime/macros/guard
+0.23.15, Protocol 0.3.2, Types 0.21.2 and Testkit 0.107.4. Wire resolves to
+0.24.3 through the existing compatible requirement. Both direct fixture
+catalogs select the new Platform versions; the read-only Entropy checkout
+and its pinned source revision are unchanged.
+
+The selected Protocol HTTP and randomness modules are byte-identical to the
+earlier 0.2.7 implementation. New unrelated capabilities stay disabled.
+Native all-target and Wasm Clippy pass, the actual release probe builds and
+its installed `background_refill_and_lifecycle` passes in 22.60 seconds,
+including query refusal, source contention/stale custody, refill,
+suspension/reconstruction, upgrade and reinstall. Metadata records one
+Runtime and one executor guard; logs remain under
+`target/evidence/platform-02315/`. This is local Linux/PocketIC 16.0.0
+qualification, not an Entropy adoption or deployment claim.
+
+The older exact-patch blocker described below is resolved by Testkit 0.107.4,
+as supplied in
+[Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
+Scheduling's separate native held-reply graph now selects Protocol 0.2.8
+within that supplier's supported `^0.2.7` range. Its exercised HTTP codec is
+identical to 0.3.2 and the installed held-flight/watchdog/upgrade cases pass.
+Revisit that native selection when Testkit supports 0.3; do not force a
+transitive major-version override.
+
+## Protocol 0.2.7 adoption — 2026-11-16
+
+Both direct fixture catalogs now select published Protocol 0.2.7, source
+`26834168a74cf76a4b8f93d4450c3da4f9e3f5db`. Downloaded archive SHA-256
+`db4ea27c2705897b24b1c7c239db916abbb4c15eb97c1adcda896d0ca3891ff4`
+matches its non-yanked registry record. The selected `raw_rand` and
+`http_request` modules are byte-identical to 0.2.6; new unrelated capabilities
+remain disabled. No application custody or scheduling code changes.
+
+Fresh resolution retains Runtime/guard 0.23.14, Types 0.21.2 and Testkit
+0.107.3. The existing Wire `0.24.2` requirement selects compatible 0.24.3,
+source `77a19e9d6a3efef7191e3ef3265b94aa4cf6c06b`, archive SHA-256
+`9bb811860c129acbf0de96b16f44cad6b554c0e12e3cc3b67f0e5ad0109292e2`.
+That source diff changes only the unselected TypeScript Platform projection;
+the exercised codec modules are unchanged. Metadata records one Runtime and
+one executor guard, with Protocol 0.2.7 and Wire 0.24.3.
+
+Native all-target and Wasm probe Clippy pass. The actual release-Wasm installed
+`background_refill_and_lifecycle` passes in 21.16 seconds, preserving query
+refusal, HTTP/source contention and stale custody, background refill,
+suspension/reconstruction, upgrade and reinstall. Source, metadata and logs
+remain under `target/evidence/protocol-027/`. This is local Linux/PocketIC
+16.0.0 evidence; the Entropy repository remains read-only.
+
+Scheduling's separate held-reply graph is still constrained to Protocol 0.2.6
+by published Testkit 0.107.3. A minimal published-package resolver fixture with
+direct Protocol 0.2.7 and Testkit's held-reply feature fails with exit 101.
+Complete repository adoption is pending
+[Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
+No supplier override, extra executor or removed failure coverage is used.
+
 ## Qualification supplier refresh — 2026-11-16
 
 The same immutable consumer revision now qualifies Testkit 0.107.3 and

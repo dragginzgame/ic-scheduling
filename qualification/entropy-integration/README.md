@@ -40,7 +40,7 @@ source: review the consumer changes and patch before changing the pinned revisio
 Actual adoption also needs an approved dependency source and reviewed lock changes;
 the first published rewrite is Timers 0.45.9. There is no compatibility facade.
 
-The patch targets the Runtime 0.23 / Types 0.21 / Protocol 0.2 cohort and the
+The patch targets the Runtime 0.23 / Types 0.21 / Protocol 0.3 cohort and the
 Timers 0.46 series. Preparation binds Timers to the actual local candidate
 version before applying the local path override, including during the standard
 pre-bump release gate. The source repository remains unchanged.
@@ -50,11 +50,21 @@ consumer's query-refusal guard, resolving
 [Platform #19 — Expose replicated-execution observation for Entropy's source admission](https://github.com/dragginzgame/ic-platform/issues/19).
 The patch preserves the typed refusal before source claim/submission, using the
 public boolean observation without admitting a task or mutating state. Its
-installed journey passes on Runtime 0.23.14, Protocol 0.2.6, Types 0.21.2,
-Testkit 0.107.3 and Wire 0.24.2. Wire framing now uses root-level `encode` /
+installed journey is qualified against the selected Runtime 0.23.15, Protocol
+0.3.2, Types 0.21.2, Testkit 0.107.4 and Wire 0.24.3 (within the existing
+`0.24.2` requirement).
+Wire framing now uses root-level `encode` /
 `decode` with an explicit method identity and request/response direction;
 the existing frame IDs, schemas and resource limits are retained. Actual Entropy
 source remains unchanged. See the dated evidence for the tested selections.
+
+Both direct fixture catalogs select Protocol 0.3.2. Scheduling's separate native
+held-reply graph selects Protocol 0.2.8 through Testkit's supported `^0.2.7`
+requirement. The supplying exact-patch compatibility fix is
+[Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
+The HTTP codec exercised across that boundary is identical in these two
+Protocol versions. Revisit the native selection when Testkit supports 0.3;
+do not force an unsupported transitive override.
 
 See [recorded evidence](../../docs/evidence/entropy-integration.md) for results,
 hashes and the remaining lifecycle limits.

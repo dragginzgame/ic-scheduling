@@ -8,6 +8,33 @@ to an IC global timer and authenticated isolated self-calls. The new once-probe
 imports the actual product; it is not another model or a replacement provider.
 This is a local PocketIC observation, not production/deployment qualification.
 
+## Runtime 0.23.15 adoption — 2026-11-17
+
+Products and the independent qualification workspace now select published
+Runtime/guard 0.23.15. Both locks were resolved through the shared dependency
+updater; Types remains 0.21.2. Source review against 0.23.14 found only three
+internal module relocations (`completion`, `ic0`, `registry`), with identical
+file contents and unchanged public entrypoints. The released Runtime archive
+SHA-256 `654fbae9abca1d9f1ccf1aa7835ba1303b08bc828706f12c0e8a45446a206410`
+matches its non-yanked registry record at source
+`80a5b488666629dd28152f6bcb6d489091d55994`.
+
+Testkit 0.107.4 admits Protocol `^0.2.7`; the native held-reply graph selects
+0.2.8. Direct Entropy qualification selects Protocol 0.3.2. The HTTP codec used
+across this boundary is byte-identical, while unused breaking Protocol surfaces
+remain outside the selected features. Keep the native dependency within its
+supplier's supported range and revisit it when Testkit admits Protocol 0.3.
+
+Strict product native/Wasm Clippy, native driver Clippy and all three migrated
+Wasm probe lints pass. Installed executor lifecycle/admission, the full
+Once/watchdog/Jobs failure/lifecycle/resource suite, paired metrics and the
+actual Entropy query-refusal/source-custody/upgrade journey pass. Metadata for
+products, qualification and the consumer fixture each records one Runtime and
+one executor guard. Logs and metadata remain under
+`target/evidence/platform-02315/`. These are Linux/PocketIC 16.0.0 observations;
+this adoption has not been committed or published, and the standard complete
+release/archive gates remain required before delivery.
+
 ## Runtime adoption completion — 2026-11-16
 
 Published Runtime 0.23.14 (source `a813d4ea5378515984a547a9f4e9d37f2124cf14`)

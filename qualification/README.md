@@ -5,8 +5,15 @@ catalog and lockfile. All packages remain unpublished and inherit the shared
 compiler, Toko pin and lint baseline. The license path points to the repository
 root. Qualification consumes product packages; the reverse dependency is forbidden.
 Host drivers use `ic-testkit::pocket_ic`, matching ic-platform’s qualification
-boundary. Testkit 0.107.3 selects PocketIC client 16.1.0; the prepared 16.0.0
+boundary. Testkit 0.107.4 selects PocketIC client 16.1.0; the prepared 16.0.0
 server is supported. Do not add a direct `pocket-ic` dependency.
+
+Testkit 0.107.4's held-reply feature admits Protocol `^0.2.7` and currently
+selects 0.2.8, resolving the exact-patch constraint from
+[Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
+Direct Protocol callers in the pinned Entropy fixture select 0.3.2. Keep the
+native supplier within its supported range; revisit that selection when Testkit
+admits Protocol 0.3. Both workspaces use Runtime/guard 0.23.15 and Types 0.21.2.
 
 `calendar-probe` builds the actual Saffron-backed UTC Jobs adapter as a
 standalone Wasm module. Its raw export selects fixed calendar scenarios; the

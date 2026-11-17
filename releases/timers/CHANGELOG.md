@@ -4,8 +4,14 @@
 
 ### 🛠️ Development
 
-- Refresh private qualification to Testkit 0.107.3 / Protocol 0.2.6 and migrate
-  the pinned Entropy probe to Wire 0.24.2's explicit frame codec API.
+- Adopt Runtime 0.23.15 across products and independent qualification with one
+  executor and guard.
+- Refresh native fixtures to Testkit 0.107.4 / Protocol 0.2.8, using the compatible
+  requirement supplied by [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
+- Move direct Entropy qualification to Protocol 0.3.2 and Wire's explicit frame
+  codec API; the native held-reply supplier retains its supported 0.2 range.
+- Use the published standalone metadata renderer for release preparation and
+  native CI, resolving [Tooling #8 — Supply a released successor for the displaced Cargo release metadata editor](https://github.com/dragginzgame/ic-tooling/issues/8).
 
 ## [0.46.0] - 2026-11-16
 

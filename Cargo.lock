@@ -57,9 +57,9 @@ checksum = "b5cd1e020757542a942d6191457a68512bf8a21bdb443370d92743da67557b71"
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.23.14"
+version = "0.23.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f91abeacf7b1602e67b49391ea1e66d1c8f7e45779de79a5835b9c8dac3afb8"
+checksum = "654fbae9abca1d9f1ccf1aa7835ba1303b08bc828706f12c0e8a45446a206410"
 dependencies = [
  "ic-platform-runtime-guard",
  "ic-platform-types",
@@ -67,9 +67,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.23.14"
+version = "0.23.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "239aeacc00fa6015ea4656defdfe643cdd6116f180887ea27b8164105c58a2ce"
+checksum = "4fa857e5bba51d6b57286fa6b09f2bbe430da574bb187376c7c77adb896cfb99"
 
 [[package]]
 name = "ic-platform-types"

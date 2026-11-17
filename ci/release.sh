@@ -6,7 +6,7 @@ group="${RELEASE_GROUP:-}"
 case "$group" in timers|jobs) ;; *) echo 'Select RELEASE_GROUP=timers or jobs' >&2; exit 2 ;; esac
 shared="$PWD/vendor/toko-tooling/scripts/ci"
 editor() {
-  bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$PWD" --package ic-build --version 0.73.0 --bin ic-build-release-metadata --profile debug --features cli "$@"
+  bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$PWD" --package ic-cargo-metadata --version 0.1.0 --bin ic-cargo-metadata --profile release "$@"
 }
 receipt() {
   printf '%s/scheduling-%s-%s.validated' "$(git rev-parse --absolute-git-dir)/release-state" "$group" "${RELEASE_SOURCE:?}"
