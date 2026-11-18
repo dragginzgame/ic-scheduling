@@ -10,13 +10,18 @@ an Entropy repository containing the immutable revision required by its
 qualification adapter.
 Export absolute `POCKET_IC_BIN` and `ENTROPY_SOURCE` paths. Release setup fetches
 both existing lockfiles with `--locked`, installs pinned tools and selects the
-published `ic-cargo-metadata` 0.1.0 executable. Checks then run offline. Recovery only
+metadata editor selected by `ci/metadata-editor.sh`. Checks then run offline. Recovery only
 admits saved tools; it does not refresh dependencies or repair locks.
 
 The standalone renderer replaces the displaced Build 0.73.0 CLI selection,
 resolving
 [Tooling #8 — Supply a released successor for the displaced Cargo release metadata editor](https://github.com/dragginzgame/ic-tooling/issues/8).
-Install package/bin `ic-cargo-metadata` 0.1.0 in release profile without features.
+`bash ci/metadata-editor.sh` installs Scheduling's canonical editor selection;
+`bash ci/metadata-editor.sh --check` admits that same selection offline. CI,
+release hooks and qualification callers use this owner for package, version,
+binary and profile. Callers cannot override the selection. The independent
+`node qualification/metadata-editor-check.mjs` fixture exercises real admission
+and rejects missing or mismatched selections without installing replacements.
 Toko's admitted absolute executable selection, bounded-input contract,
 transaction/rollback ownership and independent Cargo graph checks are retained.
 

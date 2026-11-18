@@ -1,5 +1,12 @@
 # Jobs changelog
 
+## [0.39.6] - Unreleased
+
+### 🛠️ Development
+
+- Centralize the metadata-editor selection used by CI, release and qualification;
+  verify that offline admission rejects a mismatched selection.
+
 ## [0.39.5] - 2026-11-17
 
 ### 🛠️ Development

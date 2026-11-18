@@ -47,7 +47,7 @@ done
 [[ ! -e "$HOME/.cargo/config" && ! -e "$HOME/.cargo/config.toml" ]] || ordinary 'Cargo home configuration'
 mkdir -p target/release-validation target/release-validation/rust-tmp
 attempt="$(mktemp -d "$root/target/release-validation/rust-attempt.XXXXXX")"
-editor="$(bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$root" --package ic-cargo-metadata --version 0.1.0 --bin ic-cargo-metadata --profile release --check)"
+editor="$(bash ci/metadata-editor.sh --check)"
 perl "$shared/prepare-cargo-stage-source.pl" --root "$root" --state target/release-validation/rust-sources \
   --source "$RELEASE_SOURCE" --editor "$editor" > "$attempt/projection.json"
 identity="$(jq -er .identity "$attempt/projection.json")"

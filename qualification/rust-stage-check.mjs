@@ -36,8 +36,7 @@ run('git', ['config', 'core.hooksPath', '/dev/null']);
 run('git', ['add', '--', ...files]);
 run('git', ['commit', '-qm', 'Disposable current-source qualification']);
 run('make', ['install-tools']);
-const installer = 'vendor/toko-tooling/scripts/dev/install-rust-tools.sh';
-const editor = run('bash', [installer, '--consumer', fixture, '--package', 'ic-cargo-metadata', '--version', '0.1.0', '--bin', 'ic-cargo-metadata', '--profile', 'release']);
+const editor = run('bash', ['ci/metadata-editor.sh']);
 function stage(group) {
     const source = run('git', ['rev-parse', 'HEAD']);
     const env = { RELEASE_SOURCE: source, RELEASE_GROUP: group, QUALIFICATION_SCOPE: 'workspace' };

@@ -33,7 +33,7 @@ jobs:
             cargo fetch --locked
             cargo fetch --manifest-path qualification/Cargo.toml --locked
             make install-tools
-            bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$PWD" --package ic-cargo-metadata --version 0.1.0 --bin ic-cargo-metadata --profile release
+            bash ci/metadata-editor.sh
           '
       - name: Qualify native host and archive paths
         id: qualification
@@ -47,6 +47,7 @@ jobs:
             node qualification/setup-check.mjs
             make tools-check check fmt-check qualify-rust qualify-archives
             node qualification/release-check.mjs
+            node qualification/metadata-editor-check.mjs
             node qualification/archive-scope-check.mjs
             node qualification/validation-scope-check.mjs
             make check-formatting-hooks

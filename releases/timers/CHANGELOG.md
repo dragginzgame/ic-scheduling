@@ -1,5 +1,12 @@
 # Timers changelog
 
+## [0.46.6] - Unreleased
+
+### 🛠️ Development
+
+- Centralize the metadata-editor selection used by CI, release and qualification;
+  verify that offline admission rejects a mismatched selection.
+
 ## [0.46.5] - 2026-11-17
 
 ### 🛠️ Development

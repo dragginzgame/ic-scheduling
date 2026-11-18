@@ -8,7 +8,7 @@ shared="$PWD/vendor/toko-tooling/scripts/ci"
 # shellcheck source=vendor/toko-tooling/scripts/ci/release-receipts.sh
 source "$shared/release-receipts.sh"
 editor() {
-  bash vendor/toko-tooling/scripts/dev/install-rust-tools.sh --consumer "$PWD" --package ic-cargo-metadata --version 0.1.0 --bin ic-cargo-metadata --profile release "$@"
+  bash ci/metadata-editor.sh "$@"
 }
 receipt() {
   printf '%s/scheduling-%s-%s.validated' "$(git rev-parse --absolute-git-dir)/release-state" "$group" "${RELEASE_SOURCE:?}"
