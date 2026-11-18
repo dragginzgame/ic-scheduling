@@ -730,7 +730,7 @@ dependencies = [
 
 [[package]]
 name = "ic-jobs"
-version = "0.39.5"
+version = "0.39.6"
 dependencies = [
  "chrono",
  "ic-platform-runtime",
