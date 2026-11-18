@@ -104,6 +104,35 @@ This was local qualification with simulated release metadata and no publication;
 it is not an end-to-end speed comparison. Group metadata, archive dispatch and
 receipt failure fixtures also passed. Logs are `target/adoption-0450-*.log`.
 
+Toko Tooling 0.45.3 qualification on 2026-11-18 used the same
+`node qualification/rust-stage-check.mjs --real` entrypoint on the prepared Linux
+host, with cached tools/dependencies and fresh fixture build directories. Real
+Rust execution, cross-group reuse, changed logs, missing proof, candidate drift
+and restored-evidence recovery all passed. Snapshot/format checks, scope/receipt
+fixtures and the independent metadata-editor admission fixture also passed.
+
+| Tooling | Executed Rust stage | Reused Rust stage |
+| --- | --- | --- |
+| 0.45.0 earlier fixture | 57.8 s | 29.0 s |
+| 0.45.3 fixture | 54.7 s | 24.2 s |
+
+These fixture measurements include wrapper/evidence checks and simulate release
+metadata without publication. The observed reuse difference is about 4.8 seconds;
+the runs have different source/dependency inputs and uncontrolled host contention,
+so this is not an isolated causal benchmark or a predicted delivery saving.
+Raw output remains in `target/adoption-0453-rust-stage.log`.
+
+The next ordinary `timers,jobs` delivery must be compared with completed batch
+`batch-2A5y_bFw` using `make release-batch-summary BATCH=<new-batch>` and retained
+phase timings. The new read-only summary reports that baseline at 598.9 seconds,
+including 538.8 seconds in the two release phases, versus 565.2 seconds for
+`batch-38y4UkXF`. Baseline cache warmth and observed upload package counts are
+unrecorded; both batches recorded one reused admission. The summary is retained
+at `target/adoption-0453-baseline-summary.log`. Record setup, release, publication,
+package count and reuse, plus contention/cache conditions for the next delivery;
+keep hosted CI separate. No 0.45.3 delivery comparison has yet occurred, and the
+available evidence does not establish how much of the prior increase it recovers.
+
 Installed Once, executor, metrics and Entropy journeys continue to execute for
 each applicable release: they consume current source and external runtime inputs,
 and have no qualified final-candidate stage evidence contract. Format, tooling

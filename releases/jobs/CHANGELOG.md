@@ -1,5 +1,11 @@
 # Jobs changelog
 
+## [0.39.7] - Unreleased
+
+### 🛠️ Development
+
+- Adopt Toko Tooling 0.45.3 and qualify exact-stage reuse and batch timing summaries.
+
 ## [0.39.6] - 2026-11-18
 
 ### 🛠️ Development

@@ -751,9 +751,9 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.30.12"
+version = "0.30.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26acd88e610363878e0c63add0cdeee183ebb506e14ac7321663c201c0c5f7ae"
+checksum = "d6a7392a38636946c8d717f715062b5f8c1797eb37a548b56357e23e8930d7dc"
 
 [[package]]
 name = "ic-platform-protocol"
@@ -2191,9 +2191,9 @@ dependencies = [
 
 [[package]]
 name = "toko-tooling"
-version = "0.45.0"
+version = "0.45.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3789a925c1165317eff84cc80436195b66c0478b0c2b441bc2f1a755caf6a23a"
+checksum = "41141f3a04bea22cacdaa5e36774d69e1335f5461098311eb6bb2731ee113da5"
 
 [[package]]
 name = "tower"
