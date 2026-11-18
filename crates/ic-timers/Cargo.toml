@@ -1,7 +1,7 @@
 [package]
 name = "ic-timers"
 links = "ic-timers-global-timer"
-version = "0.46.5"
+version = "0.46.6"
 description = "Isolated async timers and prearmed watchdogs for Internet Computer canisters"
 repository.workspace = true
 readme = "README.md"
