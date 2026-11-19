@@ -34,6 +34,7 @@ fn arg() -> u8 {
     assert_eq!(ic0::msg_arg_data_size(), 1);
     let mut value = [0];
     ic0::msg_arg_data_copy(&mut value, 0);
+
     value[0]
 }
 
@@ -42,6 +43,7 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
     if mode == 3 || (mode == 9 && LOG.with(|log| log.borrow().len()) == 1) {
         ic0::trap(b"catch-up factory trap");
     }
+
     async move {
         assert!(
             !ACTIVE.with(|active| active.replace(true)),
@@ -245,6 +247,7 @@ pub(super) fn post_upgrade() -> bool {
     fn read(bytes: &[u8], offset: &mut usize) -> u64 {
         let value = u64::from_le_bytes(bytes[*offset..*offset + 8].try_into().unwrap());
         *offset += 8;
+
         value
     }
     let revision = read(&bytes, &mut offset);
@@ -288,5 +291,6 @@ pub(super) fn post_upgrade() -> bool {
     )
     .unwrap();
     JOB.with(|slot| *slot.borrow_mut() = Some(job));
+
     true
 }

@@ -54,6 +54,7 @@ impl RetryProgress {
         {
             return Err(crate::checkpoint::CheckpointError::Progress);
         }
+
         Ok(Self {
             scheduled_at,
             failed_attempts,
@@ -105,6 +106,7 @@ impl RetryPolicy {
         if max_attempts == 0 || initial_delay_ns == 0 || max_delay_ns < initial_delay_ns {
             return Err(RetryPolicyError);
         }
+
         Ok(Self {
             max_attempts,
             initial_delay_ns,
@@ -148,6 +150,7 @@ impl RetryPolicy {
             .and_then(|factor| self.initial_delay_ns.checked_mul(factor))
             .unwrap_or(self.max_delay_ns)
             .min(self.max_delay_ns);
+
         finished_at_ns.checked_add(delay)
     }
 }

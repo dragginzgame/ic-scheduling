@@ -9,57 +9,12 @@ use ic_platform_runtime::{
 use ic_platform_types::Principal;
 use std::cell::{Cell, RefCell};
 
-thread_local! {
-    // control committed, work started, work completed, destruction, committed cleanup
-    static EVENTS: Cell<[u8; 5]> = const { Cell::new([0; 5]) };
-    static WORK: RefCell<Option<executor::TaskHandle>> = const { RefCell::new(None) };
-}
-
-fn record(index: usize) {
-    EVENTS.with(|events| {
-        let mut value = events.get();
-        value[index] = 1;
-        events.set(value);
-    });
-}
-
-fn self_id() -> Principal {
-    system::canister_self()
-}
-
-fn authenticate() {
-    let mut bytes = [0; 29];
-    let len = ic0::msg_caller_size();
-    if len > bytes.len() {
-        ic0::trap(b"invalid caller");
-    }
-    ic0::msg_caller_copy(&mut bytes[..len], 0);
-    if Principal::from_slice(&bytes[..len]) != self_id() {
-        ic0::trap(b"self only");
-    }
-}
-
-fn scenario() -> u8 {
-    if ic0::msg_arg_data_size() != 1 {
-        ic0::trap(b"expected one byte");
-    }
-    let mut bytes = [0];
-    ic0::msg_arg_data_copy(&mut bytes, 0);
-    if bytes[0] > 2 {
-        ic0::trap(b"unknown scenario");
-    }
-    bytes[0]
-}
-struct WorkDrop;
-impl Drop for WorkDrop {
-    fn drop(&mut self) {
-        record(3);
-    }
-}
-
 /// Launch isolated work. Reply byte: 1 for success, 2 for a rejected work call.
 /// # Panics
 /// Traps on invalid fixture input, task refusal or unexpected reply authority.
+// launch
+// Launches isolated work and reports whether it replied.
+// limits : request 1 byte, reply 1 byte
 #[expect(unsafe_code, reason = "qualification owns this canister entrypoint")]
 #[unsafe(export_name = "canister_update launch")]
 pub extern "C" fn launch() {
@@ -82,6 +37,9 @@ pub extern "C" fn launch() {
 /// Self-only work fixture: normal completion, initial trap, or post-await trap.
 /// # Panics
 /// Deliberately traps in failure modes; also traps on invalid task admission.
+// work
+// Lets this canister exercise normal completion and traps before or after an await.
+// limits : request 1 byte, empty reply
 #[expect(unsafe_code, reason = "qualification owns this canister entrypoint")]
 #[unsafe(export_name = "canister_update work")]
 pub extern "C" fn work() {
@@ -114,6 +72,9 @@ pub extern "C" fn work() {
 }
 
 /// Force a genuine asynchronous message boundary.
+// echo
+// Replies to this canister to create an asynchronous message boundary.
+// limits : IC request limit, empty reply
 #[expect(unsafe_code, reason = "qualification owns this canister entrypoint")]
 #[unsafe(export_name = "canister_update echo")]
 pub extern "C" fn echo() {
@@ -122,6 +83,9 @@ pub extern "C" fn echo() {
 }
 
 /// Return the committed event flags for the driver.
+// events
+// Returns the committed executor lifecycle flags.
+// limits : IC request limit, reply 5 bytes
 #[expect(unsafe_code, reason = "qualification owns this canister entrypoint")]
 #[unsafe(export_name = "canister_query events")]
 pub extern "C" fn events() {
@@ -134,4 +98,54 @@ pub extern "C" fn events() {
         ic0::msg_reply_data_append(&values);
     });
     ic0::msg_reply();
+}
+
+thread_local! {
+    // control committed, work started, work completed, destruction, committed cleanup
+    static EVENTS: Cell<[u8; 5]> = const { Cell::new([0; 5]) };
+    static WORK: RefCell<Option<executor::TaskHandle>> = const { RefCell::new(None) };
+}
+
+fn record(index: usize) {
+    EVENTS.with(|events| {
+        let mut value = events.get();
+        value[index] = 1;
+        events.set(value);
+    });
+}
+
+fn self_id() -> Principal {
+    system::canister_self()
+}
+
+fn authenticate() {
+    let mut bytes = [0; 29];
+    let len = ic0::msg_caller_size();
+    if len > bytes.len() {
+        ic0::trap(b"invalid caller");
+    }
+    ic0::msg_caller_copy(&mut bytes[..len], 0);
+
+    if Principal::from_slice(&bytes[..len]) != self_id() {
+        ic0::trap(b"self only");
+    }
+}
+
+fn scenario() -> u8 {
+    if ic0::msg_arg_data_size() != 1 {
+        ic0::trap(b"expected one byte");
+    }
+    let mut bytes = [0];
+    ic0::msg_arg_data_copy(&mut bytes, 0);
+    if bytes[0] > 2 {
+        ic0::trap(b"unknown scenario");
+    }
+
+    bytes[0]
+}
+struct WorkDrop;
+impl Drop for WorkDrop {
+    fn drop(&mut self) {
+        record(3);
+    }
 }

@@ -8,6 +8,7 @@ async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> ([u8; 10],
         .await
         .unwrap();
     assert_eq!(bytes.len(), 34);
+
     (
         bytes[..10].try_into().unwrap(),
         std::array::from_fn(|index| {
@@ -18,6 +19,7 @@ async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> ([u8; 10],
 
 async fn minute(pic: &PocketIc) {
     pic.advance_time(Duration::from_secs(61)).await;
+
     for _ in 0..40 {
         pic.tick().await;
     }
@@ -76,6 +78,7 @@ async fn plans(pic: &PocketIc, id: CanisterId, sender: CanisterId) {
         .await
         .unwrap();
     assert_eq!(bytes.len(), 3 * 34);
+
     for (index, (row, expected)) in bytes
         .as_chunks::<34>()
         .0
@@ -102,6 +105,7 @@ async fn plans(pic: &PocketIc, id: CanisterId, sender: CanisterId) {
 
 fn ahead_rows(bytes: &[u8]) -> [[u64; 6]; 2] {
     assert_eq!(bytes.len(), 96);
+
     std::array::from_fn(|row| {
         std::array::from_fn(|column| {
             let offset = row * 48 + column * 8;

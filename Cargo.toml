@@ -19,7 +19,7 @@ ic-timers = { version = "0.46.10", path = "crates/ic-timers" }
 saffron = { version = "0.1.0", default-features = false, features = ["std"] }
 
 # Tests and tooling
-toko-tooling = "=0.45.18"
+toko-tooling = "=0.45.21"
 
 [workspace.lints.cargo]
 unused_dependencies = "deny"
@@ -49,3 +49,4 @@ wildcard_imports = "warn"
 missing_panics_doc = "warn"
 must_use_candidate = "warn"
 too_many_lines = "allow"
+empty_line_after_doc_comments = "allow"

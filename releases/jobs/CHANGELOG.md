@@ -1,5 +1,11 @@
 # Jobs changelog
 
+## [0.39.9] - Unreleased
+
+### 🧹 Cleanup
+
+- Apply the shared Rust return spacing rules under Toko Tooling 0.45.21.
+
 ## [0.39.8] - 2026-11-19
 
 ### 🧹 Cleanup

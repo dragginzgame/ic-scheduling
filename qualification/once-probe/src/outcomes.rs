@@ -18,6 +18,7 @@ pub(super) fn append(record: Option<RecordedOutcome>, bytes: &mut Vec<u8>) {
             kind,
         ]
     });
+
     for field in fields {
         bytes.extend(field.to_le_bytes());
     }
@@ -29,6 +30,7 @@ pub(super) fn restore(checkpoint: Checkpoint, bytes: &[u8]) -> Checkpoint {
         std::array::from_fn(|i| u64::from_le_bytes(bytes[i * 8..i * 8 + 8].try_into().unwrap()));
     if v[4] == 0 {
         assert_eq!(v, [0; 5]);
+
         return checkpoint;
     }
     let result = match v[4] {
@@ -40,6 +42,7 @@ pub(super) fn restore(checkpoint: Checkpoint, bytes: &[u8]) -> Checkpoint {
         6 => RecordedResult::RetryAuthorized,
         _ => panic!("invalid fixture result"),
     };
+
     checkpoint
         .with_last_outcome(
             RecordedOutcome::new(

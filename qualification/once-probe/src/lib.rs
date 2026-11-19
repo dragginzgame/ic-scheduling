@@ -27,29 +27,13 @@ use ic_platform_types::Principal;
 use ic_timers::{Observation, Once, OnceDemand, OnceNext, OnceResult, OnceStatus};
 use std::cell::{Cell, RefCell};
 
-thread_local! {
-    static HANDLE: RefCell<Option<Once>> = const { RefCell::new(None) };
-    static MODE: Cell<u8> = const { Cell::new(0) };
-    static STARTS: Cell<u8> = const { Cell::new(0) };
-    static FINISHES: Cell<u8> = const { Cell::new(0) };
-    static FINISHED_AT: Cell<u64> = const { Cell::new(0) };
-}
-
-fn self_id() -> Principal {
-    system::canister_self()
-}
-
-fn expect_reply(result: Result<Completion, SubmitError>) -> Vec<u8> {
-    match result.expect("call submission").into_parts().0 {
-        CallOutcome::Reply(bytes) => bytes,
-        outcome => panic!("expected a reply, received {outcome:?}"),
-    }
-}
-
 /// Bind once and arm without inline execution. Modes 1/2 trap before/after await.
 ///
 /// # Panics
 /// Traps if the fixture is called out of order or a provider assertion fails.
+// arm
+// Binds and arms the retained Once timer for the selected fixture mode.
+// limits : request 1 byte, reply 2 bytes
 #[expect(unsafe_code, reason = "qualification owns this entrypoint")]
 #[unsafe(export_name = "canister_update arm")]
 pub extern "C" fn arm() {
@@ -118,6 +102,9 @@ pub extern "C" fn arm() {
 ///
 /// # Panics
 /// Traps if the fixture is called out of order or a provider assertion fails.
+// recover
+// Stops the abandoned attempt through explicit recovery.
+// limits : IC request limit, empty reply
 #[expect(unsafe_code, reason = "qualification owns this entrypoint")]
 #[unsafe(export_name = "canister_update recover")]
 pub extern "C" fn recover() {
@@ -136,6 +123,9 @@ pub extern "C" fn recover() {
 ///
 /// # Panics
 /// Traps if the fixture is called out of order or a provider assertion fails.
+// echo
+// Replies to an awaited call and applies owner demand for selected fixture modes.
+// limits : IC request limit, empty reply
 #[expect(unsafe_code, reason = "qualification owns this entrypoint")]
 #[unsafe(export_name = "canister_update echo")]
 pub extern "C" fn echo() {
@@ -164,6 +154,9 @@ pub extern "C" fn echo() {
 ///
 /// # Panics
 /// Traps if the fixture is called out of order or a provider assertion fails.
+// state
+// Returns timer status and callback start and finish counts.
+// limits : IC request limit, reply 3 bytes
 #[expect(unsafe_code, reason = "qualification owns this entrypoint")]
 #[unsafe(export_name = "canister_query state")]
 pub extern "C" fn state() {
@@ -183,6 +176,9 @@ pub extern "C" fn state() {
 /// Completion time and current absolute deadline for the recurrence fixture.
 /// # Panics
 /// Traps if called before binding or if provider status fails.
+// completion_state
+// Returns the completion time and current absolute deadline.
+// limits : IC request limit, reply 16 bytes
 #[expect(unsafe_code, reason = "qualification owns this entrypoint")]
 #[unsafe(export_name = "canister_query completion_state")]
 pub extern "C" fn completion_state() {
@@ -193,6 +189,25 @@ pub extern "C" fn completion_state() {
     ic0::msg_reply_data_append(&FINISHED_AT.with(Cell::get).to_le_bytes());
     ic0::msg_reply_data_append(&at.to_le_bytes());
     ic0::msg_reply();
+}
+
+thread_local! {
+    static HANDLE: RefCell<Option<Once>> = const { RefCell::new(None) };
+    static MODE: Cell<u8> = const { Cell::new(0) };
+    static STARTS: Cell<u8> = const { Cell::new(0) };
+    static FINISHES: Cell<u8> = const { Cell::new(0) };
+    static FINISHED_AT: Cell<u64> = const { Cell::new(0) };
+}
+
+fn self_id() -> Principal {
+    system::canister_self()
+}
+
+fn expect_reply(result: Result<Completion, SubmitError>) -> Vec<u8> {
+    match result.expect("call submission").into_parts().0 {
+        CallOutcome::Reply(bytes) => bytes,
+        outcome => panic!("expected a reply, received {outcome:?}"),
+    }
 }
 
 struct CleanupTrap(bool);

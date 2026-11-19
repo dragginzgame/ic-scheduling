@@ -18,6 +18,7 @@ thread_local! {
 
 fn schedule() -> Schedule {
     let edited = EDITED.with(Cell::get);
+
     if edited != 0 {
         Schedule::once(edited)
     } else if MODE.with(Cell::get) == 6 {
@@ -47,6 +48,7 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
     if !upgraded && (mode == 0 || (mode == 3 && context.attempt == 2)) {
         ic0::trap(b"unresolved factory");
     }
+
     async move {
         RUNS.with(|runs| runs.set(runs.get() + 1));
         for _ in 0..if !upgraded && matches!(mode, 2 | 5) {
@@ -182,6 +184,7 @@ pub extern "C" fn control() {
         let job = slot.as_ref().unwrap();
         if command[0] == 3 {
             job.resume().unwrap();
+
             return;
         }
         let Status::RecoveryRequired { recovery, .. } = job.status().unwrap() else {
@@ -342,5 +345,6 @@ pub(super) fn post_upgrade() -> bool {
         Status::RecoveryRequired { .. }
     ));
     JOB.with_borrow_mut(|slot| *slot = Some(job));
+
     true
 }

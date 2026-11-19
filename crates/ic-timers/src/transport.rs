@@ -17,9 +17,8 @@ use std::{
 };
 
 // timer
-// Processes due declarations when the IC global timer fires.
-// scope  : IC system task
-// limits : four submissions per turn and eight outstanding flights
+// Processes due declarations in the IC system task, with up to four submissions per turn and eight outstanding flights.
+// limits : system task, no request payload or reply
 #[expect(
     unsafe_code,
     reason = "this crate owns the canister global timer export"
@@ -34,6 +33,7 @@ extern "C" fn timer() {
     runtime.bindings.advance_watchdogs(system::time());
     if system::time() < runtime.transport().retry_at.get() {
         let _ = runtime.arm();
+
         return;
     }
     let mut submitted = 0;
@@ -158,9 +158,8 @@ extern "C" fn timer() {
 }
 
 // dispatch
-// Accepts isolated timer work and replies after settling the work message.
-// scope  : this canister only
-// limits : exactly 16 bytes identifying a current flight
+// Accepts isolated timer work from this canister and replies after settlement.
+// limits : 16-byte flight identity request, empty reply
 #[expect(
     unsafe_code,
     reason = "this crate owns its authenticated work endpoint"
@@ -185,6 +184,7 @@ extern "C" fn dispatch() {
     }
     if incarnation != runtime.transport().incarnation {
         ic0::msg_reply();
+
         return;
     }
     let selected = runtime
@@ -196,6 +196,7 @@ extern "C" fn dispatch() {
         .map(|flight| flight.dispatch.clone());
     let Some(selected) = selected else {
         ic0::msg_reply();
+
         return;
     };
     let selected = match selected {
@@ -206,6 +207,7 @@ extern "C" fn dispatch() {
             }
             let _ = runtime.arm();
             ic0::msg_reply();
+
             return;
         }
         Scheduled::Once(dispatch) => dispatch,
@@ -216,6 +218,7 @@ extern "C" fn dispatch() {
             Ok(Some(value)) => value,
             Ok(None) => {
                 system::reply(&[]).expect("work reply authority");
+
                 return;
             }
             Err(_) => {
@@ -246,6 +249,7 @@ extern "C" fn dispatch() {
             ic0::trap(b"work task admission failed")
         }
     };
+
     if let Some(flight) = runtime
         .transport()
         .flights
@@ -309,6 +313,7 @@ impl Transport {
                     let delay = if full { RETRY_NS } else { 1 };
                     let Some(next) = now.checked_add(delay) else {
                         runtime.fail();
+
                         return Err(Error::Faulted);
                     };
                     next
@@ -320,6 +325,7 @@ impl Transport {
             Some(at) => {
                 let Some(earliest) = system::time().checked_add(1) else {
                     runtime.fail();
+
                     return Err(Error::Faulted);
                 };
                 let at = at.max(earliest);
@@ -330,8 +336,10 @@ impl Transport {
         let previous = system::global_timer_set(deadline);
         if previous != self.timer.replace(deadline) {
             runtime.fail();
+
             return Err(Error::Faulted);
         }
+
         Ok(())
     }
 }

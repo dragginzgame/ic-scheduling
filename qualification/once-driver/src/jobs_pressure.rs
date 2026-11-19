@@ -11,6 +11,7 @@ async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> [[u8; 19];
         .await
         .unwrap();
     assert_eq!(bytes.len(), 12 * 19);
+
     std::array::from_fn(|index| bytes[index * 19..(index + 1) * 19].try_into().unwrap())
 }
 
@@ -119,6 +120,7 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     println!(
         "jobs pressure: shared 64-declaration limit, eight held flights, queued pause, isolated recovery and healthy progress pass"
     );
+
     for mode in [0, 1] {
         bulk(pic, wasm, sender, mode).await;
     }

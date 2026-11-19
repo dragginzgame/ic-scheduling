@@ -79,6 +79,7 @@ impl std::error::Error for Error {}
 impl From<crate::bindings::Error> for Error {
     fn from(error: crate::bindings::Error) -> Self {
         use crate::{bindings::Error as B, engine::ControlError as C};
+
         match error {
             B::InvalidIdentity => Self::InvalidIdentity,
             B::DuplicateIdentity => Self::DuplicateIdentity,

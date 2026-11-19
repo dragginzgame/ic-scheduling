@@ -11,10 +11,24 @@ boundary. The lock selects Testkit 0.110.2 and PocketIC client 16.1.0. The prepa
 Testkit 0.110.0's held-reply feature admits Protocol `>=0.3.2, <0.4.0`. The
 previous adoption selected 0.3.5, completing the migration beyond
 [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
-The current qualification lock selects Runtime and guard 0.23.20, Types 0.21.3,
-Protocol 0.3.6 and optional Metrics 0.30.17. Types and Testkit use compatible
+The current qualification lock selects Runtime and guard 0.23.22, Types 0.21.3,
+Protocol 0.3.7 and optional Metrics 0.30.17. Types and Testkit use compatible
 requirements. Runtime owns its exact singleton guard. Testkit's Protocol error
 type remains inside private qualification.
+
+The Runtime 0.23.22 and Toko Tooling 0.45.21 adoption passed native and Wasm
+Clippy, the retained timer consumer checks, and the calendar, installed
+executor, Once, paired metrics and pinned Entropy probes. The rebuilt probes
+retain the previous release's Wasm export sets. Local logs are
+`target/adoption-04521-platform-02322-installed.log` and
+`target/adoption-04521-platform-02322-consumer.log`.
+
+The 2026-11-19 Platform adoption passed host and Wasm checks for the retained
+timer consumer, the installed executor and Once suites, the paired metrics
+probe, and the pinned Entropy lifecycle. The staged Entropy fixture selected
+Runtime, guard and macros 0.23.21 and Protocol 0.3.7. Its PocketIC server was
+16.0.0. Local logs are `target/adoption-platform-02321-installed.log` and
+`target/adoption-platform-02321-consumer.log`.
 
 Local Testkit 0.110.0 / Toko Tooling 0.45.0 adoption on 2026-11-18 passed
 native driver Clippy through the real Rust-stage fixture, installed executor and

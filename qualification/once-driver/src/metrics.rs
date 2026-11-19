@@ -8,6 +8,7 @@ pub(super) async fn read(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> 
         .unwrap();
     assert_eq!(bytes.len(), 102);
     assert_eq!(&bytes[96..], &[0; 6]);
+
     std::array::from_fn(|index| {
         u128::from_le_bytes(bytes[index * 16..index * 16 + 16].try_into().unwrap())
     })

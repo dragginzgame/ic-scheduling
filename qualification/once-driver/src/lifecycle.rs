@@ -5,6 +5,7 @@ use std::time::Duration;
 fn envelope(epoch: u64, sequence: u64) -> Vec<u8> {
     let mut bytes = epoch.to_le_bytes().to_vec();
     bytes.extend_from_slice(&sequence.to_le_bytes());
+
     bytes
 }
 

@@ -19,6 +19,7 @@ impl State {
                     .map_err(|_| Error::Exhausted)?,
             );
         }
+
         Ok(())
     }
 
@@ -29,8 +30,10 @@ impl State {
         if let Some(retry) = self.retry.clone() {
             if self.selection().is_none() && self.select(retry.scheduled_at).is_err() {
                 self.faulted = true;
+
                 return None;
             }
+
             return Some(retry.retry_at);
         }
         if let Some(selection) = self.selection() {
@@ -41,6 +44,7 @@ impl State {
         } else {
             if self.start_batch(now).is_err() {
                 self.faulted = true;
+
                 return None;
             }
             self.batch
@@ -52,10 +56,12 @@ impl State {
                 })
         };
         let at = at?;
+
         match self.select(at) {
             Ok(_) => Some(at),
             Err(_) => {
                 self.faulted = true;
+
                 None
             }
         }
@@ -76,6 +82,7 @@ impl State {
             self.prepare(selection.occurrence.scheduled_at, now)?
         };
         self.accept(selection, now).map_err(|_| Error::Exhausted)?;
+
         Ok((selection, deliver, self.attempt()))
     }
 
@@ -85,6 +92,7 @@ impl State {
         {
             return number;
         }
+
         self.retry
             .as_ref()
             .map_or(1, |retry| retry.failed_attempts + 1)
@@ -93,6 +101,7 @@ impl State {
     /// A frozen batch is never recomputed, including after pause or restoration.
     fn prepare(&mut self, at: u64, now: u64) -> Result<bool, Error> {
         let age = now.checked_sub(at).ok_or(Error::Exhausted)?;
+
         match self.policy {
             Policy::SkipLate { lateness_ns } => Ok(age <= lateness_ns),
             Policy::CatchUp(limit) if self.schedule.after_settlement(self.through()).is_some() => {
@@ -113,6 +122,7 @@ impl State {
                     CatchUpProgress::new(plan.occurrences(), plan.through())
                         .map_err(|_| Error::Exhausted)?,
                 );
+
                 Ok(true)
             }
         }
@@ -140,6 +150,7 @@ impl State {
             .map_err(|_| Error::Exhausted)?;
             self.retry(selection).map_err(|_| Error::Exhausted)?;
             self.retry = Some(retry);
+
             return Ok(());
         }
         self.complete(selection).map_err(|_| Error::Exhausted)?;
@@ -147,6 +158,7 @@ impl State {
         if current && self.schedule.after_settlement(self.through()).is_some() {
             self.skip_through(now).map_err(|_| Error::Exhausted)?;
         }
+
         self.finish_batch(selection, now)
     }
 
@@ -165,6 +177,7 @@ impl State {
             self.skip_through(through).map_err(|_| Error::Exhausted)?;
             self.batch = None;
         }
+
         Ok(())
     }
 
@@ -216,6 +229,7 @@ impl State {
             self.pause().map_err(|_| Error::Exhausted)?;
         }
         self.last_outcome = Some(record);
+
         Ok(())
     }
 }

@@ -103,6 +103,7 @@ impl Schedule {
             return Err(ScheduleError::InvalidLayout);
         }
         let cron = expression.parse().map_err(ScheduleError::Parse)?;
+
         Ok(Self {
             rule: Rule::Cron(cron),
         })
@@ -129,6 +130,7 @@ impl Schedule {
         let Rule::AfterCompletion { first, every } = self.rule else {
             return None;
         };
+
         Some(match through {
             Some(through) if through >= first => through.checked_add(every.get()),
             _ => Some(first),
@@ -171,6 +173,7 @@ impl Schedule {
                     let steps = (from_ns - first).div_ceil(every.get());
                     first.checked_add(steps.checked_mul(every.get())?)?
                 };
+
                 return (at <= through_ns).then_some(at);
             }
         };
@@ -189,6 +192,7 @@ impl Schedule {
         // Avoid Chrono's signed-i64 nanosecond limit: timers use unsigned u64.
         let ns = i128::from(next.timestamp()) * 1_000_000_000
             + i128::from(next.timestamp_subsec_nanos());
+
         u64::try_from(ns)
             .ok()
             .filter(|&ns| ns >= from_ns && ns <= through_ns)

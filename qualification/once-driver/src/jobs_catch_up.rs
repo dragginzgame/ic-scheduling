@@ -14,6 +14,7 @@ async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> ([u8; 2], 
         .await
         .unwrap();
     assert_eq!(bytes.len(), 11 + usize::from(bytes[2]) * 8);
+
     (
         bytes[..2].try_into().unwrap(),
         u64::from_le_bytes(bytes[3..11].try_into().unwrap()),

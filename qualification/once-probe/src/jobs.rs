@@ -19,6 +19,7 @@ fn mode() -> u8 {
     assert_eq!(ic0::msg_arg_data_size(), 1);
     let mut bytes = [0];
     ic0::msg_arg_data_copy(&mut bytes, 0);
+
     bytes[0]
 }
 
@@ -252,6 +253,7 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
         FINISHES.with(|value| value.set(value.get() + 1));
         Outcome::Success
     };
+
     ReentrantDrop {
         inner: Box::pin(future),
         enabled: MODE.with(Cell::get) == 6,
@@ -368,6 +370,7 @@ pub(super) fn post_upgrade() -> bool {
     )
     .unwrap();
     JOB.with(|slot| *slot.borrow_mut() = Some(job));
+
     true
 }
 

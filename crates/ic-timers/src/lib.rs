@@ -25,7 +25,7 @@ mod engine;
 )]
 mod metrics;
 mod provider;
-// Transport requires Platform Runtime's Wasm-only system and raw APIs.
+// Transport requires the IC global timer and the executor's IC entry roots.
 #[cfg(target_arch = "wasm32")]
 mod transport;
 #[cfg_attr(

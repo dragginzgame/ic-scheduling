@@ -98,6 +98,7 @@ impl State {
         if self.active.is_none() {
             return Err(Error::Stale);
         }
+
         Ok(crate::checkpoint::Checkpoint {
             unresolved: None,
             revision: self.revision,
@@ -126,6 +127,7 @@ impl State {
             }) => return Err(Error::RecoveryRequired),
             Some(_) => return Err(Error::Busy),
         };
+
         Ok(crate::checkpoint::Checkpoint {
             unresolved: None,
             revision: self.revision,
@@ -156,6 +158,7 @@ impl State {
                     scheduled_at,
                 })
             });
+
         Self {
             revision: checkpoint.revision,
             through: checkpoint.through,
@@ -194,6 +197,7 @@ impl State {
             return Err(Error::Busy);
         }
         self.through = self.through.max(Some(through));
+
         Ok(())
     }
 
@@ -243,6 +247,7 @@ impl State {
             selection,
             phase: Phase::Queued,
         });
+
         Ok(selection)
     }
 
@@ -264,6 +269,7 @@ impl State {
             selection,
             phase: Phase::Accepted { started_at: now },
         });
+
         Ok(Context {
             occurrence: selection.occurrence,
             started_at: now,
@@ -279,6 +285,7 @@ impl State {
             return Err(Error::Stale);
         }
         self.retire(selection);
+
         Ok(())
     }
 
@@ -295,6 +302,7 @@ impl State {
         if self.control == ControlState::Active {
             self.select(selection.occurrence.scheduled_at)?;
         }
+
         Ok(())
     }
 
@@ -314,6 +322,7 @@ impl State {
                 phase: Phase::Blocked,
             });
         }
+
         Ok(())
     }
 
@@ -326,6 +335,7 @@ impl State {
             return Err(Error::Stale);
         }
         self.retire(selection);
+
         Ok(())
     }
 
@@ -340,6 +350,7 @@ impl State {
         }
         self.active = None;
         self.control = ControlState::Paused;
+
         Ok(())
     }
 
@@ -347,12 +358,14 @@ impl State {
         self.check()?;
         self.control = ControlState::Paused;
         self.cancel_queued();
+
         Ok(())
     }
 
     pub(super) fn resume(&mut self) -> Result<(), Error> {
         self.check()?;
         self.control = ControlState::Active;
+
         Ok(())
     }
 
@@ -366,6 +379,7 @@ impl State {
         self.revision = revision;
         self.through = self.through.max(Some(through));
         self.cancel_queued();
+
         Ok(())
     }
 
@@ -382,6 +396,7 @@ impl State {
         }
         self.active = None;
         self.control = ControlState::Cancelled;
+
         Ok(())
     }
 
@@ -424,6 +439,7 @@ impl State {
     fn exhaust<T>(&mut self) -> Result<T, Error> {
         // Retain unresolved identity for diagnosis rather than erasing uncertainty.
         self.faulted = true;
+
         Err(Error::Exhausted)
     }
 }

@@ -16,6 +16,7 @@ fn schedule() -> Schedule {
     if MODE.with(Cell::get) == 10 {
         return Schedule::fixed_rate(0, NonZeroU64::new(10_000_000_000).unwrap());
     }
+
     Schedule::after_completion(
         0,
         NonZeroU64::new(if MODE.with(Cell::get) == 5 {
@@ -41,6 +42,7 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
     if MODE.with(Cell::get) == 3 {
         ic0::trap(b"completion factory trap");
     }
+
     async move {
         assert!(context.started_at >= context.scheduled_at);
         let run = RUNS.with(|runs| {
@@ -305,5 +307,6 @@ pub(super) fn post_upgrade() -> bool {
         check_cancelled(&job);
     }
     JOB.with_borrow_mut(|slot| *slot = Some(job));
+
     true
 }

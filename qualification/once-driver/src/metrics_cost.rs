@@ -48,6 +48,7 @@ pub(super) async fn check(pic: &PocketIc, disabled: &[u8], enabled: &[u8]) {
             );
         }
     }
+
     for (index, name) in [
         "setup",
         "once_factory_prefix",

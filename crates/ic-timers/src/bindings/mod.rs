@@ -161,6 +161,7 @@ impl Bindings {
             })
             .collect();
         rows.sort_by(|a, b| a.identity.cmp(&b.identity));
+
         rows
     }
 
@@ -241,6 +242,7 @@ impl Bindings {
         } else {
             table.entries[slot] = entry;
         }
+
         Ok(Handle {
             table: Rc::downgrade(&self.0),
             slot,
@@ -283,6 +285,7 @@ impl Bindings {
                 }
             }
         }
+
         None
     }
 
@@ -330,6 +333,7 @@ impl Bindings {
                 eligible = Some(eligible.map_or(at, |current: u64| current.min(at)));
             }
         }
+
         (eligible, cadence)
     }
 
@@ -356,8 +360,10 @@ impl Bindings {
                 entry.measurements.accepted.add(1);
                 entry.measurements.abandoned.add(1);
             }
+
             return Ok(abandoned);
         }
+
         Ok(false)
     }
 
@@ -394,6 +400,7 @@ impl Bindings {
             attempt,
         };
         let future = (factory.borrow_mut())();
+
         Ok(Some((accepted, future)))
     }
 }
@@ -408,6 +415,7 @@ impl Handle {
                 .entry(self.slot, self.incarnation)?
                 .measurements,
         );
+
         Ok(())
     }
 
@@ -435,6 +443,7 @@ impl Handle {
         };
         // Captures may reenter the runtime or bind a replacement in this slot.
         drop(removed);
+
         Ok(())
     }
 
@@ -454,6 +463,7 @@ impl Handle {
             }
         };
         drop(removed);
+
         Ok(())
     }
 
@@ -461,12 +471,14 @@ impl Handle {
         let table = self.table.upgrade().ok_or(Error::StaleAuthority)?;
         let mut table = table.borrow_mut();
         let entry = table.entry(self.slot, self.incarnation)?;
+
         Ok(f(entry.kind.once()?.0))
     }
 
     pub(super) fn set(&self, demand: Demand) -> Result<(), Error> {
         self.with_state(|state| state.set(demand))?
             .map_err(Error::Control)?;
+
         self.prune_stopped()
     }
 
@@ -495,6 +507,7 @@ impl Handle {
         }
         self.with_state(|state| state.recover(key.recovery, demand))?
             .map_err(Error::Control)?;
+
         self.prune_stopped()
     }
 }
@@ -520,6 +533,7 @@ impl Accepted {
             handle.measure(|measurements| measurements.returned(_observation))?;
             handle.prune_stopped()?;
         }
+
         Ok(completed)
     }
 
@@ -536,6 +550,7 @@ impl Accepted {
         if abandoned {
             handle.measure(|measurements| measurements.abandoned.add(1))?;
         }
+
         Ok(abandoned)
     }
 }

@@ -21,6 +21,7 @@ impl Attempt {
         if revision == 0 || number == 0 {
             return Err(CheckpointError::Progress);
         }
+
         Ok(Self {
             revision,
             scheduled_at,

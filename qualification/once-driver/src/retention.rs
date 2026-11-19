@@ -4,6 +4,7 @@ use std::time::Duration;
 
 fn decode(bytes: &[u8]) -> [u64; 6] {
     assert_eq!(bytes.len(), 48);
+
     std::array::from_fn(|index| {
         u64::from_le_bytes(bytes[index * 8..index * 8 + 8].try_into().unwrap())
     })

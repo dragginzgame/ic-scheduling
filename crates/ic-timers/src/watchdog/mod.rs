@@ -79,6 +79,7 @@ impl WatchdogState {
             }
         }
         self.deadline = deadline;
+
         Ok(())
     }
 
@@ -101,6 +102,7 @@ impl WatchdogState {
             });
         }
         self.deadline = Some(successor);
+
         Ok(())
     }
 
@@ -125,6 +127,7 @@ impl WatchdogState {
                 owner_changed: false,
             },
         });
+
         true
     }
 
@@ -150,6 +153,7 @@ impl WatchdogState {
             ticket,
             phase: Phase::Settling,
         });
+
         true
     }
 
@@ -160,6 +164,7 @@ impl WatchdogState {
             return false;
         }
         self.work = None;
+
         true
     }
 
@@ -178,6 +183,7 @@ impl WatchdogState {
         self.faulted = true;
         self.deadline = None;
         self.work = None;
+
         Err(Exhausted)
     }
 }

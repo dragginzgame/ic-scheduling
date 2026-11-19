@@ -44,6 +44,7 @@ impl CatchUpLimit {
         if !(1..=64).contains(&max_count) {
             return Err(CatchUpLimitError);
         }
+
         Ok(Self {
             max_age_ns,
             max_count,
@@ -139,6 +140,7 @@ impl Schedule {
             cursor = from;
         }
         plan.excess = self.next_from(cursor, now).is_some();
+
         plan
     }
 }

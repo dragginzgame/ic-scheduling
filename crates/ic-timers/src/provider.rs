@@ -94,6 +94,7 @@ pub fn metrics() -> Result<crate::Metrics, Error> {
 #[cfg(feature = "metrics")]
 pub fn inventory() -> Result<crate::Inventory, Error> {
     let runtime = runtime()?;
+
     Ok(crate::Inventory {
         provider_faulted: runtime.faulted.get(),
         timers: runtime.bindings.inventory(),
@@ -138,6 +139,7 @@ where
             (next, result.observation)
         }
     })?;
+
     Ok(Once {
         runtime: Rc::downgrade(&runtime),
         handle,
@@ -154,6 +156,7 @@ impl Once {
         let runtime = self.runtime()?;
         runtime.check()?;
         self.handle.remove()?;
+
         runtime.arm()
     }
 
@@ -168,6 +171,7 @@ impl Once {
         let runtime = self.runtime()?;
         runtime.check()?;
         self.handle.set(demand)?;
+
         runtime.arm()
     }
 
@@ -179,6 +183,7 @@ impl Once {
         if runtime.faulted.get() {
             return Ok(OnceStatus::Faulted);
         }
+
         Ok(match self.handle.state()? {
             State::Inactive => OnceStatus::Inactive,
             State::Armed(at) => OnceStatus::Armed(at),
@@ -199,6 +204,7 @@ impl Once {
         let result = self.handle.recover(&token.0, demand);
         drop(token);
         result?;
+
         runtime.arm()
     }
 }
@@ -252,6 +258,7 @@ where
             metrics.record(Event::Returned(result.observation));
             (result.next, result.observation)
         })?;
+
     Ok(Watchdog {
         runtime: Rc::downgrade(&runtime),
         handle,
@@ -267,6 +274,7 @@ impl Watchdog {
         let runtime = self.runtime.upgrade().ok_or(Error::StaleAuthority)?;
         runtime.check()?;
         self.handle.remove()?;
+
         runtime.arm()
     }
 
@@ -278,6 +286,7 @@ impl Watchdog {
         runtime.check()?;
         let now = runtime.canister.clock();
         self.handle.set(demand, now())?;
+
         runtime.arm()
     }
 
@@ -287,6 +296,7 @@ impl Watchdog {
     pub fn status(&self) -> Result<WatchdogStatus, Error> {
         let runtime = self.runtime.upgrade().ok_or(Error::StaleAuthority)?;
         let (deadline, outstanding, faulted) = self.handle.status()?;
+
         Ok(if runtime.faulted.get() || faulted {
             WatchdogStatus::Faulted
         } else if let Some(at) = deadline {
@@ -316,6 +326,7 @@ impl Runtime {
     #[cfg(target_arch = "wasm32")]
     pub(super) fn transport(&self) -> &crate::transport::Transport {
         let Canister::Installed(transport) = &self.canister;
+
         transport
     }
 }
@@ -333,6 +344,7 @@ impl Canister {
         {
             Ok(Self::Installed(crate::transport::Transport::new()))
         }
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             Err(Error::Uninitialized)
@@ -345,6 +357,7 @@ impl Canister {
         {
             ic_platform_runtime::system::time
         }
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             self.unavailable_clock()

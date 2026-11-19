@@ -3,6 +3,7 @@ use super::*;
 fn armed() -> WatchdogState {
     let mut state = WatchdogState::new(NonZeroU64::new(10).unwrap());
     state.set(Demand::KeepCadence, 0).unwrap();
+
     state
 }
 

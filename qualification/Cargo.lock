@@ -757,15 +757,15 @@ checksum = "228324edcf86d04e7a73136d2e1a668345f8a621b8dce2f59983431704ceacba"
 
 [[package]]
 name = "ic-platform-protocol"
-version = "0.3.6"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34a9e427266040f66a8a1734942cb8adecfeee30ad84e186bbe155ed5eafcae6"
+checksum = "0d8b8e67643b3107f060b90f85d7e51ea136d4e498e791e090c4810434bab545"
 
 [[package]]
 name = "ic-platform-runtime"
-version = "0.23.20"
+version = "0.23.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fff03d6d6cb64dc07512368345b31afdbe78da3653762db594df4b0359b0ec5f"
+checksum = "49ac0af0e78945df40f85dc34a65e47b2a9acd9716354169ecfc1911c6923f2a"
 dependencies = [
  "ic-platform-runtime-guard",
  "ic-platform-types",
@@ -773,9 +773,9 @@ dependencies = [
 
 [[package]]
 name = "ic-platform-runtime-guard"
-version = "0.23.20"
+version = "0.23.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "817a7f408c0e9fe93df0b6bbb35a95be169d0dda2c4f1cf8434175d1379530a1"
+checksum = "18ad17c256b4079de3ea347710e6ee222a8481754641a748142c2c3a62b3ab12"
 
 [[package]]
 name = "ic-platform-types"
@@ -1289,9 +1289,9 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "pin-project-lite"
-version = "0.2.17"
+version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
+checksum = "c938015719552d665fd0553b90d96cd7ff58e83e4c061ca99e6bb78865a72752"
 
 [[package]]
 name = "pkg-config"
@@ -2191,9 +2191,9 @@ dependencies = [
 
 [[package]]
 name = "toko-tooling"
-version = "0.45.18"
+version = "0.45.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d24c2c13aacee2afda27e77ed8d6c13ff5ad383e08a2f80645561b2a9f935b11"
+checksum = "af1ba8e16aaf1dae0951f08a228a4f00b928d09ff68997bd94ccc397ace5e4be"
 
 [[package]]
 name = "tower"

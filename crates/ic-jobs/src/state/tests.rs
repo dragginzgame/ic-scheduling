@@ -154,6 +154,7 @@ fn checkpoint_preserves_revision_cursor_and_queued_occurrence() {
 fn bounded_command_sequences_preserve_progress_and_uncertainty() {
     const ACTIONS: u32 = 11;
     const DEPTH: u32 = 5;
+
     for trace in 0..ACTIONS.pow(DEPTH) {
         let mut commands = trace;
         let mut progress = State::new(0);
@@ -398,6 +399,7 @@ fn reconciled_retry_requires_exact_blocked_authority_and_stays_paused() {
 #[test]
 fn unresolved_reconstruction_blocks_old_identity_across_owner_edits() {
     use crate::unresolved::{Attempt, UnresolvedPhase};
+
     for accepted in [false, true] {
         let mut progress = State::unstarted();
         assert_eq!(progress.unresolved_progress(), Err(Error::Stale));

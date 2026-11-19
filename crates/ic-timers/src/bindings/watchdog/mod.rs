@@ -85,6 +85,7 @@ impl Bindings {
             .handle()
             .0
             .measure(|measurements| measurements.returned(_observation))?;
+
         dispatch
             .handle()
             .with_state(|state| state.complete(dispatch.ticket, next))
@@ -98,12 +99,14 @@ impl WatchdogHandle {
         let Kind::Watchdog { state, .. } = &mut entry.kind else {
             return Err(Error::StaleAuthority);
         };
+
         Ok(f(state))
     }
 
     pub(crate) fn set(&self, demand: Demand, now: u64) -> Result<(), Error> {
         self.with_state(|state| state.set(demand, now))?
             .map_err(|_| Error::Control(ControlError::Exhausted))?;
+
         self.0.prune_stopped()
     }
 
@@ -142,6 +145,7 @@ impl Dispatch {
             }
             handle.0.prune_stopped()?;
         }
+
         Ok(settled)
     }
 }

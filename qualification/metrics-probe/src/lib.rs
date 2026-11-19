@@ -9,34 +9,12 @@ use ic_timers::{
 };
 use std::{cell::Cell, num::NonZeroU64};
 
-thread_local! {
-    static COUNTS: Cell<[u8; 3]> = const { Cell::new([0; 3]) };
-    static COSTS: Cell<[u64; 4]> = const { Cell::new([0; 4]) };
-}
-
-fn cost(index: usize, value: u64) {
-    COSTS.with(|costs| {
-        let mut values = costs.get();
-        values[index] = value;
-        costs.set(values);
-    });
-}
-
-fn count(index: usize) {
-    COUNTS.with(|counts| {
-        let mut values = counts.get();
-        values[index] += 1;
-        counts.set(values);
-    });
-}
-
-fn self_id() -> Principal {
-    system::canister_self()
-}
-
 /// Initialize and arm one async Once and one synchronous watchdog.
 /// # Panics
 /// Traps on provider/call failure or invalid instruction accounting.
+// setup
+// Initializes and arms one Once timer and one watchdog for the cost probe.
+// limits : IC request limit, empty reply
 #[expect(unsafe_code, reason = "qualification owns this endpoint")]
 #[unsafe(export_name = "canister_update setup")]
 pub extern "C" fn setup() {
@@ -88,6 +66,9 @@ pub extern "C" fn setup() {
 }
 
 /// Actual await target.
+// echo
+// Replies to the Once timer’s awaited message.
+// limits : IC request limit, empty reply
 #[expect(unsafe_code, reason = "qualification owns this endpoint")]
 #[unsafe(export_name = "canister_update echo")]
 pub extern "C" fn echo() {
@@ -97,6 +78,9 @@ pub extern "C" fn echo() {
 /// Counts, four instruction brackets, six metric totals and six overflow flags.
 /// # Panics
 /// Traps if the enabled provider cannot supply diagnostics.
+// state
+// Returns callback counts, instruction brackets and optional metrics.
+// limits : IC request limit, reply 137 bytes
 #[expect(unsafe_code, reason = "qualification owns this endpoint")]
 #[unsafe(export_name = "canister_query state")]
 pub extern "C" fn state() {
@@ -127,4 +111,29 @@ pub extern "C" fn state() {
     #[cfg(not(feature = "metrics"))]
     ic0::msg_reply_data_append(&[0; 102]);
     ic0::msg_reply();
+}
+
+thread_local! {
+    static COUNTS: Cell<[u8; 3]> = const { Cell::new([0; 3]) };
+    static COSTS: Cell<[u64; 4]> = const { Cell::new([0; 4]) };
+}
+
+fn cost(index: usize, value: u64) {
+    COSTS.with(|costs| {
+        let mut values = costs.get();
+        values[index] = value;
+        costs.set(values);
+    });
+}
+
+fn count(index: usize) {
+    COUNTS.with(|counts| {
+        let mut values = counts.get();
+        values[index] += 1;
+        counts.set(values);
+    });
+}
+
+fn self_id() -> Principal {
+    system::canister_self()
 }

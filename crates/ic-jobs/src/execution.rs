@@ -102,13 +102,6 @@ pub enum Status {
     /// Terminal job or provider fault.
     Faulted,
 }
-/// Retained job control. Dropping it does not cancel the timer declaration.
-/// Hosts can persist settled/queued progress using [`Job::checkpoint`] and [`restore`].
-pub struct Job {
-    state: Rc<RefCell<State>>,
-    timer: Once,
-}
-
 /// Bind a job. Cron starts after now; explicit-deadline schedules select their first
 /// deadline, including zero or overdue deadlines, subject to the chosen policy.
 ///
@@ -148,6 +141,7 @@ where
         None,
     )
     .map_err(|_| Error::Faulted)?;
+
     bind_checkpoint(identity, schedule, policy, retry_policy, checkpoint, work)
 }
 
@@ -175,6 +169,7 @@ where
     {
         return Err(Error::InvalidCheckpoint);
     }
+
     bind_checkpoint(identity, schedule, policy, retry_policy, checkpoint, work)
 }
 
@@ -202,6 +197,7 @@ where
     {
         return Err(Error::InvalidCheckpoint);
     }
+
     bind_checkpoint(identity, schedule, policy, retry_policy, record, work)
 }
 
@@ -304,6 +300,7 @@ where
     let demand = job.state.borrow_mut().plan(system::time());
     job.timer
         .set(demand.map_or(OnceDemand::Inactive, OnceDemand::At))?;
+
     Ok(job)
 }
 
@@ -313,6 +310,19 @@ fn stopped() -> OnceResult {
         next: OnceNext::Stop,
     }
 }
+
+///
+/// Job
+/// Adapts job progress to a retained Once timer. Dropping the handle does not
+/// cancel the timer declaration. Hosts can persist settled or queued progress
+/// using [`Job::checkpoint`] and [`restore`].
+///
+
+pub struct Job {
+    state: Rc<RefCell<State>>,
+    timer: Once,
+}
+
 impl Job {
     /// Export unresolved work for host-owned reconstruction in a fresh runtime.
     /// This does not stop live work. Capture at the upgrade-admission boundary and
@@ -352,6 +362,7 @@ impl Job {
         let progress = state.unresolved_progress().map_err(|_| Error::Faulted)?;
         let attempt =
             crate::Attempt::new(revision, scheduled_at, attempt).map_err(|_| Error::Faulted)?;
+
         progress
             .with_unresolved(attempt, phase)
             .map_err(|_| Error::Faulted)
@@ -370,6 +381,7 @@ impl Job {
             Status::Faulted => return Err(Error::Faulted),
             _ => {}
         }
+
         self.state.borrow().checkpoint().map_err(|_| Error::Faulted)
     }
 
@@ -385,9 +397,11 @@ impl Job {
         if state.restored() {
             if !matches!(timer, OnceStatus::Inactive) {
                 state.faulted = true;
+
                 return Err(Error::Faulted);
             }
             let selection = state.selection().ok_or(Error::Faulted)?;
+
             return Ok(Status::RecoveryRequired {
                 attempt: state.attempt(),
                 revision: selection.occurrence.revision,
@@ -410,9 +424,11 @@ impl Job {
         }
         let Some(selection) = state.selection() else {
             state.faulted = true;
+
             return Err(Error::Faulted);
         };
         let occurrence = selection.occurrence;
+
         Ok(match timer {
             OnceStatus::RecoveryRequired(token) => {
                 state.block(selection).map_err(|_| Error::Faulted)?;
@@ -461,6 +477,7 @@ impl Job {
             let mut state = self.state.borrow_mut();
             if change(&mut state, system::time()).is_err() {
                 state.faulted = true;
+
                 return Err(Error::Faulted);
             }
             if running {
@@ -473,6 +490,7 @@ impl Job {
             self.timer
                 .set(demand.map_or(OnceDemand::Inactive, OnceDemand::At))?;
         }
+
         Ok(())
     }
 
@@ -503,6 +521,7 @@ impl Job {
         state.cancel().map_err(|_| Error::Faulted)?;
         state.batch = None;
         state.retry = None;
+
         Ok(())
     }
 
@@ -562,8 +581,10 @@ impl Job {
             && let Err(error) = self.timer.recover(token, OnceDemand::Inactive)
         {
             self.state.borrow_mut().faulted = true;
+
             return Err(error.into());
         }
+
         Ok(())
     }
 }

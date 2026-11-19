@@ -138,6 +138,7 @@ fn due(bindings: &Bindings, now: u64) -> Dispatch {
     let Some(Scheduled::Watchdog(dispatch)) = bindings.select(now) else {
         panic!("expected watchdog work");
     };
+
     dispatch
 }
 

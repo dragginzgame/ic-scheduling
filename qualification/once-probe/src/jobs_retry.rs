@@ -51,6 +51,7 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
     {
         ic0::trap(b"retry factory trap");
     }
+
     async move {
         RUNS.with(|value| value.set(value.get() + 1));
         LAST.with(|value| {
@@ -352,5 +353,6 @@ pub(super) fn post_upgrade() -> bool {
     )
     .unwrap();
     JOB.with_borrow_mut(|slot| *slot = Some(job));
+
     true
 }

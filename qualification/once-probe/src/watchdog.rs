@@ -20,6 +20,7 @@ fn mode() -> u8 {
     assert_eq!(ic0::msg_arg_data_size(), 1);
     let mut bytes = [0];
     ic0::msg_arg_data_copy(&mut bytes, 0);
+
     bytes[0]
 }
 

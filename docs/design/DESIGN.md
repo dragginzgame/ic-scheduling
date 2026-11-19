@@ -212,10 +212,11 @@ Initialization installs volatile runtime state; the host retains lifecycle owner
 
 The public handles and provider operations also compile on native targets.
 Acquiring live timer authority there returns `Error::Uninitialized` before the
-provider can own a callback. Reads and binds refuse without that runtime. The
-installed transport remains target-specific because Platform Runtime's IC system,
-raw and call APIs are unavailable on the supported native build. The shared
-provider admits the installed transport once and uses its clock and arm operation.
+provider can own a callback. Reads and binds refuse without that runtime.
+The installed transport uses the IC global timer and the executor's timer and
+update roots. Platform Runtime 0.23.21 exposes additional native signatures,
+while those installed operations still require Wasm. The shared provider admits
+the installed transport once and uses its clock and arm operation.
 
 Snapshot restoration is a separate acceptance path. A heap snapshot may contain stale handles, tasks and transport flights. Reinitializing a counter inside that heap is not proof of a fresh incarnation. Support restore only through a qualified host procedure that reconstructs executor/provider state and rejects old messages before enabling new demand. If Canic's deployed workflow requires this, release is blocked until that procedure passes; otherwise declare snapshot restore unsupported for this release.
 

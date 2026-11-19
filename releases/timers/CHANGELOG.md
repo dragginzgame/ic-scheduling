@@ -1,5 +1,13 @@
 # Timers changelog
 
+## [0.46.11] - Unreleased
+
+### 📝 Summary
+
+- Select Platform Runtime and guard 0.23.22 in both workspace locks and
+  Protocol 0.3.7 in qualification.
+- Adopt Toko Tooling 0.45.21 and align return spacing and canister entrypoint headers.
+
 ## [0.46.10] - 2026-11-19
 
 ### 🔧 Changed

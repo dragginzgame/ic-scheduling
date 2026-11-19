@@ -71,6 +71,7 @@ fn restore_checks_current_definition_budget_and_committed_batch() {
         .with_unresolved(attempt, UnresolvedPhase::Uncertain)
         .unwrap();
     assert!(edited.matches_definition(&Schedule::once(200), policy, budget));
+
     for (revision, pending, valid) in [
         (1, [0, 10], true),
         (1, [10, 20], false),

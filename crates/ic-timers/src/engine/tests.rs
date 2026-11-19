@@ -3,6 +3,7 @@ use super::*;
 fn start(state: &mut OnceState, at: u64) -> Attempt {
     state.set(Demand::At(at)).unwrap();
     let ticket = state.due(at).unwrap().unwrap();
+
     state.accept(ticket).unwrap().unwrap()
 }
 

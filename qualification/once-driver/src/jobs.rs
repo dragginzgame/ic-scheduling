@@ -7,6 +7,7 @@ async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> ([u8; 3], 
         .await
         .unwrap();
     assert_eq!(bytes.len(), 43);
+
     (
         bytes[..3].try_into().unwrap(),
         std::array::from_fn(|index| {
@@ -17,6 +18,7 @@ async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> ([u8; 3], 
 
 async fn minute(pic: &PocketIc) {
     pic.advance_time(Duration::from_secs(61)).await;
+
     for _ in 0..40 {
         pic.tick().await;
     }
@@ -115,6 +117,7 @@ pub(super) async fn calendar(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
         0,
     ];
     assert_eq!(bytes.len(), expected.len() * 24);
+
     for (index, row) in bytes.as_chunks::<24>().0.iter().enumerate() {
         let values: [u64; 3] = std::array::from_fn(|field| {
             u64::from_le_bytes(row[field * 8..field * 8 + 8].try_into().unwrap())

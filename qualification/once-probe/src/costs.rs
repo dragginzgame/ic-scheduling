@@ -7,6 +7,7 @@ use std::num::NonZeroU64;
 fn measured<T>(work: impl FnOnce() -> T) -> (u64, T) {
     let before = ic0::instruction_counter();
     let result = work();
+
     (
         ic0::instruction_counter().checked_sub(before).unwrap(),
         result,

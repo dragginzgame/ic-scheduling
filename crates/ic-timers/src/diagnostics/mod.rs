@@ -47,6 +47,7 @@ impl TimerMeasurements {
     pub(crate) fn returned(&mut self, observation: Observation) {
         self.completed.add(1);
         self.last_observation = Some(observation);
+
         if observation == Observation::ExpectedFailure {
             self.consecutive_expected_failures.add(1);
         } else {

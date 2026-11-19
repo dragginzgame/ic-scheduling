@@ -18,6 +18,7 @@ impl Capture {
         if !rejected {
             COUNTS.with_borrow_mut(|counts| counts[0] += 1);
         }
+
         Self {
             bytes: vec![0x5a; 4096].into_boxed_slice(),
             rejected,
@@ -52,6 +53,7 @@ struct Attempt;
 impl Attempt {
     fn new() -> Self {
         COUNTS.with_borrow_mut(|counts| counts[2] += 1);
+
         Self
     }
 }

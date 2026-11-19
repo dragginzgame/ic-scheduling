@@ -55,6 +55,7 @@ impl CatchUpProgress {
         {
             return Err(CheckpointError::Progress);
         }
+
         Ok(Self {
             pending: pending.to_vec(),
             through,
@@ -135,6 +136,7 @@ impl Checkpoint {
         if self.selected_at.is_some_and(|at| !matches(at)) {
             return false;
         }
+
         self.catch_up.as_ref().is_none_or(|batch| {
             let crate::Policy::CatchUp(limit) = policy else {
                 return false;
@@ -185,6 +187,7 @@ impl Checkpoint {
         {
             return Err(CheckpointError::Progress);
         }
+
         Ok(Self {
             unresolved: None,
             revision,
@@ -219,6 +222,7 @@ impl Checkpoint {
             return Err(CheckpointError::Progress);
         }
         self.unresolved = Some((attempt, phase));
+
         Ok(self)
     }
 
@@ -290,6 +294,7 @@ impl Checkpoint {
             return Err(CheckpointError::Progress);
         }
         self.last_outcome = Some(outcome);
+
         Ok(self)
     }
 

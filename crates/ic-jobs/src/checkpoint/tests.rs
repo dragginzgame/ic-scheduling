@@ -224,6 +224,7 @@ fn one_shot_restore_requires_the_exact_deadline() {
 fn completion_deadline_must_match_the_persisted_horizon() {
     use crate::{CatchUpLimit, Policy, Schedule};
     let schedule = Schedule::after_completion(0, std::num::NonZeroU64::new(10).unwrap());
+
     for policy in [
         Policy::SkipLate { lateness_ns: 0 },
         Policy::CatchUp(CatchUpLimit::new(0, 3).unwrap()),
@@ -357,6 +358,7 @@ fn restore_checks_retry_budget_deadline_and_schedule_even_while_paused() {
     let policy = Policy::SkipLate { lateness_ns: 0 };
     let retry = RetryProgress::new(10, 2, 30, 50).unwrap();
     let budget = RetryPolicy::new(3, 10, 20).unwrap();
+
     for paused in [false, true] {
         let checkpoint = Checkpoint::new(
             7,

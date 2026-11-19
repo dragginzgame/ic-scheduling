@@ -2,6 +2,7 @@ use super::*;
 
 fn ns(value: &str) -> u64 {
     let date = value.parse::<DateTime<Utc>>().unwrap();
+
     (i128::from(date.timestamp()) * 1_000_000_000 + i128::from(date.timestamp_subsec_nanos()))
         .try_into()
         .unwrap()

@@ -69,11 +69,13 @@ impl OnceState {
             },
             State::Running { owner, .. } => {
                 *owner = Some(demand);
+
                 Ok(())
             }
             State::Armed(at) if demand == Demand::At(*at) => Ok(()),
             State::Inactive | State::Armed(_) => {
                 self.apply(demand);
+
                 Ok(())
             }
         }
@@ -101,6 +103,7 @@ impl OnceState {
         self.ticket_counter = next;
         let ticket = Ticket(next);
         self.ticket = Some(ticket);
+
         Ok(Some(ticket))
     }
 
@@ -119,6 +122,7 @@ impl OnceState {
             attempt,
             owner: None,
         };
+
         Ok(Some(attempt))
     }
 
@@ -127,6 +131,7 @@ impl OnceState {
         match self.state {
             State::Running { attempt, owner } if attempt == accepted => {
                 self.apply(owner.unwrap_or(next));
+
                 true
             }
             _ => false,
@@ -139,6 +144,7 @@ impl OnceState {
         match self.state {
             State::Running { attempt, .. } if attempt == accepted => {
                 self.state = State::RecoveryRequired(Recovery(attempt));
+
                 true
             }
             _ => false,
@@ -150,6 +156,7 @@ impl OnceState {
             return Err(ControlError::StaleRecovery);
         }
         self.apply(demand);
+
         Ok(())
     }
 
@@ -164,6 +171,7 @@ impl OnceState {
     fn exhaust<T>(&mut self) -> Result<T, ControlError> {
         self.ticket = None;
         self.state = State::Faulted;
+
         Err(ControlError::Exhausted)
     }
 }

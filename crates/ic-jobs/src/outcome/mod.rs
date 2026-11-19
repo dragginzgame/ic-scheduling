@@ -44,6 +44,7 @@ impl RecordedOutcome {
         if at < attempt.scheduled_at() {
             return Err(CheckpointError::Progress);
         }
+
         Ok(Self {
             attempt,
             result,

@@ -67,6 +67,7 @@ async fn run() {
     if let Some(enabled) = enabled {
         metrics_cost::check(&pic, &wasm, &enabled).await;
         pic.drop().await;
+
         return;
     }
     let external = pic.create_canister().await;
@@ -98,6 +99,7 @@ async fn run() {
             after_completion::check(&pic, &wasm, external).await;
         }
         pic.drop().await;
+
         return;
     }
     for (mode, expected) in [
@@ -188,6 +190,7 @@ async fn run() {
         println!(
             "Once runtime completion, initial/post-await traps, failed cleanup and explicit recovery pass"
         );
+
         return;
     }
     pressure::check(&pic, &wasm, external).await;

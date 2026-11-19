@@ -30,6 +30,7 @@ impl Engine {
         }
         let timer = self.timer.as_ref().expect("retained timer");
         timer.set(OnceDemand::At(0))?;
+
         Ok((timer.status()?, ic_timers::metrics()?))
     }
 }

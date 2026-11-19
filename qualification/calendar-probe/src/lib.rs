@@ -24,6 +24,7 @@ pub extern "C" fn calendar_next(scenario: u32, after_ns: u64, through_ns: u64) -
         5 => "* * * * *",
         _ => panic!("unknown calendar scenario"),
     };
+
     Schedule::parse(expression)
         .expect("fixture schedule")
         .next_after(after_ns, through_ns)
