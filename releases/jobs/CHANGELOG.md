@@ -1,6 +1,6 @@
 # Jobs changelog
 
-## [0.39.8] - Unreleased
+## [0.39.8] - 2026-11-19
 
 ### 🧹 Cleanup
 
