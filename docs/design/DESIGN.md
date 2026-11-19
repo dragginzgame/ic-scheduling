@@ -210,6 +210,13 @@ Therefore, before adopting a Platform Runtime primitive, establish with installe
 
 Initialization installs volatile runtime state; the host retains lifecycle ownership. After upgrade, bind fresh callbacks and derive demand from current consumer state. Timer state is not persisted. The platform timer must be explicitly rearmed after upgrade. [Upgrade guidance](https://docs.internetcomputer.org/guides/security/canister-upgrades/).
 
+The public handles and provider operations also compile on native targets.
+Acquiring live timer authority there returns `Error::Uninitialized` before the
+provider can own a callback. Reads and binds refuse without that runtime. The
+installed transport remains target-specific because Platform Runtime's IC system,
+raw and call APIs are unavailable on the supported native build. The shared
+provider admits the installed transport once and uses its clock and arm operation.
+
 Snapshot restoration is a separate acceptance path. A heap snapshot may contain stale handles, tasks and transport flights. Reinitializing a counter inside that heap is not proof of a fresh incarnation. Support restore only through a qualified host procedure that reconstructs executor/provider state and rejects old messages before enabling new demand. If Canic's deployed workflow requires this, release is blocked until that procedure passes; otherwise declare snapshot restore unsupported for this release.
 
 Cargo `links` guards prevent an important class of duplicate provider linkage. Final Wasm inspection must also establish one global-timer export and the intended dispatch endpoint. Neither check prevents arbitrary direct global-timer writes by other code. Review the whole consumer dependency graph and test ownership interference. The old implementation's observed-prior-value check is a detection mechanism, not proof of exclusive ownership. [Ownership source](https://github.com/dragginzgame/ic-scheduling-legacy/blob/0e5e09ed24e88d6d62a6d2dc923afbb53dc8619e/crates/ic-timers/src/platform/ownership/mod.rs).

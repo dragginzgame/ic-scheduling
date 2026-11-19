@@ -1,10 +1,13 @@
 # ic-timers
 
 Isolated async Once timers and synchronous prearmed watchdogs for Internet
-Computer canisters. The canister API is available on `wasm32`; this crate owns
-the global timer and must not be combined with another timer provider.
+Computer canisters. Scheduling runs in an installed Wasm canister. This crate
+owns the global timer and must not be combined with another timer provider.
 
 Wasm builds accept compatible Platform Runtime 0.23 patches from 0.23.14.
+Native builds expose the same handle types and functions for callers that
+type-check shared orchestration. Outside an installed canister, initialization,
+binding and runtime diagnostics return `Error::Uninitialized`.
 A host may select a supported patch without requiring Timers to name that exact
 patch. Cargo must still resolve one Runtime and its matching executor guard.
 

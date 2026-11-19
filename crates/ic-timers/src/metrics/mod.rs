@@ -20,5 +20,5 @@ pub(crate) enum Event {
 
 #[cfg(feature = "metrics")]
 pub use enabled::Metrics;
-#[cfg(all(feature = "metrics", target_arch = "wasm32"))]
+#[cfg(feature = "metrics")]
 pub(crate) use enabled::Recorder;

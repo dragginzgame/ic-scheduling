@@ -1,5 +1,59 @@
 # Metrics feature cost — 2026-11-15
 
+## Native API availability comparison — 2026-11-19
+
+The installed feature pair passed its behavior and counter assertions for the
+shared-provider change in [issue #5](https://github.com/dragginzgame/ic-scheduling/issues/5).
+Compared with the previous source at `e8f71fd` using the same dependency locks,
+Rust 1.100.0 and PocketIC 16.0.0, the candidate's metrics-on Wasm grew from 109,579
+to 110,177 bytes. Across three fresh canisters per build, the metrics-on/off
+watchdog prefix difference increased from 101 to 80,113 instructions. The
+metrics-off bracket stayed at 404,262 instructions. The setup, Once factory and
+Once resume differences changed from 1,844 / 67 / 72 to 1,934 / 77 / 72.
+
+### Watchdog page-charge investigation
+
+The same candidate source and locks were rebuilt with only the Wasm linker
+stack size varied. All installed behavior and counter assertions passed.
+Three fresh canisters per feature selection produced the same values in each row.
+
+| Probe build | Watchdog prefix, off | Watchdog prefix, on | Difference |
+| --- | ---: | ---: | ---: |
+| Previous source, default stack | 404,262 | 404,363 | 101 |
+| Candidate, default 1 MiB stack | 404,262 | 484,375 | 80,113 |
+| Candidate, stack increased by 4 KiB | 324,262 | 324,375 | 113 |
+| Candidate, stack increased by 64 KiB | 404,262 | 484,375 | 80,113 |
+
+A separate Wasm calibration bracketed a load or store on an isolated linear
+memory page with two instruction-counter reads. The first read in a message
+cost 80,000 instructions above a repeated read on that page. The first store
+after a read cost 80,000 above a repeated store. A first store on an untouched
+page cost 160,000 above a repeated store. This matches the IC memory tracker's
+separate access and dirty-page charges.
+[Memory tracker source](https://github.com/dfinity/ic/blob/master/rs/memory_tracker/src/deterministic.rs#L305-L334)
+
+The controlled 4 KiB shift removed exactly one 80,000-instruction increment
+from the paired watchdog difference. A full 64 KiB page shift preserved it.
+Changing the recorder to update individual counters and separating
+the Once dispatch stack frame both retained the 80,000-instruction step.
+The evidence points to an extra page charge under the original fixture layout.
+The particular page and whether the additional charge was for access or for
+dirtying it remain unverified. The default-layout charge is still included in
+the reported cost. The investigation made no product code or linker changes.
+
+The two diagnostic builds used `-C link-arg=-z -C link-arg=stack-size=1052672`
+and `-C link-arg=-z -C link-arg=stack-size=1114112` through
+`CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS`. Local output is retained in
+`target/issue-5-metrics-alignment-control.log` and
+`target/issue-5-metrics-layout.log`. The calibration results are in
+`target/issue-5-metrics-calibration.log`.
+
+The retest with Metrics 0.30.17 and Runtime and guard 0.23.20 passed the paired
+behavior and counter checks. The default-layout brackets were unchanged from
+the candidate above, including the 80,113-instruction watchdog difference.
+Wasm size was 103,610 bytes with metrics disabled and 110,176 with metrics
+enabled. Local output is in `target/adoption-metrics-03017-platform-02320.log`.
+
 ## Supplier adoption replay — 2026-11-17
 
 The existing paired workload passes with local Timers 0.46.2, Runtime/guard

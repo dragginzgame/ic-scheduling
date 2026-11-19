@@ -1,6 +1,6 @@
 //! Timers for isolated Internet Computer work.
 //!
-//! The wasm32 API provides async Once and synchronous prearmed watchdog callbacks,
+//! The installed runtime provides async Once and synchronous prearmed watchdog callbacks,
 //! with explicit retained or remove-on-stop lifetimes. Abandoned Once work requires
 //! owner reconciliation before another attempt. Hosts own upgrade reconstruction.
 //! Opt-in `metrics` exposes inert aggregate counters and bounded declaration
@@ -24,6 +24,7 @@ mod engine;
     expect(dead_code, reason = "native build has no IC transport")
 )]
 mod metrics;
+mod provider;
 // Transport requires Platform Runtime's Wasm-only system and raw APIs.
 #[cfg(target_arch = "wasm32")]
 mod transport;
@@ -37,15 +38,13 @@ pub use api::{
     Error, Lifetime, Observation, OnceDemand, OnceNext, OnceResult, WatchdogDemand, WatchdogNext,
     WatchdogResult,
 };
-#[cfg(all(feature = "metrics", target_arch = "wasm32"))]
-pub use transport::{inventory, metrics};
 #[cfg(feature = "metrics")]
 pub use {
     diagnostics::{Inventory, TimerKind, TimerMeasurements, TimerPhase, TimerSnapshot},
     metrics::Metrics,
+    provider::{inventory, metrics},
 };
 
-#[cfg(target_arch = "wasm32")]
-pub use transport::{
+pub use provider::{
     Once, OnceStatus, RecoveryToken, Watchdog, WatchdogStatus, bind_once, bind_watchdog, initialize,
 };

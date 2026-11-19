@@ -50,7 +50,7 @@ pub struct OnceResult {
 /// Initialization, admission or control failure.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
-    /// Initialize the live runtime before binding.
+    /// No live runtime is initialized. Native callers cannot initialize one.
     Uninitialized,
     /// Empty or over-64-byte identity component.
     InvalidIdentity,

@@ -1,5 +1,14 @@
 # Timers changelog
 
+## [0.46.10] - Unreleased
+
+### 🔧 Changed
+
+- Expose the timer handles, operations and metrics to native type-checking.
+  Native calls requiring a live timer runtime refuse before admitting work. [#5](https://github.com/dragginzgame/ic-scheduling/issues/5)
+- Select Metrics 0.30.17 and Platform Runtime and guard 0.23.20 in development
+  and qualification.
+
 ## [0.46.9] - 2026-11-19
 
 ### 🧹 Cleanup
