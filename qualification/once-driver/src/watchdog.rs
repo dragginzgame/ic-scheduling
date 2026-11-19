@@ -1,6 +1,8 @@
 //! Installed prearm, trap survival, and synchronous owner precedence.
-use ic_testkit::held::{Catalog, Fixture, Limits, Reply};
-use ic_testkit::pocket_ic::{CanisterId, nonblocking::PocketIc};
+use ic_testkit::{
+    held::{Catalog, Fixture, Limits, Reply},
+    pocket_ic::{CanisterId, nonblocking::PocketIc},
+};
 use std::time::Duration;
 
 async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> (u64, u8, u8) {
@@ -15,6 +17,7 @@ async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> (u64, u8, 
         bytes[9],
     )
 }
+
 pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     for mode in 0..=3 {
         let id = pic.create_canister().await;

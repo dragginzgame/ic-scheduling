@@ -15,6 +15,7 @@ async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> ([u8; 10],
         }),
     )
 }
+
 async fn minute(pic: &PocketIc) {
     pic.advance_time(Duration::from_secs(61)).await;
     for _ in 0..40 {

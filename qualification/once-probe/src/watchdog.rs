@@ -3,6 +3,7 @@ use super::{Cell, Observation, RefCell, ic0};
 use ic_platform_runtime::system;
 use ic_timers::{Watchdog, WatchdogDemand, WatchdogNext, WatchdogResult, WatchdogStatus};
 use std::num::NonZeroU64;
+
 thread_local! {
     static HANDLE: RefCell<Option<Watchdog>> = const { RefCell::new(None) };
     static CALLS: Cell<u8> = const { Cell::new(0) };
@@ -14,12 +15,14 @@ thread_local! {
     static SHORT_CADENCE: Cell<bool> = const { Cell::new(false) };
     static BLOCKER_FINISHES: Cell<u8> = const { Cell::new(0) };
 }
+
 fn mode() -> u8 {
     assert_eq!(ic0::msg_arg_data_size(), 1);
     let mut bytes = [0];
     ic0::msg_arg_data_copy(&mut bytes, 0);
     bytes[0]
 }
+
 /// Bind and arm without inline callback execution.
 /// # Panics
 /// Traps on malformed setup or a failed provider invariant.
@@ -93,6 +96,7 @@ pub extern "C" fn setup() {
     ic0::msg_reply_data_append(&[CALLS.with(Cell::get)]);
     ic0::msg_reply();
 }
+
 /// Change only the consumer behavior; do not alter timer eligibility.
 /// # Panics
 /// Traps on malformed input.
@@ -102,6 +106,7 @@ pub extern "C" fn set_mode() {
     MODE.with(|value| value.set(mode()));
     ic0::msg_reply();
 }
+
 /// Return deadline, committed callback count, and outstanding-ticket flag.
 /// # Panics
 /// Traps if setup is absent or the provider is faulted.
@@ -134,6 +139,7 @@ pub extern "C" fn target() {
     TARGET.with(|target| target.set(Some(super::Principal::from_slice(&bytes[..len]))));
     ic0::msg_reply();
 }
+
 /// Request another admission opportunity without advancing held-call time.
 /// # Panics
 /// Traps if setup is absent or control fails.
@@ -149,6 +155,7 @@ pub extern "C" fn poke() {
     });
     ic0::msg_reply();
 }
+
 /// Observe physical request admission independently of timer callback counts.
 #[expect(unsafe_code, reason = "qualification owns this endpoint")]
 #[unsafe(export_name = "canister_query watchdog_requests")]
@@ -190,6 +197,7 @@ pub extern "C" fn block() {
     }
     ic0::msg_reply();
 }
+
 /// Observe settlement of the eight capacity-blocking calls.
 #[expect(unsafe_code, reason = "qualification owns this endpoint")]
 #[unsafe(export_name = "canister_query watchdog_blocker_finishes")]

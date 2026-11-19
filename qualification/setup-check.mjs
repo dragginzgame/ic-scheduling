@@ -8,6 +8,9 @@ const script = path.resolve('ci/setup.mjs');
 fs.mkdirSync('target/ci-setup-fixtures', { recursive: true });
 const root = fs.mkdtempSync(path.resolve('target/ci-setup-fixtures/run-'));
 const secret = 'fixture-private-token-12345';
+const accessKey = 'fixture-access-value';
+const bearer = 'fixture-bearer-value';
+const payload = 'fixture-payload-value';
 function check(name, source, prepare = () => {}, environment = {}, expectedStatus = 23) {
     const cwd = path.join(root, name);
     fs.mkdirSync(cwd);
@@ -18,7 +21,7 @@ function check(name, source, prepare = () => {}, environment = {}, expectedStatu
     const result = spawnSync(process.execPath, [script, name, process.execPath, '-e', source], {
         cwd, encoding: 'utf8', timeout: 10000,
         env: { ...process.env, CI_PHASE_TIMEOUT_SECONDS: '0', TOKO_TOOLING_STORE: store,
-            FIXTURE_TOKEN: secret, ATTEMPT: attempt, ...environment },
+            FIXTURE_TOKEN: secret, FIXTURE_ACCESS_KEY: accessKey, ATTEMPT: attempt, ...environment },
     });
     assert.ifError(result.error);
     assert.equal(result.status, expectedStatus, `${name}: command status must survive collection`);
@@ -27,17 +30,25 @@ function check(name, source, prepare = () => {}, environment = {}, expectedStatu
 }
 const hidden = check('hidden', `
     const fs=require('fs');
-    fs.writeFileSync(process.env.ATTEMPT+'/install.log', 'compiler failed\\nAuthorization: Bearer '+process.env.FIXTURE_TOKEN);
+    const diagnostics = 'Authorization: Bearer '+process.env.FIXTURE_TOKEN+
+        '\\nBearer ${bearer}\\n{"payload":"${payload}"}\\n'+process.env.FIXTURE_ACCESS_KEY;
+    fs.writeFileSync(process.env.ATTEMPT+'/install.log', 'compiler failed\\n'+diagnostics);
     fs.writeFileSync(process.env.ATTEMPT+'/private.env', process.env.FIXTURE_TOKEN);
     console.error('compilation failed; status=23\\nCargo tool attempt retained: '+process.env.ATTEMPT);
     console.error('token='+process.env.FIXTURE_TOKEN);
+    console.error(diagnostics);
     process.exit(23);
 `);
 const evidence = path.join(hidden.cwd, 'target/ci-setup');
 assert.deepEqual(fs.readdirSync(evidence).sort(), ['hidden-attempt-0.log', 'hidden.log']);
 const retained = fs.readFileSync(path.join(evidence, 'hidden-attempt-0.log'), 'utf8');
 assert.match(retained, /compiler failed/);
-assert.ok(!retained.includes(secret));
+const reported = fs.readFileSync(path.join(evidence, 'hidden.log'), 'utf8');
+for (const value of [secret, accessKey, bearer, payload]) {
+    assert.ok(!retained.includes(value));
+    assert.ok(!reported.includes(value));
+    assert.ok(!hidden.result.stdout.includes(value));
+}
 const missing = check('missing', 'process.exit(23)');
 assert.match(missing.result.stdout, /No diagnostics emitted/);
 const collection = check('collection', 'console.error("setup failure"); process.exit(23)', cwd => {

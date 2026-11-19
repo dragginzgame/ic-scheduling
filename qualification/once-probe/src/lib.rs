@@ -1,5 +1,24 @@
 //! Actual Once provider installed-canister fixture. No alternate provider.
 
+mod costs;
+mod dispatch_costs;
+mod jobs;
+mod jobs_boundaries;
+mod jobs_catch_up;
+mod jobs_completion;
+mod jobs_initial;
+mod jobs_pressure;
+mod jobs_retry;
+mod jobs_unresolved;
+mod lifecycle;
+mod lifetimes;
+mod metrics;
+mod outcomes;
+mod pressure;
+mod refusal;
+mod retention;
+mod watchdog;
+
 use ic_platform_runtime::{
     call::{Call, Completion, Outcome as CallOutcome, SubmitError, Wait},
     raw as ic0, system,
@@ -7,6 +26,7 @@ use ic_platform_runtime::{
 use ic_platform_types::Principal;
 use ic_timers::{Observation, Once, OnceDemand, OnceNext, OnceResult, OnceStatus};
 use std::cell::{Cell, RefCell};
+
 thread_local! {
     static HANDLE: RefCell<Option<Once>> = const { RefCell::new(None) };
     static MODE: Cell<u8> = const { Cell::new(0) };
@@ -14,15 +34,18 @@ thread_local! {
     static FINISHES: Cell<u8> = const { Cell::new(0) };
     static FINISHED_AT: Cell<u64> = const { Cell::new(0) };
 }
+
 fn self_id() -> Principal {
     system::canister_self()
 }
+
 fn expect_reply(result: Result<Completion, SubmitError>) -> Vec<u8> {
     match result.expect("call submission").into_parts().0 {
         CallOutcome::Reply(bytes) => bytes,
         outcome => panic!("expected a reply, received {outcome:?}"),
     }
 }
+
 /// Bind once and arm without inline execution. Modes 1/2 trap before/after await.
 ///
 /// # Panics
@@ -90,6 +113,7 @@ pub extern "C" fn arm() {
     });
     ic0::msg_reply();
 }
+
 /// Reconcile this synthetic fixture by explicitly stopping the abandoned attempt.
 ///
 /// # Panics
@@ -107,6 +131,7 @@ pub extern "C" fn recover() {
     });
     ic0::msg_reply();
 }
+
 /// Genuine await target.
 ///
 /// # Panics
@@ -134,6 +159,7 @@ pub extern "C" fn echo() {
     }
     ic0::msg_reply();
 }
+
 /// State: 0 inactive, 1 armed, 2 running, 3 recovery, 4 fault; then start/finish counts.
 ///
 /// # Panics
@@ -154,8 +180,6 @@ pub extern "C" fn state() {
     ic0::msg_reply();
 }
 
-mod pressure;
-
 /// Completion time and current absolute deadline for the recurrence fixture.
 /// # Panics
 /// Traps if called before binding or if provider status fails.
@@ -171,8 +195,6 @@ pub extern "C" fn completion_state() {
     ic0::msg_reply();
 }
 
-mod metrics;
-
 struct CleanupTrap(bool);
 impl Drop for CleanupTrap {
     fn drop(&mut self) {
@@ -181,28 +203,3 @@ impl Drop for CleanupTrap {
         }
     }
 }
-
-mod lifecycle;
-
-mod refusal;
-
-mod watchdog;
-
-mod costs;
-mod retention;
-
-mod dispatch_costs;
-
-mod jobs;
-
-mod jobs_pressure;
-
-mod jobs_boundaries;
-mod jobs_completion;
-mod jobs_initial;
-mod jobs_retry;
-mod jobs_unresolved;
-mod lifetimes;
-mod outcomes;
-
-mod jobs_catch_up;

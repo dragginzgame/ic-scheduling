@@ -1,5 +1,8 @@
 //! Retry-budget calculation and validated pending retry data; neither authorizes replay of uncertainty.
 
+#[cfg(test)]
+mod tests;
+
 /// Invalid attempt budget or delay bounds.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct RetryPolicyError;
@@ -58,21 +61,25 @@ impl RetryProgress {
             retry_at,
         })
     }
+
     /// Logical occurrence identity, unchanged across attempts.
     #[must_use]
     pub const fn scheduled_at(&self) -> u64 {
         self.scheduled_at
     }
+
     /// Consumed attempts, including the initial attempt and any reconciled uncertainty.
     #[must_use]
     pub const fn failed_attempts(&self) -> u32 {
         self.failed_attempts
     }
+
     /// Time of the last retry-safe failure or explicit retry-safe reconciliation.
     #[must_use]
     pub const fn failed_at(&self) -> u64 {
         self.failed_at
     }
+
     /// Earliest eligibility for the next attempt.
     #[must_use]
     pub const fn retry_at(&self) -> u64 {
@@ -110,11 +117,13 @@ impl RetryPolicy {
     pub const fn max_attempts(self) -> u32 {
         self.max_attempts
     }
+
     /// Delay after the first failed or reconciled retry-safe attempt, in nanoseconds.
     #[must_use]
     pub const fn initial_delay_ns(self) -> u64 {
         self.initial_delay_ns
     }
+
     /// Maximum delay between a normal failure and its next attempt.
     #[must_use]
     pub const fn max_delay_ns(self) -> u64 {
@@ -142,6 +151,3 @@ impl RetryPolicy {
         finished_at_ns.checked_add(delay)
     }
 }
-
-#[cfg(test)]
-mod tests;

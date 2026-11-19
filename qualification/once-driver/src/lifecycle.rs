@@ -7,6 +7,7 @@ fn envelope(epoch: u64, sequence: u64) -> Vec<u8> {
     bytes.extend_from_slice(&sequence.to_le_bytes());
     bytes
 }
+
 fn epoch(state: &[u8]) -> u64 {
     u64::from_le_bytes(state[..8].try_into().unwrap())
 }

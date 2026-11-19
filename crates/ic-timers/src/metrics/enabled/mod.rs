@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use super::Event;
 use crate::Observation;
 use ic_metrics::MeasurementCounter;
@@ -31,9 +34,11 @@ impl Recorder {
     pub(crate) fn new() -> Self {
         Self(Cell::new(Metrics::default()))
     }
+
     pub(crate) fn snapshot(&self) -> Metrics {
         self.0.get()
     }
+
     pub(crate) fn record(&self, event: Event) {
         let mut counters = self.0.get();
         match event {
@@ -51,5 +56,3 @@ impl Recorder {
         self.0.set(counters);
     }
 }
-#[cfg(test)]
-mod tests;

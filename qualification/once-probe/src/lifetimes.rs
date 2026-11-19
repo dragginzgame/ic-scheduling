@@ -6,6 +6,7 @@ use ic_timers::{
     WatchdogNext, WatchdogResult,
 };
 use std::num::NonZeroU64;
+
 thread_local! {
     static MODE: Cell<u8> = const { Cell::new(0) };
     static RUNS: Cell<u64> = const { Cell::new(0) };
@@ -32,12 +33,14 @@ impl Drop for Capture {
         DROPS.with(|value| value.set(value.get() + 1));
     }
 }
+
 fn stopped() -> OnceResult {
     OnceResult {
         observation: ic_timers::Observation::Success,
         next: OnceNext::Stop,
     }
 }
+
 fn replace_victim() {
     if MODE.with(Cell::get) == 5 {
         ONCE.with_borrow(|slot| slot.as_ref().unwrap().remove().unwrap());
@@ -58,6 +61,7 @@ fn replace_victim() {
         .unwrap();
     REPLACEMENT.with_borrow_mut(|slot| *slot = Some(replacement));
 }
+
 /// Bind transient work or a remover before a queued victim.
 /// # Panics
 /// Traps on invalid mode or violated admission/control invariants.
@@ -136,6 +140,7 @@ pub extern "C" fn setup() {
     }
     ic0::msg_reply();
 }
+
 /// Check accepted-work removal refusal and newer-owner precedence.
 /// # Panics
 /// Traps if removal bypasses custody or an owner update fails.
@@ -152,6 +157,7 @@ pub extern "C" fn echo() {
     });
     ic0::msg_reply();
 }
+
 /// Return phase, callback count, released captures and replacement state.
 /// # Panics
 /// Traps on unexpected provider failures or authority revival.
@@ -191,6 +197,7 @@ pub extern "C" fn state() {
     }
     ic0::msg_reply();
 }
+
 /// Explicitly reconcile trapped transient work before removal.
 /// # Panics
 /// Traps if uncertainty can be removed or stale authority remains usable.

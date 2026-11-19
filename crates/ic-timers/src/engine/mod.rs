@@ -3,6 +3,9 @@
 //! Each value belongs to one retained declaration. The future table/transport
 //! must authenticate declaration authority before delivering any token here.
 
+#[cfg(test)]
+mod tests;
+
 pub(super) use crate::OnceDemand as Demand;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -164,6 +167,3 @@ impl OnceState {
         Err(ControlError::Exhausted)
     }
 }
-
-#[cfg(test)]
-mod tests;

@@ -13,6 +13,7 @@ thread_local! {
     static RUNS: Cell<u64> = const { Cell::new(0) };
     static LAST: Cell<[u64; 4]> = const { Cell::new([0; 4]) };
 }
+
 fn schedule() -> Schedule {
     match MODE.with(Cell::get) {
         7 => Schedule::after_completion(0, NonZeroU64::new(100 * SECOND).unwrap()),
@@ -20,6 +21,7 @@ fn schedule() -> Schedule {
         _ => Schedule::once(0),
     }
 }
+
 fn policy() -> Policy {
     if matches!(MODE.with(Cell::get), 8 | 17) {
         Policy::CatchUp(ic_jobs::CatchUpLimit::new(u64::MAX, 2).unwrap())
@@ -34,6 +36,7 @@ fn policy() -> Policy {
         }
     }
 }
+
 fn retry_policy() -> RetryPolicy {
     match MODE.with(Cell::get) {
         15 => RetryPolicy::new(3, u64::MAX, u64::MAX).unwrap(),
@@ -41,6 +44,7 @@ fn retry_policy() -> RetryPolicy {
         _ => RetryPolicy::new(3, 10 * SECOND, 15 * SECOND).unwrap(),
     }
 }
+
 fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
     if (matches!(MODE.with(Cell::get), 3 | 11) && context.attempt == 2)
         || (matches!(MODE.with(Cell::get), 15 | 16) && context.attempt == 1)
@@ -80,6 +84,7 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
         }
     }
 }
+
 /// Admit one retry fixture.
 /// # Panics
 /// Traps on invalid input or failed admission.
@@ -103,6 +108,7 @@ pub extern "C" fn setup() {
     JOB.with_borrow_mut(|slot| *slot = Some(job));
     ic0::msg_reply();
 }
+
 /// Exercise owner precedence during an actual await.
 /// # Panics
 /// Traps on failed control or lost attempt identity.
@@ -132,6 +138,7 @@ pub extern "C" fn echo() {
     });
     ic0::msg_reply();
 }
+
 /// Pause, resume, cancel or explicitly reconcile the current occurrence.
 /// # Panics
 /// Traps on invalid commands or control failure.
@@ -186,6 +193,7 @@ pub extern "C" fn control() {
     });
     ic0::msg_reply();
 }
+
 /// Return phase, identity, attempt, readiness, runs, last callback and pending count.
 /// # Panics
 /// Traps on terminal provider faults.
@@ -248,6 +256,7 @@ pub extern "C" fn state() {
     });
     ic0::msg_reply();
 }
+
 pub(super) fn pre_upgrade() -> bool {
     JOB.with_borrow(|slot| {
         let Some(job) = slot else {
@@ -287,6 +296,7 @@ pub(super) fn pre_upgrade() -> bool {
         true
     })
 }
+
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 152];
     ic0::stable64_read(0, &mut bytes);

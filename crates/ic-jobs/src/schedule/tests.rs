@@ -41,17 +41,23 @@ fn utc_calendar_rules() {
 
 #[test]
 fn rejects_unsupported_layouts_and_invalid_rules() {
-    for rule in [
-        "* * * *",
-        "0 * * * * *",
-        "0 0 * * * UTC",
-        "@daily",
-        "60 * * * *",
-        "0 9 * FOO *",
-    ] {
-        assert!(Schedule::parse(rule).is_err(), "{rule}");
+    for rule in ["* * * *", "0 * * * * *", "0 0 * * * UTC", "@daily"] {
+        assert!(
+            matches!(Schedule::parse(rule), Err(ScheduleError::InvalidLayout)),
+            "{rule}"
+        );
     }
-    assert!(Schedule::parse(&" ".repeat(257)).is_err());
+    for rule in ["60 * * * *", "0 9 * FOO *"] {
+        assert!(
+            matches!(Schedule::parse(rule), Err(ScheduleError::Parse(_))),
+            "{rule}"
+        );
+    }
+    let too_long = format!("* * * *{}*", " ".repeat(250));
+    assert!(matches!(
+        Schedule::parse(&too_long),
+        Err(ScheduleError::InvalidLayout)
+    ));
 }
 
 #[test]

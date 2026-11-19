@@ -52,8 +52,8 @@ full Wasm/code-section bytes and initial/final linear-memory size. Run from root
 make check-calendar-wasm
 ```
 
-Prepare the declared Rust toolchain, dependencies and Node.js separately; the
-command runs offline and never installs tools. Node 24.21.0 was used for the
+Prepare the declared Rust toolchain and Node.js separately. Cargo may fetch locked
+dependencies. Node 24.21.0 was used for the
 recorded observation. See [calendar evidence](../docs/evidence/calendar-saffron.md).
 The raw probe ABI and its zero sentinel are qualification-only.
 
@@ -71,8 +71,8 @@ the migration in Entropy or duplicate its maintained test suite.
 `executor-probe` and `executor-driver` check Platform Runtime's update-root
 completion and initial/post-await trap behavior in a locally installed PocketIC
 canister. Run `make check-executor POCKET_IC_BIN=/absolute/path/to/pocket-ic`
-with a prepared 16.0.0 server and local loopback access. The command builds and
-runs offline; it does not install the server. See [executor evidence](../docs/evidence/executor-probe.md).
+with a prepared 16.0.0 server and local loopback access. Cargo may fetch locked
+dependencies. See [executor evidence](../docs/evidence/executor-probe.md).
 
 The Runtime 0.23 probe observes successful cleanup through the retained task
 handle after execution commits. Its five event bytes distinguish control,

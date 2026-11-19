@@ -1,6 +1,29 @@
 //! Installed checks of the product Once provider.
+
+mod after_completion;
+mod costs;
+mod dispatch_costs;
+mod held_upgrade;
+mod jobs;
+mod jobs_boundaries;
+mod jobs_catch_up;
+mod jobs_completion;
+mod jobs_initial;
+mod jobs_pressure;
+mod jobs_retry;
+mod jobs_unresolved;
+mod lifecycle;
+mod lifetimes;
+mod metrics;
+mod metrics_cost;
+mod pressure;
+mod refusal;
+mod retention;
+mod watchdog;
+
 use ic_testkit::pocket_ic::PocketIcBuilder;
 use std::time::Duration;
+
 fn main() {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -8,6 +31,7 @@ fn main() {
         .unwrap()
         .block_on(run());
 }
+
 async fn run() {
     let mut args = std::env::args().skip(1);
     let first = args.next().expect("probe wasm path or --metrics-cost");
@@ -197,36 +221,3 @@ async fn run() {
     pic.drop().await;
     println!("Once installed lifecycle, authentication and pressure checks passed");
 }
-
-mod after_completion;
-mod pressure;
-
-mod metrics;
-
-mod metrics_cost;
-
-mod lifecycle;
-
-mod refusal;
-
-mod held_upgrade;
-
-mod watchdog;
-
-mod costs;
-mod retention;
-
-mod dispatch_costs;
-
-mod jobs;
-
-mod jobs_pressure;
-
-mod jobs_boundaries;
-mod jobs_completion;
-mod jobs_initial;
-mod jobs_retry;
-mod jobs_unresolved;
-mod lifetimes;
-
-mod jobs_catch_up;

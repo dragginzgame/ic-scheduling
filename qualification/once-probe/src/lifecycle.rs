@@ -3,8 +3,7 @@ use super::{
     Call, Cell, Observation, Once, OnceDemand, OnceNext, OnceResult, OnceStatus, RefCell, Wait,
     ic0, self_id,
 };
-use ic_platform_runtime::executor;
-use ic_platform_runtime::system;
+use ic_platform_runtime::{executor, system};
 
 thread_local! {
     static HANDLE: RefCell<Option<Once>> = const { RefCell::new(None) };
@@ -13,6 +12,7 @@ thread_local! {
     static RUNS: Cell<u8> = const { Cell::new(0) };
     static TARGET: Cell<Option<super::Principal>> = const { Cell::new(None) };
 }
+
 fn bind(deadline: u64) {
     ic_timers::initialize().unwrap();
     EPOCH.with(|epoch| epoch.set(system::canister_version()));

@@ -1,6 +1,11 @@
 //! Bounded inert inventory; no callback, recovery token or scheduling authority.
+
+#[cfg(test)]
+mod tests;
+
 use crate::{Lifetime, Observation};
 use ic_metrics::MeasurementCounter;
+
 /// Registration kind in an inventory row.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TimerKind {
@@ -78,5 +83,3 @@ pub struct Inventory {
     /// At most the declaration capacity, ordered by identity.
     pub timers: Vec<TimerSnapshot>,
 }
-#[cfg(test)]
-mod tests;

@@ -14,12 +14,14 @@ async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> ([u8; 3], 
         }),
     )
 }
+
 async fn minute(pic: &PocketIc) {
     pic.advance_time(Duration::from_secs(61)).await;
     for _ in 0..40 {
         pic.tick().await;
     }
 }
+
 pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     for mode in 0..=6 {
         let id = pic.create_canister().await;

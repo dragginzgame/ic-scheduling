@@ -8,7 +8,7 @@ const limit = 64 * 1024;
 function sanitize(text, environment) {
     let safe = text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '');
     for (const [name, value] of Object.entries(environment)) {
-        if (/token|password|secret|credential|private.?key/i.test(name) && value?.length >= 4) {
+        if (/token|password|secret|credential|(?:private|access|api).?key/i.test(name) && value?.length >= 4) {
             safe = safe.split(value).join('[REDACTED]');
         }
     }
@@ -18,7 +18,7 @@ function sanitize(text, environment) {
         .replace(/[A-Za-z0-9+/=]{80,}/g, '[LONG ENCODED VALUE OMITTED]')
         .replace(/https?:\/\/[^\s/]*@/g, 'https://[REDACTED]@')
         .replace(/([?&](?:token|key|signature|credential|password)=)[^\s&]+/gi, '$1[REDACTED]')
-        .split('\n').map(line => /authorization|password|secret|credential|private.?key|payload|(?:^|\W)token\s*[:=]/i.test(line)
+        .split('\n').map(line => /authorization|password|secret|credential|private.?key|payload|\bBearer\s+\S+|(?:^|\W)(?:token|(?:access|api).?key)["']?\s*[:=]/i.test(line)
             ? '[SENSITIVE LINE OMITTED]' : line).join('\n');
 }
 

@@ -1,4 +1,5 @@
 use super::*;
+
 #[test]
 fn result_observation_is_validated_and_retained_without_replay_authority() {
     let attempt = Attempt::new(1, 10, 2).unwrap();

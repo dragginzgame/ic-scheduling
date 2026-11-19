@@ -3,6 +3,7 @@ use super::{
     Call, Observation, Once, OnceDemand, OnceNext, OnceResult, Principal, RefCell, Wait, ic0,
 };
 use ic_platform_runtime::system;
+
 thread_local! {
     static HANDLES: RefCell<Vec<Once>> = const { RefCell::new(Vec::new()) };
     static COUNTS: RefCell<([u8; 64], [u8; 64])> = const { RefCell::new(([0;64], [0;64])) };

@@ -1,4 +1,8 @@
 //! Host-owned unresolved attempt records; restoration never authorizes replay.
+
+#[cfg(test)]
+mod tests;
+
 use crate::checkpoint::CheckpointError;
 
 /// Durable attempt identity, paired with the host's stable job key.
@@ -23,16 +27,19 @@ impl Attempt {
             number,
         })
     }
+
     /// Accepted schedule revision, which may precede an owner edit.
     #[must_use]
     pub const fn revision(self) -> u64 {
         self.revision
     }
+
     /// Logical occurrence time, unchanged across retries.
     #[must_use]
     pub const fn scheduled_at(self) -> u64 {
         self.scheduled_at
     }
+
     /// One-based accepted attempt number.
     #[must_use]
     pub const fn number(self) -> u32 {
@@ -47,6 +54,3 @@ pub enum UnresolvedPhase {
     /// The runtime requires effect reconciliation.
     Uncertain,
 }
-
-#[cfg(test)]
-mod tests;

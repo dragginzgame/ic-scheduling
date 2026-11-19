@@ -53,8 +53,8 @@ help:
 	@printf '%s\n' \
 	  'Setup: make install-tools; make tools-check' \
 	  'make check                    Verify tooling selection and installed snapshot' \
-	  'make lint PACKAGE=ic-timers    Lint one package (or ic-jobs), locked and offline' \
-	  'make doc PACKAGE=ic-timers     Check one package documentation, locked and offline' \
+	  'make lint PACKAGE=ic-timers    Lint one package (or ic-jobs), locked' \
+	  'make doc PACKAGE=ic-timers     Check one package documentation, locked' \
 	  'make check-calendar-wasm       Build/run the calendar Wasm probe (requires Node.js)' \
 	  'make check-executor            Installed runtime probe (requires POCKET_IC_BIN)' \
 	  'make check-once                Installed Once provider probe (requires POCKET_IC_BIN)' \
@@ -70,33 +70,33 @@ check: toko-tooling-check
 
 lint doc: toko-tooling-check | toko-execution-check
 lint:
-	$(_toko_recursive_prefix)cargo clippy -p '$(PACKAGE)' --all-targets --all-features --locked --offline -- -D warnings
+	$(_toko_recursive_prefix)cargo clippy -p '$(PACKAGE)' --all-targets --all-features --locked -- -D warnings
 
 doc:
-	$(_toko_recursive_prefix)RUSTDOCFLAGS='-D warnings' cargo doc -p '$(PACKAGE)' --all-features --no-deps --locked --offline
+	$(_toko_recursive_prefix)RUSTDOCFLAGS='-D warnings' cargo doc -p '$(PACKAGE)' --all-features --no-deps --locked
 
 check-calendar-wasm: toko-tooling-check | toko-execution-check
-	$(_toko_recursive_prefix)cargo build --manifest-path qualification/Cargo.toml -p calendar-probe --target-dir qualification/target --release --target wasm32-unknown-unknown --locked --offline
+	$(_toko_recursive_prefix)cargo build --manifest-path qualification/Cargo.toml -p calendar-probe --target-dir qualification/target --release --target wasm32-unknown-unknown --locked
 	node qualification/calendar-probe/check.mjs qualification/target/wasm32-unknown-unknown/release/calendar_probe.wasm
 
 # The host server is prepared separately; no implicit download in a check.
 check-executor: toko-tooling-check | toko-execution-check
 	@test -n "$(POCKET_IC_BIN)" || { echo "Set POCKET_IC_BIN to a prepared PocketIC 16.0.0 server" >&2; exit 1; }
-	$(_toko_recursive_prefix)cargo build --manifest-path qualification/Cargo.toml -p executor-probe --target-dir qualification/target --release --target wasm32-unknown-unknown --locked --offline
-	$(_toko_recursive_prefix)POCKET_IC_BIN="$(POCKET_IC_BIN)" cargo run --manifest-path qualification/Cargo.toml -p executor-driver --target-dir qualification/target --locked --offline -- qualification/target/wasm32-unknown-unknown/release/executor_probe.wasm
+	$(_toko_recursive_prefix)cargo build --manifest-path qualification/Cargo.toml -p executor-probe --target-dir qualification/target --release --target wasm32-unknown-unknown --locked
+	$(_toko_recursive_prefix)POCKET_IC_BIN="$(POCKET_IC_BIN)" cargo run --manifest-path qualification/Cargo.toml -p executor-driver --target-dir qualification/target --locked -- qualification/target/wasm32-unknown-unknown/release/executor_probe.wasm
 
 check-once: toko-tooling-check | toko-execution-check
 	@test -n "$(POCKET_IC_BIN)" || { echo "Set POCKET_IC_BIN to a prepared PocketIC 16.0.0 server" >&2; exit 1; }
-	$(_toko_recursive_prefix)cargo build --manifest-path qualification/Cargo.toml -p once-probe --target-dir qualification/target --release --target wasm32-unknown-unknown --locked --offline
-	$(_toko_recursive_prefix)POCKET_IC_BIN="$(POCKET_IC_BIN)" cargo run --manifest-path qualification/Cargo.toml -p once-driver --target-dir qualification/target --locked --offline -- qualification/target/wasm32-unknown-unknown/release/once_probe.wasm
+	$(_toko_recursive_prefix)cargo build --manifest-path qualification/Cargo.toml -p once-probe --target-dir qualification/target --release --target wasm32-unknown-unknown --locked
+	$(_toko_recursive_prefix)POCKET_IC_BIN="$(POCKET_IC_BIN)" cargo run --manifest-path qualification/Cargo.toml -p once-driver --target-dir qualification/target --locked -- qualification/target/wasm32-unknown-unknown/release/once_probe.wasm
 
 check-metrics: toko-tooling-check | toko-execution-check
 	@test -n "$(POCKET_IC_BIN)" || { echo "Set POCKET_IC_BIN to a prepared PocketIC 16.0.0 server" >&2; exit 1; }
-	$(_toko_recursive_prefix)cargo build --manifest-path qualification/Cargo.toml -p metrics-probe --no-default-features --target-dir qualification/target --release --target wasm32-unknown-unknown --locked --offline
+	$(_toko_recursive_prefix)cargo build --manifest-path qualification/Cargo.toml -p metrics-probe --no-default-features --target-dir qualification/target --release --target wasm32-unknown-unknown --locked
 	cp qualification/target/wasm32-unknown-unknown/release/metrics_probe.wasm qualification/target/metrics_off.wasm
-	$(_toko_recursive_prefix)cargo build --manifest-path qualification/Cargo.toml -p metrics-probe --features metrics --target-dir qualification/target --release --target wasm32-unknown-unknown --locked --offline
+	$(_toko_recursive_prefix)cargo build --manifest-path qualification/Cargo.toml -p metrics-probe --features metrics --target-dir qualification/target --release --target wasm32-unknown-unknown --locked
 	cp qualification/target/wasm32-unknown-unknown/release/metrics_probe.wasm qualification/target/metrics_on.wasm
-	$(_toko_recursive_prefix)POCKET_IC_BIN="$(POCKET_IC_BIN)" cargo run --manifest-path qualification/Cargo.toml -p once-driver --target-dir qualification/target --locked --offline -- --metrics-cost qualification/target/metrics_off.wasm qualification/target/metrics_on.wasm
+	$(_toko_recursive_prefix)POCKET_IC_BIN="$(POCKET_IC_BIN)" cargo run --manifest-path qualification/Cargo.toml -p once-driver --target-dir qualification/target --locked -- --metrics-cost qualification/target/metrics_off.wasm qualification/target/metrics_on.wasm
 
 .PHONY: check-formatting-hooks qualify qualify-release qualify-rust qualify-archives qualify-entropy
 check-formatting-hooks: toko-tooling-check | toko-execution-check

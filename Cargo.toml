@@ -11,13 +11,15 @@ publish = ["crates-io"]
 repository = "https://github.com/dragginzgame/ic-scheduling"
 
 [workspace.dependencies]
-ic-timers = { version = "0.46.6", path = "crates/ic-timers" }
-
+# Production
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 ic-metrics = { version = "0.30.8", default-features = false }
 ic-platform-runtime = { version = "0.23.14", default-features = false, features = ["call-ic0", "system-raw"] }
+ic-timers = { version = "0.46.6", path = "crates/ic-timers" }
 saffron = { version = "0.1.0", default-features = false, features = ["std"] }
-toko-tooling = "=0.45.3"
+
+# Tests and tooling
+toko-tooling = "=0.45.13"
 
 [workspace.lints.cargo]
 unused_dependencies = "deny"

@@ -22,9 +22,11 @@ fn record(index: usize) {
         events.set(value);
     });
 }
+
 fn self_id() -> Principal {
     system::canister_self()
 }
+
 fn authenticate() {
     let mut bytes = [0; 29];
     let len = ic0::msg_caller_size();
@@ -36,6 +38,7 @@ fn authenticate() {
         ic0::trap(b"self only");
     }
 }
+
 fn scenario() -> u8 {
     if ic0::msg_arg_data_size() != 1 {
         ic0::trap(b"expected one byte");

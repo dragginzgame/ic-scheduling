@@ -7,6 +7,7 @@ async fn ticks(pic: &PocketIc) {
         pic.tick().await;
     }
 }
+
 async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> ([u8; 2], u64, Vec<u64>) {
     let bytes = pic
         .query_call(id, sender, "catch_up_state", vec![])
@@ -24,6 +25,7 @@ async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> ([u8; 2], 
             .collect(),
     )
 }
+
 pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     for mode in 0..=10 {
         let id = pic.create_canister().await;

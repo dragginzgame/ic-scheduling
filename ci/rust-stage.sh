@@ -59,7 +59,7 @@ done
 jq -cnS --args '$ARGS.positional | {files:.}' "${tools[@]}" "$editor" > target/release-validation/rust-tools.json
 jq -cnS --arg path "$PATH" --arg home "$HOME" --arg tmp "$root/target/release-validation/rust-tmp" \
   --arg tools "$root/target/release-validation/rust-tools.json" --arg identity "$identity" \
-  '{PATH:$path,HOME:$home,TMPDIR:$tmp,LC_ALL:"C",CARGO_NET_OFFLINE:"true",RUSTUP_AUTO_INSTALL:"0",CARGO_STAGE_TOOLS:$tools,CARGO_STAGE_IDENTITY:$identity}' \
+  '{PATH:$path,HOME:$home,TMPDIR:$tmp,LC_ALL:"C",RUSTUP_AUTO_INSTALL:"0",CARGO_STAGE_TOOLS:$tools,CARGO_STAGE_IDENTITY:$identity}' \
   > target/release-validation/rust-environment.json
 (
   cd "$candidate"

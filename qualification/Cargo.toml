@@ -16,13 +16,16 @@ license-file = "../LICENSE.md"
 publish = false
 
 [workspace.dependencies]
+# Production
 ic-jobs = { path = "../crates/ic-jobs", default-features = false, features = ["calendar"] }
 ic-platform-runtime = { version = "0.23.14", default-features = false, features = ["call-ic0", "system-raw"] }
 ic-platform-types = { version = "0.21.2", default-features = false }
 ic-testkit = { version = "0.110.0", default-features = false }
 ic-timers = { path = "../crates/ic-timers" }
 tokio = { version = "1.54.1", default-features = false, features = ["rt"] }
-toko-tooling = "=0.45.3"
+
+# Tests and tooling
+toko-tooling = "=0.45.13"
 
 [workspace.lints.cargo]
 unused_dependencies = "deny"

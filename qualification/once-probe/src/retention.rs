@@ -23,6 +23,7 @@ impl Capture {
             rejected,
         }
     }
+
     fn touch(&self) {
         assert_eq!(self.bytes.len(), 4096);
         assert!(self.bytes.iter().all(|&byte| byte == 0x5a));
@@ -62,6 +63,7 @@ impl Drop for Attempt {
         });
     }
 }
+
 fn result() -> OnceResult {
     OnceResult {
         observation: Observation::NoWork,

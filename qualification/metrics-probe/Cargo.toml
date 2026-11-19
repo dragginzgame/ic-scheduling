@@ -6,9 +6,6 @@ rust-version.workspace = true
 license-file.workspace = true
 publish.workspace = true
 
-[target.'cfg(any())'.dev-dependencies]
-toko-tooling.workspace = true
-
 [package.metadata.cargo-machete]
 ignored = ["toko-tooling"]
 
@@ -26,6 +23,9 @@ metrics = ["ic-timers/metrics"]
 ic-platform-runtime.workspace = true
 ic-platform-types.workspace = true
 ic-timers.workspace = true
+
+[dev-dependencies]
+toko-tooling.workspace = true
 
 [lints]
 workspace = true

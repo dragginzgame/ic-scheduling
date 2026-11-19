@@ -97,7 +97,7 @@ case "${1:-}" in
     bash "$shared/check-release-tag.sh" "$(git rev-parse HEAD)" "$version" "$group"
     if [[ "$group" == jobs ]]; then
       # Timers must already exist in the registry. Prepare the exact standalone
-      # Jobs archive and locked registry sources, then verify Wasm offline.
+      # Jobs archive and locked registry sources, then verify Wasm.
       # This deliberately does not use the unpublished-workspace override.
       cargo package -p ic-jobs --all-features --locked --no-verify
       # Extraction must be outside this Cargo workspace; otherwise Cargo treats
@@ -107,7 +107,7 @@ case "${1:-}" in
       tar -xzf "target/package/ic-jobs-$version.crate" -C "$stage"
       manifest="$stage/ic-jobs-$version/Cargo.toml"
       cargo fetch --manifest-path "$manifest" --locked
-      cargo check --manifest-path "$manifest" --all-features --target wasm32-unknown-unknown --locked --offline
+      cargo check --manifest-path "$manifest" --all-features --target wasm32-unknown-unknown --locked
     fi
     ;;
   *) echo 'Unknown release hook' >&2; exit 2 ;;

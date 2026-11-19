@@ -2,6 +2,7 @@
 use super::{
     Call, Cell, Observation, Once, OnceDemand, OnceNext, OnceResult, RefCell, Wait, ic0, self_id,
 };
+
 thread_local! {
     static HANDLES: RefCell<Vec<Once>> = const { RefCell::new(Vec::new()) };
     static SAMPLES: RefCell<[[u64; 4]; 64]> = const { RefCell::new([[0; 4]; 64]) };

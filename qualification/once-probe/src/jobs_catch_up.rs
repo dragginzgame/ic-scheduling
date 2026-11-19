@@ -3,6 +3,7 @@ use super::{Call, Cell, RefCell, Wait, ic0, self_id};
 use ic_jobs::{
     CatchUpLimit, CatchUpProgress, Checkpoint, Context, Job, Outcome, Policy, Schedule, Status,
 };
+
 thread_local! {
     static JOB: RefCell<Option<Job>> = const { RefCell::new(None) };
     static MODE: Cell<u8> = const { Cell::new(0) };
@@ -10,6 +11,7 @@ thread_local! {
     static FINISHED: Cell<u8> = const { Cell::new(0) };
     static ACTIVE: Cell<bool> = const { Cell::new(false) };
 }
+
 fn policy(mode: u8) -> Policy {
     Policy::CatchUp(
         CatchUpLimit::new(
@@ -27,12 +29,14 @@ fn policy(mode: u8) -> Policy {
         .unwrap(),
     )
 }
+
 fn arg() -> u8 {
     assert_eq!(ic0::msg_arg_data_size(), 1);
     let mut value = [0];
     ic0::msg_arg_data_copy(&mut value, 0);
     value[0]
 }
+
 fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
     let mode = MODE.with(Cell::get);
     if mode == 3 || (mode == 9 && LOG.with(|log| log.borrow().len()) == 1) {
@@ -62,6 +66,7 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
         Outcome::Success
     }
 }
+
 /// Bind a selected catch-up scenario.
 /// # Panics
 /// Traps on invalid setup or admission failure.
@@ -83,6 +88,7 @@ pub extern "C" fn setup() {
     JOB.with(|slot| *slot.borrow_mut() = Some(job));
     ic0::msg_reply();
 }
+
 /// Apply owner controls during the first accepted occurrence.
 /// # Panics
 /// Traps on unexpected checkpoint/control behavior.
@@ -104,6 +110,7 @@ pub extern "C" fn echo() {
     });
     ic0::msg_reply();
 }
+
 /// Resume paused work, or reconcile uncertainty and resume future work.
 /// # Panics
 /// Traps on malformed controls or absent recovery authority.
@@ -131,6 +138,7 @@ pub extern "C" fn control() {
     });
     ic0::msg_reply();
 }
+
 /// Phase, finished count, log length, selected time, then the committed start log.
 /// # Panics
 /// Traps on missing job or status errors.
@@ -223,6 +231,7 @@ pub(super) fn pre_upgrade() -> bool {
         true
     })
 }
+
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 1024];
     ic0::stable64_read(0, &mut bytes);

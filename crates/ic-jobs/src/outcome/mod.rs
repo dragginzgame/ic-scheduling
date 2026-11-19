@@ -1,5 +1,10 @@
 //! Bounded latest-result data; hosts own any historical journal.
+
+#[cfg(test)]
+mod tests;
+
 use crate::{checkpoint::CheckpointError, unresolved::Attempt};
+
 /// Business outcome. Only an explicit retry-safe failure permits policy retries.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Outcome {
@@ -45,21 +50,22 @@ impl RecordedOutcome {
             at,
         })
     }
+
     /// Exact attempt; combine with the host's stable job key.
     #[must_use]
     pub const fn attempt(self) -> Attempt {
         self.attempt
     }
+
     /// Returned outcome or explicit owner disposition.
     #[must_use]
     pub const fn result(self) -> RecordedResult {
         self.result
     }
+
     /// Normal completion or reconciliation time, in Unix nanoseconds.
     #[must_use]
     pub const fn at(self) -> u64 {
         self.at
     }
 }
-#[cfg(test)]
-mod tests;

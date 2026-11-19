@@ -15,6 +15,7 @@ thread_local! {
     static UPGRADED: Cell<bool> = const { Cell::new(false) };
     static EXPORTED_PHASE: Cell<u64> = const { Cell::new(2) };
 }
+
 fn schedule() -> Schedule {
     let edited = EDITED.with(Cell::get);
     if edited != 0 {
@@ -25,6 +26,7 @@ fn schedule() -> Schedule {
         Schedule::once(0)
     }
 }
+
 fn policy() -> Policy {
     if MODE.with(Cell::get) == 6 {
         Policy::CatchUp(ic_jobs::CatchUpLimit::new(u64::MAX, 2).unwrap())
@@ -34,9 +36,11 @@ fn policy() -> Policy {
         }
     }
 }
+
 fn retries() -> RetryPolicy {
     RetryPolicy::new(3, 10 * SECOND, 15 * SECOND).unwrap()
 }
+
 fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
     let mode = MODE.with(Cell::get);
     let upgraded = UPGRADED.with(Cell::get);
@@ -66,6 +70,7 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
         }
     }
 }
+
 /// Bind the unresolved-record fixture.
 /// # Panics
 /// Traps on invalid mode or admission failure.
@@ -90,6 +95,7 @@ pub extern "C" fn setup() {
     JOB.with_borrow_mut(|slot| *slot = Some(job));
     ic0::msg_reply();
 }
+
 /// Commit an owner edit during the old attempt's actual await.
 /// # Panics
 /// Traps on control failure.
@@ -106,6 +112,7 @@ pub extern "C" fn echo() {
     }
     ic0::msg_reply();
 }
+
 /// Return status identity, run count, exported phase, owner revision and batch count.
 /// # Panics
 /// Traps on provider faults.
@@ -161,6 +168,7 @@ pub extern "C" fn state() {
     });
     ic0::msg_reply();
 }
+
 /// Exercise the restoration barrier or explicitly reconcile it.
 /// # Panics
 /// Traps if controls bypass uncertainty or reject valid authority.
@@ -225,6 +233,7 @@ pub extern "C" fn control() {
     });
     ic0::msg_reply();
 }
+
 pub(super) fn pre_upgrade() -> bool {
     JOB.with_borrow(|slot| {
         let Some(job) = slot else {
@@ -265,6 +274,7 @@ pub(super) fn pre_upgrade() -> bool {
         true
     })
 }
+
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 168];
     ic0::stable64_read(0, &mut bytes);

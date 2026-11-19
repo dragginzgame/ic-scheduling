@@ -22,6 +22,7 @@ pub(super) fn append(record: Option<RecordedOutcome>, bytes: &mut Vec<u8>) {
         bytes.extend(field.to_le_bytes());
     }
 }
+
 pub(super) fn restore(checkpoint: Checkpoint, bytes: &[u8]) -> Checkpoint {
     assert_eq!(bytes.len(), 40);
     let v: [u64; 5] =

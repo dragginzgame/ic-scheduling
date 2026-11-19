@@ -90,11 +90,13 @@ pub fn initialize() -> Result<(), Error> {
         runtime.check()
     })
 }
+
 fn runtime() -> Result<Rc<Runtime>, Error> {
     RUNTIME
         .with(|slot| slot.borrow().clone())
         .ok_or(Error::Uninitialized)
 }
+
 /// Read aggregate counters without changing demand. Available even after a
 /// provider fault. Host code owns encoding/export; no exporter is invoked here.
 /// # Errors
@@ -103,6 +105,7 @@ fn runtime() -> Result<Rc<Runtime>, Error> {
 pub fn metrics() -> Result<crate::Metrics, Error> {
     Ok(runtime()?.metrics.snapshot())
 }
+
 /// Read a coherent, identity-ordered inventory with at most 64 declarations.
 /// Observations never carry control/recovery authority. Incarnations are local
 /// to this runtime; hosts identify upgrade/reinstall boundaries when exporting.
@@ -116,6 +119,7 @@ pub fn inventory() -> Result<crate::Inventory, Error> {
         timers: runtime.bindings.inventory(),
     })
 }
+
 /// Bind one inactive callback with nonempty owner/group/name components (64 bytes each).
 ///
 /// # Errors
@@ -171,9 +175,11 @@ impl Once {
         self.handle.remove()?;
         runtime.arm()
     }
+
     fn runtime(&self) -> Result<Rc<Runtime>, Error> {
         self.runtime.upgrade().ok_or(Error::StaleAuthority)
     }
+
     /// Change eligibility; never invokes work inline. A provider failure is terminal.
     /// # Errors
     /// Returns stale authority, recovery-required or provider/counter fault.
@@ -183,6 +189,7 @@ impl Once {
         self.handle.set(demand)?;
         runtime.arm()
     }
+
     /// Observe this declaration without affecting eligibility.
     /// # Errors
     /// Returns stale authority if the runtime is gone.
@@ -201,6 +208,7 @@ impl Once {
             )),
         })
     }
+
     /// Clear only the current recovery barrier after owner reconciliation.
     /// # Errors
     /// Returns stale recovery/authority or a terminal provider fault.
@@ -220,6 +228,7 @@ impl Runtime {
         #[cfg(not(feature = "metrics"))]
         let _ = event;
     }
+
     fn check(&self) -> Result<(), Error> {
         if self.faulted.get() {
             Err(Error::Faulted)
@@ -227,6 +236,7 @@ impl Runtime {
             Ok(())
         }
     }
+
     fn fail(&self) {
         if !self.faulted.replace(true) {
             self.record(Event::ProviderFault);
@@ -234,6 +244,7 @@ impl Runtime {
         system::global_timer_set(0);
         self.timer.set(0);
     }
+
     fn arm(&self) -> Result<(), Error> {
         self.check()?;
         let (eligible, cadence, full) = {
@@ -282,6 +293,8 @@ impl Runtime {
         Ok(())
     }
 }
+
+/// Processes due declarations when the IC global timer fires.
 #[expect(
     unsafe_code,
     reason = "this crate owns the canister global timer export"
@@ -427,6 +440,7 @@ impl Drop for FlightGuard {
     }
 }
 
+/// Accepts authenticated self-calls for isolated timer work.
 #[expect(
     unsafe_code,
     reason = "this crate owns its authenticated work endpoint"
@@ -550,6 +564,7 @@ pub enum WatchdogStatus {
     /// Terminal entry or provider fault.
     Faulted,
 }
+
 /// Bind an inactive synchronous watchdog, with cadence in nanoseconds.
 /// Consumer-owned asynchronous work must enforce its own physical-request admission.
 /// # Errors
@@ -594,6 +609,7 @@ impl Watchdog {
         self.handle.remove()?;
         runtime.arm()
     }
+
     /// Update eligibility without invoking consumer work inline.
     /// # Errors
     /// Returns stale authority or terminal entry/provider fault.
@@ -603,6 +619,7 @@ impl Watchdog {
         self.handle.set(demand, system::time())?;
         runtime.arm()
     }
+
     /// Observe this declaration without controlling consumer-owned async work.
     /// # Errors
     /// Returns stale authority if the runtime is gone.

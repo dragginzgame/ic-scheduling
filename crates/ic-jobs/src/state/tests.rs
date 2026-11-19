@@ -438,11 +438,13 @@ impl State {
             checkpoint.clone(),
         )
     }
+
     fn new(through: u64) -> Self {
         Self::restore(
             &Checkpoint::new(7, 1, Some(through), None, ControlState::Active, None, None).unwrap(),
         )
     }
+
     fn unstarted() -> Self {
         Self::restore(&Checkpoint::new(7, 1, None, None, ControlState::Active, None, None).unwrap())
     }

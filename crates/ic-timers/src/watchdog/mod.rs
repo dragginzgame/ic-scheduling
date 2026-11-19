@@ -2,6 +2,10 @@
 //!
 //! Transport must commit `advance` in a control message before invoking work in
 //! another message. This core cannot establish that platform commit boundary.
+
+#[cfg(test)]
+mod tests;
+
 use std::num::NonZeroU64;
 
 pub(super) use crate::{WatchdogDemand as Demand, WatchdogNext as Next};
@@ -40,12 +44,15 @@ impl WatchdogState {
             faulted: false,
         }
     }
+
     pub(super) const fn deadline(&self) -> Option<u64> {
         self.deadline
     }
+
     pub(super) const fn outstanding(&self) -> bool {
         self.work.is_some()
     }
+
     pub(super) const fn faulted(&self) -> bool {
         self.faulted
     }
@@ -107,6 +114,7 @@ impl WatchdogState {
             _ => None,
         }
     }
+
     pub(super) fn accept(&mut self, ticket: Ticket) -> bool {
         if self.pending() != Some(ticket) {
             return false;
@@ -119,6 +127,7 @@ impl WatchdogState {
         });
         true
     }
+
     pub(super) fn complete(&mut self, ticket: Ticket, next: Next) -> bool {
         let Some(Work {
             ticket: current,
@@ -153,15 +162,18 @@ impl WatchdogState {
         self.work = None;
         true
     }
+
     fn successor(&mut self, now: u64) -> Result<u64, Exhausted> {
         match now.checked_add(self.cadence.get()) {
             Some(at) => Ok(at),
             None => self.exhaust(),
         }
     }
+
     fn check(&self) -> Result<(), Exhausted> {
         if self.faulted { Err(Exhausted) } else { Ok(()) }
     }
+
     fn exhaust<T>(&mut self) -> Result<T, Exhausted> {
         self.faulted = true;
         self.deadline = None;
@@ -169,6 +181,3 @@ impl WatchdogState {
         Err(Exhausted)
     }
 }
-
-#[cfg(test)]
-mod tests;

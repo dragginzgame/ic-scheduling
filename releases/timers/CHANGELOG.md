@@ -5,6 +5,8 @@
 ### 🛠️ Development
 
 - Adopt Toko Tooling 0.45.3 and qualify exact-stage reuse and batch timing summaries.
+- Adopt Toko Tooling 0.45.13, honor invocation-scoped Cargo offline settings and
+  align Rust module layout with the engineering baseline.
 
 ## [0.46.6] - 2026-11-18
 

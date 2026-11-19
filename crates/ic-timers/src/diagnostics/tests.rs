@@ -1,4 +1,5 @@
 use super::*;
+
 #[test]
 fn failure_streak_uses_canonical_overflow_and_normal_result_reset() {
     let mut measurements = TimerMeasurements::default();

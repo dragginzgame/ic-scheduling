@@ -1,4 +1,8 @@
 //! Inert aggregate recording; no callbacks, allocation, clocks or scheduling authority.
+
+#[cfg(feature = "metrics")]
+mod enabled;
+
 use crate::Observation;
 
 #[cfg_attr(
@@ -14,8 +18,6 @@ pub(crate) enum Event {
     ProviderFault,
 }
 
-#[cfg(feature = "metrics")]
-mod enabled;
 #[cfg(feature = "metrics")]
 pub use enabled::Metrics;
 #[cfg(all(feature = "metrics", target_arch = "wasm32"))]

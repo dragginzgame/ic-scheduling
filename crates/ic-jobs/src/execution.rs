@@ -306,6 +306,7 @@ where
         .set(demand.map_or(OnceDemand::Inactive, OnceDemand::At))?;
     Ok(job)
 }
+
 fn stopped() -> OnceResult {
     OnceResult {
         observation: ic_timers::Observation::NoWork,
@@ -355,6 +356,7 @@ impl Job {
             .with_unresolved(attempt, phase)
             .map_err(|_| Error::Faulted)
     }
+
     /// Export reconstructable progress without persisting timer capabilities.
     /// Call synchronously from the host upgrade-admission boundary and store it
     /// atomically with the matching job definition. Running/uncertain work refuses.
@@ -439,6 +441,7 @@ impl Job {
             _ => return Err(Error::Faulted),
         })
     }
+
     fn control(
         &self,
         change: impl FnOnce(&mut State, u64) -> Result<(), crate::state::Error>,
@@ -472,12 +475,14 @@ impl Job {
         }
         Ok(())
     }
+
     /// Pause future work; accepted work and uncertainty remain owned until settlement.
     /// # Errors
     /// Returns timer or terminal progress errors.
     pub fn pause(&self) -> Result<(), Error> {
         self.control(|state, _| state.pause())
     }
+
     /// Terminally cancel pending or paused work and discard its remaining batch.
     /// Does not remove the retained timer declaration. Repeated cancellation is
     /// harmless; checkpoint/restore preserves it. Running or uncertain effects
@@ -500,6 +505,7 @@ impl Job {
         state.retry = None;
         Ok(())
     }
+
     /// Resume according to policy without bypassing unresolved work. A paused
     /// catch-up batch retains its original selection and remaining count; a pending
     /// retry retains its consumed budget and deadline.
@@ -508,6 +514,7 @@ impl Job {
     pub fn resume(&self) -> Result<(), Error> {
         self.control(|state, _| state.resume())
     }
+
     /// Replace the schedule for future occurrences; preserve accepted identity/pause.
     /// # Errors
     /// Returns timer or terminal revision/control errors.
@@ -523,6 +530,7 @@ impl Job {
             Ok(())
         })
     }
+
     /// Apply an explicit owner disposition after effect reconciliation. Retire
     /// discards the retry/batch and skips through now. RetrySafe preserves the
     /// occurrence and consumed budget, with backoff from reconciliation time.

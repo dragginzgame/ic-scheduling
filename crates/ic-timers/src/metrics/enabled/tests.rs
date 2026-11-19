@@ -1,4 +1,5 @@
 use super::*;
+
 #[test]
 fn overflow_stays_diagnostic_and_outcomes_stay_separate() {
     let recorder = Recorder::new();

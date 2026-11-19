@@ -1,5 +1,8 @@
 //! Input admission and timestamp adaptation around Saffron's UTC engine.
 
+#[cfg(test)]
+mod tests;
+
 use std::{error::Error, fmt, num::NonZeroU64};
 
 use chrono::{DateTime, Utc};
@@ -132,7 +135,11 @@ impl Schedule {
         })
     }
 
-    #[cfg(all(feature = "execution", target_arch = "wasm32"))]
+    #[cfg(feature = "execution")]
+    #[cfg_attr(
+        not(target_arch = "wasm32"),
+        expect(dead_code, reason = "only binding a live job needs its first deadline")
+    )]
     pub(crate) fn first_at(&self) -> Option<u64> {
         match self.rule {
             Rule::Once(at) => Some(at),
@@ -187,6 +194,3 @@ impl Schedule {
             .filter(|&ns| ns >= from_ns && ns <= through_ns)
     }
 }
-
-#[cfg(test)]
-mod tests;

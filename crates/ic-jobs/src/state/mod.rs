@@ -4,6 +4,10 @@
 //! prove termination before blocking it. These tokens are local, not persisted
 //! capabilities or permission to replay business effects.
 
+mod planning;
+#[cfg(test)]
+mod tests;
+
 use crate::{
     CatchUpProgress, Checkpoint, Policy, RecordedOutcome, RetryPolicy, RetryProgress, Schedule,
 };
@@ -175,6 +179,7 @@ impl State {
             last_outcome: checkpoint.last_outcome,
         }
     }
+
     pub(super) const fn through(&self) -> Option<u64> {
         self.through
     }
@@ -344,11 +349,13 @@ impl State {
         self.cancel_queued();
         Ok(())
     }
+
     pub(super) fn resume(&mut self) -> Result<(), Error> {
         self.check()?;
         self.control = ControlState::Active;
         Ok(())
     }
+
     /// A schedule edit invalidates unaccepted selection but preserves accepted or
     /// uncertain identity. The new schedule cannot move progress backward.
     pub(super) fn edit(&mut self, through: u64) -> Result<(), Error> {
@@ -377,6 +384,7 @@ impl State {
         self.control = ControlState::Cancelled;
         Ok(())
     }
+
     fn cancel_queued(&mut self) {
         if self
             .active
@@ -385,6 +393,7 @@ impl State {
             self.active = None;
         }
     }
+
     pub(super) fn restored(&self) -> bool {
         matches!(
             self.active,
@@ -394,12 +403,14 @@ impl State {
             })
         )
     }
+
     fn retire(&mut self, selection: Selection) {
         if selection.occurrence.revision == self.revision {
             self.through = self.through.max(Some(selection.occurrence.scheduled_at));
         }
         self.active = None;
     }
+
     fn check(&self) -> Result<(), Error> {
         if self.faulted {
             Err(Error::Exhausted)
@@ -409,14 +420,10 @@ impl State {
             Ok(())
         }
     }
+
     fn exhaust<T>(&mut self) -> Result<T, Error> {
         // Retain unresolved identity for diagnosis rather than erasing uncertainty.
         self.faulted = true;
         Err(Error::Exhausted)
     }
 }
-
-mod planning;
-
-#[cfg(test)]
-mod tests;

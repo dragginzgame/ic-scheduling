@@ -1,4 +1,8 @@
 //! Synchronous watchdog callbacks in the shared retained declaration table.
+
+#[cfg(test)]
+mod tests;
+
 use super::{Bindings, Error, Handle, Kind, Table};
 use crate::{
     engine::ControlError,
@@ -52,6 +56,7 @@ impl Bindings {
             }
         }
     }
+
     /// Invoke only in an isolated work message, after the control turn commits.
     /// No table borrow spans callback invocation or reentrant owner commands.
     pub(crate) fn run_watchdog(&self, dispatch: &Dispatch) -> Result<bool, Error> {
@@ -95,14 +100,17 @@ impl WatchdogHandle {
         };
         Ok(f(state))
     }
+
     pub(crate) fn set(&self, demand: Demand, now: u64) -> Result<(), Error> {
         self.with_state(|state| state.set(demand, now))?
             .map_err(|_| Error::Control(ControlError::Exhausted))?;
         self.0.prune_stopped()
     }
+
     pub(crate) fn remove(&self) -> Result<(), Error> {
         self.0.remove()
     }
+
     pub(crate) fn status(&self) -> Result<(Option<u64>, bool, bool), Error> {
         self.with_state(|state| (state.deadline(), state.outstanding(), state.faulted()))
     }
@@ -115,6 +123,7 @@ impl Dispatch {
             incarnation: self.incarnation,
         })
     }
+
     /// Definitive transport settlement only; never elapsed-time inference.
     pub(crate) fn settle(&self, _abandoned: bool) -> Result<bool, Error> {
         let _owner = self.table.upgrade().ok_or(Error::StaleAuthority)?;
@@ -137,11 +146,11 @@ impl Dispatch {
     }
 }
 
-#[cfg(test)]
-mod tests;
-
 impl Dispatch {
-    #[cfg(target_arch = "wasm32")]
+    #[cfg_attr(
+        not(target_arch = "wasm32"),
+        expect(dead_code, reason = "only the IC transport compares submitted flights")
+    )]
     pub(crate) fn same(&self, other: &Self) -> bool {
         self.slot == other.slot
             && self.incarnation == other.incarnation

@@ -48,7 +48,7 @@ are unchanged. Recorded local evidence does not establish deployment or producti
 ## Development
 
 Rust is pinned to 1.100.0 with Clippy, rustfmt and the `wasm32-unknown-unknown`
-target. Toko Tooling is pinned to 0.44.5 in Cargo and installed under
+target. Toko Tooling is pinned to 0.45.13 in both Cargo workspaces and installed under
 `vendor/toko-tooling/`, with its checksum receipt at `.toko-tooling.snapshot`.
 Read [the engineering baseline](TOKO-TOOLING.md) and [local instructions](AGENTS.md).
 
@@ -64,14 +64,14 @@ make doc PACKAGE=ic-jobs
 make fmt-check
 ```
 
-Calendar checks: `cargo test -p ic-jobs --features calendar --lib --locked --offline` and
+Calendar checks: `cargo test -p ic-jobs --features calendar --lib --locked` and
 `make check-calendar-wasm`. The latter requires a separately prepared Node.js
 runtime (observed here: 24.21.0), runs a standalone Wasm engine probe and prints
 its binary/code-section sizes. It does not qualify installed IC behavior.
 
-Tool installation is explicit and may use the network. Ordinary checks use the
-prepared tools and locked dependencies offline. For direct shell access to the
-installed common tools:
+Tool installation is explicit. Cargo checks may fetch missing locked dependencies.
+Set `CARGO_NET_OFFLINE=true` for an offline invocation with prepared dependencies.
+For direct shell access to the installed common tools:
 
 ```sh
 export PATH="$PWD/.tools/host/bin:$PWD/.tools/rust/common/bin:$PATH"
@@ -87,7 +87,7 @@ make deps-update DEPENDENCY_PACKAGE=toko-tooling
 
 `deps-update` accesses the registry and updates locks; `DEPENDENCY_PRECISE`
 optionally selects a version within the manifest requirement. To adopt a new
-Toko release, change its exact Cargo pin, update its lock selection, then run
+Toko release, change its exact Cargo pin in both workspaces, update the locks, then run
 `make toko-tooling-preview` and `make toko-tooling-update`.
 Run `make install-hooks` after setup or a tooling update in each clone. It sets
 repository-local `core.hooksPath` to `vendor/toko-tooling/.githooks`. The canonical

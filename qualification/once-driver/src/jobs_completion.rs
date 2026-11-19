@@ -9,11 +9,13 @@ async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> [u64; 6] {
     assert_eq!(bytes.len(), 48);
     std::array::from_fn(|i| u64::from_le_bytes(bytes[i * 8..i * 8 + 8].try_into().unwrap()))
 }
+
 async fn ticks(pic: &PocketIc, count: usize) {
     for _ in 0..count {
         pic.tick().await;
     }
 }
+
 pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     for mode in 0..=10 {
         let id = pic.create_canister().await;

@@ -8,6 +8,7 @@ fn decode(bytes: &[u8]) -> [u64; 6] {
         u64::from_le_bytes(bytes[index * 8..index * 8 + 8].try_into().unwrap())
     })
 }
+
 pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     let id = pic.create_canister().await;
     pic.add_cycles(id, 100_000_000_000_000).await;

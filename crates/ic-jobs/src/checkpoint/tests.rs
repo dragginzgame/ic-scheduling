@@ -62,6 +62,7 @@ fn definition_validation_covers_paused_batches_and_the_last_pending_occurrence()
     .unwrap();
     assert!(!off_calendar.matches_definition(&schedule, skip, crate::retry::RetryPolicy::NONE));
 }
+
 #[test]
 fn rejects_invalid_host_progress_without_repairing_it() {
     for version in 0..7 {
@@ -179,7 +180,7 @@ fn unstarted_checkpoint_and_zero_batch_are_distinct_from_settled_zero() {
         )
         .unwrap();
         assert!(checkpoint.matches_definition(&schedule, policy, crate::retry::RetryPolicy::NONE));
-        assert!(
+        assert_eq!(
             Checkpoint::new(
                 7,
                 1,
@@ -188,11 +189,14 @@ fn unstarted_checkpoint_and_zero_batch_are_distinct_from_settled_zero() {
                 control(paused),
                 Some(batch.clone()),
                 None
-            )
-            .is_err()
+            ),
+            Err(CheckpointError::Progress)
         );
     }
-    assert!(Checkpoint::new(2, 1, None, None, ControlState::Active, None, None).is_err());
+    assert_eq!(
+        Checkpoint::new(2, 1, None, None, ControlState::Active, None, None),
+        Err(CheckpointError::Version)
+    );
 }
 
 #[cfg(feature = "execution")]
@@ -325,13 +329,15 @@ fn pending_retry_data_preserves_identity_and_consumed_budget() {
         (None, None, ControlState::Cancelled, false),
     ] {
         let result = Checkpoint::new(7, 1, through, selected, control, None, Some(retry.clone()));
-        assert_eq!(result.is_ok(), valid);
-        if let Ok(checkpoint) = result {
+        if valid {
+            let checkpoint = result.unwrap();
             assert_eq!(checkpoint.retry(), Some(&retry));
+        } else {
+            assert_eq!(result, Err(CheckpointError::Progress));
         }
     }
     let batch = CatchUpProgress::new(&[20], 30).unwrap();
-    assert!(
+    assert_eq!(
         Checkpoint::new(
             7,
             1,
@@ -340,8 +346,8 @@ fn pending_retry_data_preserves_identity_and_consumed_budget() {
             ControlState::Paused,
             Some(batch),
             Some(retry)
-        )
-        .is_err()
+        ),
+        Err(CheckpointError::Progress)
     );
     assert_eq!(
         Checkpoint::new(4, 1, None, None, ControlState::Active, None, None),

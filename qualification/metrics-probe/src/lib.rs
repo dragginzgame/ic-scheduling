@@ -8,10 +8,12 @@ use ic_timers::{
     Observation, OnceDemand, OnceNext, OnceResult, WatchdogDemand, WatchdogNext, WatchdogResult,
 };
 use std::{cell::Cell, num::NonZeroU64};
+
 thread_local! {
     static COUNTS: Cell<[u8; 3]> = const { Cell::new([0; 3]) };
     static COSTS: Cell<[u64; 4]> = const { Cell::new([0; 4]) };
 }
+
 fn cost(index: usize, value: u64) {
     COSTS.with(|costs| {
         let mut values = costs.get();
@@ -19,6 +21,7 @@ fn cost(index: usize, value: u64) {
         costs.set(values);
     });
 }
+
 fn count(index: usize) {
     COUNTS.with(|counts| {
         let mut values = counts.get();
@@ -26,6 +29,7 @@ fn count(index: usize) {
         counts.set(values);
     });
 }
+
 fn self_id() -> Principal {
     system::canister_self()
 }

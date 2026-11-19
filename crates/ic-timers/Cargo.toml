@@ -10,9 +10,6 @@ rust-version.workspace = true
 license-file.workspace = true
 publish.workspace = true
 
-[target.'cfg(any())'.dev-dependencies]
-toko-tooling.workspace = true
-
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ic-platform-runtime.workspace = true
 
@@ -25,6 +22,9 @@ metrics = ["dep:ic-metrics"]
 
 [dependencies]
 ic-metrics = { workspace = true, optional = true }
+
+[dev-dependencies]
+toko-tooling.workspace = true
 
 [lints]
 workspace = true

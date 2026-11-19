@@ -3,6 +3,7 @@ use super::{Call, Cell, RefCell, Wait, ic0, self_id};
 use ic_jobs::{Checkpoint, Context, ControlState, Job, Outcome, Policy, Schedule, Status};
 use ic_platform_runtime::system;
 use std::num::NonZeroU64;
+
 thread_local! {
     static JOB: RefCell<Option<Job>> = const { RefCell::new(None) };
     static MODE: Cell<u8> = const { Cell::new(0) };
@@ -10,6 +11,7 @@ thread_local! {
     static FINISHED: Cell<u64> = const { Cell::new(0) };
     static EDITED: Cell<u64> = const { Cell::new(0) };
 }
+
 fn schedule() -> Schedule {
     if MODE.with(Cell::get) == 10 {
         return Schedule::fixed_rate(0, NonZeroU64::new(10_000_000_000).unwrap());
@@ -24,6 +26,7 @@ fn schedule() -> Schedule {
         .unwrap(),
     )
 }
+
 fn policy() -> Policy {
     match MODE.with(Cell::get) {
         7 | 10 => Policy::CatchUp(ic_jobs::CatchUpLimit::new(u64::MAX, 3).unwrap()),
@@ -33,6 +36,7 @@ fn policy() -> Policy {
         },
     }
 }
+
 fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
     if MODE.with(Cell::get) == 3 {
         ic0::trap(b"completion factory trap");
@@ -61,6 +65,7 @@ fn work(context: Context) -> impl std::future::Future<Output = Outcome> {
         }
     }
 }
+
 /// Bind the completion-relative fixture.
 /// # Panics
 /// Traps on invalid mode or failed admission.
@@ -103,6 +108,7 @@ pub extern "C" fn setup() {
     JOB.with_borrow_mut(|slot| *slot = Some(job));
     ic0::msg_reply();
 }
+
 /// Apply a newer owner command while work awaits.
 /// # Panics
 /// Traps on unexpected control failure.
@@ -129,6 +135,7 @@ pub extern "C" fn echo() {
     }
     ic0::msg_reply();
 }
+
 /// Read phase, count, completion time, selected deadline, cursor and edit deadline.
 /// # Panics
 /// Traps on provider faults or malformed progress.
@@ -164,6 +171,7 @@ pub extern "C" fn state() {
     });
     ic0::msg_reply();
 }
+
 /// Resume paused work, or explicitly reconcile uncertainty before resuming.
 /// # Panics
 /// Traps on failed recovery/control.
@@ -247,6 +255,7 @@ pub(super) fn pre_upgrade() -> bool {
         true
     })
 }
+
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 104];
     ic0::stable64_read(0, &mut bytes);

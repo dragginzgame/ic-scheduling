@@ -1,4 +1,8 @@
 //! Validated progress data; hosts own encoding, storage and matching job definitions.
+
+#[cfg(test)]
+mod tests;
+
 use crate::{Attempt, UnresolvedPhase, state::ControlState};
 
 /// Invalid host-restored progress. No timer declaration has been admitted yet.
@@ -56,11 +60,13 @@ impl CatchUpProgress {
             through,
         })
     }
+
     /// Remaining selected timestamps, including a currently queued occurrence.
     #[must_use]
     pub fn pending(&self) -> &[u64] {
         &self.pending
     }
+
     /// Fixed endpoint of the batch's original planning window.
     #[must_use]
     pub const fn through(&self) -> u64 {
@@ -70,7 +76,10 @@ impl CatchUpProgress {
 impl Checkpoint {
     /// Validate the definition-dependent part before the adapter admits a timer.
     /// Batch age was frozen at selection; do not reapply it during restoration.
-    #[cfg(all(feature = "execution", any(test, target_arch = "wasm32")))]
+    #[cfg_attr(
+        all(not(test), not(target_arch = "wasm32")),
+        expect(dead_code, reason = "only the IC adapter restores live jobs")
+    )]
     pub(crate) fn matches_definition(
         &self,
         schedule: &crate::Schedule,
@@ -187,6 +196,7 @@ impl Checkpoint {
             last_outcome: None,
         })
     }
+
     /// Attach unresolved correlation data to paused progress. This record can
     /// only reconstruct blocked work in a fresh runtime; it is not replay authority.
     /// # Errors
@@ -211,6 +221,7 @@ impl Checkpoint {
         self.unresolved = Some((attempt, phase));
         Ok(self)
     }
+
     /// Unresolved attempt and its export-time observation, if any. Both phases
     /// reconstruct blocked. None identifies ordinary settled/queued progress.
     #[must_use]
@@ -223,11 +234,13 @@ impl Checkpoint {
     pub const fn version(&self) -> u8 {
         7
     }
+
     /// Preserved schedule revision.
     #[must_use]
     pub const fn revision(&self) -> u64 {
         self.revision
     }
+
     /// Exclusive settled cursor in Unix nanoseconds; None means nothing settled.
     /// For completion-relative schedules this also records the latest completion,
     /// reconciliation or owner-edit horizon used to calculate the next deadline.
@@ -235,31 +248,37 @@ impl Checkpoint {
     pub const fn through(&self) -> Option<u64> {
         self.through
     }
+
     /// Selected but unaccepted occurrence, if any.
     #[must_use]
     pub const fn selected_at(&self) -> Option<u64> {
         self.selected_at
     }
+
     /// Whether owner pause must survive reconstruction.
     #[must_use]
     pub const fn paused(&self) -> bool {
         matches!(self.control, ControlState::Paused)
     }
+
     /// Owner eligibility state to preserve in the host record.
     #[must_use]
     pub const fn control(&self) -> ControlState {
         self.control
     }
+
     /// Remaining batch state, if catch-up is in progress.
     #[must_use]
     pub const fn catch_up(&self) -> Option<&CatchUpProgress> {
         self.catch_up.as_ref()
     }
+
     /// Work explicitly deemed retry-safe and waiting for its next attempt, if any.
     #[must_use]
     pub const fn retry(&self) -> Option<&crate::retry::RetryProgress> {
         self.retry.as_ref()
     }
+
     /// Attach the decoded latest observation; it does not change eligibility.
     /// # Errors
     /// Rejects an outcome from a revision newer than this job definition.
@@ -273,12 +292,10 @@ impl Checkpoint {
         self.last_outcome = Some(outcome);
         Ok(self)
     }
+
     /// Latest completion/reconciliation observation; older history belongs to the host.
     #[must_use]
     pub const fn last_outcome(&self) -> Option<crate::outcome::RecordedOutcome> {
         self.last_outcome
     }
 }
-
-#[cfg(test)]
-mod tests;

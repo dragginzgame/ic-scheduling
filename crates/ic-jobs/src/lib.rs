@@ -12,46 +12,45 @@
 //! storage and lifecycle. Latest outcome records are bounded; coalescing is deferred.
 
 #[cfg(feature = "calendar")]
-mod schedule;
-
-#[cfg(feature = "calendar")]
-pub use schedule::{Schedule, ScheduleError};
-
-#[cfg(feature = "calendar")]
 mod catch_up;
+#[cfg(feature = "execution")]
+mod checkpoint;
+#[cfg(all(feature = "execution", target_arch = "wasm32"))]
+mod execution;
+#[cfg(feature = "execution")]
+mod outcome;
+#[cfg(feature = "execution")]
+mod retry;
 #[cfg(feature = "calendar")]
-pub use catch_up::{CatchUpLimit, CatchUpLimitError, CatchUpPlan, Policy};
-
+mod schedule;
 #[cfg_attr(
     all(not(test), not(all(feature = "execution", target_arch = "wasm32"))),
     expect(dead_code, reason = "this build excludes the wasm32 execution adapter")
 )]
 #[cfg(feature = "execution")]
 mod state;
-
 #[cfg(feature = "execution")]
-mod checkpoint;
+mod unresolved;
+
+#[cfg(feature = "calendar")]
+pub use schedule::{Schedule, ScheduleError};
+
+#[cfg(feature = "calendar")]
+pub use catch_up::{CatchUpLimit, CatchUpLimitError, CatchUpPlan, Policy};
+
 #[cfg(feature = "execution")]
 pub use checkpoint::{CatchUpProgress, Checkpoint, CheckpointError};
 #[cfg(feature = "execution")]
 pub use state::{ControlState, RecoveryDisposition};
 
 #[cfg(feature = "execution")]
-mod retry;
-#[cfg(feature = "execution")]
 pub use retry::{RetryPolicy, RetryPolicyError, RetryProgress};
 
-#[cfg(feature = "execution")]
-mod unresolved;
 #[cfg(feature = "execution")]
 pub use unresolved::{Attempt, UnresolvedPhase};
 
 #[cfg(feature = "execution")]
-mod outcome;
-#[cfg(feature = "execution")]
 pub use outcome::{Outcome, RecordedOutcome, RecordedResult};
 
-#[cfg(all(feature = "execution", target_arch = "wasm32"))]
-mod execution;
 #[cfg(all(feature = "execution", target_arch = "wasm32"))]
 pub use execution::{Context, Error, Job, Recovery, Status, bind, restore, restore_unresolved};

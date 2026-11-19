@@ -6,6 +6,7 @@ use std::{
     pin::Pin,
     task::{Context as TaskContext, Poll},
 };
+
 thread_local! {
     static JOB: RefCell<Option<Job>> = const { RefCell::new(None) };
     static MODE: Cell<u8> = const { Cell::new(0) };
@@ -13,12 +14,14 @@ thread_local! {
     static FINISHES: Cell<u8> = const { Cell::new(0) };
     static CONTEXT: Cell<[u64; 3]> = const { Cell::new([0; 3]) };
 }
+
 fn mode() -> u8 {
     assert_eq!(ic0::msg_arg_data_size(), 1);
     let mut bytes = [0];
     ic0::msg_arg_data_copy(&mut bytes, 0);
     bytes[0]
 }
+
 /// Bind an every-minute job; mode selects a concrete callback/failure behavior.
 /// # Panics
 /// Traps on malformed fixture setup or failed binding.
@@ -41,6 +44,7 @@ pub extern "C" fn setup() {
     JOB.with(|slot| *slot.borrow_mut() = Some(job));
     ic0::msg_reply();
 }
+
 /// Owner changes execute in a distinct message while the original job awaits.
 /// # Panics
 /// Traps if no job is running or owner control fails.
@@ -66,6 +70,7 @@ pub extern "C" fn echo() {
     });
     ic0::msg_reply();
 }
+
 /// State bytes: phase/start/finish, then context revision/time/start and current
 /// selected revision/time as five little-endian u64 values.
 /// # Panics
@@ -103,6 +108,7 @@ pub extern "C" fn state() {
     }
     ic0::msg_reply();
 }
+
 /// Try owner changes without reconciliation, or explicitly reconcile then resume.
 /// # Panics
 /// Traps on malformed input or unexpected recovery state.
@@ -320,6 +326,7 @@ pub(super) fn pre_upgrade() -> bool {
         true
     })
 }
+
 pub(super) fn post_upgrade() -> bool {
     let mut bytes = [0; 75];
     ic0::stable64_read(0, &mut bytes);

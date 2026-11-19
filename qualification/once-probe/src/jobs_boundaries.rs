@@ -8,6 +8,7 @@ thread_local! {
     static COUNTS: RefCell<[u8; 5]> = const { RefCell::new([0; 5]) };
     static TIMES: RefCell<[u64; 3]> = const { RefCell::new([0; 3]) };
 }
+
 fn minute() -> Schedule {
     Schedule::parse("* * * * *").unwrap()
 }

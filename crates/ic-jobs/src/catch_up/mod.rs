@@ -1,4 +1,8 @@
 //! Bounded calendar planning; execution and effect reconciliation remain separate.
+
+#[cfg(test)]
+mod tests;
+
 use crate::Schedule;
 
 /// Invalid catch-up count. The supported range is 1 through 64.
@@ -45,11 +49,13 @@ impl CatchUpLimit {
             max_count,
         })
     }
+
     /// Maximum age at batch selection, for host-owned policy persistence.
     #[must_use]
     pub const fn max_age_ns(&self) -> u64 {
         self.max_age_ns
     }
+
     /// Maximum occurrences per batch, for host-owned policy persistence.
     #[must_use]
     pub const fn max_count(&self) -> u8 {
@@ -73,6 +79,7 @@ impl CatchUpPlan {
     pub fn occurrences(&self) -> &[u64] {
         &self.occurrences
     }
+
     /// Window endpoint to retire only after every selected occurrence is settled
     /// or explicitly reconciled. Older and excess occurrences are then skipped.
     /// This never rewinds the supplied settled cursor.
@@ -80,6 +87,7 @@ impl CatchUpPlan {
     pub const fn through(&self) -> u64 {
         self.through
     }
+
     /// Whether another age-eligible occurrence was omitted by the count limit.
     /// Does not report occurrences excluded by age.
     #[must_use]
@@ -134,6 +142,3 @@ impl Schedule {
         plan
     }
 }
-
-#[cfg(test)]
-mod tests;

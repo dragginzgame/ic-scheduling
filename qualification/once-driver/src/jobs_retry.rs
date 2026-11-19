@@ -10,17 +10,20 @@ async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> [u64; 17] 
     assert_eq!(bytes.len(), 136);
     std::array::from_fn(|i| u64::from_le_bytes(bytes[i * 8..i * 8 + 8].try_into().unwrap()))
 }
+
 async fn settle(pic: &PocketIc, seconds: u64) {
     pic.advance_time(Duration::from_secs(seconds)).await;
     for _ in 0..50 {
         pic.tick().await;
     }
 }
+
 async fn control(pic: &PocketIc, id: CanisterId, sender: CanisterId, command: u8) {
     pic.update_call(id, sender, "jobs_retry_control", vec![command])
         .await
         .unwrap();
 }
+
 pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
     for mode in 0..=10 {
         let id = pic.create_canister().await;

@@ -10,8 +10,8 @@ an Entropy repository containing the immutable revision required by its
 qualification adapter.
 Export absolute `POCKET_IC_BIN` and `ENTROPY_SOURCE` paths. Release setup fetches
 both existing lockfiles with `--locked`, installs pinned tools and selects the
-metadata editor selected by `ci/metadata-editor.sh`. Checks then run offline. Recovery only
-admits saved tools; it does not refresh dependencies or repair locks.
+metadata editor selected by `ci/metadata-editor.sh`. Cargo checks preserve the
+invocation's network policy. Recovery admits saved tools and keeps the existing locks.
 
 The standalone renderer replaces the displaced Build 0.73.0 CLI selection,
 resolving
