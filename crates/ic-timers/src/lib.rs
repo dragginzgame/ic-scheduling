@@ -42,9 +42,7 @@ pub use diagnostics::{Inventory, TimerKind, TimerMeasurements, TimerPhase, Timer
 #[cfg(feature = "metrics")]
 pub use metrics::Metrics;
 #[cfg(all(feature = "metrics", target_arch = "wasm32"))]
-pub use transport::inventory;
-#[cfg(all(feature = "metrics", target_arch = "wasm32"))]
-pub use transport::metrics;
+pub use transport::{inventory, metrics};
 
 #[cfg(target_arch = "wasm32")]
 pub use transport::{

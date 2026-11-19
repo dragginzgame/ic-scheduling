@@ -1,5 +1,11 @@
 # Timers changelog
 
+## [0.46.8] - Unreleased
+
+### 🧹 Cleanup
+
+- Group the `inventory` and `metrics` re-exports under their shared Wasm feature condition.
+
 ## [0.46.7] - 2026-11-19
 
 ### 🛠️ Development
