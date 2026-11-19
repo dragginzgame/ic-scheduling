@@ -48,7 +48,7 @@ are unchanged. Recorded local evidence does not establish deployment or producti
 ## Development
 
 Rust is pinned to 1.100.0 with Clippy, rustfmt and the `wasm32-unknown-unknown`
-target. Toko Tooling is pinned to 0.45.13 in both Cargo workspaces and installed under
+target. Toko Tooling is pinned to 0.45.16 in both Cargo workspaces and installed under
 `vendor/toko-tooling/`, with its checksum receipt at `.toko-tooling.snapshot`.
 Read [the engineering baseline](TOKO-TOOLING.md) and [local instructions](AGENTS.md).
 

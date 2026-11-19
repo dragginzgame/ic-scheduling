@@ -1,6 +1,5 @@
 use super::*;
 
-#[cfg(feature = "execution")]
 #[test]
 fn definition_validation_covers_paused_batches_and_the_last_pending_occurrence() {
     use crate::{CatchUpLimit, Policy, Schedule};
@@ -162,7 +161,6 @@ fn remaining_batch_must_match_progress_and_selection() {
     assert_eq!(paused.catch_up(), Some(&batch));
 }
 
-#[cfg(feature = "execution")]
 #[test]
 fn unstarted_checkpoint_and_zero_batch_are_distinct_from_settled_zero() {
     let batch = CatchUpProgress::new(&[0, 10, 20], 30).unwrap();
@@ -199,7 +197,6 @@ fn unstarted_checkpoint_and_zero_batch_are_distinct_from_settled_zero() {
     );
 }
 
-#[cfg(feature = "execution")]
 #[test]
 fn one_shot_restore_requires_the_exact_deadline() {
     let schedule = crate::Schedule::once(0);
@@ -223,7 +220,6 @@ fn one_shot_restore_requires_the_exact_deadline() {
     ));
 }
 
-#[cfg(feature = "execution")]
 #[test]
 fn completion_deadline_must_match_the_persisted_horizon() {
     use crate::{CatchUpLimit, Policy, Schedule};
@@ -355,7 +351,6 @@ fn pending_retry_data_preserves_identity_and_consumed_budget() {
     );
 }
 
-#[cfg(feature = "execution")]
 #[test]
 fn restore_checks_retry_budget_deadline_and_schedule_even_while_paused() {
     use crate::{Policy, RetryPolicy, RetryProgress, Schedule};

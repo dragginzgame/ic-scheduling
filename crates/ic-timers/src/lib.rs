@@ -6,7 +6,6 @@
 //! Opt-in `metrics` exposes inert aggregate counters and bounded declaration
 //! inventory; observations never authorize scheduling or business-effect replay.
 
-// The IC provider is wasm32-only; native builds retain the pure engine tests.
 mod api;
 #[cfg_attr(
     all(not(test), not(target_arch = "wasm32")),
@@ -25,6 +24,7 @@ mod engine;
     expect(dead_code, reason = "native build has no IC transport")
 )]
 mod metrics;
+// Transport requires Platform Runtime's Wasm-only system and raw APIs.
 #[cfg(target_arch = "wasm32")]
 mod transport;
 #[cfg_attr(
@@ -37,12 +37,13 @@ pub use api::{
     Error, Lifetime, Observation, OnceDemand, OnceNext, OnceResult, WatchdogDemand, WatchdogNext,
     WatchdogResult,
 };
-#[cfg(feature = "metrics")]
-pub use diagnostics::{Inventory, TimerKind, TimerMeasurements, TimerPhase, TimerSnapshot};
-#[cfg(feature = "metrics")]
-pub use metrics::Metrics;
 #[cfg(all(feature = "metrics", target_arch = "wasm32"))]
 pub use transport::{inventory, metrics};
+#[cfg(feature = "metrics")]
+pub use {
+    diagnostics::{Inventory, TimerKind, TimerMeasurements, TimerPhase, TimerSnapshot},
+    metrics::Metrics,
+};
 
 #[cfg(target_arch = "wasm32")]
 pub use transport::{

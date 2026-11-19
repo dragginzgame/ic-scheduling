@@ -1,5 +1,12 @@
 # Jobs changelog
 
+## [0.39.8] - Unreleased
+
+### 🧹 Cleanup
+
+- Adopt Toko Tooling 0.45.16, group same-feature re-exports and remove execution
+  test conditions already enforced by their parent modules.
+
 ## [0.39.7] - 2026-11-19
 
 ### 🛠️ Development

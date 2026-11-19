@@ -55,7 +55,6 @@ fn validates_unresolved_identity_and_owner_progress() {
     );
 }
 
-#[cfg(feature = "execution")]
 #[test]
 fn restore_checks_current_definition_budget_and_committed_batch() {
     use crate::{CatchUpLimit, CatchUpProgress, Policy, RetryPolicy, Schedule};

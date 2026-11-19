@@ -1,5 +1,11 @@
 # Timers changelog
 
+## [0.46.9] - Unreleased
+
+### 🧹 Cleanup
+
+- Adopt Toko Tooling 0.45.16 and consolidate metrics feature conditions on re-exports.
+
 ## [0.46.8] - 2026-11-19
 
 ### 🧹 Cleanup

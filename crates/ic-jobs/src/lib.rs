@@ -15,6 +15,7 @@
 mod catch_up;
 #[cfg(feature = "execution")]
 mod checkpoint;
+// Live jobs require the Wasm-only timer bindings and IC clock.
 #[cfg(all(feature = "execution", target_arch = "wasm32"))]
 mod execution;
 #[cfg(feature = "execution")]
@@ -24,7 +25,7 @@ mod retry;
 #[cfg(feature = "calendar")]
 mod schedule;
 #[cfg_attr(
-    all(not(test), not(all(feature = "execution", target_arch = "wasm32"))),
+    all(not(test), not(target_arch = "wasm32")),
     expect(dead_code, reason = "this build excludes the wasm32 execution adapter")
 )]
 #[cfg(feature = "execution")]
@@ -33,24 +34,18 @@ mod state;
 mod unresolved;
 
 #[cfg(feature = "calendar")]
-pub use schedule::{Schedule, ScheduleError};
-
-#[cfg(feature = "calendar")]
-pub use catch_up::{CatchUpLimit, CatchUpLimitError, CatchUpPlan, Policy};
-
+pub use {
+    catch_up::{CatchUpLimit, CatchUpLimitError, CatchUpPlan, Policy},
+    schedule::{Schedule, ScheduleError},
+};
 #[cfg(feature = "execution")]
-pub use checkpoint::{CatchUpProgress, Checkpoint, CheckpointError};
-#[cfg(feature = "execution")]
-pub use state::{ControlState, RecoveryDisposition};
-
-#[cfg(feature = "execution")]
-pub use retry::{RetryPolicy, RetryPolicyError, RetryProgress};
-
-#[cfg(feature = "execution")]
-pub use unresolved::{Attempt, UnresolvedPhase};
-
-#[cfg(feature = "execution")]
-pub use outcome::{Outcome, RecordedOutcome, RecordedResult};
+pub use {
+    checkpoint::{CatchUpProgress, Checkpoint, CheckpointError},
+    outcome::{Outcome, RecordedOutcome, RecordedResult},
+    retry::{RetryPolicy, RetryPolicyError, RetryProgress},
+    state::{ControlState, RecoveryDisposition},
+    unresolved::{Attempt, UnresolvedPhase},
+};
 
 #[cfg(all(feature = "execution", target_arch = "wasm32"))]
 pub use execution::{Context, Error, Job, Recovery, Status, bind, restore, restore_unresolved};
