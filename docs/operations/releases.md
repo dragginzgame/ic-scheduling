@@ -24,6 +24,9 @@ binary and profile. Callers cannot override the selection. The independent
 and rejects missing or mismatched selections without installing replacements.
 Toko's admitted absolute executable selection, bounded-input contract,
 transaction/rollback ownership and independent Cargo graph checks are retained.
+The 2026-11-20 release review found metadata editor 0.1.2 available. The release
+keeps the qualified 0.1.0 selection and defers that optional tooling refresh to
+the next metadata-editor maintenance pass.
 
 Runtime compatibility belongs to the package requirement and the selected
 Runtime's own guard, not a Scheduling patch pin. Published Timers 0.46.3 /

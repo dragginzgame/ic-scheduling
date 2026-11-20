@@ -15,11 +15,11 @@ redesign. The [release scope](docs/design/release-scope.md) preserves legacy
 Timers/Jobs capabilities while deferring additional proposals. The old architecture,
 demo application and release framework are not carried forward.
 
-Status: Timers 0.45.11 and Jobs 0.38.1 are published. The API descriptions
-below follow those releases. Schema 7 replaces Jobs 0.37.9's schema 6.
+The current published releases are Timers 0.46.11 and Jobs 0.39.9.
+Schema 7 replaces Jobs 0.37.9's schema 6.
 Jobs supports Saffron-backed five-field UTC cron, one-shot deadlines, anchored
 fixed-rate intervals and completion-relative recurrence. Schedule support is opt-in via the
-`calendar` feature. Its separate opt-in `execution` feature provides wasm32
+`calendar` feature. Its separate opt-in `execution` feature provides installed-canister
 skip-late and bounded catch-up execution on Once with host-owned settled/queued
 checkpoints and explicit blocked reconstruction of unresolved attempts; Jobs coalescing
 is deferred.
@@ -48,7 +48,7 @@ are unchanged. Recorded local evidence does not establish deployment or producti
 ## Development
 
 Rust is pinned to 1.100.0 with Clippy, rustfmt and the `wasm32-unknown-unknown`
-target. Toko Tooling is pinned to 0.45.21 in both Cargo workspaces and installed under
+target. Toko Tooling is pinned to 0.45.22 in both Cargo workspaces and installed under
 `vendor/toko-tooling/`, with its checksum receipt at `.toko-tooling.snapshot`.
 Read [the engineering baseline](TOKO-TOOLING.md) and [local instructions](AGENTS.md).
 
@@ -126,14 +126,14 @@ explicitly opt-in (the default feature set is empty):
 
 ```toml
 [dependencies]
-ic-jobs = { version = "0.38.1", default-features = false, features = ["calendar"] }
+ic-jobs = { version = "0.39.9", default-features = false, features = ["calendar"] }
 ```
 
 Omit `calendar`
 to exclude Saffron and Chrono. Cargo features are additive;
 another dependency enabling it will enable it for that build as well. Calendar
 preview delegates to Saffron; the separate `execution` feature enables the
-wasm32 execution adapter described above.
+installed-canister execution adapter described above.
 
 With `calendar` enabled, `Schedule::parse("0 9 * * *")` means daily at **09:00 UTC**.
 `next_after(after_ns, through_ns)` returns an optional unsigned Unix nanosecond

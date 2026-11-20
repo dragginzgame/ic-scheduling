@@ -84,8 +84,8 @@ Use a bounded table and scan for due entries. Three observed declarations do not
 # 4 Public contract
 
 The canonical command/result types are in [api.rs](../../crates/ic-timers/src/api.rs);
-wasm32 binding and handle methods are in
-[transport.rs](../../crates/ic-timers/src/transport.rs). Both binding functions take
+binding and handle methods are in
+[provider.rs](../../crates/ic-timers/src/provider.rs). Both binding functions take
 an identity tuple and explicit Lifetime; watchdog binding also takes a positive
 cadence. Once supports Stop, At and completion-relative After results. Both handle
 types support explicit removal subject to settlement guards. Methods use the
@@ -214,9 +214,9 @@ The public handles and provider operations also compile on native targets.
 Acquiring live timer authority there returns `Error::Uninitialized` before the
 provider can own a callback. Reads and binds refuse without that runtime.
 The installed transport uses the IC global timer and the executor's timer and
-update roots. Platform Runtime 0.23.21 exposes additional native signatures,
-while those installed operations still require Wasm. The shared provider admits
-the installed transport once and uses its clock and arm operation.
+update roots. The shared provider admits the installed transport once, arms it
+to apply accepted demand, and reads IC time through Platform Runtime 0.23.21
+or later in the 0.23 series.
 
 Snapshot restoration is a separate acceptance path. A heap snapshot may contain stale handles, tasks and transport flights. Reinitializing a counter inside that heap is not proof of a fresh incarnation. Support restore only through a qualified host procedure that reconstructs executor/provider state and rejects old messages before enabling new demand. If Canic's deployed workflow requires this, release is blocked until that procedure passes; otherwise declare snapshot restore unsupported for this release.
 

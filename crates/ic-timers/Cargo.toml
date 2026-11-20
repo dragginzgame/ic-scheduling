@@ -10,9 +10,6 @@ rust-version.workspace = true
 license-file.workspace = true
 publish.workspace = true
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-ic-platform-runtime.workspace = true
-
 [package.metadata.cargo-machete]
 ignored = ["toko-tooling"]
 
@@ -22,6 +19,7 @@ metrics = ["dep:ic-metrics"]
 
 [dependencies]
 ic-metrics = { workspace = true, optional = true }
+ic-platform-runtime.workspace = true
 
 [dev-dependencies]
 toko-tooling.workspace = true

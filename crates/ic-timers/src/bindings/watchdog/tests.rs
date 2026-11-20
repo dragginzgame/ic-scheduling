@@ -87,6 +87,7 @@ fn authority_and_settlement_are_scoped_to_the_shared_table() {
     assert!(old.settle(false).unwrap());
     a.advance_watchdogs(110);
     let fresh = due(&a, 110);
+    assert!(!old.same(&fresh));
     assert!(!old.settle(false).unwrap());
     assert!(a.run_watchdog(&fresh).unwrap());
     drop(a);

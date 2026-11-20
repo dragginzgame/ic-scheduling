@@ -131,10 +131,13 @@ fn authority_is_scoped_to_runtime_and_declaration() {
     a.set(Demand::At(0)).unwrap();
     b.set(Demand::At(0)).unwrap();
     let ticket = due(&first, 0).unwrap();
+    assert_eq!(second.rejected(&ticket), Err(Error::StaleAuthority));
     assert!(matches!(second.start(&ticket), Err(Error::StaleAuthority)));
     let (accepted, future) = first.start(&ticket).unwrap().unwrap();
+    assert!(accepted.is_running().unwrap());
     drop(future);
     assert!(accepted.abandon().unwrap());
+    assert!(!accepted.is_running().unwrap());
     let key = a.recovery().unwrap().unwrap();
     assert_eq!(b.recover(&key, Demand::At(0)), Err(Error::StaleAuthority));
     drop(first);
@@ -204,11 +207,13 @@ fn submitted_ticket_does_not_hide_new_due_work_or_a_replacement() {
     first.set(Demand::At(0)).unwrap();
     assert_eq!(
         runtime
-            .wake(&std::iter::once(&Scheduled::Once(submitted)))
+            .wake(&std::iter::once(&Scheduled::Once(submitted.clone())))
             .0,
         Some(0)
     );
     let replacement = due(&runtime, 0).unwrap();
+    assert!(!replacement.same(&submitted));
+    assert!(!runtime.rejected(&submitted).unwrap());
     second.set(Demand::Inactive).unwrap();
     assert_eq!(
         runtime
@@ -231,6 +236,10 @@ fn submitted_ticket_does_not_hide_new_due_work_or_a_replacement() {
             .0,
         Some(0)
     );
+    let active = due(&runtime, 0).unwrap();
+    assert!(runtime.rejected(&active).unwrap());
+    assert!(!runtime.rejected(&active).unwrap());
+    assert!(first.recovery().unwrap().is_some());
 }
 
 fn due(bindings: &Bindings, now: u64) -> Option<Dispatch> {

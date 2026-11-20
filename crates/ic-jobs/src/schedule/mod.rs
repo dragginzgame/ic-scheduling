@@ -138,10 +138,6 @@ impl Schedule {
     }
 
     #[cfg(feature = "execution")]
-    #[cfg_attr(
-        not(target_arch = "wasm32"),
-        expect(dead_code, reason = "only binding a live job needs its first deadline")
-    )]
     pub(crate) fn first_at(&self) -> Option<u64> {
         match self.rule {
             Rule::Once(at) => Some(at),

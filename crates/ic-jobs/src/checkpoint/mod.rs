@@ -77,10 +77,6 @@ impl CatchUpProgress {
 impl Checkpoint {
     /// Validate the definition-dependent part before the adapter admits a timer.
     /// Batch age was frozen at selection; do not reapply it during restoration.
-    #[cfg_attr(
-        all(not(test), not(target_arch = "wasm32")),
-        expect(dead_code, reason = "only the IC adapter restores live jobs")
-    )]
     pub(crate) fn matches_definition(
         &self,
         schedule: &crate::Schedule,

@@ -9,7 +9,7 @@ calculation remains exclusively Saffron's responsibility.
 Status: implemented UTC scheduler, 2026-11-15. The first rewrite was published
 as 0.37.9; published 0.38.0 has the unified schema-7 checkpoint API. The maintainer explicitly selected
 Saffron and UTC, superseding the earlier named-zone and seconds-dialect scope.
-The opt-in wasm32 executor binds one retained Once per job. It uses
+The opt-in canister execution adapter binds one retained Once per job. It uses
 explicit SkipLate or bounded CatchUp policy; host-owned checkpoints support
 settled/queued reconstruction, including remaining catch-up work. Coalescing
 is deferred. No custom calendar
@@ -24,9 +24,10 @@ Saffron owns parsing, Gregorian arithmetic and next-occurrence calculation.
 
 All calendar code and dependencies are behind off-by-default `calendar`.
 The separate off-by-default `execution` feature enables `calendar` and adds
-target-gated Timers/Platform Runtime dependencies on wasm32. Default builds have
-no normal dependency edges. Execution is IC-specific; native builds
-retain the pure calendar and occurrence-state tests.
+Timers and Platform Runtime dependencies. Default builds have no normal
+dependency edges. The execution API supports native type-checking. Binding and
+restoration require an initialized canister timer runtime, and checkpoint
+validation runs before timer admission.
 Timers has no dependency on Jobs. Cargo features are additive: a consumer that
 enables `ic-jobs/calendar` includes it in that build.
 

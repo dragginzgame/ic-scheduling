@@ -24,7 +24,7 @@ recording must never invoke callbacks or change eligibility. Read
 [qualification guidance](qualification/README.md) for affected checks and limits.
 Consumer adoption and production budgets remain host-owned.
 
-Jobs has occurrence-progress tests and an opt-in wasm32 Once adapter with explicit
+Jobs has occurrence-progress tests and an opt-in Once adapter for installed canisters with explicit
 SkipLate or bounded CatchUp policy. Host-owned checkpoints support armed
 and paused reconstruction; ordinary export refuses running or recovery-required work.
 Preserve deadlines, occurrence progress, finite retry budgets, settled cursors

@@ -4,7 +4,7 @@ Isolated async Once timers and synchronous prearmed watchdogs for Internet
 Computer canisters. Scheduling runs in an installed Wasm canister. This crate
 owns the global timer and must not be combined with another timer provider.
 
-Wasm builds accept compatible Platform Runtime 0.23 patches from 0.23.14.
+Both targets accept compatible Platform Runtime 0.23 patches from 0.23.21.
 Native builds expose the same handle types and functions for callers that
 type-check shared orchestration. Outside an installed canister, initialization,
 binding and runtime diagnostics return `Error::Uninitialized`.

@@ -6,14 +6,15 @@ empty.
 
 - `calendar`: five-field, minute-precision UTC cron through Saffron, plus interval
   schedules and bounded occurrence previews. No named time zones or seconds field.
-- `execution`: enables calendar support and the `wasm32` Jobs adapter on ic-timers.
-  Callbacks run in isolated Once messages with explicit skip-late or bounded
-  catch-up policy. Catch-up discards excess backlog after a bounded batch.
+- `execution`: enables calendar support and the Jobs adapter on ic-timers.
+  The API is available for native type-checking. Binding requires an initialized
+  canister timer runtime. Callbacks run in isolated Once messages with explicit
+  skip-late or bounded catch-up policy. Catch-up discards excess backlog after a bounded batch.
   Jobs share Timers' 64 declarations, eight transport flights and four submissions
   per control turn; each Job retains one declaration.
 
 The execution adapter accepts compatible Platform Runtime 0.23 patches from
-0.23.14, sharing the single Runtime/guard selected with Timers and the host.
+0.23.21, sharing the single Runtime/guard selected with Timers and the host.
 
 Use `Schedule::parse("0 9 * * *")` for 09:00 UTC daily. The other constructors are
 `once`, `fixed_rate` and `after_completion`; timestamps are Unix nanoseconds.

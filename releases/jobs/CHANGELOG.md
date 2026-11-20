@@ -1,5 +1,23 @@
 # Jobs changelog
 
+## [0.39.10] - Unreleased
+
+### ➕ Added
+
+- Expose the opt-in execution API for native type-checking. Cron binding requires
+  an initialized timer runtime and returns the admission error before reading IC time.
+
+### 🔧 Changed
+
+- Require Platform Runtime 0.23.21 or a compatible later 0.23 patch with
+  `execution` enabled.
+
+### 🛠️ Development
+
+- Select Platform Runtime and guard 0.23.23 and Types 0.21.4 in both locks and
+  Testkit 0.110.3 in qualification. Test execution API composition on native and Wasm.
+- Adopt Toko Tooling 0.45.22 and run its Cargo workspace lint audit.
+
 ## [0.39.9] - 2026-11-19
 
 ### 🧹 Cleanup

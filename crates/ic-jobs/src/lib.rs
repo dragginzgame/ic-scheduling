@@ -3,7 +3,7 @@
 //! Enable the opt-in `calendar` feature for five-field UTC cron schedules and
 //! fixed-rate/after-completion intervals and one-shot deadlines. Saffron owns calendar calculation.
 //! Bounded catch-up previews are available through `Schedule::catch_up` when
-//! `calendar` is enabled. The opt-in `execution` feature adds wasm32 execution
+//! `calendar` is enabled. The opt-in `execution` feature adds IC execution
 //! with explicit skip-late or bounded catch-up policy on
 //! retained Once timers. Default builds include neither calendar nor IC execution
 //! dependencies. Host-owned checkpoints support settled/queued reconstruction;
@@ -15,8 +15,7 @@
 mod catch_up;
 #[cfg(feature = "execution")]
 mod checkpoint;
-// Live jobs require the Wasm-only timer bindings and IC clock.
-#[cfg(all(feature = "execution", target_arch = "wasm32"))]
+#[cfg(feature = "execution")]
 mod execution;
 #[cfg(feature = "execution")]
 mod outcome;
@@ -24,10 +23,6 @@ mod outcome;
 mod retry;
 #[cfg(feature = "calendar")]
 mod schedule;
-#[cfg_attr(
-    all(not(test), not(target_arch = "wasm32")),
-    expect(dead_code, reason = "this build excludes the wasm32 execution adapter")
-)]
 #[cfg(feature = "execution")]
 mod state;
 #[cfg(feature = "execution")]
@@ -47,5 +42,5 @@ pub use {
     unresolved::{Attempt, UnresolvedPhase},
 };
 
-#[cfg(all(feature = "execution", target_arch = "wasm32"))]
+#[cfg(feature = "execution")]
 pub use execution::{Context, Error, Job, Recovery, Status, bind, restore, restore_unresolved};

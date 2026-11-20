@@ -14,7 +14,7 @@ function cargo(args, cwd, succeeds = true) {
     assert.equal(result.status === 0, succeeds, `${args.join(' ')}\n${result.stdout}\n${result.stderr}`);
     return result;
 }
-for (const version of ['0.23.14', '0.23.15', '0.23.16', '0.22.5']) {
+for (const version of ['0.23.21', '0.23.22', '0.23.23', '0.22.5']) {
     const supported = version !== '0.22.5';
     const fixture = path.join(run, version);
     fs.mkdirSync(path.join(fixture, 'src'), { recursive: true });
@@ -29,8 +29,8 @@ ic-timers = { path = ${JSON.stringify(path.join(root, 'crates/ic-timers'))}, fea
 ic-jobs = { path = ${JSON.stringify(path.join(root, 'crates/ic-jobs'))}, features = ["execution"] }
 ic-platform-runtime = { version = "=${version}", default-features = false, features = ${supported ? '["call-ic0", "system-raw"]' : '["runtime"]'} }
 `);
-    fs.writeFileSync(path.join(fixture, 'src/lib.rs'), `pub use ic_jobs::Policy;\npub use ic_timers::Observation;\npub use ic_platform_runtime::call::${supported ? 'Wait' : 'WaitPolicy as Wait'};\n`);
-    const result = cargo(['metadata', '--format-version', '1', '--offline'], fixture, supported);
+    fs.writeFileSync(path.join(fixture, 'src/lib.rs'), `pub use ic_jobs::{Job, Policy, bind, restore, restore_unresolved};\npub use ic_timers::{Observation, bind_once, bind_watchdog};\npub use ic_platform_runtime::call::${supported ? 'Wait' : 'WaitPolicy as Wait'};\n`);
+    const result = cargo(['metadata', '--format-version', '1'], fixture, supported);
     fs.writeFileSync(path.join(fixture, 'metadata.stdout'), result.stdout);
     fs.writeFileSync(path.join(fixture, 'metadata.stderr'), result.stderr);
     if (!supported) {
@@ -45,7 +45,8 @@ ic-platform-runtime = { version = "=${version}", default-features = false, featu
         assert.equal(packages.length, 1, `one ${name}`);
         assert.equal(packages[0].version, version);
     }
-    cargo(['check', '--target', 'wasm32-unknown-unknown', '--locked', '--offline', '--target-dir', path.join(parent, 'build')], fixture);
-    console.log(`Runtime ${version}: Timers/Jobs consumer resolves and compiles for Wasm with one matching guard.`);
+    cargo(['check', '--locked', '--target-dir', path.join(parent, 'build')], fixture);
+    cargo(['check', '--target', 'wasm32-unknown-unknown', '--locked', '--target-dir', path.join(parent, 'build')], fixture);
+    console.log(`Runtime ${version}: Timers/Jobs consumer resolves and compiles for native and Wasm with one matching guard.`);
 }
 console.log(`Runtime composition evidence: ${run}`);

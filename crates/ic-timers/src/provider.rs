@@ -7,6 +7,7 @@ use crate::{
     bindings::{Bindings, Handle, RecoveryKey},
     engine::{Demand, State},
 };
+use ic_platform_runtime::system;
 use std::{
     cell::{Cell, RefCell},
     future::Future,
@@ -118,7 +119,6 @@ where
     runtime.check()?;
     #[cfg(feature = "metrics")]
     let metrics = Rc::clone(&runtime.metrics);
-    let now = runtime.canister.clock();
     let handle = runtime.bindings.bind(identity, lifetime, move || {
         #[cfg(feature = "metrics")]
         metrics.record(Event::Accepted);
@@ -132,7 +132,7 @@ where
             let next = match result.next {
                 OnceNext::Stop => Demand::Inactive,
                 OnceNext::At(at) => Demand::At(at),
-                OnceNext::After(delay) => now()
+                OnceNext::After(delay) => system::time()
                     .checked_add(delay.get())
                     .map_or(Demand::Inactive, Demand::At),
             };
@@ -284,8 +284,7 @@ impl Watchdog {
     pub fn set(&self, demand: WatchdogDemand) -> Result<(), Error> {
         let runtime = self.runtime.upgrade().ok_or(Error::StaleAuthority)?;
         runtime.check()?;
-        let now = runtime.canister.clock();
-        self.handle.set(demand, now())?;
+        self.handle.set(demand, system::time())?;
 
         runtime.arm()
     }
@@ -349,23 +348,5 @@ impl Canister {
         {
             Err(Error::Uninitialized)
         }
-    }
-
-    // Keep the IC clock callable without storing or exposing a host substitute.
-    fn clock(&self) -> impl Fn() -> u64 + Copy + use<> {
-        #[cfg(target_arch = "wasm32")]
-        {
-            ic_platform_runtime::system::time
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            self.unavailable_clock()
-        }
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn unavailable_clock(&self) -> fn() -> u64 {
-        match *self {}
     }
 }

@@ -131,18 +131,19 @@ where
     Fut: Future<Output = Outcome> + 'static,
 {
     let first = schedule.first_at();
-    let checkpoint = crate::Checkpoint::new(
-        7,
-        1,
-        first.is_none().then(system::time),
-        first,
-        crate::ControlState::Active,
-        None,
-        None,
-    )
-    .map_err(|_| Error::Faulted)?;
+    let checkpoint =
+        crate::Checkpoint::new(7, 1, None, first, crate::ControlState::Active, None, None)
+            .map_err(|_| Error::Faulted)?;
 
-    bind_checkpoint(identity, schedule, policy, retry_policy, checkpoint, work)
+    bind_checkpoint(
+        identity,
+        schedule,
+        policy,
+        retry_policy,
+        checkpoint,
+        first.is_none(),
+        work,
+    )
 }
 
 /// Rebind fresh callbacks from host-owned progress in a fresh runtime.
@@ -170,7 +171,15 @@ where
         return Err(Error::InvalidCheckpoint);
     }
 
-    bind_checkpoint(identity, schedule, policy, retry_policy, checkpoint, work)
+    bind_checkpoint(
+        identity,
+        schedule,
+        policy,
+        retry_policy,
+        checkpoint,
+        false,
+        work,
+    )
 }
 
 /// Reconstruct an unresolved job in a fresh runtime with no surviving old callbacks.
@@ -198,7 +207,15 @@ where
         return Err(Error::InvalidCheckpoint);
     }
 
-    bind_checkpoint(identity, schedule, policy, retry_policy, record, work)
+    bind_checkpoint(
+        identity,
+        schedule,
+        policy,
+        retry_policy,
+        record,
+        false,
+        work,
+    )
 }
 
 fn bind_checkpoint<F, Fut>(
@@ -207,6 +224,7 @@ fn bind_checkpoint<F, Fut>(
     policy: Policy,
     retry_policy: crate::RetryPolicy,
     checkpoint: crate::Checkpoint,
+    anchor_cron: bool,
     mut work: F,
 ) -> Result<Job, Error>
 where
@@ -297,7 +315,16 @@ where
         }
     })?;
     let job = Job { state, timer };
-    let demand = job.state.borrow_mut().plan(system::time());
+    // Timer admission rejects callers without an installed runtime before this IC clock read.
+    let now = system::time();
+    let demand = {
+        let mut state = job.state.borrow_mut();
+        if anchor_cron {
+            state.skip_through(now).map_err(|_| Error::Faulted)?;
+        }
+
+        state.plan(now)
+    };
     job.timer
         .set(demand.map_or(OnceDemand::Inactive, OnceDemand::At))?;
 

@@ -1,5 +1,19 @@
 # Timers changelog
 
+## [0.46.12] - Unreleased
+
+### 🔧 Changed
+
+- Require Platform Runtime 0.23.21 or a compatible later 0.23 patch on both targets.
+- Use Platform Runtime directly for clock reads after timer admission.
+
+### 🛠️ Development
+
+- Select Platform Runtime and guard 0.23.23, Types 0.21.4 and Metrics 0.30.19
+  in both locks, plus Testkit 0.110.3 in qualification.
+- Cover rejection and stale dispatch authority in native tests. Adopt Toko
+  Tooling 0.45.22 and run its Cargo workspace lint audit.
+
 ## [0.46.11] - 2026-11-19
 
 ### 📝 Summary

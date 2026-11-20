@@ -5,16 +5,22 @@ catalog and lockfile. All packages remain unpublished and inherit the shared
 compiler, Toko pin and lint baseline. The license path points to the repository
 root. Qualification consumes product packages; the reverse dependency is forbidden.
 Host drivers use `ic-testkit::pocket_ic`, matching ic-platform’s qualification
-boundary. The lock selects Testkit 0.110.2 and PocketIC client 16.1.0. The prepared
+boundary. The lock selects Testkit 0.110.3 and PocketIC client 16.1.0. The prepared
 16.0.0 server is supported. Do not add a direct `pocket-ic` dependency.
 
 Testkit 0.110.0's held-reply feature admits Protocol `>=0.3.2, <0.4.0`. The
 previous adoption selected 0.3.5, completing the migration beyond
 [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
-The current qualification lock selects Runtime and guard 0.23.22, Types 0.21.3,
-Protocol 0.3.7 and optional Metrics 0.30.17. Types and Testkit use compatible
+The current qualification lock selects Runtime and guard 0.23.23, Types 0.21.4,
+Protocol 0.3.7 and optional Metrics 0.30.19. Types and Testkit use compatible
 requirements. Runtime owns its exact singleton guard. Testkit's Protocol error
 type remains inside private qualification.
+
+The Runtime 0.23.23 and Toko Tooling 0.45.22 adoption with Metrics 0.30.18 passed the native and Wasm
+composition matrix, the standalone calendar probe, and the installed Once,
+watchdog, Jobs and paired metrics checks on PocketIC 16.0.0. The tooling audit
+found zero discrepancies across 10 Cargo manifests. The local installed check
+log is `target/adoption-04522-platform-02323-installed.log`.
 
 The Runtime 0.23.22 and Toko Tooling 0.45.21 adoption passed native and Wasm
 Clippy, the retained timer consumer checks, and the calendar, installed
@@ -47,14 +53,12 @@ Logs are retained under `target/testkit-01090-*.log`. This is local Linux eviden
 hosted macOS validation and deployment remain separate. The optional Testkit
 managed-server feature is not enabled by these callers.
 
-Runtime requirements admit compatible 0.23 patches from 0.23.14. The previous
-Runtime composition matrix covers 0.23.14–0.23.16. The installed Testkit adoption
-checks are separate evidence.
-Run `node qualification/runtime-composition-check.mjs` from
-the repository root when changing that boundary. With the published 0.23.14,
-0.23.15, 0.23.16 and legacy 0.22.5 packages cached, the offline check composes real
-Timers/Jobs consumers, verifies one matching Runtime/guard, compiles all three
-supported patches for Wasm and confirms the incompatible old guard still refuses.
+Runtime requirements admit compatible 0.23 patches from 0.23.21. Run
+`node qualification/runtime-composition-check.mjs` from the repository root when
+changing that boundary. The check compiles a Timers/Jobs consumer for native and
+Wasm with each of 0.23.21–0.23.23, verifies one matching Runtime/guard per build,
+and confirms that the incompatible 0.22.5 guard still fails to resolve.
+With the published dependencies cached, set `CARGO_NET_OFFLINE=true` to run offline.
 
 `calendar-probe` builds the actual Saffron-backed UTC Jobs adapter as a
 standalone Wasm module. Its raw export selects fixed calendar scenarios; the

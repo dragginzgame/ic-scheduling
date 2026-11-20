@@ -339,10 +339,6 @@ impl Bindings {
 
     /// Initial-message rejection rolled acceptance back; reserve its attempt
     /// without invoking user code, then block replay. Superseded tickets do nothing.
-    #[cfg_attr(
-        not(target_arch = "wasm32"),
-        expect(dead_code, reason = "only the IC transport reports delivery rejection")
-    )]
     pub(super) fn rejected(&self, dispatch: &Dispatch) -> Result<bool, Error> {
         if !Weak::ptr_eq(&dispatch.table, &Rc::downgrade(&self.0)) {
             return Err(Error::StaleAuthority);
@@ -556,10 +552,6 @@ impl Accepted {
 }
 
 impl Dispatch {
-    #[cfg_attr(
-        not(target_arch = "wasm32"),
-        expect(dead_code, reason = "only the IC transport compares submitted flights")
-    )]
     pub(super) fn same(&self, other: &Self) -> bool {
         self.slot == other.slot
             && self.incarnation == other.incarnation
@@ -569,16 +561,16 @@ impl Dispatch {
 }
 
 impl Accepted {
-    #[cfg_attr(
-        not(target_arch = "wasm32"),
-        expect(
-            dead_code,
-            reason = "only IC transport cleanup checks accepted flights"
-        )
-    )]
     pub(super) fn is_running(&self) -> Result<bool, Error> {
-        match (Handle { table: self.table.clone(), slot: self.slot, incarnation: self.incarnation }).with_state(|state|
-            matches!(state.state(), State::Running { attempt, .. } if attempt == self.attempt)) {
+        let handle = Handle {
+            table: self.table.clone(),
+            slot: self.slot,
+            incarnation: self.incarnation,
+        };
+
+        match handle.with_state(
+            |state| matches!(state.state(), State::Running { attempt, .. } if attempt == self.attempt),
+        ) {
             Err(Error::StaleAuthority) => Ok(false),
             result => result,
         }

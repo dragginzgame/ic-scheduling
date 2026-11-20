@@ -19,11 +19,9 @@ execution = ["calendar", "dep:ic-timers", "dep:ic-platform-runtime"]
 
 [dependencies]
 chrono = { workspace = true, optional = true }
-saffron = { workspace = true, optional = true }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
 ic-platform-runtime = { workspace = true, optional = true }
 ic-timers = { workspace = true, optional = true }
+saffron = { workspace = true, optional = true }
 
 [dev-dependencies]
 toko-tooling.workspace = true

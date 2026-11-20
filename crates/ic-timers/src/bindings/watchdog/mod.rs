@@ -151,10 +151,6 @@ impl Dispatch {
 }
 
 impl Dispatch {
-    #[cfg_attr(
-        not(target_arch = "wasm32"),
-        expect(dead_code, reason = "only the IC transport compares submitted flights")
-    )]
     pub(crate) fn same(&self, other: &Self) -> bool {
         self.slot == other.slot
             && self.incarnation == other.incarnation
