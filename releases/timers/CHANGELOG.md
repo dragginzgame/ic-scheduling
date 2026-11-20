@@ -1,6 +1,6 @@
 # Timers changelog
 
-## [0.46.13] - Unreleased
+## [0.46.13] - 2026-11-20
 
 ### ➕ Added
 
