@@ -15,8 +15,9 @@ changes the dependency cohort, target gates, retained timer adapter and the
 probe's explicit Runtime/Wire codec and Testkit startup callers.
 The existing consumer tests run from that isolated copy.
 
-Run from the Scheduling root with prepared Rust/Wasm tools, cached dependencies
-and a PocketIC 16.0.0 server. Local loopback access is required for installation.
+Run from the Scheduling root with prepared Rust/Wasm tools and a PocketIC 16.0.0
+server. Local loopback access is required for installation. With dependencies
+cached, set `CARGO_NET_OFFLINE=true` explicitly for an offline run.
 
 ```sh
 entropy_stage="$(node qualification/entropy-integration/prepare.mjs ../ic-entropy)"
@@ -24,20 +25,20 @@ entropy_build="$PWD/qualification/target/entropy-integration-build"
 entropy_installed="$PWD/qualification/target/entropy-installed-build"
 bash vendor/toko-tooling/scripts/ci/run-nonempty-cargo-test.sh \
     --manifest-path "$entropy_stage/Cargo.toml" --target-dir "$entropy_build" \
-    --workspace --all-features --offline
+    --workspace --all-features
 bash vendor/toko-tooling/scripts/ci/run-nonempty-cargo-test.sh \
     --manifest-path "$entropy_stage/Cargo.toml" --target-dir "$entropy_build" \
-    -p ic-entropy-ic --no-default-features --locked --offline
+    -p ic-entropy-ic --no-default-features --locked
 for entropy_features in '--all-features' '--no-default-features'; do
-    cargo clippy --manifest-path "$entropy_stage/Cargo.toml" --target-dir "$entropy_build" -p ic-entropy-ic "$entropy_features" --all-targets --locked --offline -- -D warnings
-    cargo clippy --manifest-path "$entropy_stage/Cargo.toml" --target-dir "$entropy_build" -p ic-entropy-ic "$entropy_features" --target wasm32-unknown-unknown --locked --offline -- -D warnings
+    cargo clippy --manifest-path "$entropy_stage/Cargo.toml" --target-dir "$entropy_build" -p ic-entropy-ic "$entropy_features" --all-targets --locked -- -D warnings
+    cargo clippy --manifest-path "$entropy_stage/Cargo.toml" --target-dir "$entropy_build" -p ic-entropy-ic "$entropy_features" --target wasm32-unknown-unknown --locked -- -D warnings
 done
-cargo build --manifest-path "$entropy_stage/qualification/Cargo.toml" --target-dir "$entropy_installed" -p entropy-probe --target wasm32-unknown-unknown --release --offline
+cargo build --manifest-path "$entropy_stage/qualification/Cargo.toml" --target-dir "$entropy_installed" -p entropy-probe --target wasm32-unknown-unknown --release
 POCKET_IC_BIN=/absolute/path/to/pocket-ic \
 ENTROPY_PROBE_WASM="$entropy_installed/wasm32-unknown-unknown/release/entropy_probe.wasm" \
 bash vendor/toko-tooling/scripts/ci/run-nonempty-cargo-test.sh \
     --manifest-path "$entropy_stage/qualification/Cargo.toml" --target-dir "$entropy_installed" \
-    -p entropy-probe --test installed --locked --offline -- --nocapture
+    -p entropy-probe --test installed --locked -- --nocapture
 ```
 
 The first resolution in each isolated workspace updates its copied lockfile for

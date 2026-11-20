@@ -55,8 +55,8 @@ Jobs packages and checks only `ic-jobs`, using the registry Timers supplier;
 Timers packages both products and checks Jobs against its extracted supplier
 archive. Full qualification and repository CI retain paired archives. Run
 `node qualification/archive-scope-check.mjs` after changing this dispatch; it
-checks the actual argv, reverse-consumer coverage and failure propagation with
-substituted Cargo commands. It does not establish native or Wasm compilation.
+checks the actual argv, reverse-consumer coverage, caller-selected Cargo network
+mode and failure propagation with substituted Cargo commands.
 
 Release verification selects scope using Toko's annotated-ancestor baseline
 observer against the selected group's previous release. Only Jobs Rust source

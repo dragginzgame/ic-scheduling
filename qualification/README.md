@@ -108,7 +108,7 @@ After building the probe, the driver accepts `--runtime-core`, `--refusal` and
 For example:
 
 ```sh
-cargo run --manifest-path qualification/Cargo.toml -p once-driver --locked --offline -- \
+cargo run --manifest-path qualification/Cargo.toml -p once-driver --locked -- \
   qualification/target/wasm32-unknown-unknown/release/once_probe.wasm --runtime-core
 ```
 
@@ -119,7 +119,7 @@ Watchdog, instruction measurements and remaining failure/lifecycle gates are ope
 their owning product code; the calendar artifact supplies no IC trap evidence.
 
 The Once fixture is wasm32-only. Lint it with
-`cargo clippy --manifest-path qualification/Cargo.toml -p once-probe --target wasm32-unknown-unknown --locked --offline -- -D warnings`.
+`cargo clippy --manifest-path qualification/Cargo.toml -p once-probe --target wasm32-unknown-unknown --locked -- -D warnings`.
 Lint its host driver separately with `-p once-driver --all-targets`.
 
 For focused completion-relative recurrence checks, build the fixture and select
@@ -128,10 +128,10 @@ the driver's case from the repository root:
 ```sh
 cargo build --manifest-path qualification/Cargo.toml -p once-probe \
   --target-dir qualification/target --release --target wasm32-unknown-unknown \
-  --locked --offline
+  --locked
 POCKET_IC_BIN=/absolute/path/to/pocket-ic cargo run \
   --manifest-path qualification/Cargo.toml -p once-driver \
-  --target-dir qualification/target --locked --offline -- \
+  --target-dir qualification/target --locked -- \
   qualification/target/wasm32-unknown-unknown/release/once_probe.wasm \
   --after-completion
 ```

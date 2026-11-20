@@ -28,7 +28,7 @@ execFileSync('git', ['apply', '--check', patch], { cwd: staged });
 execFileSync('git', ['apply', patch], { cwd: staged });
 // Qualification binds the actual candidate, including across a minor release.
 const metadata = JSON.parse(execFileSync('cargo', [
-    'metadata', '--no-deps', '--format-version', '1', '--locked', '--offline',
+    'metadata', '--no-deps', '--format-version', '1', '--locked',
     '--manifest-path', path.join(root, 'Cargo.toml'),
 ], { cwd: root, encoding: 'utf8' }));
 const candidate = metadata.packages.find(item => item.name === 'ic-timers'
