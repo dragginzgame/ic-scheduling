@@ -15,11 +15,16 @@ use std::{
     rc::{Rc, Weak},
 };
 
+///
+/// Runtime
+/// Live timer bindings and their installed transport authority.
+///
+
 pub(super) struct Runtime {
     pub(super) bindings: Bindings,
     pub(super) faulted: Cell<bool>,
     #[cfg(feature = "metrics")]
-    pub(super) metrics: Rc<crate::metrics::Recorder>,
+    pub(super) metrics: Rc<crate::MetricsStorage>,
     canister: Canister,
 }
 
@@ -56,18 +61,49 @@ pub enum OnceStatus {
 /// Returns Uninitialized outside an installed canister, or Faulted if this
 /// runtime has encountered a terminal provider fault.
 pub fn initialize() -> Result<(), Error> {
+    initialize_runtime(
+        #[cfg(feature = "metrics")]
+        None,
+    )
+}
+
+/// Initialize with shared heap storage supplied by the canister host.
+///
+/// Repeating initialization with the same storage preserves all observations.
+/// Supply fresh storage on a normal upgrade.
+///
+/// # Errors
+/// Returns `Busy` if the live runtime already uses different storage.
+/// Also returns the installation or provider error documented by [`initialize`].
+#[cfg(feature = "metrics")]
+pub fn initialize_with_metrics(storage: Rc<crate::MetricsStorage>) -> Result<(), Error> {
+    initialize_runtime(Some(storage))
+}
+
+fn initialize_runtime(
+    #[cfg(feature = "metrics")] storage: Option<Rc<crate::MetricsStorage>>,
+) -> Result<(), Error> {
     RUNTIME.with_borrow_mut(|slot| {
         if let Some(runtime) = slot {
-            return runtime.check();
+            runtime.check()?;
+
+            #[cfg(feature = "metrics")]
+            if storage.is_some_and(|storage| !Rc::ptr_eq(&runtime.metrics, &storage)) {
+                return Err(Error::Busy);
+            }
+
+            return Ok(());
         }
+
         let canister = Canister::acquire()?;
         *slot = Some(Rc::new(Runtime {
             bindings: Bindings::new(),
             faulted: Cell::new(false),
             #[cfg(feature = "metrics")]
-            metrics: Rc::new(crate::metrics::Recorder::new()),
+            metrics: storage.unwrap_or_default(),
             canister,
         }));
+
         Ok(())
     })
 }

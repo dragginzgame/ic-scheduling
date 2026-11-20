@@ -10,6 +10,11 @@ use std::{
     rc::Rc,
 };
 
+///
+/// Engine
+/// Minimal consumer that retains one timer for repeated reconciliation.
+///
+
 #[derive(Default)]
 struct Engine {
     timer: Option<Once>,
@@ -63,5 +68,12 @@ fn native_runtime_refuses_before_admitting_work() {
         Err(Error::Uninitialized)
     ));
     assert!(matches!(ic_timers::metrics(), Err(Error::Uninitialized)));
+
+    let storage = Rc::new(ic_timers::MetricsStorage::default());
+    assert_eq!(
+        ic_timers::initialize_with_metrics(Rc::clone(&storage)),
+        Err(Error::Uninitialized)
+    );
+    assert_eq!(storage.snapshot(), Metrics::default());
     assert_eq!(starts.get(), 0);
 }

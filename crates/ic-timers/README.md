@@ -27,6 +27,10 @@ uncertain Once work and running/settling watchdog tickets.
 The optional `metrics` feature adds aggregate counters and bounded sorted
 declaration inventory using ic-metrics arithmetic. Diagnostics carry no control
 authority. No calendar dependencies are included.
+Hosts with a shared metrics store can pass an `Rc<MetricsStorage>` to
+`initialize_with_metrics`. Timer events update that storage directly and both
+the host and `metrics()` read the same counters. Install fresh storage on
+upgrade. An initialized runtime cannot switch stores.
 
 Hosts own durable intent, effect reconciliation and fresh-runtime reconstruction
 on upgrade. Heap snapshots and exactly-once remote effects are not provided.

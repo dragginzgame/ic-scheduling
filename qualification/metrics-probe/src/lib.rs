@@ -7,6 +7,8 @@ use ic_platform_types::Principal;
 use ic_timers::{
     Observation, OnceDemand, OnceNext, OnceResult, WatchdogDemand, WatchdogNext, WatchdogResult,
 };
+#[cfg(feature = "metrics")]
+use std::rc::Rc;
 use std::{cell::Cell, num::NonZeroU64};
 
 /// Initialize and arm one async Once and one synchronous watchdog.
@@ -19,7 +21,14 @@ use std::{cell::Cell, num::NonZeroU64};
 #[unsafe(export_name = "canister_update setup")]
 pub extern "C" fn setup() {
     let before = ic0::instruction_counter();
+
+    #[cfg(feature = "metrics")]
+    HOST_METRICS.with(|storage| {
+        ic_timers::initialize_with_metrics(Rc::clone(storage)).unwrap();
+    });
+    #[cfg(not(feature = "metrics"))]
     ic_timers::initialize().unwrap();
+
     let once = ic_timers::bind_once(
         ["metrics-cost", "once", "work"],
         ic_timers::Lifetime::Retained,
@@ -61,7 +70,18 @@ pub extern "C" fn setup() {
     )
     .unwrap();
     watchdog.set(WatchdogDemand::At(0)).unwrap();
+
     cost(0, ic0::instruction_counter().checked_sub(before).unwrap());
+
+    #[cfg(feature = "metrics")]
+    HOST_METRICS.with(|storage| {
+        ic_timers::initialize_with_metrics(Rc::clone(storage)).unwrap();
+        assert_eq!(
+            ic_timers::initialize_with_metrics(Rc::default()),
+            Err(ic_timers::Error::Busy)
+        );
+    });
+
     ic0::msg_reply();
 }
 
@@ -90,9 +110,12 @@ pub extern "C" fn state() {
             ic0::msg_reply_data_append(&value.to_le_bytes());
         }
     });
+
     #[cfg(feature = "metrics")]
     {
-        let metrics = ic_timers::metrics().unwrap();
+        let metrics = HOST_METRICS.with(|storage| storage.snapshot());
+        assert_eq!(metrics, ic_timers::metrics().unwrap());
+
         let counters = [
             metrics.accepted,
             metrics.completed,
@@ -110,12 +133,15 @@ pub extern "C" fn state() {
     }
     #[cfg(not(feature = "metrics"))]
     ic0::msg_reply_data_append(&[0; 102]);
+
     ic0::msg_reply();
 }
 
 thread_local! {
     static COUNTS: Cell<[u8; 3]> = const { Cell::new([0; 3]) };
     static COSTS: Cell<[u64; 4]> = const { Cell::new([0; 4]) };
+    #[cfg(feature = "metrics")]
+    static HOST_METRICS: Rc<ic_timers::MetricsStorage> = Rc::default();
 }
 
 fn cost(index: usize, value: u64) {

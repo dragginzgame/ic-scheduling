@@ -12,9 +12,14 @@ Testkit 0.110.0's held-reply feature admits Protocol `>=0.3.2, <0.4.0`. The
 previous adoption selected 0.3.5, completing the migration beyond
 [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
 The current qualification lock selects Runtime and guard 0.23.23, Types 0.21.4,
-Protocol 0.3.7 and optional Metrics 0.30.19. Types and Testkit use compatible
+Protocol 0.3.7 and optional Metrics 0.30.20. Types and Testkit use compatible
 requirements. Runtime owns its exact singleton guard. Testkit's Protocol error
 type remains inside private qualification.
+
+The Toko Tooling 0.46.0 adoption passed the real Timers-to-Jobs Rust stage
+reuse and evidence refusal checks. The stage runner preserved unset, explicit
+online and explicit offline Cargo modes and refused a stage-injected override.
+The real stage log is `target/toko-0460-rust-stage.log`.
 
 The Runtime 0.23.23 and Toko Tooling 0.45.22 adoption with Metrics 0.30.18 passed the native and Wasm
 composition matrix, the standalone calendar probe, and the installed Once,

@@ -41,8 +41,8 @@ pub use api::{
 #[cfg(feature = "metrics")]
 pub use {
     diagnostics::{Inventory, TimerKind, TimerMeasurements, TimerPhase, TimerSnapshot},
-    metrics::Metrics,
-    provider::{inventory, metrics},
+    metrics::{Metrics, MetricsStorage},
+    provider::{initialize_with_metrics, inventory, metrics},
 };
 
 pub use provider::{

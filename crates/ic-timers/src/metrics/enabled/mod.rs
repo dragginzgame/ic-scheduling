@@ -6,6 +6,8 @@ use crate::Observation;
 use ic_metrics::MeasurementCounter;
 use std::cell::Cell;
 
+///
+/// Metrics
 /// Aggregate diagnostics for this volatile provider incarnation. Initialization
 /// does not reset these; a normal upgrade does. No declaration inventory or
 /// async-lifetime instruction attribution is included.
@@ -13,6 +15,8 @@ use std::cell::Cell;
 /// Counters clip at u128::MAX with a sticky actual-overflow flag, using
 /// ic-metrics arithmetic. An exactly reached cap remains exact. Recording
 /// cannot wrap, trap on overflow or change timer eligibility.
+///
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct Metrics {
     /// Committed logical acceptances, including conservative accounting when
@@ -29,18 +33,27 @@ pub struct Metrics {
     /// First terminal provider fault in this incarnation; excludes isolated entry faults.
     pub provider_faults: MeasurementCounter,
 }
-pub(crate) struct Recorder(Cell<Metrics>);
-impl Recorder {
-    pub(crate) fn new() -> Self {
-        Self(Cell::new(Metrics::default()))
-    }
+///
+/// MetricsStorage
+/// Heap storage for one timer runtime's aggregate counters.
+///
+/// A host can retain this storage alongside its other metric sources and
+/// supply it during timer initialization. Only Timers records into it.
+///
 
-    pub(crate) fn snapshot(&self) -> Metrics {
+#[derive(Default)]
+pub struct MetricsStorage(Cell<Metrics>);
+
+impl MetricsStorage {
+    /// Read this storage without recording a new observation.
+    #[must_use]
+    pub fn snapshot(&self) -> Metrics {
         self.0.get()
     }
 
     pub(crate) fn record(&self, event: Event) {
         let mut counters = self.0.get();
+
         match event {
             Event::Accepted => counters.accepted.add(1),
             Event::Returned(outcome) => {
@@ -53,6 +66,7 @@ impl Recorder {
             Event::Deferred => counters.deferred_submissions.add(1),
             Event::ProviderFault => counters.provider_faults.add(1),
         }
+
         self.0.set(counters);
     }
 }

@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn overflow_stays_diagnostic_and_outcomes_stay_separate() {
-    let recorder = Recorder::new();
+    let recorder = MetricsStorage::default();
     let mut counters = recorder.snapshot();
     counters.accepted.add(u128::MAX);
     assert!(!counters.accepted.total_overflowed());

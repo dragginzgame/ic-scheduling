@@ -1,5 +1,17 @@
 # Timers changelog
 
+## [0.46.13] - Unreleased
+
+### ➕ Added
+
+- Allow canister hosts to supply aggregate metrics storage at timer initialization.
+  Timer events update that storage directly, and diagnostics read the same counters.
+
+### 🛠️ Development
+
+- Adopt Toko Tooling 0.46.0 and qualify caller-selected Cargo network mode.
+- Select Metrics 0.30.20 in both workspace locks.
+
 ## [0.46.12] - 2026-11-20
 
 ### 🔧 Changed

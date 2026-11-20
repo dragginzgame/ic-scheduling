@@ -47,7 +47,11 @@ pub struct OnceResult {
     /// Proposed next eligibility.
     pub next: OnceNext,
 }
+///
+/// Error
 /// Initialization, admission or control failure.
+///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     /// No live runtime is initialized. Native callers cannot initialize one.
@@ -58,7 +62,8 @@ pub enum Error {
     DuplicateIdentity,
     /// The provisional 64-declaration bound is full.
     Capacity,
-    /// Accepted or settling work still owns the declaration.
+    /// Accepted or settling work owns the declaration, or the live runtime already owns
+    /// different metrics storage.
     Busy,
     /// Authority is no longer current.
     StaleAuthority,

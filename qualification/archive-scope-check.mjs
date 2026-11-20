@@ -40,7 +40,8 @@ function check(scope, offline = null, failure = '') {
     assert.equal(result.status, failure ? 23 : 0, result.stderr);
     for (const call of invocations) {
         assert.equal(call.offline, offline);
-        assert.ok(!call.args.some(arg => arg === '--offline' || arg.includes('net.offline')));
+        assert.ok(!call.args.some(arg =>
+            arg === '--offline' || arg === '--frozen' || arg.includes('net.offline')));
     }
     assert.deepEqual(commands[0], ['package', ...(scope === 'jobs' ? ['-p', 'ic-jobs'] : ['--workspace']),
         '--all-features', '--allow-dirty', '--locked']);

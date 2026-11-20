@@ -51,9 +51,9 @@ dependencies = [
 
 [[package]]
 name = "ic-metrics"
-version = "0.30.19"
+version = "0.30.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e382f8d7e879d695ff8565919a7c534fd234b40149a1c12de8b7f02955a58ce"
+checksum = "b81df66fe4067fdc703b2a70ba076f8cb2c560a2f5e6333200048c1dcda3a0ad"
 
 [[package]]
 name = "ic-platform-runtime"
@@ -219,9 +219,9 @@ dependencies = [
 
 [[package]]
 name = "toko-tooling"
-version = "0.45.22"
+version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c4177a70760ea774fc0e14938593658b7b87facb3ee3f8848f65a402f778c7b"
+checksum = "4601d2785aaa14e01fd8656d6b3a57653337b214e027810c953595f1d91d6a8d"
 
 [[package]]
 name = "unicode-ident"

@@ -19,6 +19,4 @@ pub(crate) enum Event {
 }
 
 #[cfg(feature = "metrics")]
-pub use enabled::Metrics;
-#[cfg(feature = "metrics")]
-pub(crate) use enabled::Recorder;
+pub use enabled::{Metrics, MetricsStorage};
