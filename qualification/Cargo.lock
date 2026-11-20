@@ -733,6 +733,7 @@ name = "ic-jobs"
 version = "0.39.10"
 dependencies = [
  "chrono",
+ "ic-metrics",
  "ic-platform-runtime",
  "ic-timers",
  "saffron",

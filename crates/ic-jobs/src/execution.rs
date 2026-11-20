@@ -253,6 +253,9 @@ where
         // Accept before invoking the factory, but never hold job state across it.
         let future = selected.and_then(|(selection, deliver, attempt)| {
             deliver.then(|| {
+                #[cfg(feature = "metrics")]
+                crate::metrics::record(crate::metrics::Event::Started(attempt));
+
                 work(Context {
                     attempt,
                     revision: selection.occurrence.revision,
@@ -266,10 +269,20 @@ where
             let Some((selection, _, attempt)) = selected else {
                 return stopped();
             };
+
+            #[cfg(feature = "metrics")]
+            let delivered = future.is_some();
             let outcome = match future {
                 Some(future) => future.await,
                 None => Outcome::NoWork,
             };
+            #[cfg(feature = "metrics")]
+            crate::metrics::record(if delivered {
+                crate::metrics::Event::Returned(outcome)
+            } else {
+                crate::metrics::Event::SkippedLate
+            });
+
             let mut state = state.borrow_mut();
             let finished_at = system::time();
             if state
@@ -327,6 +340,9 @@ where
     };
     job.timer
         .set(demand.map_or(OnceDemand::Inactive, OnceDemand::At))?;
+
+    #[cfg(feature = "metrics")]
+    crate::metrics::ensure_storage();
 
     Ok(job)
 }

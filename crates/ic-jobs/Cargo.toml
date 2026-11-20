@@ -16,9 +16,11 @@ ignored = ["toko-tooling"]
 default = []
 calendar = ["dep:saffron", "dep:chrono"]
 execution = ["calendar", "dep:ic-timers", "dep:ic-platform-runtime"]
+metrics = ["execution", "dep:ic-metrics"]
 
 [dependencies]
 chrono = { workspace = true, optional = true }
+ic-metrics = { workspace = true, optional = true }
 ic-platform-runtime = { workspace = true, optional = true }
 ic-timers = { workspace = true, optional = true }
 saffron = { workspace = true, optional = true }

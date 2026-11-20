@@ -252,6 +252,15 @@ Include schedule revisions, the settled/selected progress cursor, and unresolved
 accepted occurrences in the persistence design. A restored
 in-flight occurrence requires reconciliation, not automatic replay.
 
+Opt-in Jobs metrics observe the installed execution adapter. Callback starts
+are counted before invoking business code and follow IC message rollback. A
+retry attempt is a started callback numbered two or higher. A selected
+dispatch refused by the lateness or age policy counts as a skip, separately
+from the four normal business outcomes. Work discarded without a dispatch
+does not contribute to skips. Metrics do not participate in checkpoints,
+delivery, settlement or recovery. The host can attach one shared heap store
+before binding or restoring, and metrics reset on normal upgrade.
+
 Installed qualification covers the commit boundary between acceptance and
 business work, including factory traps, persisted attempt identity and still-live
 attempt export at upgrade preparation. Stable state does not make an arbitrary

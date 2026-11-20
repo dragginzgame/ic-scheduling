@@ -41,6 +41,10 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
             first[12..],
             [1, 0, 1, first[9], if mode == 9 { 3 } else { 4 }]
         );
+        assert_eq!(
+            super::jobs::read_metrics(pic, id, sender).await,
+            [1, 0, 0, 0, 0, u128::from(mode == 9), u128::from(mode != 9)]
+        );
         if mode == 9 {
             assert_eq!(first[0], 1, "ordinary expected failure settles");
             settle(pic, 60).await;
@@ -129,6 +133,10 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
         } else if mode == 1 {
             assert_eq!(second[0], 1);
             assert_eq!(second[5..9], [2, 1, 0, 2]);
+            assert_eq!(
+                super::jobs::read_metrics(pic, id, sender).await,
+                [2, 1, 0, 0, 1, 0, 1]
+            );
             settle(pic, 60).await;
             assert_eq!(state(pic, id, sender).await, second, "success ends retries");
         } else {

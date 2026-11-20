@@ -10,6 +10,7 @@
 //! explicit retry-safe outcomes support bounded retries and pending-retry checkpoints.
 //! Explicit unresolved records reconstruct blocked in a fresh runtime; hosts own
 //! storage and lifecycle. Latest outcome records are bounded; coalescing is deferred.
+//! Opt-in `metrics` records job starts, retries, outcomes and lateness skips.
 
 #[cfg(feature = "calendar")]
 mod catch_up;
@@ -17,6 +18,8 @@ mod catch_up;
 mod checkpoint;
 #[cfg(feature = "execution")]
 mod execution;
+#[cfg(feature = "metrics")]
+mod metrics;
 #[cfg(feature = "execution")]
 mod outcome;
 #[cfg(feature = "execution")]
@@ -44,3 +47,7 @@ pub use {
 
 #[cfg(feature = "execution")]
 pub use execution::{Context, Error, Job, Recovery, Status, bind, restore, restore_unresolved};
+#[cfg(feature = "metrics")]
+pub use metrics::{
+    Metrics, MetricsStorage, MetricsStorageConflict, initialize_with_metrics, metrics,
+};

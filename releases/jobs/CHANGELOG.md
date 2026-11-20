@@ -1,5 +1,12 @@
 # Jobs changelog
 
+## [0.39.11] - Unreleased
+
+### ➕ Added
+
+- Add opt-in metrics for Jobs callback starts, retry attempts, lateness skips,
+  and normal business outcomes. Hosts can supply shared heap storage at startup.
+
 ## [0.39.10] - 2026-11-20
 
 ### ➕ Added

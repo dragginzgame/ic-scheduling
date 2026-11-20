@@ -12,6 +12,17 @@ empty.
   skip-late or bounded catch-up policy. Catch-up discards excess backlog after a bounded batch.
   Jobs share Timers' 64 declarations, eight transport flights and four submissions
   per control turn; each Job retains one declaration.
+- `metrics`: enables execution and aggregate job diagnostics. Counters cover
+  committed callback starts, started retries, lateness skips and each normal
+  business outcome. A skipped dispatch does not count as a callback returning
+  `NoWork`.
+
+With `metrics`, `ic_jobs::metrics()` reads the counters after the first successful
+binding. A host such as Canic can share its heap store by supplying an
+`Rc<ic_jobs::MetricsStorage>` through `ic_jobs::initialize_with_metrics` before binding
+or restoring jobs. Both readers see the same counters. Successful restore and
+upgrade reconstruction never replay old observations. A normal upgrade resets
+the metrics window independently of job progress.
 
 The execution adapter accepts compatible Platform Runtime 0.23 patches from
 0.23.21, sharing the single Runtime/guard selected with Timers and the host.

@@ -2,8 +2,10 @@
 use super::{Call, Cell, RefCell, Wait, ic0, self_id};
 use ic_jobs::{Context, Job, Outcome, Schedule, Status};
 use std::{
+    cell::OnceCell,
     future::Future,
     pin::Pin,
+    rc::Rc,
     task::{Context as TaskContext, Poll},
 };
 
@@ -13,6 +15,7 @@ thread_local! {
     static STARTS: Cell<u8> = const { Cell::new(0) };
     static FINISHES: Cell<u8> = const { Cell::new(0) };
     static CONTEXT: Cell<[u64; 3]> = const { Cell::new([0; 3]) };
+    static HOST_METRICS: OnceCell<Rc<ic_jobs::MetricsStorage>> = const { OnceCell::new() };
 }
 
 fn mode() -> u8 {
@@ -32,6 +35,13 @@ pub extern "C" fn setup() {
     let mode = mode();
     MODE.with(|value| value.set(mode));
     ic_timers::initialize().unwrap();
+    if mode == 0 {
+        HOST_METRICS.with(|slot| {
+            let storage = slot.get_or_init(Rc::default);
+            ic_jobs::initialize_with_metrics(Rc::clone(storage)).unwrap();
+        });
+    }
+
     let job = ic_jobs::bind(
         ["jobs", "probe", "work"],
         Schedule::parse("* * * * *").unwrap(),
@@ -43,6 +53,35 @@ pub extern "C" fn setup() {
     )
     .unwrap();
     JOB.with(|slot| *slot.borrow_mut() = Some(job));
+    ic0::msg_reply();
+}
+
+// jobs_metrics
+// Returns seven aggregate Jobs counters from the active metrics store.
+// limits : empty request, reply 112 bytes
+#[expect(unsafe_code, reason = "qualification owns this endpoint")]
+#[unsafe(export_name = "canister_query jobs_metrics")]
+pub extern "C" fn metrics() {
+    assert_eq!(ic0::msg_arg_data_size(), 0);
+    let metrics = ic_jobs::metrics().unwrap();
+    HOST_METRICS.with(|slot| {
+        if let Some(storage) = slot.get() {
+            assert_eq!(storage.snapshot(), metrics);
+        }
+    });
+
+    for counter in [
+        metrics.started,
+        metrics.retry_attempts,
+        metrics.skipped_late,
+        metrics.no_work,
+        metrics.succeeded,
+        metrics.expected_failures,
+        metrics.retryable_failures,
+    ] {
+        ic0::msg_reply_data_append(&counter.exact_total().unwrap().to_le_bytes());
+    }
+
     ic0::msg_reply();
 }
 

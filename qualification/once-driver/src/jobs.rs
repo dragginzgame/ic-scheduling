@@ -1,6 +1,19 @@
 //! Jobs selection, owner precedence, skip-late behavior and Once recovery mapping.
 use ic_testkit::pocket_ic::{CanisterId, nonblocking::PocketIc};
 use std::time::Duration;
+
+pub(super) async fn read_metrics(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> [u128; 7] {
+    let bytes = pic
+        .query_call(id, sender, "jobs_metrics", vec![])
+        .await
+        .unwrap();
+    assert_eq!(bytes.len(), 112);
+
+    std::array::from_fn(|index| {
+        u128::from_le_bytes(bytes[index * 16..(index + 1) * 16].try_into().unwrap())
+    })
+}
+
 async fn state(pic: &PocketIc, id: CanisterId, sender: CanisterId) -> ([u8; 3], [u64; 5]) {
     let bytes = pic
         .query_call(id, sender, "jobs_state", vec![])
@@ -35,8 +48,19 @@ pub(super) async fn check(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
         let (initial, selected) = state(pic, id, sender).await;
         assert_eq!(initial, [2, 0, 0]);
         assert_eq!(selected[3], 1);
+        assert_eq!(read_metrics(pic, id, sender).await, [0; 7]);
+
         minute(pic).await;
         let (observed, context) = state(pic, id, sender).await;
+        let expected_metrics = match mode {
+            1 => [0; 7],
+            2 => [1, 0, 0, 0, 0, 0, 0],
+            5 => [0, 0, 1, 0, 0, 0, 0],
+            _ => [1, 0, 0, 0, 1, 0, 0],
+        };
+        assert_eq!(read_metrics(pic, id, sender).await, expected_metrics);
+        assert_eq!(read_metrics(pic, id, sender).await, expected_metrics);
+
         match mode {
             0 => {
                 assert_eq!(observed, [2, 1, 1]);
@@ -170,6 +194,7 @@ pub(super) async fn lifecycle(pic: &PocketIc, wasm: &[u8], sender: CanisterId) {
         [0; 6],
         "normal upgrade resets volatile diagnostics"
     );
+    assert_eq!(read_metrics(pic, id, sender).await, [0; 7]);
     minute(pic).await;
     assert_eq!(state(pic, id, sender).await.0, [0, 0, 0]);
     pic.update_call(id, sender, "jobs_control", vec![0])
