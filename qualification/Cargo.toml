@@ -25,7 +25,7 @@ ic-timers = { path = "../crates/ic-timers" }
 tokio = { version = "1.54.1", default-features = false, features = ["rt"] }
 
 # Tests and tooling
-toko-tooling = "=0.46.0"
+toko-tooling = "=0.46.3"
 
 [workspace.lints.cargo]
 unused_dependencies = "deny"

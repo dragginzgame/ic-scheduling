@@ -1,5 +1,12 @@
 # Jobs changelog
 
+## [0.39.12] - Unreleased
+
+### 🧪 Testing
+
+- Extend native and Wasm Jobs consumer checks through Platform Runtime 0.23.25
+  and use Testkit 0.110.4 for installed scheduler qualification.
+
 ## [0.39.11] - 2026-11-20
 
 ### ➕ Added

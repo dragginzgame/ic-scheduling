@@ -5,16 +5,21 @@ catalog and lockfile. All packages remain unpublished and inherit the shared
 compiler, Toko pin and lint baseline. The license path points to the repository
 root. Qualification consumes product packages; the reverse dependency is forbidden.
 Host drivers use `ic-testkit::pocket_ic`, matching ic-platform’s qualification
-boundary. The lock selects Testkit 0.110.3 and PocketIC client 16.1.0. The prepared
+boundary. The lock selects Testkit 0.110.4 and PocketIC client 16.1.0. The prepared
 16.0.0 server is supported. Do not add a direct `pocket-ic` dependency.
 
 Testkit 0.110.0's held-reply feature admits Protocol `>=0.3.2, <0.4.0`. The
 previous adoption selected 0.3.5, completing the migration beyond
 [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
-The current qualification lock selects Runtime and guard 0.23.23, Types 0.21.4,
-Protocol 0.3.7 and optional Metrics 0.30.20. Types and Testkit use compatible
+The current qualification lock selects Runtime and guard 0.23.25, Types 0.21.4,
+Protocol 0.3.8 and optional Metrics 0.30.21. Types and Testkit use compatible
 requirements. Runtime owns its exact singleton guard. Testkit's Protocol error
 type remains inside private qualification.
+
+On 2026-11-24, Toko Tooling 0.46.3 passed snapshot and tool verification.
+With Runtime 0.23.25 and Testkit 0.110.4, the installed executor, Once, Jobs,
+paired metrics and pinned Entropy lifecycle checks passed on PocketIC 16.0.0.
+Local results are in `target/adoption-installed.log` and `target/adoption-entropy.log`.
 
 The Toko Tooling 0.46.0 adoption passed the real Timers-to-Jobs Rust stage
 reuse and evidence refusal checks. The stage runner preserved unset, explicit
@@ -61,7 +66,7 @@ managed-server feature is not enabled by these callers.
 Runtime requirements admit compatible 0.23 patches from 0.23.21. Run
 `node qualification/runtime-composition-check.mjs` from the repository root when
 changing that boundary. The check compiles a Timers/Jobs consumer for native and
-Wasm with each of 0.23.21–0.23.23, verifies one matching Runtime/guard per build,
+Wasm with each of 0.23.21–0.23.25, verifies one matching Runtime/guard per build,
 and confirms that the incompatible 0.22.5 guard still fails to resolve.
 With the published dependencies cached, set `CARGO_NET_OFFLINE=true` to run offline.
 

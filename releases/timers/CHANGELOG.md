@@ -1,5 +1,12 @@
 # Timers changelog
 
+## [0.46.14] - Unreleased
+
+### 🛠️ Development
+
+- Adopt Toko Tooling 0.46.3 and select Platform Runtime 0.23.25 in both workspace locks.
+  The installed scheduler and Entropy lifecycle checks use Testkit 0.110.4.
+
 ## [0.46.13] - 2026-11-20
 
 ### ➕ Added

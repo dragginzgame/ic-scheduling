@@ -14,7 +14,7 @@ function cargo(args, cwd, succeeds = true) {
     assert.equal(result.status === 0, succeeds, `${args.join(' ')}\n${result.stdout}\n${result.stderr}`);
     return result;
 }
-for (const version of ['0.23.21', '0.23.22', '0.23.23', '0.22.5']) {
+for (const version of ['0.23.21', '0.23.22', '0.23.23', '0.23.24', '0.23.25', '0.22.5']) {
     const supported = version !== '0.22.5';
     const fixture = path.join(run, version);
     fs.mkdirSync(path.join(fixture, 'src'), { recursive: true });
