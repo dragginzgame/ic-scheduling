@@ -1,5 +1,11 @@
 # Jobs changelog
 
+## [0.39.13] - Unreleased
+
+### 🛠️ Development
+
+- Update the workspace locks to Platform Runtime and its guard 0.23.27 and Platform Types 0.21.5.
+
 ## [0.39.12] - 2026-11-24
 
 ### 🧪 Testing

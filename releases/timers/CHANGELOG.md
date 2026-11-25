@@ -1,5 +1,11 @@
 # Timers changelog
 
+## [0.46.15] - Unreleased
+
+### 🛠️ Development
+
+- Update the workspace locks to Platform Runtime and its guard 0.23.27 and Platform Types 0.21.5.
+
 ## [0.46.14] - 2026-11-24
 
 ### 🛠️ Development
