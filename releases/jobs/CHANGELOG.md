@@ -1,6 +1,6 @@
 # Jobs changelog
 
-## [0.39.13] - Unreleased
+## [0.39.13] - 2026-11-25
 
 ### 🛠️ Development
 
