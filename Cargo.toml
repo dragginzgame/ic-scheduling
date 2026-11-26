@@ -15,7 +15,7 @@ repository = "https://github.com/dragginzgame/ic-scheduling"
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 ic-metrics = { version = "0.30.8", default-features = false }
 ic-platform-runtime = { version = "0.23.21", default-features = false, features = ["call-ic0", "system-raw"] }
-ic-timers = { version = "0.46.17", path = "crates/ic-timers" }
+ic-timers = { version = "0.46.18", path = "crates/ic-timers" }
 saffron = { version = "0.1.0", default-features = false, features = ["std"] }
 
 # Tests and tooling
