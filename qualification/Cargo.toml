@@ -19,13 +19,13 @@ publish = false
 # Production
 ic-jobs = { path = "../crates/ic-jobs", default-features = false, features = ["calendar"] }
 ic-platform-runtime = { version = "0.23.21", default-features = false, features = ["call-ic0", "system-raw"] }
-ic-platform-types = { version = "0.21.2", default-features = false }
+ic-platform-types = { version = "0.21.6", default-features = false }
 ic-testkit = { version = "0.110.0", default-features = false }
 ic-timers = { path = "../crates/ic-timers" }
 tokio = { version = "1.54.1", default-features = false, features = ["rt"] }
 
 # Tests and tooling
-toko-tooling = "=0.46.5"
+toko-tooling = "=0.46.8"
 
 [workspace.lints.cargo]
 unused_dependencies = "deny"

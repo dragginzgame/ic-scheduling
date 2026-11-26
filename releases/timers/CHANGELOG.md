@@ -1,5 +1,13 @@
 # Timers changelog
 
+## [0.46.18] - Unreleased
+
+### 🛠️ Development
+
+- Select Platform Types 0.21.6 in the product lock. Its bounded Base32 codec
+  removes the transitive `data-encoding` dependency from the product workspace.
+- Adopt Toko Tooling 0.46.8 in both workspaces.
+
 ## [0.46.17] - 2026-11-26
 
 ### 🛠️ Development

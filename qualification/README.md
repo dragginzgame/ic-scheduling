@@ -5,14 +5,14 @@ catalog and lockfile. All packages remain unpublished and inherit the shared
 compiler, Toko pin and lint baseline. The license path points to the repository
 root. Qualification consumes product packages; the reverse dependency is forbidden.
 Host drivers use `ic-testkit::pocket_ic`, matching ic-platform’s qualification
-boundary. The lock selects Testkit 0.110.4 and PocketIC client 16.1.0. The prepared
+boundary. The lock selects Testkit 0.110.5 and PocketIC client 16.1.0. The prepared
 16.0.0 server is supported. Do not add a direct `pocket-ic` dependency.
 
 Testkit 0.110.0's held-reply feature admits Protocol `>=0.3.2, <0.4.0`. The
 previous adoption selected 0.3.5, completing the migration beyond
 [Tooling #9 — Admit published Protocol 0.2.7 in Testkit's held-reply fixtures](https://github.com/dragginzgame/ic-tooling/issues/9).
-The current qualification lock selects Runtime and guard 0.23.25, Types 0.21.4,
-Protocol 0.3.8 and optional Metrics 0.30.21. Types and Testkit use compatible
+The current qualification lock selects Runtime and guard 0.23.27, Types 0.21.6,
+Protocol 0.3.11 and optional Metrics 0.30.23. Types and Testkit use compatible
 requirements. Runtime owns its exact singleton guard. Testkit's Protocol error
 type remains inside private qualification.
 

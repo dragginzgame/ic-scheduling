@@ -1,5 +1,13 @@
 # Jobs changelog
 
+## [0.39.15] - Unreleased
+
+### 🛠️ Development
+
+- Select Platform Types 0.21.6 in the product lock and Protocol 0.3.11
+  in qualification. Entropy integration uses the same Platform versions.
+- Adopt Toko Tooling 0.46.8 in both workspaces.
+
 ## [0.39.14] - 2026-11-26
 
 ### 🛠️ Development

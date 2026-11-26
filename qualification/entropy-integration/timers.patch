@@ -7,15 +7,15 @@
 -ic-platform = { version = "0.33.0", default-features = false }
 -ic-platform-runtime = { version = "0.22.3", default-features = false }
 -ic-timers = { version = "0.44.0", default-features = false }
-+ic-platform-protocol = { version = "0.3.8", default-features = false }
-+ic-platform-types = { version = "0.21.4", default-features = false }
-+ic-platform-runtime = { version = "0.23.25", default-features = false, features = ["call-ic0", "system-raw"] }
++ic-platform-protocol = { version = "0.3.11", default-features = false }
++ic-platform-types = { version = "0.21.6", default-features = false }
++ic-platform-runtime = { version = "0.23.27", default-features = false, features = ["call-ic0", "system-raw"] }
 +ic-timers = { version = "0.46.0", default-features = false }
  rand_chacha = { version = "0.10.0", default-features = false }
 
  # Development tooling
 -toko-tooling = "=0.43.2"
-+toko-tooling = "=0.46.3"
++toko-tooling = "=0.46.8"
 
  [workspace.lints.cargo]
  unused_dependencies = "deny"
@@ -245,15 +245,15 @@
 -ic-platform-types = { version = "0.20.3", default-features = false }
 -ic-testkit = { version = "0.106.0", default-features = false }
 -ic-wire = { version = "0.22.0", default-features = false }
-+ic-platform-protocol = { version = "0.3.8", default-features = false }
-+ic-platform-runtime = { version = "0.23.25", default-features = false, features = ["call-ic0", "system-raw"] }
-+ic-platform-types = { version = "0.21.4", default-features = false }
++ic-platform-protocol = { version = "0.3.11", default-features = false }
++ic-platform-runtime = { version = "0.23.27", default-features = false, features = ["call-ic0", "system-raw"] }
++ic-platform-types = { version = "0.21.6", default-features = false }
 +ic-testkit = { version = "0.110.4", default-features = false }
 +ic-wire = { version = "0.24.2", default-features = false }
  serde = { version = "1.0.229", features = ["derive"] }
  tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread"] }
 -toko-tooling = "=0.43.2"
-+toko-tooling = "=0.46.3"
++toko-tooling = "=0.46.8"
 
  [workspace.lints.cargo]
  unused_dependencies = "deny"
