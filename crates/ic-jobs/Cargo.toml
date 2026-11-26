@@ -1,6 +1,6 @@
 [package]
 name = "ic-jobs"
-version = "0.39.13"
+version = "0.39.14"
 description = "Optional UTC cron and interval jobs with explicit recovery for Internet Computer canisters"
 repository.workspace = true
 readme = "README.md"
