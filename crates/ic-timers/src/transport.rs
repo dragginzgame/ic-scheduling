@@ -18,7 +18,6 @@ use std::{
 
 // timer
 // Processes due declarations in the IC system task, with up to four submissions per turn and eight outstanding flights.
-// limits : system task, no request payload or reply
 #[expect(
     unsafe_code,
     reason = "this crate owns the canister global timer export"
@@ -271,12 +270,23 @@ const PER_TURN: usize = 4;
 const RETRY_NS: u64 = 1_000_000_000;
 const METHOD: &str = "__ic_scheduling_once";
 
+///
+/// Flight
+/// Tracks one submitted self-call through its response and callback cleanup.
+///
+
 struct Flight {
     id: u64,
     dispatch: Scheduled,
     accepted: Option<Accepted>,
     work: Option<TaskHandle>,
 }
+
+///
+/// Transport
+/// Owns the global timer deadline and bounded table of outstanding self-calls.
+///
+
 pub(super) struct Transport {
     flights: RefCell<Vec<Flight>>,
     sequence: Cell<u64>,
@@ -366,10 +376,16 @@ impl Runtime {
     }
 }
 
+///
+/// FlightGuard
+/// Faults the provider if a flight loses its response handler before settlement.
+///
+
 struct FlightGuard {
     runtime: Rc<Runtime>,
     finished: bool,
 }
+
 impl Drop for FlightGuard {
     fn drop(&mut self) {
         if !self.finished {

@@ -1,5 +1,12 @@
 # Timers changelog
 
+## [0.46.17] - Unreleased
+
+### 🛠️ Development
+
+- Adopt Toko Tooling 0.46.5. `make deps-list` lists product versions and release
+  groups by default. Add `DEPENDENCY_MANIFEST=qualification/Cargo.toml` to include probes and drivers.
+
 ## [0.46.16] - 2026-11-26
 
 ### 🐛 Fixed

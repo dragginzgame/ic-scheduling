@@ -1,5 +1,12 @@
 # Jobs changelog
 
+## [0.39.14] - Unreleased
+
+### 🛠️ Development
+
+- Adopt Toko Tooling 0.46.5 and document how Jobs tracks occurrence identity,
+  callback acceptance, and recovery.
+
 ## [0.39.13] - 2026-11-25
 
 ### 🛠️ Development

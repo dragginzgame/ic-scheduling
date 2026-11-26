@@ -41,7 +41,7 @@ endif
 endif
 endif
 
-# The shared commands discover qualification/Cargo.toml when its first probe exists.
+# Include the independent qualification workspace in Rust formatting.
 FORMAT_RUST_ARGS := $(if $(wildcard qualification/Cargo.toml),--extra-workspace qualification)
 include vendor/toko-tooling/make/consumer.mk
 include vendor/toko-tooling/make/cargo-dependencies.mk
@@ -60,7 +60,8 @@ help:
 	  'make check-once                Installed Once provider probe (requires POCKET_IC_BIN)' \
 	  'make check-metrics             Compare metrics off/on Wasm costs (requires POCKET_IC_BIN)' \
 	  'make fmt / fmt-check          Shared Rust and manifest formatting' \
-	  'make deps-list                List local package versions in maintained workspaces' \
+	  'make deps-list                List product packages and release groups' \
+	  'make deps-list DEPENDENCY_MANIFEST=qualification/Cargo.toml  Include private qualification packages' \
 	  'make deps-update              Update maintained workspace locks using cargo update -v' \
 	  'make deps-update DEPENDENCY_PACKAGE=toko-tooling  Update only the selected supplier' \
 	  'make toko-tooling-preview     Preview the locked tooling snapshot' \

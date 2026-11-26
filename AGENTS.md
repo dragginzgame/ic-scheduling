@@ -6,9 +6,9 @@ docs/evidence/consumer-requirements.md before implementation.
 The current scope decision is docs/design/release-scope.md: preserve legacy
 capabilities without copying the old architecture; defer additional proposals.
 
-The workspace publishes `ic-timers` and `ic-jobs` independently through
-`ci/cargo-release-groups.json` and their `releases/` ledgers. Those files own
-versions; qualification packages remain private. The release scope guide owns
+The package manifests own the independent `ic-timers` and `ic-jobs` versions.
+`ci/cargo-release-groups.json` selects the release groups and their changelogs
+under `releases/`. Qualification packages remain private. The release scope guide owns
 publication and archive checks.
 
 Jobs delegates five-field UTC recurrence to Saffron, plus a

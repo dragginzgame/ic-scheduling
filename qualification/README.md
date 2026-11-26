@@ -84,7 +84,8 @@ dependencies. Node 24.21.0 was used for the
 recorded observation. See [calendar evidence](../docs/evidence/calendar-saffron.md).
 The raw probe ABI and its zero sentinel are qualification-only.
 
-Shared `make deps-list`, `make deps-update` and formatting include both workspaces.
+Run `make deps-list DEPENDENCY_MANIFEST=qualification/Cargo.toml` to list both
+workspaces. Dependency updates and formatting include qualification by default.
 
 The installed suite also checks [full-table capture retention](../docs/evidence/capture-retention.md):
 maximum-length identities, retained payloads through repeated demand changes,

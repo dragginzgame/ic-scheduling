@@ -1,21 +1,41 @@
 //! Once eligibility and attempt custody, without callbacks or platform effects.
 //!
-//! Each value belongs to one retained declaration. The future table/transport
-//! must authenticate declaration authority before delivering any token here.
+//! Each value belongs to one retained declaration. Bindings authenticate the
+//! table, slot and incarnation before passing a token to this state machine.
 
 #[cfg(test)]
 mod tests;
 
 pub(super) use crate::OnceDemand as Demand;
 
+///
+/// Ticket
+/// Identifies a reservation for delivery within one declaration.
+///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Ticket(u64);
+
+///
+/// Attempt
+/// Identifies the accepted callback that owns settlement.
+///
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Attempt(u64);
 
+///
+/// Recovery
+/// Binds explicit recovery to the abandoned attempt.
+///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Recovery(Attempt);
+
+///
+/// ControlError
+/// Reports why a requested Once state transition could not proceed.
+///
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum ControlError {
@@ -23,6 +43,11 @@ pub(super) enum ControlError {
     StaleRecovery,
     Exhausted,
 }
+
+///
+/// State
+/// Tracks eligibility, callback custody and pending owner demand.
+///
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum State {
@@ -36,7 +61,11 @@ pub(super) enum State {
     Faulted,
 }
 
+///
+/// OnceState
 /// One authoritative entry's Once state. Tokens are declaration-local, not handles.
+///
+
 #[derive(Debug)]
 pub(super) struct OnceState {
     state: State,
@@ -105,6 +134,7 @@ impl OnceState {
         };
         self.ticket = None;
         self.retry_at = at;
+
         Ok(true)
     }
 

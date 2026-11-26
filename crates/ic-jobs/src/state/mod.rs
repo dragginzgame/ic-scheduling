@@ -12,8 +12,12 @@ use crate::{
     CatchUpProgress, Checkpoint, Policy, RecordedOutcome, RetryPolicy, RetryProgress, Schedule,
 };
 
+///
+/// RecoveryDisposition
 /// Owner disposition after reconciling the effects of an uncertain attempt.
 /// Neither choice resumes the job; call `Job::resume` separately.
+///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RecoveryDisposition {
     /// Retire this occurrence, discard its retry/batch and skip through now.
@@ -23,7 +27,12 @@ pub enum RecoveryDisposition {
     /// Refuse if the definition changed, budget is exhausted or deadline overflows.
     RetrySafe,
 }
+
+///
+/// ControlState
 /// Owner-controlled eligibility, persisted separately from execution custody.
+///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ControlState {
     /// Work may become eligible according to its schedule and policy.
@@ -34,21 +43,44 @@ pub enum ControlState {
     Cancelled,
 }
 
+///
+/// Occurrence
+/// Identifies a scheduled instant within one revision of a job.
+///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Occurrence {
     pub(super) revision: u64,
     pub(super) scheduled_at: u64,
 }
+
+///
+/// Selection
+/// Distinguishes individual deliveries of an occurrence.
+///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Selection {
     pub(super) occurrence: Occurrence,
     sequence: u64,
 }
+
+///
+/// Context
+/// Carries the selected occurrence and its actual start time.
+///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct Context {
     pub(super) occurrence: Occurrence,
     pub(super) started_at: u64,
 }
+
+///
+/// Phase
+/// Tracks custody from selection through acceptance or recovery.
+///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Phase {
     Queued,
@@ -56,11 +88,23 @@ enum Phase {
     Blocked,
     Restored(u32),
 }
+
+///
+/// Active
+/// Pairs the current selection with its execution phase.
+///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct Active {
     selection: Selection,
     phase: Phase,
 }
+
+///
+/// Error
+/// Reports why a job control or progress transition could not proceed.
+///
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum Error {
     Cancelled,
@@ -74,8 +118,12 @@ pub(super) enum Error {
     RetryUnavailable,
 }
 
+///
+/// State
 /// One job's revision and exclusive progress cursor. The host's stable job key
 /// must accompany Occurrence when constructing durable business identities.
+///
+
 pub(super) struct State {
     revision: u64,
     through: Option<u64>,
@@ -90,6 +138,7 @@ pub(super) struct State {
     pub(super) retry: Option<RetryProgress>,
     pub(super) last_outcome: Option<RecordedOutcome>,
 }
+
 impl State {
     pub(super) fn unresolved_progress(&self) -> Result<crate::checkpoint::Checkpoint, Error> {
         self.check()?;

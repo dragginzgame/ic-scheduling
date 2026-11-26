@@ -81,6 +81,7 @@ Dependency maintenance uses the shared commands:
 
 ```sh
 make deps-list
+make deps-list DEPENDENCY_MANIFEST=qualification/Cargo.toml
 make deps-update
 make deps-update DEPENDENCY_PACKAGE=toko-tooling
 ```
@@ -96,8 +97,8 @@ checks formatting independently. `make check-formatting-hooks` exercises this
 checkout's hook with prepared tools, including both maintained workspaces.
 
 [Qualification](qualification/README.md) has its own manifest and lockfile and
-contains calendar, executor, timer/Jobs, metrics and isolated Entropy probes. Dependency and formatting commands include
-both workspaces. Standard Toko release/publication entrypoints are installed; see
+contains calendar, executor, timer/Jobs, metrics and isolated Entropy probes. Dependency updates and formatting include
+both workspaces. The default dependency listing shows product packages. Standard Toko release/publication entrypoints are installed; see
 [release operations](docs/operations/releases.md).
 
 ## Timer lifetimes and observations
