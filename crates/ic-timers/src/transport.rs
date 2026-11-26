@@ -2,7 +2,7 @@
 
 use crate::{
     Error,
-    bindings::{Accepted, Scheduled},
+    bindings::{Accepted, Rejected, Scheduled},
     metrics::Event,
     provider::{Runtime, runtime},
 };
@@ -127,8 +127,13 @@ extern "C" fn timer() {
                             } else if let Scheduled::Once(dispatch) = &flight.dispatch {
                                 // An initial trap rolls back the task handle and acceptance;
                                 // the earlier committed dispatch still owns the uncertain work.
-                                match owner.bindings.rejected(dispatch) {
-                                    Ok(true) => {
+                                match owner.bindings.rejected(
+                                    dispatch,
+                                    completion.outcome(),
+                                    system::time(),
+                                ) {
+                                    Ok(Some(Rejected::Deferred)) => owner.record(Event::Deferred),
+                                    Ok(Some(Rejected::Abandoned)) => {
                                         owner.record(Event::Accepted);
                                         owner.record(Event::Abandoned);
                                     }

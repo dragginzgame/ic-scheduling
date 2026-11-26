@@ -14,6 +14,8 @@ use std::{
     rc::{Rc, Weak},
 };
 
+use ic_platform_runtime::call::{Outcome, RejectCode};
+
 use crate::engine::{Attempt, ControlError, Demand, OnceState, Recovery, State, Ticket};
 
 pub(super) const CAPACITY: usize = 64;
@@ -112,6 +114,12 @@ pub(super) struct RecoveryKey {
     slot: usize,
     incarnation: u64,
     recovery: Recovery,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum Rejected {
+    Deferred,
+    Abandoned,
 }
 
 impl Bindings {
@@ -303,8 +311,8 @@ impl Bindings {
                 continue;
             };
             let at = match &entry.kind {
-                Kind::Once { state, .. } => match state.state() {
-                    State::Armed(at)
+                Kind::Once { state, .. } => match state.eligible_at() {
+                    Some(at)
                         if !submitted.clone().any(|item| {
                             matches!(item, Scheduled::Once(dispatch)
                             if dispatch.slot == slot && dispatch.incarnation == entry.incarnation && Weak::ptr_eq(&dispatch.table, &owner)
@@ -337,18 +345,37 @@ impl Bindings {
         (eligible, cadence)
     }
 
-    /// Initial-message rejection rolled acceptance back; reserve its attempt
-    /// without invoking user code, then block replay. Superseded tickets do nothing.
-    pub(super) fn rejected(&self, dispatch: &Dispatch) -> Result<bool, Error> {
+    /// Settle a response for a Once flight with no committed acceptance.
+    pub(super) fn rejected(
+        &self,
+        dispatch: &Dispatch,
+        outcome: &Outcome,
+        now: u64,
+    ) -> Result<Option<Rejected>, Error> {
         if !Weak::ptr_eq(&dispatch.table, &Rc::downgrade(&self.0)) {
             return Err(Error::StaleAuthority);
         }
         let mut table = self.0.borrow_mut();
         let entry = match table.entry(dispatch.slot, dispatch.incarnation) {
             Ok(entry) => entry,
-            Err(_) => return Ok(false),
+            Err(_) => return Ok(None),
         };
         let (state, _) = entry.kind.once()?;
+        // These replica diagnostics identify a failed execution prepayment or
+        // stop-state admission. All other errors can include a callback trap.
+        if let Outcome::Rejected(reason) = outcome {
+            let diagnostic = reason.message().split_once(": ").map(|(code, _)| code);
+            if matches!(
+                (reason.kind(), diagnostic),
+                (Some(RejectCode::SysTransient), Some("IC0207"))
+                    | (Some(RejectCode::CanisterError), Some("IC0508" | "IC0509"))
+            ) {
+                return Ok(state
+                    .defer(dispatch.ticket, now)
+                    .map_err(Error::Control)?
+                    .then_some(Rejected::Deferred));
+            }
+        }
         if let Some(attempt) = state.accept(dispatch.ticket).map_err(Error::Control)? {
             let abandoned = state.abandon(attempt);
             #[cfg(feature = "metrics")]
@@ -357,10 +384,10 @@ impl Bindings {
                 entry.measurements.abandoned.add(1);
             }
 
-            return Ok(abandoned);
+            return Ok(abandoned.then_some(Rejected::Abandoned));
         }
 
-        Ok(false)
+        Ok(None)
     }
 
     /// Authenticate local authority and enter Running before invoking the factory.

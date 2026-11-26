@@ -1,5 +1,30 @@
 # Timers changelog
 
+## [0.46.16] - Unreleased
+
+### 🐛 Fixed
+
+- Fix a Once timer getting stuck in `RecoveryRequired` after its self-call was
+  submitted but the replica rejected execution before callback acceptance
+  committed. Previously, topping up cycles or restarting the canister left the
+  timer waiting for manual recovery. The provider now recognizes insufficient
+  execution cycles (reject code 2 with `IC0207`) and a stopped or stopping
+  canister (reject code 5 with `IC0508` or `IC0509`). Callback traps and
+  ambiguous rejections still follow the explicit recovery path.
+- Keep the affected declaration armed at its original deadline. It becomes
+  eligible for a fresh delivery ticket after 60 seconds. Other timers can run
+  during that delay. Cancelling or rescheduling through the original handle
+  supersedes the pending delivery, and a late response for an obsolete ticket
+  cannot defer its replacement.
+- With metrics enabled, a recognized rejection counts as a deferred delivery.
+  For `ic-jobs` users, the deferral happens before the job callback starts and
+  consumes no occurrence attempt or business retry budget.
+
+Motoko reported the related top-up failure in
+[Motoko #6438 — Timers can remain inactive after a frozen canister is topped up](https://github.com/caffeinelabs/motoko/issues/6438).
+Its fixes cover [low-cycle timer dispatch (#6440)](https://github.com/caffeinelabs/motoko/pull/6440)
+and [cancelling a pending retry by its original timer ID (#6449)](https://github.com/caffeinelabs/motoko/pull/6449).
+
 ## [0.46.15] - 2026-11-25
 
 ### 🛠️ Development

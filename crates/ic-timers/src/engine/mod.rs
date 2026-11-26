@@ -41,6 +41,7 @@ pub(super) enum State {
 pub(super) struct OnceState {
     state: State,
     ticket: Option<Ticket>,
+    retry_at: u64,
     ticket_counter: u64,
     attempt_counter: u64,
 }
@@ -50,6 +51,7 @@ impl OnceState {
         Self {
             state: State::Inactive,
             ticket: None,
+            retry_at: 0,
             ticket_counter: 0,
             attempt_counter: 0,
         }
@@ -85,13 +87,34 @@ impl OnceState {
         self.ticket == Some(ticket)
     }
 
+    pub(super) fn eligible_at(&self) -> Option<u64> {
+        match self.state {
+            State::Armed(at) => Some(at.max(self.retry_at)),
+            _ => None,
+        }
+    }
+
+    /// Retire only the rejected reservation. Owner status retains its original deadline.
+    pub(super) fn defer(&mut self, ticket: Ticket, now: u64) -> Result<bool, ControlError> {
+        const BACKOFF_NS: u64 = 60_000_000_000;
+        if !self.has_ticket(ticket) {
+            return Ok(false);
+        }
+        let Some(at) = now.checked_add(BACKOFF_NS) else {
+            return self.exhaust();
+        };
+        self.ticket = None;
+        self.retry_at = at;
+        Ok(true)
+    }
+
     /// Reserve one ticket for due work. Repeated selection retains that ticket;
     /// transport must track submission separately and must not submit it twice.
     pub(super) fn due(&mut self, now: u64) -> Result<Option<Ticket>, ControlError> {
         if self.state == State::Faulted {
             return Err(ControlError::Exhausted);
         }
-        if !matches!(self.state, State::Armed(at) if at <= now) {
+        if self.eligible_at().is_none_or(|at| at > now) {
             return Ok(None);
         }
         if let Some(ticket) = self.ticket {
@@ -161,6 +184,7 @@ impl OnceState {
     }
 
     fn apply(&mut self, demand: Demand) {
+        self.retry_at = 0;
         self.ticket = None;
         self.state = match demand {
             Demand::Inactive => State::Inactive,

@@ -401,3 +401,17 @@ Watchdog implementation, metrics, measured resource bounds and remaining failure
 custody still block release. The next implementation step remains watchdog
 coalescing once the required Once custody boundaries are accepted; these host
 fixtures are not a consumer migration or a release-readiness claim.
+
+## Once delivery after asynchronous refusal
+
+A private Once self-call can be submitted successfully and later rejected by the
+replica before the callback commits acceptance. For a current reservation, the
+provider recognizes reject code 2 with the diagnostic token `IC0207` and code 5
+with `IC0508` or `IC0509`. These tokens depend on replica message formatting.
+Other non-reply outcomes retain the existing trap and uncertain-work handling.
+
+Recognized refusals count as a deferral. The declaration retains its original
+deadline and becomes eligible for a fresh delivery ticket after 60 seconds.
+Cancellation or a new deadline supersedes the reservation. Repeated reconciliation
+of the same deadline preserves the delay. A delivery deferral precedes any Jobs
+callback and consumes no occurrence attempt or business retry budget.

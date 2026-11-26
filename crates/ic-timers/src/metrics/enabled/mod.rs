@@ -28,7 +28,7 @@ pub struct Metrics {
     pub abandoned: MeasurementCounter,
     /// Normal returns classified ExpectedFailure by the consumer; no retry implied.
     pub expected_failures: MeasurementCounter,
-    /// Self-call submissions refused before acceptance, each deferred submission counted.
+    /// Deliveries deferred by submission refusal or a recognized pre-acceptance Once rejection.
     pub deferred_submissions: MeasurementCounter,
     /// First terminal provider fault in this incarnation; excludes isolated entry faults.
     pub provider_faults: MeasurementCounter,

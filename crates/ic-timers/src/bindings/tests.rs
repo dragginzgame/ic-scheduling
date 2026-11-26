@@ -131,7 +131,10 @@ fn authority_is_scoped_to_runtime_and_declaration() {
     a.set(Demand::At(0)).unwrap();
     b.set(Demand::At(0)).unwrap();
     let ticket = due(&first, 0).unwrap();
-    assert_eq!(second.rejected(&ticket), Err(Error::StaleAuthority));
+    assert_eq!(
+        second.rejected(&ticket, trap().outcome(), 0),
+        Err(Error::StaleAuthority)
+    );
     assert!(matches!(second.start(&ticket), Err(Error::StaleAuthority)));
     let (accepted, future) = first.start(&ticket).unwrap().unwrap();
     assert!(accepted.is_running().unwrap());
@@ -213,7 +216,10 @@ fn submitted_ticket_does_not_hide_new_due_work_or_a_replacement() {
     );
     let replacement = due(&runtime, 0).unwrap();
     assert!(!replacement.same(&submitted));
-    assert!(!runtime.rejected(&submitted).unwrap());
+    assert_eq!(
+        runtime.rejected(&submitted, trap().outcome(), 0).unwrap(),
+        None
+    );
     second.set(Demand::Inactive).unwrap();
     assert_eq!(
         runtime
@@ -237,8 +243,14 @@ fn submitted_ticket_does_not_hide_new_due_work_or_a_replacement() {
         Some(0)
     );
     let active = due(&runtime, 0).unwrap();
-    assert!(runtime.rejected(&active).unwrap());
-    assert!(!runtime.rejected(&active).unwrap());
+    assert_eq!(
+        runtime.rejected(&active, trap().outcome(), 0).unwrap(),
+        Some(Rejected::Abandoned)
+    );
+    assert_eq!(
+        runtime.rejected(&active, trap().outcome(), 0).unwrap(),
+        None
+    );
     assert!(first.recovery().unwrap().is_some());
 }
 
@@ -487,4 +499,109 @@ fn inventory_is_sorted_inert_and_scoped_to_the_declaration_incarnation() {
     replacement.remove().unwrap();
     watch.remove().unwrap();
     assert!(runtime.inventory().is_empty());
+}
+
+fn rejection(code: u32, message: &str) -> ic_platform_runtime::call::Completion {
+    ic_platform_runtime::call::Completion::from_rejection(
+        code.try_into().unwrap(),
+        message.into(),
+        None,
+    )
+}
+
+fn trap() -> ic_platform_runtime::call::Completion {
+    rejection(5, "IC0503: callback trapped")
+}
+
+#[test]
+fn replica_refusal_defers_only_the_current_once_declaration() {
+    for (code, text) in [
+        (2, "IC0207: out of cycles"),
+        (5, "IC0508: stopped"),
+        (5, "IC0509: stopping"),
+    ] {
+        let runtime = Bindings::new();
+        let bind = |name| {
+            runtime
+                .bind(["o", "g", name], crate::Lifetime::Retained, || {
+                    ready(Demand::Inactive)
+                })
+                .unwrap()
+        };
+        let victim = bind("victim");
+        victim.set(Demand::At(10)).unwrap();
+        let submitted = due(&runtime, 10).unwrap();
+        let response = rejection(code, text);
+        assert_eq!(
+            runtime
+                .rejected(&submitted, response.outcome(), 11)
+                .unwrap(),
+            Some(Rejected::Deferred)
+        );
+        assert_eq!(
+            runtime
+                .rejected(&submitted, response.outcome(), 12)
+                .unwrap(),
+            None
+        );
+        assert_eq!(victim.state().unwrap(), State::Armed(10));
+        let retry = 60_000_000_011;
+        assert_eq!(runtime.wake(&std::iter::empty()).0, Some(retry));
+        let other = bind("other");
+        other.set(Demand::At(12)).unwrap();
+        let healthy = due(&runtime, 12).unwrap();
+        assert!(runtime.start(&healthy).unwrap().is_some());
+        assert!(due(&runtime, retry - 1).is_none());
+        let next = due(&runtime, retry).unwrap();
+        assert!(!next.same(&submitted));
+        assert!(runtime.start(&submitted).unwrap().is_none());
+        let (accepted, _future) = runtime.start(&next).unwrap().unwrap();
+        assert!(runtime.start(&next).unwrap().is_none());
+        assert!(
+            accepted
+                .complete(Demand::Inactive, crate::Observation::Success)
+                .unwrap()
+        );
+
+        victim.set(Demand::At(retry)).unwrap();
+        let cancelled = due(&runtime, retry).unwrap();
+        assert_eq!(
+            runtime
+                .rejected(&cancelled, response.outcome(), retry)
+                .unwrap(),
+            Some(Rejected::Deferred)
+        );
+        victim.set(Demand::Inactive).unwrap();
+        assert!(due(&runtime, u64::MAX).is_none());
+        victim.set(Demand::At(retry + 1)).unwrap();
+        let fresh = due(&runtime, retry + 1).unwrap();
+        assert!(runtime.start(&fresh).unwrap().is_some());
+    }
+}
+
+#[test]
+fn ambiguous_rejection_requires_recovery() {
+    for (code, text) in [
+        (5, "IC0509x: stopping"),
+        (5, "trap: IC0509: stopping"),
+        (2, "unknown"),
+        (4, "IC0509: stopping"),
+        (6, "IC0207: unknown"),
+    ] {
+        let runtime = Bindings::new();
+        let handle = runtime
+            .bind(["o", "g", "n"], crate::Lifetime::Retained, || {
+                ready(Demand::Inactive)
+            })
+            .unwrap();
+        handle.set(Demand::At(0)).unwrap();
+        let dispatch = due(&runtime, 0).unwrap();
+        assert_eq!(
+            runtime
+                .rejected(&dispatch, rejection(code, text).outcome(), 0)
+                .unwrap(),
+            Some(Rejected::Abandoned)
+        );
+        assert!(handle.recovery().unwrap().is_some());
+    }
 }
